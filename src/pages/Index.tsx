@@ -4,21 +4,24 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import LeadAssignmentForm from "@/components/LeadAssignmentForm";
 import AssignmentHistory from "@/components/AssignmentHistory";
+import LeadDatabase from "@/components/LeadDatabase";
 import { Loader2 } from "lucide-react";
 
 const Index = () => {
   const [refreshHistory, setRefreshHistory] = useState(false);
+  const [refreshLeads, setRefreshLeads] = useState(false);
 
   const handleAssignmentSuccess = () => {
     // Trigger history refresh when assignment succeeds
     setRefreshHistory(prev => !prev);
+    setRefreshLeads(prev => !prev);
   };
 
   return (
     <div className="container mx-auto px-4 py-8">
       <h1 className="text-3xl font-bold text-center mb-8">Sistema di Assegnazione Lead</h1>
       
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 mb-8">
         {/* Lead Assignment Form Section */}
         <Card className="lg:col-span-5">
           <CardHeader>
@@ -45,6 +48,19 @@ const Index = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Lead Database Section */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Database Lead</CardTitle>
+          <CardDescription>
+            Lead disponibili per l'assegnazione
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <LeadDatabase key={refreshLeads ? 'refresh' : 'initial'} />
+        </CardContent>
+      </Card>
     </div>
   );
 };

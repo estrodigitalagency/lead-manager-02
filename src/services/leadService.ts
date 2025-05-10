@@ -1,5 +1,7 @@
 
-interface LeadAssignmentData {
+import { markLeadsAsAssigned } from "./databaseService";
+
+export interface LeadAssignmentData {
   numLead: number;
   venditore: string;
   campagna?: string;
@@ -10,6 +12,13 @@ export async function assignLeads(data: LeadAssignmentData): Promise<void> {
   const endpoint = "https://script.google.com/macros/s/WEB_APP_ID/exec";
   
   try {
+    // First, mark the leads as assigned in our local database
+    const assignedLeads = await markLeadsAsAssigned(data.numLead, data.venditore, data.campagna);
+    
+    if (assignedLeads.length < data.numLead) {
+      throw new Error(`Solo ${assignedLeads.length} lead disponibili per l'assegnazione.`);
+    }
+    
     // In development, we'll simulate a successful response
     // In production, uncomment the fetch code below and replace the endpoint
     
@@ -18,6 +27,7 @@ export async function assignLeads(data: LeadAssignmentData): Promise<void> {
     
     // For development/demo only - simulate success
     console.log("Lead assignment data:", data);
+    console.log("Leads assigned:", assignedLeads);
     return Promise.resolve();
     
     /* 
@@ -27,7 +37,10 @@ export async function assignLeads(data: LeadAssignmentData): Promise<void> {
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify(data),
+      body: JSON.stringify({
+        ...data,
+        leads: assignedLeads.map(lead => lead.id)
+      }),
     });
 
     if (!response.ok) {
