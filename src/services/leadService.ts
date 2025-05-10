@@ -1,3 +1,4 @@
+
 import { markLeadsAsAssigned } from "./databaseService";
 import { supabase } from "@/integrations/supabase/client";
 
