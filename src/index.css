@@ -14,7 +14,7 @@
     --popover: 222 47% 11%;
     --popover-foreground: 60 9.1% 97.8%;
 
-    --primary: 78 99% 50%;
+    --primary: 65 100% 67%;
     --primary-foreground: 222 47% 11%;
 
     --secondary: 222 47% 18%;
@@ -23,7 +23,7 @@
     --muted: 222 47% 16%;
     --muted-foreground: 60 5.9% 77%;
 
-    --accent: 78 99% 50%;
+    --accent: 65 100% 67%;
     --accent-foreground: 222 47% 11%;
 
     --destructive: 0 62.8% 50.6%;
@@ -31,18 +31,18 @@
 
     --border: 222 47% 20%;
     --input: 222 47% 16%;
-    --ring: 78 99% 50%;
+    --ring: 65 100% 67%;
 
     --radius: 0.75rem;
 
     --sidebar-background: 222 47% 9%;
     --sidebar-foreground: 60 9.1% 97.8%;
-    --sidebar-primary: 78 99% 50%;
+    --sidebar-primary: 65 100% 67%;
     --sidebar-primary-foreground: 222 47% 11%;
     --sidebar-accent: 222 47% 13%;
     --sidebar-accent-foreground: 60 9.1% 97.8%;
     --sidebar-border: 222 47% 16%;
-    --sidebar-ring: 78 99% 50%;
+    --sidebar-ring: 65 100% 67%;
   }
 }
 
@@ -58,7 +58,7 @@
 
 @layer components {
   .neon-border {
-    @apply border border-primary rounded-lg shadow-[0_0_10px_rgba(150,255,0,0.7)];
+    @apply border border-primary rounded-lg shadow-[0_0_10px_rgba(234,255,85,0.7)];
   }
   
   .glass-card {
@@ -66,7 +66,7 @@
   }
   
   .btn-neon {
-    @apply bg-primary text-primary-foreground hover:bg-primary/80 shadow-[0_0_10px_rgba(150,255,0,0.5)] transition-all duration-200;
+    @apply bg-primary text-primary-foreground hover:bg-primary/80 shadow-[0_0_10px_rgba(234,255,85,0.5)] transition-all duration-200;
   }
 
   .table-header-cell {

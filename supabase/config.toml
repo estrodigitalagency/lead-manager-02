@@ -1,1 +1,41 @@
+
 project_id = "btcwmuyemmkiteqlopce"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public", "storage", "graphql_public"]
+
+[db]
+port = 54322
+
+[studio]
+enabled = true
+port = 54323
+api_url = "http://localhost"
+
+[inbucket]
+enabled = true
+port = 54324
+
+[storage]
+enabled = true
+port = 54325
+
+[auth]
+enabled = true
+port = 54326
+
+[realtime]
+enabled = true
+port = 54327
+
+[functions]
+[functions.calendly-webhook]
+verify_jwt = false
+
+[functions.lead-generation-webhook]
+verify_jwt = false
+
+[functions.lead-check]
+verify_jwt = false

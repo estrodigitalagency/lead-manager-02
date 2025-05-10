@@ -4,7 +4,7 @@ import { Link } from "react-router-dom";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { Database, Webhook, ArrowLeft, Users } from "lucide-react";
+import { Webhook, ArrowLeft, Users } from "lucide-react";
 import SalespeopleSettings from "@/components/SalespeopleSettings";
 import DatabaseSection from "@/components/settings/DatabaseSection";
 import AttributionWindowSettings from "@/components/settings/AttributionWindowSettings";
@@ -24,25 +24,18 @@ const Settings = () => {
           </Link>
           <h1 className="text-3xl font-bold neon-text">Impostazioni</h1>
         </div>
-        <Link to="/database">
-          <Button variant="outline" className="flex items-center gap-2 neon-border hover:animate-glow">
-            <Database size={18} className="text-primary" />
-            Database Records
-          </Button>
-        </Link>
       </div>
       
-      <Tabs defaultValue="database" className="w-full">
+      <Tabs defaultValue="attribution" className="w-full">
         <TabsList className="grid w-full grid-cols-3 mb-8 neon-border">
-          <TabsTrigger value="database" className="data-[state=active]:text-primary data-[state=active]:shadow-[0_0_8px_rgba(150,255,0,0.5)]">
-            <Database className="mr-2 h-4 w-4" />
+          <TabsTrigger value="database" className="data-[state=active]:text-primary data-[state=active]:shadow-[0_0_8px_rgba(234,255,85,0.5)]">
             Database
           </TabsTrigger>
-          <TabsTrigger value="attribution" className="data-[state=active]:text-primary data-[state=active]:shadow-[0_0_8px_rgba(150,255,0,0.5)]">
+          <TabsTrigger value="attribution" className="data-[state=active]:text-primary data-[state=active]:shadow-[0_0_8px_rgba(234,255,85,0.5)]">
             <Webhook className="mr-2 h-4 w-4" />
             Finestre di Attribuzione
           </TabsTrigger>
-          <TabsTrigger value="salespeople" className="data-[state=active]:text-primary data-[state=active]:shadow-[0_0_8px_rgba(150,255,0,0.5)]">
+          <TabsTrigger value="salespeople" className="data-[state=active]:text-primary data-[state=active]:shadow-[0_0_8px_rgba(234,255,85,0.5)]">
             <Users className="mr-2 h-4 w-4" />
             Venditori
           </TabsTrigger>

@@ -2,21 +2,17 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import LeadAssignmentForm from "@/components/LeadAssignmentForm";
 import AssignmentHistory from "@/components/AssignmentHistory";
-import LeadDatabase from "@/components/LeadDatabase";
-import { Settings, Database, ChevronRight } from "lucide-react";
+import { Settings, Database } from "lucide-react";
 
 const Index = () => {
   const [refreshHistory, setRefreshHistory] = useState(false);
-  const [refreshLeads, setRefreshLeads] = useState(false);
 
   const handleAssignmentSuccess = () => {
     // Trigger history refresh when assignment succeeds
     setRefreshHistory(prev => !prev);
-    setRefreshLeads(prev => !prev);
   };
 
   return (
@@ -39,7 +35,7 @@ const Index = () => {
         </div>
       </div>
       
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 mb-8">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         {/* Lead Assignment Form Section */}
         <Card className="lg:col-span-5 glass-card">
           <CardHeader className="border-b border-border/30">
@@ -66,19 +62,6 @@ const Index = () => {
           </CardContent>
         </Card>
       </div>
-
-      {/* Lead Database Section */}
-      <Card className="glass-card">
-        <CardHeader className="border-b border-border/30">
-          <CardTitle className="text-primary">Database Lead</CardTitle>
-          <CardDescription className="text-muted-foreground">
-            Lead disponibili per l'assegnazione
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="pt-6">
-          <LeadDatabase key={refreshLeads ? 'refresh' : 'initial'} />
-        </CardContent>
-      </Card>
     </div>
   );
 };
