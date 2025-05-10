@@ -50,16 +50,6 @@ export default function DatabaseAddRecordDialog({
           { name: "scheduled_at", label: "Data Chiamata", required: true, type: "datetime-local" },
           { name: "note", label: "Note", required: false },
         ];
-      case "venditori":
-        return [
-          { name: "nome", label: "Nome", required: true },
-          { name: "cognome", label: "Cognome", required: true },
-          { name: "email", label: "Email", required: false },
-          { name: "telefono", label: "Telefono", required: false },
-          { name: "lead_capacity", label: "Capacità Lead", required: false, type: "number", default: "50" },
-          { name: "sheets_file_id", label: "ID File Sheets", required: true },
-          { name: "sheets_tab_name", label: "Nome Foglio Sheets", required: true },
-        ];
       case "system_settings":
         return [
           { name: "key", label: "Chiave", required: true },
@@ -118,7 +108,7 @@ export default function DatabaseAddRecordDialog({
     try {
       // Type assertion must match the actual tables in the Supabase database
       const { error } = await supabase
-        .from(tableName as "lead_generation" | "booked_call" | "lead_assignments" | "venditori" | "system_settings")
+        .from(tableName as "lead_generation" | "booked_call" | "lead_assignments" | "system_settings")
         .insert(formData);
       
       if (error) throw error;
@@ -138,7 +128,6 @@ export default function DatabaseAddRecordDialog({
     switch (tableName) {
       case "lead_generation": return "Lead Generation";
       case "booked_call": return "Booked Call";
-      case "venditori": return "Venditori";
       case "system_settings": return "System Settings";
       case "lead_assignments": return "Lead Assignments";
       default: return tableName;

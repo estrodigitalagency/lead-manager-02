@@ -6,15 +6,15 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Pencil, Trash2, Plus } from "lucide-react";
+import { Pencil, Trash2, Plus, User } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 interface Salesperson {
@@ -223,16 +223,95 @@ const SalespeopleSettings = () => {
   };
 
   return (
-    <>
-      <div className="flex justify-between items-center mb-4">
-        <h2 className="text-xl font-semibold">Impostazioni Venditori</h2>
+    <Card className="border-0 shadow-none">
+      <CardHeader className="pb-3">
+        <div className="flex justify-between items-center">
+          <CardTitle className="text-2xl font-semibold">Gestione Venditori</CardTitle>
+          <Button 
+            onClick={() => setIsAddDialogOpen(true)}
+            size="sm"
+            className="flex items-center gap-1"
+          >
+            <Plus className="h-4 w-4" />
+            Aggiungi Venditore
+          </Button>
+        </div>
+      </CardHeader>
+      <CardContent>
+        {isLoading ? (
+          <div className="flex justify-center items-center h-32">
+            <span>Caricamento in corso...</span>
+          </div>
+        ) : (
+          <div className="overflow-x-auto rounded-lg border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Nome</TableHead>
+                  <TableHead>Cognome</TableHead>
+                  <TableHead>Email</TableHead>
+                  <TableHead>Telefono</TableHead>
+                  <TableHead>ID File Sheets</TableHead>
+                  <TableHead>Nome Foglio</TableHead>
+                  <TableHead className="text-right">Azioni</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {salespeople.length > 0 ? (
+                  salespeople.map((salesperson) => (
+                    <TableRow key={salesperson.id}>
+                      <TableCell className="font-medium">{salesperson.nome}</TableCell>
+                      <TableCell>{salesperson.cognome}</TableCell>
+                      <TableCell>{salesperson.email || "-"}</TableCell>
+                      <TableCell>{salesperson.telefono || "-"}</TableCell>
+                      <TableCell>
+                        <div className="max-w-[150px] truncate" title={salesperson.sheets_file_id}>
+                          {salesperson.sheets_file_id}
+                        </div>
+                      </TableCell>
+                      <TableCell>{salesperson.sheets_tab_name}</TableCell>
+                      <TableCell className="text-right space-x-2">
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          onClick={() => openEditDialog(salesperson)}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          onClick={() => handleDeleteSalesperson(salesperson.id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={7} className="text-center py-8">
+                      <div className="flex flex-col items-center gap-2">
+                        <User size={24} className="text-gray-400" />
+                        <p>Nessun venditore trovato.</p>
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => setIsAddDialogOpen(true)}
+                        >
+                          Aggiungi venditore
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        )}
+
+        {/* Add Dialog */}
         <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-          <DialogTrigger asChild>
-            <Button className="flex items-center gap-2">
-              <Plus className="h-4 w-4" />
-              Aggiungi Venditore
-            </Button>
-          </DialogTrigger>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Aggiungi Nuovo Venditore</DialogTitle>
@@ -243,7 +322,7 @@ const SalespeopleSettings = () => {
             <div className="grid gap-4 py-4">
               <div className="grid grid-cols-4 items-center gap-2">
                 <Label htmlFor="nome" className="text-right">
-                  Nome Venditore <span className="text-red-500">*</span>
+                  Nome <span className="text-red-500">*</span>
                 </Label>
                 <Input
                   id="nome"
@@ -293,19 +372,6 @@ const SalespeopleSettings = () => {
                 />
               </div>
               <div className="grid grid-cols-4 items-center gap-2">
-                <Label htmlFor="lead_capacity" className="text-right">
-                  Capacità Lead
-                </Label>
-                <Input
-                  id="lead_capacity"
-                  name="lead_capacity"
-                  type="number"
-                  className="col-span-3"
-                  value={formData.lead_capacity}
-                  onChange={handleChange}
-                />
-              </div>
-              <div className="grid grid-cols-4 items-center gap-2">
                 <Label htmlFor="sheets_file_id" className="text-right">
                   ID File Sheets <span className="text-red-500">*</span>
                 </Label>
@@ -320,7 +386,7 @@ const SalespeopleSettings = () => {
               </div>
               <div className="grid grid-cols-4 items-center gap-2">
                 <Label htmlFor="sheets_tab_name" className="text-right">
-                  Nome Foglio Sheets <span className="text-red-500">*</span>
+                  Nome Foglio <span className="text-red-500">*</span>
                 </Label>
                 <Input
                   id="sheets_tab_name"
@@ -333,185 +399,112 @@ const SalespeopleSettings = () => {
               </div>
             </div>
             <DialogFooter>
+              <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>
+                Annulla
+              </Button>
               <Button onClick={handleAddSalesperson}>Salva</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
-      </div>
 
-      {isLoading ? (
-        <div className="flex justify-center items-center h-32">
-          <span>Caricamento in corso...</span>
-        </div>
-      ) : (
-        <div className="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Nome</TableHead>
-                <TableHead>Cognome</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Telefono</TableHead>
-                <TableHead>ID File Sheets</TableHead>
-                <TableHead>Nome Foglio</TableHead>
-                <TableHead>Capacità Lead</TableHead>
-                <TableHead>Lead Attuali</TableHead>
-                <TableHead className="text-right">Azioni</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {salespeople.length > 0 ? (
-                salespeople.map((salesperson) => (
-                  <TableRow key={salesperson.id}>
-                    <TableCell>{salesperson.nome}</TableCell>
-                    <TableCell>{salesperson.cognome}</TableCell>
-                    <TableCell>{salesperson.email || "-"}</TableCell>
-                    <TableCell>{salesperson.telefono || "-"}</TableCell>
-                    <TableCell>
-                      <div className="max-w-[150px] truncate" title={salesperson.sheets_file_id}>
-                        {salesperson.sheets_file_id}
-                      </div>
-                    </TableCell>
-                    <TableCell>{salesperson.sheets_tab_name}</TableCell>
-                    <TableCell>{salesperson.lead_capacity || 50}</TableCell>
-                    <TableCell>{salesperson.lead_attuali || 0}</TableCell>
-                    <TableCell className="text-right space-x-2">
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        onClick={() => openEditDialog(salesperson)}
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        onClick={() => handleDeleteSalesperson(salesperson.id)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))
-              ) : (
-                <TableRow>
-                  <TableCell colSpan={9} className="text-center py-8">
-                    Nessun venditore trovato. Aggiungi un nuovo venditore usando il pulsante in alto.
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </div>
-      )}
-
-      {/* Edit Dialog */}
-      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Modifica Venditore</DialogTitle>
-            <DialogDescription>
-              Modifica i dettagli del venditore selezionato
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-4 items-center gap-2">
-              <Label htmlFor="edit_nome" className="text-right">
-                Nome Venditore <span className="text-red-500">*</span>
-              </Label>
-              <Input
-                id="edit_nome"
-                name="nome"
-                className="col-span-3"
-                value={formData.nome}
-                onChange={handleChange}
-                required
-              />
+        {/* Edit Dialog */}
+        <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Modifica Venditore</DialogTitle>
+              <DialogDescription>
+                Modifica i dettagli del venditore
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="grid grid-cols-4 items-center gap-2">
+                <Label htmlFor="edit_nome" className="text-right">
+                  Nome <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  id="edit_nome"
+                  name="nome"
+                  className="col-span-3"
+                  value={formData.nome}
+                  onChange={handleChange}
+                  required
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-2">
+                <Label htmlFor="edit_cognome" className="text-right">
+                  Cognome <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  id="edit_cognome"
+                  name="cognome"
+                  className="col-span-3"
+                  value={formData.cognome}
+                  onChange={handleChange}
+                  required
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-2">
+                <Label htmlFor="edit_email" className="text-right">
+                  Email
+                </Label>
+                <Input
+                  id="edit_email"
+                  name="email"
+                  type="email"
+                  className="col-span-3"
+                  value={formData.email}
+                  onChange={handleChange}
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-2">
+                <Label htmlFor="edit_telefono" className="text-right">
+                  Telefono
+                </Label>
+                <Input
+                  id="edit_telefono"
+                  name="telefono"
+                  className="col-span-3"
+                  value={formData.telefono}
+                  onChange={handleChange}
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-2">
+                <Label htmlFor="edit_sheets_file_id" className="text-right">
+                  ID File Sheets <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  id="edit_sheets_file_id"
+                  name="sheets_file_id"
+                  className="col-span-3"
+                  value={formData.sheets_file_id}
+                  onChange={handleChange}
+                  required
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-2">
+                <Label htmlFor="edit_sheets_tab_name" className="text-right">
+                  Nome Foglio <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  id="edit_sheets_tab_name"
+                  name="sheets_tab_name"
+                  className="col-span-3"
+                  value={formData.sheets_tab_name}
+                  onChange={handleChange}
+                  required
+                />
+              </div>
             </div>
-            <div className="grid grid-cols-4 items-center gap-2">
-              <Label htmlFor="edit_cognome" className="text-right">
-                Cognome <span className="text-red-500">*</span>
-              </Label>
-              <Input
-                id="edit_cognome"
-                name="cognome"
-                className="col-span-3"
-                value={formData.cognome}
-                onChange={handleChange}
-                required
-              />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-2">
-              <Label htmlFor="edit_email" className="text-right">
-                Email
-              </Label>
-              <Input
-                id="edit_email"
-                name="email"
-                type="email"
-                className="col-span-3"
-                value={formData.email}
-                onChange={handleChange}
-              />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-2">
-              <Label htmlFor="edit_telefono" className="text-right">
-                Telefono
-              </Label>
-              <Input
-                id="edit_telefono"
-                name="telefono"
-                className="col-span-3"
-                value={formData.telefono}
-                onChange={handleChange}
-              />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-2">
-              <Label htmlFor="edit_lead_capacity" className="text-right">
-                Capacità Lead
-              </Label>
-              <Input
-                id="edit_lead_capacity"
-                name="lead_capacity"
-                type="number"
-                className="col-span-3"
-                value={formData.lead_capacity}
-                onChange={handleChange}
-              />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-2">
-              <Label htmlFor="edit_sheets_file_id" className="text-right">
-                ID File Sheets <span className="text-red-500">*</span>
-              </Label>
-              <Input
-                id="edit_sheets_file_id"
-                name="sheets_file_id"
-                className="col-span-3"
-                value={formData.sheets_file_id}
-                onChange={handleChange}
-                required
-              />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-2">
-              <Label htmlFor="edit_sheets_tab_name" className="text-right">
-                Nome Foglio Sheets <span className="text-red-500">*</span>
-              </Label>
-              <Input
-                id="edit_sheets_tab_name"
-                name="sheets_tab_name"
-                className="col-span-3"
-                value={formData.sheets_tab_name}
-                onChange={handleChange}
-                required
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button onClick={handleEditSalesperson}>Salva Modifiche</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
+                Annulla
+              </Button>
+              <Button onClick={handleEditSalesperson}>Salva Modifiche</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </CardContent>
+    </Card>
   );
 };
 
