@@ -6,7 +6,16 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { RefreshCcw, ArrowLeft } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { RefreshCcw, ArrowLeft, Trash2 } from "lucide-react";
+import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Lead } from "@/types/lead";
 
@@ -26,6 +35,8 @@ const DatabasePage = () => {
   const [bookings, setBookings] = useState<CalendlyBooking[]>([]);
   const [isLoadingLeads, setIsLoadingLeads] = useState(true);
   const [isLoadingBookings, setIsLoadingBookings] = useState(true);
+  const [recordToDelete, setRecordToDelete] = useState<{ id: string, type: 'lead' | 'booking' } | null>(null);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
   const fetchLeads = async () => {
     setIsLoadingLeads(true);
@@ -71,6 +82,45 @@ const DatabasePage = () => {
     fetchBookings();
   };
 
+  const handleDeleteClick = (id: string, type: 'lead' | 'booking') => {
+    setRecordToDelete({ id, type });
+    setIsDeleteDialogOpen(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!recordToDelete) return;
+    
+    try {
+      const { type, id } = recordToDelete;
+      const table = type === 'lead' ? 'lead_generation' : 'booked_call';
+      
+      const { error } = await supabase
+        .from(table)
+        .delete()
+        .eq('id', id);
+      
+      if (error) throw error;
+      
+      toast.success(type === 'lead' 
+        ? "Lead eliminato con successo" 
+        : "Prenotazione eliminata con successo"
+      );
+      
+      // Refresh the data
+      if (type === 'lead') {
+        setLeads(leads.filter(lead => lead.id !== id));
+      } else {
+        setBookings(bookings.filter(booking => booking.id !== id));
+      }
+    } catch (error) {
+      console.error("Errore durante l'eliminazione:", error);
+      toast.error("Errore durante l'eliminazione del record");
+    } finally {
+      setIsDeleteDialogOpen(false);
+      setRecordToDelete(null);
+    }
+  };
+
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleString('it-IT', {
       day: '2-digit',
@@ -86,16 +136,16 @@ const DatabasePage = () => {
       <div className="flex justify-between items-center mb-8">
         <div className="flex items-center gap-4">
           <Link to="/">
-            <Button variant="outline" size="icon">
-              <ArrowLeft className="h-4 w-4" />
+            <Button variant="outline" size="icon" className="neon-border hover:animate-glow">
+              <ArrowLeft className="h-4 w-4 text-primary" />
             </Button>
           </Link>
-          <h1 className="text-3xl font-bold">Database Records</h1>
+          <h1 className="text-3xl font-bold neon-text">Database Records</h1>
         </div>
         <Button 
           onClick={handleRefresh} 
           variant="outline" 
-          className="flex items-center gap-2"
+          className="flex items-center gap-2 neon-border hover:animate-glow"
         >
           <RefreshCcw className="h-4 w-4" />
           Aggiorna dati
@@ -103,17 +153,17 @@ const DatabasePage = () => {
       </div>
       
       <Tabs defaultValue="leads" className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="leads">
+        <TabsList className="grid w-full grid-cols-2 mb-8 neon-border">
+          <TabsTrigger value="leads" className="data-[state=active]:text-primary data-[state=active]:shadow-[0_0_8px_rgba(234,255,85,0.5)]">
             Lead Generation
           </TabsTrigger>
-          <TabsTrigger value="bookings">
+          <TabsTrigger value="bookings" className="data-[state=active]:text-primary data-[state=active]:shadow-[0_0_8px_rgba(234,255,85,0.5)]">
             Booked Call
           </TabsTrigger>
         </TabsList>
         
         <TabsContent value="leads" className="mt-4">
-          <Card>
+          <Card className="glass-card">
             <CardHeader>
               <CardTitle>Lead Database</CardTitle>
               <CardDescription>
@@ -139,6 +189,7 @@ const DatabasePage = () => {
                         <TableHead>Stato</TableHead>
                         <TableHead>Venditore</TableHead>
                         <TableHead>Chiamata Prenotata</TableHead>
+                        <TableHead>Azioni</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -164,11 +215,21 @@ const DatabasePage = () => {
                             </TableCell>
                             <TableCell>{lead.venditore || '-'}</TableCell>
                             <TableCell>{lead.booked_call}</TableCell>
+                            <TableCell>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="text-destructive hover:bg-destructive/10"
+                                onClick={() => handleDeleteClick(lead.id as string, 'lead')}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </TableCell>
                           </TableRow>
                         ))
                       ) : (
                         <TableRow>
-                          <TableCell colSpan={9} className="text-center py-8">
+                          <TableCell colSpan={10} className="text-center py-8">
                             Nessun lead trovato
                           </TableCell>
                         </TableRow>
@@ -182,7 +243,7 @@ const DatabasePage = () => {
         </TabsContent>
         
         <TabsContent value="bookings" className="mt-4">
-          <Card>
+          <Card className="glass-card">
             <CardHeader>
               <CardTitle>Booked Call</CardTitle>
               <CardDescription>
@@ -205,6 +266,7 @@ const DatabasePage = () => {
                         <TableHead>Email</TableHead>
                         <TableHead>Telefono</TableHead>
                         <TableHead>Data Chiamata</TableHead>
+                        <TableHead>Azioni</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -217,11 +279,21 @@ const DatabasePage = () => {
                             <TableCell>{booking.email}</TableCell>
                             <TableCell>{booking.telefono}</TableCell>
                             <TableCell>{booking.scheduled_at ? formatDate(booking.scheduled_at) : '-'}</TableCell>
+                            <TableCell>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="text-destructive hover:bg-destructive/10"
+                                onClick={() => handleDeleteClick(booking.id, 'booking')}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </TableCell>
                           </TableRow>
                         ))
                       ) : (
                         <TableRow>
-                          <TableCell colSpan={6} className="text-center py-8">
+                          <TableCell colSpan={7} className="text-center py-8">
                             Nessuna prenotazione trovata
                           </TableCell>
                         </TableRow>
@@ -234,6 +306,26 @@ const DatabasePage = () => {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <DialogContent className="glass-card">
+          <DialogHeader>
+            <DialogTitle>Conferma eliminazione</DialogTitle>
+            <DialogDescription>
+              Sei sicuro di voler eliminare questo record? Questa azione non può essere annullata.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex gap-2 justify-end mt-4">
+            <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>
+              Annulla
+            </Button>
+            <Button variant="destructive" onClick={handleDeleteConfirm}>
+              Elimina
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

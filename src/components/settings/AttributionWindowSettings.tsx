@@ -67,7 +67,7 @@ export default function AttributionWindowSettings() {
         .upsert({
           key: 'booking_attribution_window_days',
           value: attributionDays.toString(),
-          description: 'Numero di giorni per l\'attribuzione delle prenotazioni Calendly ai lead'
+          descrizione: 'Numero di giorni per l\'attribuzione delle prenotazioni Calendly ai lead'
         });
       
       if (error) throw error;
@@ -87,7 +87,7 @@ export default function AttributionWindowSettings() {
         .upsert({
           key: 'lead_check_interval_minutes',
           value: checkIntervalMinutes.toString(),
-          description: 'Intervallo in minuti per il controllo delle prenotazioni associate ai lead'
+          descrizione: 'Intervallo in minuti per il controllo delle prenotazioni associate ai lead'
         });
       
       if (error) throw error;
