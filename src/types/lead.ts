@@ -6,7 +6,7 @@ export interface Lead {
   cognome: string;
   email: string;
   telefono: string;
-  assegnabile?: boolean;
+  assegnato?: boolean;
   venditore?: string;
   campagna?: string;
   booked_call?: string;

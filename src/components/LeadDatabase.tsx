@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/table";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Loader2 } from "lucide-react";
-import { getUnassignedLeads } from "@/services/leadService";
+import { getUnassignedLeads } from "@/services/databaseService";
 import { Lead } from "@/types/lead";
 
 const LeadDatabase = () => {
