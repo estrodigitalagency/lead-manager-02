@@ -16,9 +16,9 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { fetchSalespeople } from "@/services/sheetsService";
-import { assignLeads } from "@/services/leadService";
+import { assignLeads } from "@/services/assignmentService";
 import { Loader2 } from "lucide-react";
-import { getUnassignedLeads } from "@/services/databaseService";
+import { getUnassignedLeads } from "@/services/leadService";
 import { Lead } from "@/types/lead";
 
 // Define form schema with validation

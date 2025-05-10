@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { getSystemSettings, updateSystemSettings } from "@/services/databaseService";
+import { getSystemSettings, updateSystemSettings } from "@/services/systemSettingsService";
 import { Loader2, Save } from "lucide-react";
 
 const AttributionWindowSettings = () => {

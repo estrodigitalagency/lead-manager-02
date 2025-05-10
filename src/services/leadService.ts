@@ -1,32 +1,181 @@
 
-import { markLeadsAsAssigned } from "./databaseService";
 import { supabase } from "@/integrations/supabase/client";
+import { Lead } from "@/types/lead";
+import { toast } from "sonner";
 
-export interface LeadAssignmentData {
-  numLead: number;
-  venditore: string;
-  campagna?: string;
-}
-
-export async function assignLeads(data: LeadAssignmentData): Promise<void> {
+export const assignLeadToSalesperson = async (leadId: string, salesperson: string): Promise<boolean> => {
   try {
-    // Mark the leads as assigned in our local database
-    const assignedLeads = await markLeadsAsAssigned(data.numLead, data.venditore, data.campagna);
+    const { error } = await supabase
+      .from('lead_generation')
+      .update({ assegnabile: true, venditore: salesperson })
+      .eq('id', leadId);
+
+    if (error) {
+      console.error("Error assigning lead:", error);
+      toast.error("Errore nell'assegnazione del lead");
+      return false;
+    }
+
+    toast.success("Lead assegnato con successo!");
+    return true;
+  } catch (error) {
+    console.error("Error assigning lead:", error);
+    toast.error("Errore nell'assegnazione del lead");
+    return false;
+  }
+};
+
+export const getUnassignedLeads = async (): Promise<Lead[]> => {
+  try {
+    const { data, error } = await supabase
+      .from('lead_generation')
+      .select('*')
+      .eq('assegnabile', false)
+      .is('venditore', null)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error("Error fetching leads:", error);
+      return [];
+    }
+
+    return data || [];
+  } catch (error) {
+    console.error("Error fetching leads:", error);
+    return [];
+  }
+};
+
+export const markLeadsAsAssigned = async (numLeads: number, venditore: string, campagna?: string): Promise<Lead[]> => {
+  try {
+    // Get unassigned leads
+    const unassignedLeads = await getUnassignedLeads();
+    const leadsToAssign = unassignedLeads.slice(0, numLeads);
     
-    if (assignedLeads.length < data.numLead) {
-      throw new Error(`Solo ${assignedLeads.length} lead disponibili per l'assegnazione.`);
+    if (leadsToAssign.length === 0) {
+      return [];
     }
     
-    console.log("Lead assignment data:", data);
-    console.log("Leads assigned:", assignedLeads);
-
-    // In a production environment, you might want to call an Edge Function to
-    // handle additional processing like updating Google Sheets
-    // This would replace the commented out fetch code in the original implementation
+    // Extract IDs to update
+    const leadIds = leadsToAssign.map(lead => lead.id);
     
-    return Promise.resolve();
+    // Update the leads
+    const { error } = await supabase
+      .from('lead_generation')
+      .update({ 
+        assegnabile: true, 
+        venditore: venditore,
+        campagna: campagna || leadsToAssign[0].campagna
+      })
+      .in('id', leadIds);
+    
+    if (error) {
+      console.error("Error marking leads as assigned:", error);
+      return [];
+    }
+    
+    return leadsToAssign;
   } catch (error) {
-    console.error("Error assigning leads:", error);
-    throw error;
+    console.error("Error marking leads as assigned:", error);
+    return [];
   }
-}
+};
+
+export const fetchAvailableLeads = async (): Promise<Lead[]> => {
+  try {
+    const { data, error } = await supabase
+      .from('lead_generation')
+      .select('*')
+      .eq('assegnabile', false)
+      .is('venditore', null)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error("Error fetching leads:", error);
+      return [];
+    }
+
+    return data || [];
+  } catch (error) {
+    console.error("Error fetching leads:", error);
+    return [];
+  }
+};
+
+export const fetchAssignmentHistory = async (): Promise<Lead[]> => {
+  try {
+    const { data, error } = await supabase
+      .from('lead_generation')
+      .select('*')
+      .not('venditore', 'is', null)
+      .order('created_at', { ascending: false })
+      .limit(10);
+
+    if (error) {
+      console.error("Error fetching assignment history:", error);
+      return [];
+    }
+
+    return data || [];
+  } catch (error) {
+    console.error("Error fetching assignment history:", error);
+    return [];
+  }
+};
+
+export const importLeadsFromCSV = async (leads: any[]): Promise<boolean> => {
+  try {
+    const { error } = await supabase
+      .from('lead_generation')
+      .insert(leads);
+    
+    if (error) {
+      console.error("Error importing leads:", error);
+      toast.error("Errore nell'importazione dei lead");
+      return false;
+    }
+    
+    toast.success(`Importati ${leads.length} lead con successo!`);
+    return true;
+  } catch (error) {
+    console.error("Error importing leads:", error);
+    toast.error("Errore nell'importazione dei lead");
+    return false;
+  }
+};
+
+export const addLead = async (lead: Lead): Promise<any> => {
+  try {
+    const { error } = await supabase
+      .from('lead_generation')
+      .insert([lead]);
+    
+    if (error) {
+      console.error("Error adding lead:", error);
+      toast.error("Errore nell'aggiunta del lead");
+      return null;
+    }
+    
+    return true;
+  } catch (error) {
+    console.error("Error adding lead:", error);
+    toast.error("Errore nell'aggiunta del lead");
+    return null;
+  }
+};
+
+export const checkLeadsAssignability = async (): Promise<boolean> => {
+  try {
+    const { data, error } = await supabase.rpc('check_leads_assignability');
+    
+    if (error) {
+      console.error('Error checking leads assignability:', error);
+      return false;
+    }
+    
+    return data || false;
+  } catch (error) {
+    console.error('Error checking leads assignability:', error);
+    return false;
+  }
+};
