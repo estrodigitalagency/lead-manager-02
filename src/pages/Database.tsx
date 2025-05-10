@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -87,7 +88,7 @@ const DatabasePage = () => {
               <ArrowLeft className="h-4 w-4" />
             </Button>
           </Link>
-          <h1 className="text-3xl font-bold">Database Records</h1>
+          <h1 className="text-3xl font-bold text-primary">Database Records</h1>
         </div>
         <Button 
           onClick={handleRefresh} 
@@ -105,12 +106,12 @@ const DatabasePage = () => {
             Lead Generation
           </TabsTrigger>
           <TabsTrigger value="bookings">
-            Booked Call Calendly
+            Call Schedulate
           </TabsTrigger>
         </TabsList>
         
         <TabsContent value="leads" className="mt-4">
-          <Card>
+          <Card className="shadow-md hover:shadow-lg transition-shadow border-t-4 border-t-primary">
             <CardHeader>
               <CardTitle>Lead Database</CardTitle>
               <CardDescription>
@@ -179,9 +180,9 @@ const DatabasePage = () => {
         </TabsContent>
         
         <TabsContent value="bookings" className="mt-4">
-          <Card>
+          <Card className="shadow-md hover:shadow-lg transition-shadow border-t-4 border-t-primary">
             <CardHeader>
-              <CardTitle>Booked Call Calendly</CardTitle>
+              <CardTitle>Call Schedulate</CardTitle>
               <CardDescription>
                 Tutte le prenotazioni ricevute tramite Calendly
               </CardDescription>

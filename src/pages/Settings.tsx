@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Database, Users, Settings as SettingsIcon, Calendar } from "lucide-react";
+import { ArrowLeft, Database, Users, Calendar } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import SalespeopleSettings from "@/components/SalespeopleSettings";
 import AttributionWindowSettings from "@/components/AttributionWindowSettings";
@@ -19,7 +19,7 @@ const Settings = () => {
               <ArrowLeft className="h-4 w-4" />
             </Button>
           </Link>
-          <h1 className="text-3xl font-bold">Impostazioni</h1>
+          <h1 className="text-3xl font-bold text-primary">Impostazioni</h1>
         </div>
         <Link to="/database">
           <Button variant="outline" className="flex items-center gap-2">

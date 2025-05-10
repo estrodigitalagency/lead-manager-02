@@ -9,7 +9,15 @@ import NotFound from "./pages/NotFound";
 import Settings from "./pages/Settings";
 import DatabasePage from "./pages/Database";
 
-const queryClient = new QueryClient();
+// Create a custom theme with primary color
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      refetchOnWindowFocus: false,
+      retry: 1
+    },
+  },
+});
 
 const App = () => (
   <QueryClientProvider client={queryClient}>

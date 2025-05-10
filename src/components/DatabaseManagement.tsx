@@ -13,11 +13,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Database, Link as LinkIcon, ArrowLeftRight, Plus, FileUp, FileText } from "lucide-react";
+import { Link as LinkIcon, ArrowLeftRight, Plus, FileUp, Database } from "lucide-react";
 import { importLeadsFromCSV, addLead } from "@/services/databaseService";
 import { Lead } from "@/types/lead";
 import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client"; // Add this import
+import { supabase } from "@/integrations/supabase/client";
 
 // Interfaccia per gestire l'importazione CSV
 interface CSVImportDialogProps {
@@ -338,10 +338,9 @@ const DatabaseManagement = () => {
       </CardHeader>
       <CardContent>
         <Tabs defaultValue="lead_generation">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="lead_generation">Lead Generation</TabsTrigger>
-            <TabsTrigger value="booked_call">Prenotazioni</TabsTrigger>
-            <TabsTrigger value="salespeople">Venditori</TabsTrigger>
+            <TabsTrigger value="booked_call">Call Schedulate</TabsTrigger>
           </TabsList>
           
           <TabsContent value="lead_generation" className="space-y-4 pt-4">
@@ -496,7 +495,7 @@ const DatabaseManagement = () => {
                 </DialogTrigger>
                 <DialogContent className="sm:max-w-[650px]">
                   <DialogHeader>
-                    <DialogTitle>Struttura tabella Prenotazioni</DialogTitle>
+                    <DialogTitle>Struttura tabella Call Schedulate</DialogTitle>
                     <DialogDescription>
                       Informazioni sulla struttura della tabella nel database
                     </DialogDescription>
@@ -555,6 +554,31 @@ const DatabaseManagement = () => {
                 </DialogContent>
               </Dialog>
               
+              <CSVImportDialog 
+                onImport={async (data) => {
+                  try {
+                    const { error } = await supabase
+                      .from('booked_call_calendly')
+                      .insert(data);
+                    
+                    if (error) {
+                      console.error("Error importing bookings:", error);
+                      toast.error("Errore nell'importazione delle prenotazioni");
+                      return false;
+                    }
+                    
+                    toast.success(`${data.length} prenotazioni importate con successo`);
+                    return true;
+                  } catch (error) {
+                    console.error("Error importing bookings:", error);
+                    toast.error("Errore nell'importazione delle prenotazioni");
+                    return false;
+                  }
+                }}
+                mappingFields={['nome', 'cognome', 'email', 'telefono']}
+                tableName="Call Schedulate"
+              />
+              
               <AddRecordDialog 
                 onAdd={async (data) => {
                   try {
@@ -581,7 +605,7 @@ const DatabaseManagement = () => {
                   { name: 'email', label: 'Email', type: 'email' },
                   { name: 'telefono', label: 'Telefono' }
                 ]}
-                tableName="Prenotazioni"
+                tableName="Call Schedulate"
               />
             </div>
             
@@ -592,93 +616,6 @@ const DatabaseManagement = () => {
                   https://btcwmuyemmkiteqlopce.functions.supabase.co/calendly-webhook
                 </code>
               </div>
-            </div>
-          </TabsContent>
-          
-          <TabsContent value="salespeople" className="space-y-4 pt-4">
-            <div className="flex flex-wrap gap-2">
-              <Button 
-                variant="secondary"
-                onClick={() => openSupabaseTable("salespeople_settings")}
-                className="flex items-center"
-              >
-                <LinkIcon className="mr-2 h-4 w-4" />
-                Apri su Supabase
-              </Button>
-              
-              <Dialog>
-                <DialogTrigger asChild>
-                  <Button variant="outline" className="flex items-center">
-                    <ArrowLeftRight className="mr-2 h-4 w-4" />
-                    Struttura tabella
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="sm:max-w-[650px]">
-                  <DialogHeader>
-                    <DialogTitle>Struttura tabella Venditori</DialogTitle>
-                    <DialogDescription>
-                      Informazioni sulla struttura della tabella nel database
-                    </DialogDescription>
-                  </DialogHeader>
-                  
-                  <div className="py-4">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Colonna</TableHead>
-                          <TableHead>Tipo</TableHead>
-                          <TableHead>Nullable</TableHead>
-                          <TableHead>Default</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        <TableRow>
-                          <TableCell>id</TableCell>
-                          <TableCell>uuid</TableCell>
-                          <TableCell>No</TableCell>
-                          <TableCell>gen_random_uuid()</TableCell>
-                        </TableRow>
-                        <TableRow>
-                          <TableCell>nome_venditore</TableCell>
-                          <TableCell>text</TableCell>
-                          <TableCell>No</TableCell>
-                          <TableCell>-</TableCell>
-                        </TableRow>
-                        <TableRow>
-                          <TableCell>sheets_file_id</TableCell>
-                          <TableCell>text</TableCell>
-                          <TableCell>No</TableCell>
-                          <TableCell>-</TableCell>
-                        </TableRow>
-                        <TableRow>
-                          <TableCell>sheets_tab_name</TableCell>
-                          <TableCell>text</TableCell>
-                          <TableCell>No</TableCell>
-                          <TableCell>-</TableCell>
-                        </TableRow>
-                        <TableRow>
-                          <TableCell>created_at</TableCell>
-                          <TableCell>timestamp with time zone</TableCell>
-                          <TableCell>No</TableCell>
-                          <TableCell>now()</TableCell>
-                        </TableRow>
-                        <TableRow>
-                          <TableCell>updated_at</TableCell>
-                          <TableCell>timestamp with time zone</TableCell>
-                          <TableCell>No</TableCell>
-                          <TableCell>now()</TableCell>
-                        </TableRow>
-                      </TableBody>
-                    </Table>
-                  </div>
-                </DialogContent>
-              </Dialog>
-            </div>
-            
-            <div className="mt-4">
-              <p className="text-sm text-muted-foreground">
-                Usa la sezione "Venditori" per gestire i venditori e le loro impostazioni di Google Sheets
-              </p>
             </div>
           </TabsContent>
         </Tabs>
