@@ -508,7 +508,7 @@ const Settings = () => {
                             onClick={() => openSupabaseTable("lead_generation")}
                             className="flex items-center"
                           >
-                            <Link className="mr-2 h-4 w-4" />
+                            <LinkIcon className="mr-2 h-4 w-4" />
                             Apri su Supabase
                           </Button>
                           
@@ -616,7 +616,7 @@ const Settings = () => {
                             onClick={() => openSupabaseTable("booked_call_calendly")}
                             className="flex items-center"
                           >
-                            <Link className="mr-2 h-4 w-4" />
+                            <LinkIcon className="mr-2 h-4 w-4" />
                             Apri su Supabase
                           </Button>
                           
@@ -696,14 +696,19 @@ const Settings = () => {
                     <Alert>
                       <AlertDescription>
                         <p className="mb-2">Per accedere direttamente al pannello di amministrazione di Supabase:</p>
-                        <Button 
-                          variant="outline" 
-                          onClick={() => window.open("https://supabase.com/dashboard/project/btcwmuyemmkiteqlopce", "_blank")}
-                          className="flex items-center"
+                        <a 
+                          href="https://supabase.com/dashboard/project/btcwmuyemmkiteqlopce" 
+                          target="_blank"
+                          rel="noopener noreferrer"
                         >
-                          <Link className="mr-2 h-4 w-4" />
-                          Dashboard Supabase
-                        </Button>
+                          <Button 
+                            variant="outline" 
+                            className="flex items-center"
+                          >
+                            <LinkIcon className="mr-2 h-4 w-4" />
+                            Dashboard Supabase
+                          </Button>
+                        </a>
                       </AlertDescription>
                     </Alert>
                   </div>
