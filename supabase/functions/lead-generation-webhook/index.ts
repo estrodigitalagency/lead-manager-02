@@ -24,6 +24,11 @@ serve(async (req) => {
     const payload = await req.json()
     console.log('Received lead generation webhook payload:', payload)
     
+    // Determine if booked_call is true, converting any string representation to proper format
+    const isBooked = typeof payload.booked_call === 'string'
+      ? payload.booked_call.toUpperCase() === 'SI' || payload.booked_call === 'true'
+      : !!payload.booked_call
+    
     // Insert the lead data to the lead_generation table
     // created_at will be set to now() by the default value in the database
     const { data, error } = await supabase
@@ -33,7 +38,9 @@ serve(async (req) => {
         cognome: payload.cognome || '',
         email: payload.email || '',
         telefono: payload.telefono || '',
-        campagna: payload.campagna || null
+        campagna: payload.campagna || null,
+        booked_call: isBooked ? 'SI' : 'NO', // Always store as string
+        assignable: isBooked  // Keep this as boolean as the assignable column is still boolean
       })
       .select()
 

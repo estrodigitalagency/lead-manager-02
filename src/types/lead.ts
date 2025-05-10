@@ -7,7 +7,7 @@ export interface Lead {
   email: string;
   telefono: string;
   assignable?: boolean;
-  booked_call?: boolean | string; // Updated to accept both boolean or string type
+  booked_call?: string; // 'SI' o 'NO'
   venditore?: string;
   campagna?: string;
   note?: string;

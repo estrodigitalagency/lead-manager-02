@@ -29,20 +29,21 @@ export async function getUnassignedLeads(): Promise<Lead[]> {
 // Add a new lead (e.g. from webhook)
 export async function addLead(lead: Omit<Lead, 'id' | 'assignable' | 'created_at'>): Promise<Lead | null> {
   try {
-    // Convert string booked_call to boolean if it exists
+    // Convert boolean booked_call to string 'SI'/'NO' format
+    const isBooked = typeof lead.booked_call === 'string' 
+      ? lead.booked_call === "SI" 
+      : !!lead.booked_call;
+    
     const leadToInsert = {
       ...lead,
-      // Fixed: Proper type checking for booked_call
-      booked_call: typeof lead.booked_call === 'string' 
-        ? lead.booked_call === "SI" 
-        : !!lead.booked_call
+      booked_call: isBooked ? 'SI' : 'NO' // Always store as string
     };
     
     const { data, error } = await supabase
       .from('lead_generation')
       .insert({
         ...leadToInsert,
-        assignable: leadToInsert.booked_call
+        assignable: isBooked // Keep this as boolean as the assignable column is still boolean
       })
       .select()
       .single();

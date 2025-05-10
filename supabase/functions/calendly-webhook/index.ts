@@ -44,6 +44,18 @@ serve(async (req) => {
       })
     }
 
+    // Aggiorna anche il lead corrispondente se esiste
+    if (payload.email || payload.telefono) {
+      const { error: updateError } = await supabase
+        .from('lead_generation')
+        .update({ booked_call: 'SI' })  // Aggiornato per utilizzare 'SI' invece di true
+        .or(`email.eq.${payload.email},telefono.eq.${payload.telefono}`)
+
+      if (updateError) {
+        console.error('Error updating lead booked_call status:', updateError)
+      }
+    }
+
     return new Response(
       JSON.stringify({ success: true, data }),
       { 
