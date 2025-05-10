@@ -19,9 +19,11 @@ import { supabase } from "@/integrations/supabase/client";
 
 interface Salesperson {
   id: string;
-  nome_venditore: string;
-  sheets_file_id: string;
-  sheets_tab_name: string;
+  nome: string;
+  email: string;
+  lead_capacity?: number;
+  lead_attuali?: number;
+  stato?: string;
 }
 
 const SalespeopleSettings = () => {
@@ -31,9 +33,9 @@ const SalespeopleSettings = () => {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [currentSalesperson, setCurrentSalesperson] = useState<Salesperson | null>(null);
   const [formData, setFormData] = useState({
-    nome_venditore: "",
-    sheets_file_id: "",
-    sheets_tab_name: "",
+    nome: "",
+    email: "",
+    lead_capacity: 50,
   });
 
   // Fetch salespeople from the database
@@ -41,9 +43,9 @@ const SalespeopleSettings = () => {
     setIsLoading(true);
     try {
       const { data, error } = await supabase
-        .from("salespeople_settings")
+        .from("venditori")
         .select("*")
-        .order("nome_venditore");
+        .order("nome");
 
       if (error) throw error;
       setSalespeople(data || []);
@@ -69,9 +71,9 @@ const SalespeopleSettings = () => {
   // Reset form data
   const resetForm = () => {
     setFormData({
-      nome_venditore: "",
-      sheets_file_id: "",
-      sheets_tab_name: "",
+      nome: "",
+      email: "",
+      lead_capacity: 50,
     });
   };
 
@@ -79,7 +81,7 @@ const SalespeopleSettings = () => {
   const handleAddSalesperson = async () => {
     try {
       const { data, error } = await supabase
-        .from("salespeople_settings")
+        .from("venditori")
         .insert([formData])
         .select();
 
@@ -104,8 +106,12 @@ const SalespeopleSettings = () => {
 
     try {
       const { error } = await supabase
-        .from("salespeople_settings")
-        .update(formData)
+        .from("venditori")
+        .update({
+          nome: formData.nome,
+          email: formData.email,
+          lead_capacity: formData.lead_capacity
+        })
         .eq("id", currentSalesperson.id);
 
       if (error) throw error;
@@ -130,7 +136,7 @@ const SalespeopleSettings = () => {
 
     try {
       const { error } = await supabase
-        .from("salespeople_settings")
+        .from("venditori")
         .delete()
         .eq("id", id);
 
@@ -147,9 +153,9 @@ const SalespeopleSettings = () => {
   const openEditDialog = (salesperson: Salesperson) => {
     setCurrentSalesperson(salesperson);
     setFormData({
-      nome_venditore: salesperson.nome_venditore,
-      sheets_file_id: salesperson.sheets_file_id,
-      sheets_tab_name: salesperson.sheets_tab_name,
+      nome: salesperson.nome,
+      email: salesperson.email,
+      lead_capacity: salesperson.lead_capacity || 50,
     });
     setIsEditDialogOpen(true);
   };
@@ -174,38 +180,40 @@ const SalespeopleSettings = () => {
             </DialogHeader>
             <div className="grid gap-4 py-4">
               <div className="grid grid-cols-4 items-center gap-2">
-                <Label htmlFor="nome_venditore" className="text-right">
+                <Label htmlFor="nome" className="text-right">
                   Nome Venditore
                 </Label>
                 <Input
-                  id="nome_venditore"
-                  name="nome_venditore"
+                  id="nome"
+                  name="nome"
                   className="col-span-3"
-                  value={formData.nome_venditore}
+                  value={formData.nome}
                   onChange={handleChange}
                 />
               </div>
               <div className="grid grid-cols-4 items-center gap-2">
-                <Label htmlFor="sheets_file_id" className="text-right">
-                  ID File Sheets
+                <Label htmlFor="email" className="text-right">
+                  Email
                 </Label>
                 <Input
-                  id="sheets_file_id"
-                  name="sheets_file_id"
+                  id="email"
+                  name="email"
+                  type="email"
                   className="col-span-3"
-                  value={formData.sheets_file_id}
+                  value={formData.email}
                   onChange={handleChange}
                 />
               </div>
               <div className="grid grid-cols-4 items-center gap-2">
-                <Label htmlFor="sheets_tab_name" className="text-right">
-                  Nome Foglio
+                <Label htmlFor="lead_capacity" className="text-right">
+                  Capacità Lead
                 </Label>
                 <Input
-                  id="sheets_tab_name"
-                  name="sheets_tab_name"
+                  id="lead_capacity"
+                  name="lead_capacity"
+                  type="number"
                   className="col-span-3"
-                  value={formData.sheets_tab_name}
+                  value={formData.lead_capacity}
                   onChange={handleChange}
                 />
               </div>
@@ -227,8 +235,10 @@ const SalespeopleSettings = () => {
             <TableHeader>
               <TableRow>
                 <TableHead>Nome Venditore</TableHead>
-                <TableHead>ID File Sheets</TableHead>
-                <TableHead>Nome Foglio</TableHead>
+                <TableHead>Email</TableHead>
+                <TableHead>Capacità Lead</TableHead>
+                <TableHead>Lead Attuali</TableHead>
+                <TableHead>Stato</TableHead>
                 <TableHead className="text-right">Azioni</TableHead>
               </TableRow>
             </TableHeader>
@@ -236,9 +246,11 @@ const SalespeopleSettings = () => {
               {salespeople.length > 0 ? (
                 salespeople.map((salesperson) => (
                   <TableRow key={salesperson.id}>
-                    <TableCell>{salesperson.nome_venditore}</TableCell>
-                    <TableCell>{salesperson.sheets_file_id}</TableCell>
-                    <TableCell>{salesperson.sheets_tab_name}</TableCell>
+                    <TableCell>{salesperson.nome}</TableCell>
+                    <TableCell>{salesperson.email}</TableCell>
+                    <TableCell>{salesperson.lead_capacity || 50}</TableCell>
+                    <TableCell>{salesperson.lead_attuali || 0}</TableCell>
+                    <TableCell>{salesperson.stato || 'attivo'}</TableCell>
                     <TableCell className="text-right space-x-2">
                       <Button
                         variant="outline"
@@ -259,7 +271,7 @@ const SalespeopleSettings = () => {
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center py-8">
+                  <TableCell colSpan={6} className="text-center py-8">
                     Nessun venditore trovato. Aggiungi un nuovo venditore usando il pulsante in alto.
                   </TableCell>
                 </TableRow>
@@ -280,38 +292,40 @@ const SalespeopleSettings = () => {
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid grid-cols-4 items-center gap-2">
-              <Label htmlFor="edit_nome_venditore" className="text-right">
+              <Label htmlFor="edit_nome" className="text-right">
                 Nome Venditore
               </Label>
               <Input
-                id="edit_nome_venditore"
-                name="nome_venditore"
+                id="edit_nome"
+                name="nome"
                 className="col-span-3"
-                value={formData.nome_venditore}
+                value={formData.nome}
                 onChange={handleChange}
               />
             </div>
             <div className="grid grid-cols-4 items-center gap-2">
-              <Label htmlFor="edit_sheets_file_id" className="text-right">
-                ID File Sheets
+              <Label htmlFor="edit_email" className="text-right">
+                Email
               </Label>
               <Input
-                id="edit_sheets_file_id"
-                name="sheets_file_id"
+                id="edit_email"
+                name="email"
+                type="email"
                 className="col-span-3"
-                value={formData.sheets_file_id}
+                value={formData.email}
                 onChange={handleChange}
               />
             </div>
             <div className="grid grid-cols-4 items-center gap-2">
-              <Label htmlFor="edit_sheets_tab_name" className="text-right">
-                Nome Foglio
+              <Label htmlFor="edit_lead_capacity" className="text-right">
+                Capacità Lead
               </Label>
               <Input
-                id="edit_sheets_tab_name"
-                name="sheets_tab_name"
+                id="edit_lead_capacity"
+                name="lead_capacity"
+                type="number"
                 className="col-span-3"
-                value={formData.sheets_tab_name}
+                value={formData.lead_capacity}
                 onChange={handleChange}
               />
             </div>

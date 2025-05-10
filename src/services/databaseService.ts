@@ -9,7 +9,7 @@ export async function getUnassignedLeads(): Promise<Lead[]> {
     const { data, error } = await supabase
       .from('lead_generation')
       .select('*')
-      .eq('assegnabile', true)
+      .eq('assignable', true)
       .is('venditore', null);
     
     if (error) {
@@ -27,13 +27,13 @@ export async function getUnassignedLeads(): Promise<Lead[]> {
 }
 
 // Add a new lead (e.g. from webhook)
-export async function addLead(lead: Omit<Lead, 'id' | 'assegnabile' | 'created_at'>): Promise<Lead | null> {
+export async function addLead(lead: Omit<Lead, 'id' | 'assignable' | 'created_at'>): Promise<Lead | null> {
   try {
     const { data, error } = await supabase
       .from('lead_generation')
       .insert({
         ...lead,
-        assegnabile: lead.booked_call === 'SI'
+        assignable: lead.booked_call === 'SI'
       })
       .select()
       .single();
@@ -59,7 +59,7 @@ export async function markLeadsAsAssigned(numLeads: number, venditore: string, c
     const { data: leadsToAssign, error: fetchError } = await supabase
       .from('lead_generation')
       .select('*')
-      .eq('assegnabile', true)
+      .eq('assignable', true)
       .is('venditore', null)
       .order('created_at', { ascending: true })
       .limit(numLeads);
