@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import LeadAssignmentForm from "@/components/LeadAssignmentForm";
 import AssignmentHistory from "@/components/AssignmentHistory";
 import LeadDatabase from "@/components/LeadDatabase";
-import { Settings } from "lucide-react";
+import { Settings, ChevronRight } from "lucide-react";
 
 const Index = () => {
   const [refreshHistory, setRefreshHistory] = useState(false);
@@ -22,10 +22,10 @@ const Index = () => {
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="flex justify-between items-center mb-8">
-        <h1 className="text-3xl font-bold">Sistema di Assegnazione Lead</h1>
+        <h1 className="text-3xl font-bold neon-text">Sistema di Assegnazione Lead</h1>
         <Link to="/settings">
-          <Button variant="outline" className="flex items-center gap-2">
-            <Settings size={18} />
+          <Button variant="outline" className="flex items-center gap-2 neon-border hover:animate-glow">
+            <Settings size={18} className="text-primary" />
             Impostazioni
           </Button>
         </Link>
@@ -33,41 +33,41 @@ const Index = () => {
       
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 mb-8">
         {/* Lead Assignment Form Section */}
-        <Card className="lg:col-span-5">
-          <CardHeader>
-            <CardTitle>Modulo di Assegnazione Lead</CardTitle>
-            <CardDescription>
+        <Card className="lg:col-span-5 glass-card">
+          <CardHeader className="border-b border-border/30">
+            <CardTitle className="text-primary">Modulo di Assegnazione Lead</CardTitle>
+            <CardDescription className="text-muted-foreground">
               Assegna lead ai venditori selezionati
             </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="pt-6">
             <LeadAssignmentForm onAssignmentSuccess={handleAssignmentSuccess} />
           </CardContent>
         </Card>
 
         {/* Assignment History Section */}
-        <Card className="lg:col-span-7">
-          <CardHeader>
-            <CardTitle>Cronologia Assegnazioni</CardTitle>
-            <CardDescription>
+        <Card className="lg:col-span-7 glass-card">
+          <CardHeader className="border-b border-border/30">
+            <CardTitle className="text-primary">Cronologia Assegnazioni</CardTitle>
+            <CardDescription className="text-muted-foreground">
               Le ultime 10 assegnazioni effettuate
             </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="pt-6">
             <AssignmentHistory key={refreshHistory ? 'refresh' : 'initial'} />
           </CardContent>
         </Card>
       </div>
 
       {/* Lead Database Section */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Database Lead</CardTitle>
-          <CardDescription>
+      <Card className="glass-card">
+        <CardHeader className="border-b border-border/30">
+          <CardTitle className="text-primary">Database Lead</CardTitle>
+          <CardDescription className="text-muted-foreground">
             Lead disponibili per l'assegnazione
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="pt-6">
           <LeadDatabase key={refreshLeads ? 'refresh' : 'initial'} />
         </CardContent>
       </Card>

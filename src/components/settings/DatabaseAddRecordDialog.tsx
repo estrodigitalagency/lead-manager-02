@@ -136,10 +136,10 @@ export default function DatabaseAddRecordDialog({
   
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent>
+      <DialogContent className="glass-card border-accent/30 sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Aggiungi Record a {getTableDisplayName()}</DialogTitle>
-          <DialogDescription>
+          <DialogTitle className="text-primary">Aggiungi Record a {getTableDisplayName()}</DialogTitle>
+          <DialogDescription className="text-muted-foreground">
             Inserisci i dettagli per il nuovo record
           </DialogDescription>
         </DialogHeader>
@@ -147,13 +147,13 @@ export default function DatabaseAddRecordDialog({
         <div className="grid gap-4 py-4">
           {getTableFields().map(field => (
             <div key={field.name} className="grid grid-cols-4 items-center gap-2">
-              <Label htmlFor={field.name} className="text-right">
-                {field.label} {field.required && <span className="text-red-500">*</span>}
+              <Label htmlFor={field.name} className="text-right text-foreground">
+                {field.label} {field.required && <span className="text-destructive">*</span>}
               </Label>
               <Input
                 id={field.name}
                 name={field.name}
-                className="col-span-3"
+                className="col-span-3 bg-muted border-accent/20 focus:border-primary"
                 value={formData[field.name] || ""}
                 onChange={handleChange}
                 required={field.required}
@@ -164,8 +164,8 @@ export default function DatabaseAddRecordDialog({
         </div>
         
         <DialogFooter>
-          <Button variant="outline" onClick={handleClose}>Annulla</Button>
-          <Button onClick={handleSubmit} disabled={isLoading}>
+          <Button variant="outline" onClick={handleClose} className="border-accent/30 hover:bg-secondary">Annulla</Button>
+          <Button onClick={handleSubmit} disabled={isLoading} className="btn-neon">
             {isLoading ? "Salvataggio..." : "Salva"}
           </Button>
         </DialogFooter>

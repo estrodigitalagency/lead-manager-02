@@ -18,31 +18,31 @@ const Settings = () => {
       <div className="flex justify-between items-center mb-8">
         <div className="flex items-center gap-4">
           <Link to="/">
-            <Button variant="outline" size="icon">
-              <ArrowLeft className="h-4 w-4" />
+            <Button variant="outline" size="icon" className="neon-border hover:animate-glow">
+              <ArrowLeft className="h-4 w-4 text-primary" />
             </Button>
           </Link>
-          <h1 className="text-3xl font-bold">Impostazioni</h1>
+          <h1 className="text-3xl font-bold neon-text">Impostazioni</h1>
         </div>
         <Link to="/database">
-          <Button variant="outline" className="flex items-center gap-2">
-            <Database size={18} />
+          <Button variant="outline" className="flex items-center gap-2 neon-border hover:animate-glow">
+            <Database size={18} className="text-primary" />
             Database Records
           </Button>
         </Link>
       </div>
       
       <Tabs defaultValue="database" className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="database">
+        <TabsList className="grid w-full grid-cols-3 mb-8 neon-border">
+          <TabsTrigger value="database" className="data-[state=active]:text-primary data-[state=active]:shadow-[0_0_8px_rgba(150,255,0,0.5)]">
             <Database className="mr-2 h-4 w-4" />
             Database
           </TabsTrigger>
-          <TabsTrigger value="attribution">
+          <TabsTrigger value="attribution" className="data-[state=active]:text-primary data-[state=active]:shadow-[0_0_8px_rgba(150,255,0,0.5)]">
             <Webhook className="mr-2 h-4 w-4" />
             Finestre di Attribuzione
           </TabsTrigger>
-          <TabsTrigger value="salespeople">
+          <TabsTrigger value="salespeople" className="data-[state=active]:text-primary data-[state=active]:shadow-[0_0_8px_rgba(150,255,0,0.5)]">
             <Users className="mr-2 h-4 w-4" />
             Venditori
           </TabsTrigger>
@@ -57,7 +57,7 @@ const Settings = () => {
         </TabsContent>
         
         <TabsContent value="salespeople">
-          <Card>
+          <Card className="glass-card">
             <SalespeopleSettings />
           </Card>
         </TabsContent>
