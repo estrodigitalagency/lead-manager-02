@@ -25,7 +25,7 @@ export const fetchAssignmentHistory = async (): Promise<string[]> => {
     const { data, error } = await supabase
       .from('lead_generation')
       .select('*')
-      .eq('assegnato', true)
+      .not('venditore', 'is', null)
       .order('created_at', { ascending: false })
       .limit(10);
     

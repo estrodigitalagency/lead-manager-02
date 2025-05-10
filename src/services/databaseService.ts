@@ -3,13 +3,14 @@ import { Lead } from "@/types/lead";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
-// Get all leads that haven't been assigned yet
+// Get all leads that haven't been assigned yet and are assignable
 export async function getUnassignedLeads(): Promise<Lead[]> {
   try {
     const { data, error } = await supabase
       .from('lead_generation')
       .select('*')
-      .eq('assegnato', false);
+      .eq('assegnabile', true)
+      .is('venditore', null);
     
     if (error) {
       console.error("Error fetching unassigned leads:", error);
@@ -26,13 +27,13 @@ export async function getUnassignedLeads(): Promise<Lead[]> {
 }
 
 // Add a new lead (e.g. from webhook)
-export async function addLead(lead: Omit<Lead, 'id' | 'assegnato' | 'created_at'>): Promise<Lead | null> {
+export async function addLead(lead: Omit<Lead, 'id' | 'assegnabile' | 'created_at'>): Promise<Lead | null> {
   try {
     const { data, error } = await supabase
       .from('lead_generation')
       .insert({
         ...lead,
-        assegnato: false
+        assegnabile: lead.booked_call === 'SI'
       })
       .select()
       .single();
@@ -54,11 +55,12 @@ export async function addLead(lead: Omit<Lead, 'id' | 'assegnato' | 'created_at'
 // Mark leads as assigned
 export async function markLeadsAsAssigned(numLeads: number, venditore: string, campagna?: string): Promise<Lead[]> {
   try {
-    // Get unassigned leads up to the requested number
+    // Get unassigned leads that are assignable up to the requested number
     const { data: leadsToAssign, error: fetchError } = await supabase
       .from('lead_generation')
       .select('*')
-      .eq('assegnato', false)
+      .eq('assegnabile', true)
+      .is('venditore', null)
       .order('created_at', { ascending: true })
       .limit(numLeads);
     
@@ -78,7 +80,6 @@ export async function markLeadsAsAssigned(numLeads: number, venditore: string, c
     const { error: updateError } = await supabase
       .from('lead_generation')
       .update({ 
-        assegnato: true,
         venditore,
         campagna
       })
