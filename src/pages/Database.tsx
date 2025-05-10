@@ -17,6 +17,7 @@ interface CalendlyBooking {
   email: string;
   telefono: string;
   created_at: string;
+  scheduled_at: string; // Add the missing scheduled_at property
 }
 
 const DatabasePage = () => {
