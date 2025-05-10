@@ -172,33 +172,45 @@ export type Database = {
       }
       venditori: {
         Row: {
+          cognome: string
           created_at: string | null
-          email: string
+          email: string | null
           id: string
           lead_attuali: number | null
           lead_capacity: number | null
           nome: string
+          sheets_file_id: string
+          sheets_tab_name: string
           stato: string | null
+          telefono: string | null
           updated_at: string | null
         }
         Insert: {
+          cognome?: string
           created_at?: string | null
-          email: string
+          email?: string | null
           id?: string
           lead_attuali?: number | null
           lead_capacity?: number | null
           nome: string
+          sheets_file_id?: string
+          sheets_tab_name?: string
           stato?: string | null
+          telefono?: string | null
           updated_at?: string | null
         }
         Update: {
+          cognome?: string
           created_at?: string | null
-          email?: string
+          email?: string | null
           id?: string
           lead_attuali?: number | null
           lead_capacity?: number | null
           nome?: string
+          sheets_file_id?: string
+          sheets_tab_name?: string
           stato?: string | null
+          telefono?: string | null
           updated_at?: string | null
         }
         Relationships: []

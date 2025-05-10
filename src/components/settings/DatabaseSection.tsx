@@ -69,9 +69,13 @@ export default function DatabaseSection() {
       columns: [
         { name: "id", type: "uuid", nullable: false, default: "gen_random_uuid()" },
         { name: "nome", type: "text", nullable: false, default: "-" },
-        { name: "email", type: "text", nullable: false, default: "-" },
+        { name: "cognome", type: "text", nullable: false, default: "-" },
+        { name: "email", type: "text", nullable: true, default: "-" },
+        { name: "telefono", type: "text", nullable: true, default: "-" },
         { name: "lead_capacity", type: "integer", nullable: true, default: "50" },
         { name: "lead_attuali", type: "integer", nullable: true, default: "0" },
+        { name: "sheets_file_id", type: "text", nullable: false, default: "-" },
+        { name: "sheets_tab_name", type: "text", nullable: false, default: "-" },
         { name: "created_at", type: "timestamp with time zone", nullable: false, default: "now()" },
         { name: "updated_at", type: "timestamp with time zone", nullable: false, default: "now()" },
       ]

@@ -20,9 +20,13 @@ import { supabase } from "@/integrations/supabase/client";
 interface Salesperson {
   id: string;
   nome: string;
-  email: string;
+  cognome: string;
+  email?: string;
+  telefono?: string;
   lead_capacity?: number;
   lead_attuali?: number;
+  sheets_file_id: string;
+  sheets_tab_name: string;
   stato?: string;
 }
 
@@ -34,8 +38,12 @@ const SalespeopleSettings = () => {
   const [currentSalesperson, setCurrentSalesperson] = useState<Salesperson | null>(null);
   const [formData, setFormData] = useState({
     nome: "",
+    cognome: "",
     email: "",
+    telefono: "",
     lead_capacity: 50,
+    sheets_file_id: "",
+    sheets_tab_name: ""
   });
 
   // Fetch salespeople from the database
@@ -72,14 +80,39 @@ const SalespeopleSettings = () => {
   const resetForm = () => {
     setFormData({
       nome: "",
+      cognome: "",
       email: "",
+      telefono: "",
       lead_capacity: 50,
+      sheets_file_id: "",
+      sheets_tab_name: ""
     });
   };
 
   // Add new salesperson
   const handleAddSalesperson = async () => {
     try {
+      // Validate required fields
+      if (!formData.nome) {
+        toast.error("Il nome del venditore è obbligatorio");
+        return;
+      }
+      
+      if (!formData.cognome) {
+        toast.error("Il cognome del venditore è obbligatorio");
+        return;
+      }
+      
+      if (!formData.sheets_file_id) {
+        toast.error("L'ID del file Sheets è obbligatorio");
+        return;
+      }
+      
+      if (!formData.sheets_tab_name) {
+        toast.error("Il nome del foglio Sheets è obbligatorio");
+        return;
+      }
+
       const { data, error } = await supabase
         .from("venditori")
         .insert([formData])
@@ -103,14 +136,39 @@ const SalespeopleSettings = () => {
   // Edit salesperson
   const handleEditSalesperson = async () => {
     if (!currentSalesperson) return;
+    
+    // Validate required fields
+    if (!formData.nome) {
+      toast.error("Il nome del venditore è obbligatorio");
+      return;
+    }
+    
+    if (!formData.cognome) {
+      toast.error("Il cognome del venditore è obbligatorio");
+      return;
+    }
+    
+    if (!formData.sheets_file_id) {
+      toast.error("L'ID del file Sheets è obbligatorio");
+      return;
+    }
+    
+    if (!formData.sheets_tab_name) {
+      toast.error("Il nome del foglio Sheets è obbligatorio");
+      return;
+    }
 
     try {
       const { error } = await supabase
         .from("venditori")
         .update({
           nome: formData.nome,
+          cognome: formData.cognome,
           email: formData.email,
-          lead_capacity: formData.lead_capacity
+          telefono: formData.telefono,
+          lead_capacity: formData.lead_capacity,
+          sheets_file_id: formData.sheets_file_id,
+          sheets_tab_name: formData.sheets_tab_name
         })
         .eq("id", currentSalesperson.id);
 
@@ -154,8 +212,12 @@ const SalespeopleSettings = () => {
     setCurrentSalesperson(salesperson);
     setFormData({
       nome: salesperson.nome,
-      email: salesperson.email,
+      cognome: salesperson.cognome,
+      email: salesperson.email || "",
+      telefono: salesperson.telefono || "",
       lead_capacity: salesperson.lead_capacity || 50,
+      sheets_file_id: salesperson.sheets_file_id,
+      sheets_tab_name: salesperson.sheets_tab_name
     });
     setIsEditDialogOpen(true);
   };
@@ -181,7 +243,7 @@ const SalespeopleSettings = () => {
             <div className="grid gap-4 py-4">
               <div className="grid grid-cols-4 items-center gap-2">
                 <Label htmlFor="nome" className="text-right">
-                  Nome Venditore
+                  Nome Venditore <span className="text-red-500">*</span>
                 </Label>
                 <Input
                   id="nome"
@@ -189,6 +251,20 @@ const SalespeopleSettings = () => {
                   className="col-span-3"
                   value={formData.nome}
                   onChange={handleChange}
+                  required
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-2">
+                <Label htmlFor="cognome" className="text-right">
+                  Cognome <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  id="cognome"
+                  name="cognome"
+                  className="col-span-3"
+                  value={formData.cognome}
+                  onChange={handleChange}
+                  required
                 />
               </div>
               <div className="grid grid-cols-4 items-center gap-2">
@@ -205,6 +281,18 @@ const SalespeopleSettings = () => {
                 />
               </div>
               <div className="grid grid-cols-4 items-center gap-2">
+                <Label htmlFor="telefono" className="text-right">
+                  Telefono
+                </Label>
+                <Input
+                  id="telefono"
+                  name="telefono"
+                  className="col-span-3"
+                  value={formData.telefono}
+                  onChange={handleChange}
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-2">
                 <Label htmlFor="lead_capacity" className="text-right">
                   Capacità Lead
                 </Label>
@@ -215,6 +303,32 @@ const SalespeopleSettings = () => {
                   className="col-span-3"
                   value={formData.lead_capacity}
                   onChange={handleChange}
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-2">
+                <Label htmlFor="sheets_file_id" className="text-right">
+                  ID File Sheets <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  id="sheets_file_id"
+                  name="sheets_file_id"
+                  className="col-span-3"
+                  value={formData.sheets_file_id}
+                  onChange={handleChange}
+                  required
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-2">
+                <Label htmlFor="sheets_tab_name" className="text-right">
+                  Nome Foglio Sheets <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  id="sheets_tab_name"
+                  name="sheets_tab_name"
+                  className="col-span-3"
+                  value={formData.sheets_tab_name}
+                  onChange={handleChange}
+                  required
                 />
               </div>
             </div>
@@ -234,11 +348,14 @@ const SalespeopleSettings = () => {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Nome Venditore</TableHead>
+                <TableHead>Nome</TableHead>
+                <TableHead>Cognome</TableHead>
                 <TableHead>Email</TableHead>
+                <TableHead>Telefono</TableHead>
+                <TableHead>ID File Sheets</TableHead>
+                <TableHead>Nome Foglio</TableHead>
                 <TableHead>Capacità Lead</TableHead>
                 <TableHead>Lead Attuali</TableHead>
-                <TableHead>Stato</TableHead>
                 <TableHead className="text-right">Azioni</TableHead>
               </TableRow>
             </TableHeader>
@@ -247,10 +364,17 @@ const SalespeopleSettings = () => {
                 salespeople.map((salesperson) => (
                   <TableRow key={salesperson.id}>
                     <TableCell>{salesperson.nome}</TableCell>
-                    <TableCell>{salesperson.email}</TableCell>
+                    <TableCell>{salesperson.cognome}</TableCell>
+                    <TableCell>{salesperson.email || "-"}</TableCell>
+                    <TableCell>{salesperson.telefono || "-"}</TableCell>
+                    <TableCell>
+                      <div className="max-w-[150px] truncate" title={salesperson.sheets_file_id}>
+                        {salesperson.sheets_file_id}
+                      </div>
+                    </TableCell>
+                    <TableCell>{salesperson.sheets_tab_name}</TableCell>
                     <TableCell>{salesperson.lead_capacity || 50}</TableCell>
                     <TableCell>{salesperson.lead_attuali || 0}</TableCell>
-                    <TableCell>{salesperson.stato || 'attivo'}</TableCell>
                     <TableCell className="text-right space-x-2">
                       <Button
                         variant="outline"
@@ -271,7 +395,7 @@ const SalespeopleSettings = () => {
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-8">
+                  <TableCell colSpan={9} className="text-center py-8">
                     Nessun venditore trovato. Aggiungi un nuovo venditore usando il pulsante in alto.
                   </TableCell>
                 </TableRow>
@@ -293,7 +417,7 @@ const SalespeopleSettings = () => {
           <div className="grid gap-4 py-4">
             <div className="grid grid-cols-4 items-center gap-2">
               <Label htmlFor="edit_nome" className="text-right">
-                Nome Venditore
+                Nome Venditore <span className="text-red-500">*</span>
               </Label>
               <Input
                 id="edit_nome"
@@ -301,6 +425,20 @@ const SalespeopleSettings = () => {
                 className="col-span-3"
                 value={formData.nome}
                 onChange={handleChange}
+                required
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-2">
+              <Label htmlFor="edit_cognome" className="text-right">
+                Cognome <span className="text-red-500">*</span>
+              </Label>
+              <Input
+                id="edit_cognome"
+                name="cognome"
+                className="col-span-3"
+                value={formData.cognome}
+                onChange={handleChange}
+                required
               />
             </div>
             <div className="grid grid-cols-4 items-center gap-2">
@@ -317,6 +455,18 @@ const SalespeopleSettings = () => {
               />
             </div>
             <div className="grid grid-cols-4 items-center gap-2">
+              <Label htmlFor="edit_telefono" className="text-right">
+                Telefono
+              </Label>
+              <Input
+                id="edit_telefono"
+                name="telefono"
+                className="col-span-3"
+                value={formData.telefono}
+                onChange={handleChange}
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-2">
               <Label htmlFor="edit_lead_capacity" className="text-right">
                 Capacità Lead
               </Label>
@@ -327,6 +477,32 @@ const SalespeopleSettings = () => {
                 className="col-span-3"
                 value={formData.lead_capacity}
                 onChange={handleChange}
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-2">
+              <Label htmlFor="edit_sheets_file_id" className="text-right">
+                ID File Sheets <span className="text-red-500">*</span>
+              </Label>
+              <Input
+                id="edit_sheets_file_id"
+                name="sheets_file_id"
+                className="col-span-3"
+                value={formData.sheets_file_id}
+                onChange={handleChange}
+                required
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-2">
+              <Label htmlFor="edit_sheets_tab_name" className="text-right">
+                Nome Foglio Sheets <span className="text-red-500">*</span>
+              </Label>
+              <Input
+                id="edit_sheets_tab_name"
+                name="sheets_tab_name"
+                className="col-span-3"
+                value={formData.sheets_tab_name}
+                onChange={handleChange}
+                required
               />
             </div>
           </div>

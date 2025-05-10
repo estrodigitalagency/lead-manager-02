@@ -52,9 +52,13 @@ export default function DatabaseAddRecordDialog({
         ];
       case "venditori":
         return [
-          { name: "nome", label: "Nome Venditore", required: true },
-          { name: "email", label: "Email", required: true },
+          { name: "nome", label: "Nome", required: true },
+          { name: "cognome", label: "Cognome", required: true },
+          { name: "email", label: "Email", required: false },
+          { name: "telefono", label: "Telefono", required: false },
           { name: "lead_capacity", label: "Capacità Lead", required: false, type: "number", default: "50" },
+          { name: "sheets_file_id", label: "ID File Sheets", required: true },
+          { name: "sheets_tab_name", label: "Nome Foglio Sheets", required: true },
         ];
       case "system_settings":
         return [
