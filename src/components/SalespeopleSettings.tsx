@@ -1,0 +1,328 @@
+
+import { useState, useEffect } from "react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { toast } from "sonner";
+import { Pencil, Trash2, Plus } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+
+interface Salesperson {
+  id: string;
+  nome_venditore: string;
+  sheets_file_id: string;
+  sheets_tab_name: string;
+}
+
+const SalespeopleSettings = () => {
+  const [salespeople, setSalespeople] = useState<Salesperson[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [currentSalesperson, setCurrentSalesperson] = useState<Salesperson | null>(null);
+  const [formData, setFormData] = useState({
+    nome_venditore: "",
+    sheets_file_id: "",
+    sheets_tab_name: "",
+  });
+
+  // Fetch salespeople from the database
+  const fetchSalespeople = async () => {
+    setIsLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from("salespeople_settings")
+        .select("*")
+        .order("nome_venditore");
+
+      if (error) throw error;
+      setSalespeople(data || []);
+    } catch (error) {
+      console.error("Error fetching salespeople:", error);
+      toast.error("Errore nel caricamento dei venditori");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Load salespeople on component mount
+  useEffect(() => {
+    fetchSalespeople();
+  }, []);
+
+  // Handle input changes
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  // Reset form data
+  const resetForm = () => {
+    setFormData({
+      nome_venditore: "",
+      sheets_file_id: "",
+      sheets_tab_name: "",
+    });
+  };
+
+  // Add new salesperson
+  const handleAddSalesperson = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("salespeople_settings")
+        .insert([formData])
+        .select();
+
+      if (error) throw error;
+      toast.success("Venditore aggiunto con successo");
+      setIsAddDialogOpen(false);
+      resetForm();
+      fetchSalespeople();
+    } catch (error: any) {
+      console.error("Error adding salesperson:", error);
+      toast.error(
+        error.code === "23505"
+          ? "Esiste già un venditore con questo nome"
+          : "Errore nell'aggiunta del venditore"
+      );
+    }
+  };
+
+  // Edit salesperson
+  const handleEditSalesperson = async () => {
+    if (!currentSalesperson) return;
+
+    try {
+      const { error } = await supabase
+        .from("salespeople_settings")
+        .update(formData)
+        .eq("id", currentSalesperson.id);
+
+      if (error) throw error;
+      toast.success("Venditore aggiornato con successo");
+      setIsEditDialogOpen(false);
+      setCurrentSalesperson(null);
+      resetForm();
+      fetchSalespeople();
+    } catch (error: any) {
+      console.error("Error updating salesperson:", error);
+      toast.error(
+        error.code === "23505"
+          ? "Esiste già un venditore con questo nome"
+          : "Errore nell'aggiornamento del venditore"
+      );
+    }
+  };
+
+  // Delete salesperson
+  const handleDeleteSalesperson = async (id: string) => {
+    if (!window.confirm("Sei sicuro di voler eliminare questo venditore?")) return;
+
+    try {
+      const { error } = await supabase
+        .from("salespeople_settings")
+        .delete()
+        .eq("id", id);
+
+      if (error) throw error;
+      toast.success("Venditore eliminato con successo");
+      fetchSalespeople();
+    } catch (error) {
+      console.error("Error deleting salesperson:", error);
+      toast.error("Errore nell'eliminazione del venditore");
+    }
+  };
+
+  // Open edit dialog with salesperson data
+  const openEditDialog = (salesperson: Salesperson) => {
+    setCurrentSalesperson(salesperson);
+    setFormData({
+      nome_venditore: salesperson.nome_venditore,
+      sheets_file_id: salesperson.sheets_file_id,
+      sheets_tab_name: salesperson.sheets_tab_name,
+    });
+    setIsEditDialogOpen(true);
+  };
+
+  return (
+    <>
+      <div className="flex justify-between items-center mb-4">
+        <h2 className="text-xl font-semibold">Impostazioni Venditori</h2>
+        <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+          <DialogTrigger asChild>
+            <Button className="flex items-center gap-2">
+              <Plus className="h-4 w-4" />
+              Aggiungi Venditore
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Aggiungi Nuovo Venditore</DialogTitle>
+              <DialogDescription>
+                Inserisci i dettagli per aggiungere un nuovo venditore
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="grid grid-cols-4 items-center gap-2">
+                <Label htmlFor="nome_venditore" className="text-right">
+                  Nome Venditore
+                </Label>
+                <Input
+                  id="nome_venditore"
+                  name="nome_venditore"
+                  className="col-span-3"
+                  value={formData.nome_venditore}
+                  onChange={handleChange}
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-2">
+                <Label htmlFor="sheets_file_id" className="text-right">
+                  ID File Sheets
+                </Label>
+                <Input
+                  id="sheets_file_id"
+                  name="sheets_file_id"
+                  className="col-span-3"
+                  value={formData.sheets_file_id}
+                  onChange={handleChange}
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-2">
+                <Label htmlFor="sheets_tab_name" className="text-right">
+                  Nome Foglio
+                </Label>
+                <Input
+                  id="sheets_tab_name"
+                  name="sheets_tab_name"
+                  className="col-span-3"
+                  value={formData.sheets_tab_name}
+                  onChange={handleChange}
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button onClick={handleAddSalesperson}>Salva</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </div>
+
+      {isLoading ? (
+        <div className="flex justify-center items-center h-32">
+          <span>Caricamento in corso...</span>
+        </div>
+      ) : (
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Nome Venditore</TableHead>
+                <TableHead>ID File Sheets</TableHead>
+                <TableHead>Nome Foglio</TableHead>
+                <TableHead className="text-right">Azioni</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {salespeople.length > 0 ? (
+                salespeople.map((salesperson) => (
+                  <TableRow key={salesperson.id}>
+                    <TableCell>{salesperson.nome_venditore}</TableCell>
+                    <TableCell>{salesperson.sheets_file_id}</TableCell>
+                    <TableCell>{salesperson.sheets_tab_name}</TableCell>
+                    <TableCell className="text-right space-x-2">
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={() => openEditDialog(salesperson)}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={() => handleDeleteSalesperson(salesperson.id)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={4} className="text-center py-8">
+                    Nessun venditore trovato. Aggiungi un nuovo venditore usando il pulsante in alto.
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </div>
+      )}
+
+      {/* Edit Dialog */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Modifica Venditore</DialogTitle>
+            <DialogDescription>
+              Modifica i dettagli del venditore selezionato
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-2">
+              <Label htmlFor="edit_nome_venditore" className="text-right">
+                Nome Venditore
+              </Label>
+              <Input
+                id="edit_nome_venditore"
+                name="nome_venditore"
+                className="col-span-3"
+                value={formData.nome_venditore}
+                onChange={handleChange}
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-2">
+              <Label htmlFor="edit_sheets_file_id" className="text-right">
+                ID File Sheets
+              </Label>
+              <Input
+                id="edit_sheets_file_id"
+                name="sheets_file_id"
+                className="col-span-3"
+                value={formData.sheets_file_id}
+                onChange={handleChange}
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-2">
+              <Label htmlFor="edit_sheets_tab_name" className="text-right">
+                Nome Foglio
+              </Label>
+              <Input
+                id="edit_sheets_tab_name"
+                name="sheets_tab_name"
+                className="col-span-3"
+                value={formData.sheets_tab_name}
+                onChange={handleChange}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button onClick={handleEditSalesperson}>Salva Modifiche</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+};
+
+export default SalespeopleSettings;

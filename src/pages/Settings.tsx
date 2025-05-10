@@ -1,12 +1,12 @@
-
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Database, Webhook, Link, Info, ArrowLeftRight } from "lucide-react";
+import { Database, Webhook, Link as LinkIcon, Info, ArrowLeftRight, Users, ArrowLeft } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Lead } from "@/types/lead";
@@ -19,6 +19,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import SalespeopleSettings from "@/components/SalespeopleSettings";
 
 const Settings = () => {
   const { toast } = useToast();
@@ -119,13 +120,32 @@ const Settings = () => {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold text-center mb-8">Impostazioni</h1>
+      <div className="flex justify-between items-center mb-8">
+        <div className="flex items-center gap-4">
+          <Link to="/">
+            <Button variant="outline" size="icon">
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+          </Link>
+          <h1 className="text-3xl font-bold">Impostazioni</h1>
+        </div>
+        <Link to="/database">
+          <Button variant="outline" className="flex items-center gap-2">
+            <Database size={18} />
+            Database Records
+          </Button>
+        </Link>
+      </div>
       
       <Tabs defaultValue="webhooks" className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="webhooks">
             <Webhook className="mr-2 h-4 w-4" />
             Webhooks
+          </TabsTrigger>
+          <TabsTrigger value="salespeople">
+            <Users className="mr-2 h-4 w-4" />
+            Venditori
           </TabsTrigger>
           <TabsTrigger value="database">
             <Database className="mr-2 h-4 w-4" />
@@ -445,6 +465,20 @@ const Settings = () => {
               </CardContent>
             </Card>
           </div>
+        </TabsContent>
+        
+        <TabsContent value="salespeople">
+          <Card>
+            <CardHeader>
+              <CardTitle>Gestione Venditori</CardTitle>
+              <CardDescription>
+                Configura i dati dei venditori e le loro impostazioni di Google Sheets
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <SalespeopleSettings />
+            </CardContent>
+          </Card>
         </TabsContent>
         
         <TabsContent value="database">

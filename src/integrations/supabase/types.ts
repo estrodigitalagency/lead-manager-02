@@ -78,6 +78,33 @@ export type Database = {
         }
         Relationships: []
       }
+      salespeople_settings: {
+        Row: {
+          created_at: string
+          id: string
+          nome_venditore: string
+          sheets_file_id: string
+          sheets_tab_name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          nome_venditore: string
+          sheets_file_id: string
+          sheets_tab_name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          nome_venditore?: string
+          sheets_file_id?: string
+          sheets_tab_name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
