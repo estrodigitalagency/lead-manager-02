@@ -19,3 +19,29 @@ export const fetchSalespeople = async (): Promise<string[]> => {
     return [];
   }
 };
+
+export const fetchAssignmentHistory = async (): Promise<string[]> => {
+  try {
+    const { data, error } = await supabase
+      .from('lead_generation')
+      .select('*')
+      .eq('assegnato', true)
+      .order('created_at', { ascending: false })
+      .limit(10);
+    
+    if (error) {
+      console.error("Error fetching assignment history:", error);
+      return [];
+    }
+    
+    // Format the history entries
+    return data.map(lead => {
+      const date = new Date(lead.created_at).toLocaleDateString('it-IT');
+      const time = new Date(lead.created_at).toLocaleTimeString('it-IT');
+      return `${date} ${time} - ${lead.nome} ${lead.cognome} assegnato a ${lead.venditore || 'N/A'}${lead.campagna ? ` (Campagna: ${lead.campagna})` : ''}`;
+    });
+  } catch (error) {
+    console.error("Failed to fetch assignment history:", error);
+    return [];
+  }
+};
