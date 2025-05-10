@@ -1,11 +1,13 @@
 
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
 import LeadAssignmentForm from "@/components/LeadAssignmentForm";
 import AssignmentHistory from "@/components/AssignmentHistory";
 import LeadDatabase from "@/components/LeadDatabase";
-import { Loader2 } from "lucide-react";
+import { Settings } from "lucide-react";
 
 const Index = () => {
   const [refreshHistory, setRefreshHistory] = useState(false);
@@ -19,7 +21,15 @@ const Index = () => {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold text-center mb-8">Sistema di Assegnazione Lead</h1>
+      <div className="flex justify-between items-center mb-8">
+        <h1 className="text-3xl font-bold">Sistema di Assegnazione Lead</h1>
+        <Link to="/settings">
+          <Button variant="outline" className="flex items-center gap-2">
+            <Settings size={18} />
+            Impostazioni
+          </Button>
+        </Link>
+      </div>
       
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 mb-8">
         {/* Lead Assignment Form Section */}
