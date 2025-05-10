@@ -168,8 +168,7 @@ export async function importLeadsFromCSV(leads: Omit<Lead, 'id' | 'assegnabile' 
 
 export const checkLeadsAssignability = async () => {
   try {
-    const cutoffDate = calculateCutoffDate();
-    console.log('Cutoff date for lead assignability:', cutoffDate);
+    console.log('Checking leads assignability');
     
     const { data: leads, error } = await supabase.rpc('check_leads_assignability');
     
