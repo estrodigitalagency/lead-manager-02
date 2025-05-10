@@ -182,8 +182,8 @@ export async function checkLeadsAssignability(): Promise<void> {
     console.log(`Checking leads assignability with cutoff date: ${cutoffDateStr}`);
     
     // Update leads that meet the criteria: created before cutoff date and no booked call
-    const { data, error } = await supabase
-      .rpc('check_leads_assignability');
+    // Remove the parameter being passed to the RPC function since it doesn't accept any
+    const { data, error } = await supabase.rpc('check_leads_assignability');
     
     if (error) {
       console.error("Error checking leads assignability:", error);
