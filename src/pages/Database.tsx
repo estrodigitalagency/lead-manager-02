@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -105,7 +106,7 @@ const DatabasePage = () => {
             Lead Generation
           </TabsTrigger>
           <TabsTrigger value="bookings">
-            Booked Call Calendly
+            Booked Call
           </TabsTrigger>
         </TabsList>
         
@@ -149,13 +150,13 @@ const DatabasePage = () => {
                             <TableCell>{lead.telefono}</TableCell>
                             <TableCell>{lead.campagna || '-'}</TableCell>
                             <TableCell>
-                              {lead.assegnato ? (
+                              {lead.assegnabile ? (
                                 <Badge variant="outline" className="bg-green-100 text-green-800 border-green-200">
-                                  Assegnato
+                                  Assegnabile
                                 </Badge>
                               ) : (
                                 <Badge variant="outline" className="bg-yellow-100 text-yellow-800 border-yellow-200">
-                                  Non assegnato
+                                  Non assegnabile
                                 </Badge>
                               )}
                             </TableCell>
@@ -181,7 +182,7 @@ const DatabasePage = () => {
         <TabsContent value="bookings" className="mt-4">
           <Card>
             <CardHeader>
-              <CardTitle>Booked Call Calendly</CardTitle>
+              <CardTitle>Booked Call</CardTitle>
               <CardDescription>
                 Tutte le prenotazioni ricevute tramite Calendly
               </CardDescription>

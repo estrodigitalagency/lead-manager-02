@@ -165,7 +165,7 @@ export default function DatabaseImportDialog({
       const BATCH_SIZE = 50;
       for (let i = 0; i < records.length; i += BATCH_SIZE) {
         const batch = records.slice(i, i + BATCH_SIZE);
-        const { error } = await supabase.from(tableName).insert(batch);
+        const { error } = await supabase.from(tableName as any).insert(batch);
         if (error) throw error;
       }
       
@@ -214,7 +214,7 @@ export default function DatabaseImportDialog({
           
           {step === 2 && (
             <div className="space-y-4">
-              <Alert variant="warning">
+              <Alert>
                 <AlertCircle className="h-4 w-4" />
                 <AlertDescription>
                   Mappa le colonne del CSV ai campi del database

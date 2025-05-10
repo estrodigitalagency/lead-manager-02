@@ -97,8 +97,8 @@ export default function DatabaseAddRecordDialog({
     setIsLoading(true);
     try {
       const { error } = await supabase
-        .from(tableName)
-        .insert([formData]);
+        .from(tableName as any)
+        .insert(formData);
       
       if (error) throw error;
       
