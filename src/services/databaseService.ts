@@ -32,8 +32,10 @@ export async function addLead(lead: Omit<Lead, 'id' | 'assignable' | 'created_at
     // Convert string booked_call to boolean if it exists
     const leadToInsert = {
       ...lead,
-      // If booked_call is a string "SI", convert to true, otherwise false
-      booked_call: lead.booked_call === true || lead.booked_call === "SI"
+      // Fixed: Proper type checking for booked_call
+      booked_call: typeof lead.booked_call === 'string' 
+        ? lead.booked_call === "SI" 
+        : !!lead.booked_call
     };
     
     const { data, error } = await supabase
