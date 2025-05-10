@@ -166,21 +166,3 @@ export async function importLeadsFromCSV(leads: Omit<Lead, 'id' | 'assegnabile' 
     return false;
   }
 }
-
-export const checkLeadsAssignability = async () => {
-  try {
-    console.log('Checking leads assignability');
-    
-    const { data: leads, error } = await supabase.rpc('check_leads_assignability');
-    
-    if (error) {
-      console.error('Error checking leads assignability:', error);
-      return { data: null, error };
-    }
-    
-    return { data: leads, error: null };
-  } catch (err) {
-    console.error('Exception checking leads assignability:', err);
-    return { data: null, error: err };
-  }
-};
