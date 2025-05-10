@@ -149,7 +149,7 @@ const DatabasePage = () => {
                             <TableCell>{lead.telefono}</TableCell>
                             <TableCell>{lead.campagna || '-'}</TableCell>
                             <TableCell>
-                              {lead.assegnato ? (
+                              {lead.assegnabile ? (
                                 <Badge variant="outline" className="bg-green-100 text-green-800 border-green-200">
                                   Assegnato
                                 </Badge>

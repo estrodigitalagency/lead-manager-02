@@ -124,7 +124,10 @@ export async function updateSystemSettings(key: string, value: string): Promise<
   try {
     const { error } = await supabase
       .from('system_settings')
-      .update({ value, updated_at: new Date() })
+      .update({ 
+        value, 
+        updated_at: new Date().toISOString() // Convert Date to ISO string
+      })
       .eq('key', key);
     
     if (error) {

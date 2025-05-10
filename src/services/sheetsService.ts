@@ -22,10 +22,11 @@ export const fetchSalespeople = async (): Promise<string[]> => {
 
 export const fetchAssignmentHistory = async (): Promise<string[]> => {
   try {
+    // Change from assegnato to assegnabile
     const { data, error } = await supabase
       .from('lead_generation')
       .select('*')
-      .eq('assegnato', true)
+      .eq('assegnabile', true) // Updated from assegnato
       .order('created_at', { ascending: false })
       .limit(10);
     
@@ -35,7 +36,7 @@ export const fetchAssignmentHistory = async (): Promise<string[]> => {
     }
     
     // Format the history entries
-    return data.map(lead => {
+    return (data || []).map(lead => {
       const date = new Date(lead.created_at).toLocaleDateString('it-IT');
       const time = new Date(lead.created_at).toLocaleTimeString('it-IT');
       return `${date} ${time} - ${lead.nome} ${lead.cognome} assegnato a ${lead.venditore || 'N/A'}${lead.campagna ? ` (Campagna: ${lead.campagna})` : ''}`;

@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -18,6 +17,7 @@ import { Database, Link as LinkIcon, ArrowLeftRight, Plus, FileUp, FileText } fr
 import { importLeadsFromCSV, addLead } from "@/services/databaseService";
 import { Lead } from "@/types/lead";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client"; // Add this import
 
 // Interfaccia per gestire l'importazione CSV
 interface CSVImportDialogProps {
