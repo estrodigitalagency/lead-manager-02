@@ -65,7 +65,7 @@ const LeadDatabase = () => {
         <TableBody>
           {leads.map((lead) => (
             <TableRow key={lead.id}>
-              <TableCell>{lead.dataGenerazione}</TableCell>
+              <TableCell>{lead.data_generazione}</TableCell>
               <TableCell>{lead.nome}</TableCell>
               <TableCell>{lead.cognome}</TableCell>
               <TableCell>{lead.email}</TableCell>
