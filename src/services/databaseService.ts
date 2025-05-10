@@ -9,7 +9,7 @@ export async function getUnassignedLeads(): Promise<Lead[]> {
     const { data, error } = await supabase
       .from('lead_generation')
       .select('*')
-      .eq('assegnato', false);
+      .eq('assegnabile', false);
     
     if (error) {
       console.error("Error fetching unassigned leads:", error);
@@ -26,13 +26,13 @@ export async function getUnassignedLeads(): Promise<Lead[]> {
 }
 
 // Add a new lead (e.g. from webhook)
-export async function addLead(lead: Omit<Lead, 'id' | 'assegnato' | 'created_at'>): Promise<Lead | null> {
+export async function addLead(lead: Omit<Lead, 'id' | 'assegnabile' | 'created_at'>): Promise<Lead | null> {
   try {
     const { data, error } = await supabase
       .from('lead_generation')
       .insert({
         ...lead,
-        assegnato: false
+        assegnabile: false
       })
       .select()
       .single();
@@ -58,7 +58,7 @@ export async function markLeadsAsAssigned(numLeads: number, venditore: string, c
     const { data: leadsToAssign, error: fetchError } = await supabase
       .from('lead_generation')
       .select('*')
-      .eq('assegnato', false)
+      .eq('assegnabile', false)
       .order('created_at', { ascending: true })
       .limit(numLeads);
     
@@ -78,7 +78,7 @@ export async function markLeadsAsAssigned(numLeads: number, venditore: string, c
     const { error: updateError } = await supabase
       .from('lead_generation')
       .update({ 
-        assegnato: true,
+        assegnabile: true,
         venditore,
         campagna
       })
@@ -96,5 +96,70 @@ export async function markLeadsAsAssigned(numLeads: number, venditore: string, c
     console.error("Error marking leads as assigned:", error);
     toast.error("Errore nell'assegnazione dei lead");
     return [];
+  }
+}
+
+// Funzione per ottenere e aggiornare le impostazioni di sistema
+export async function getSystemSettings(key: string): Promise<string | null> {
+  try {
+    const { data, error } = await supabase
+      .from('system_settings')
+      .select('value')
+      .eq('key', key)
+      .single();
+    
+    if (error) {
+      console.error(`Error fetching ${key} setting:`, error);
+      return null;
+    }
+    
+    return data?.value || null;
+  } catch (error) {
+    console.error(`Error fetching ${key} setting:`, error);
+    return null;
+  }
+}
+
+export async function updateSystemSettings(key: string, value: string): Promise<boolean> {
+  try {
+    const { error } = await supabase
+      .from('system_settings')
+      .update({ value, updated_at: new Date() })
+      .eq('key', key);
+    
+    if (error) {
+      console.error(`Error updating ${key} setting:`, error);
+      toast.error(`Errore nell'aggiornamento dell'impostazione ${key}`);
+      return false;
+    }
+    
+    toast.success("Impostazione aggiornata con successo");
+    return true;
+  } catch (error) {
+    console.error(`Error updating ${key} setting:`, error);
+    toast.error(`Errore nell'aggiornamento dell'impostazione ${key}`);
+    return false;
+  }
+}
+
+// Funzione per importare lead da CSV
+export async function importLeadsFromCSV(leads: Omit<Lead, 'id' | 'assegnabile' | 'created_at'>[]): Promise<boolean> {
+  try {
+    const { error } = await supabase
+      .from('lead_generation')
+      .insert(leads.map(lead => ({ ...lead, assegnabile: false })));
+    
+    if (error) {
+      console.error("Error importing leads:", error);
+      toast.error("Errore nell'importazione dei lead");
+      return false;
+    }
+    
+    toast.success(`${leads.length} lead importati con successo`);
+    return true;
+  } catch (error) {
+    console.error("Error importing leads:", error);
+    toast.error("Errore nell'importazione dei lead");
+    return false;
   }
 }

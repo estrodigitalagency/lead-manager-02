@@ -38,7 +38,7 @@ export type Database = {
       }
       lead_generation: {
         Row: {
-          assegnato: boolean | null
+          assegnabile: boolean | null
           booked_call: string | null
           campagna: string | null
           cognome: string
@@ -50,7 +50,7 @@ export type Database = {
           venditore: string | null
         }
         Insert: {
-          assegnato?: boolean | null
+          assegnabile?: boolean | null
           booked_call?: string | null
           campagna?: string | null
           cognome: string
@@ -62,7 +62,7 @@ export type Database = {
           venditore?: string | null
         }
         Update: {
-          assegnato?: boolean | null
+          assegnabile?: boolean | null
           booked_call?: string | null
           campagna?: string | null
           cognome?: string
@@ -99,6 +99,30 @@ export type Database = {
           sheets_file_id?: string
           sheets_tab_name?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      system_settings: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          key: string
+          updated_at: string | null
+          value: string
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          key: string
+          updated_at?: string | null
+          value: string
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          key?: string
+          updated_at?: string | null
+          value?: string
         }
         Relationships: []
       }

@@ -24,7 +24,7 @@ serve(async (req) => {
     const payload = await req.json()
     console.log('Received calendly webhook payload:', payload)
     
-    // Insert the booking data to the booked_call_calendly table
+    // Insert the booking data to the booked_call table
     // created_at will be set to now() by the default value in the database
     const { data, error } = await supabase
       .from('booked_call_calendly')
