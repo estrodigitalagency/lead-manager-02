@@ -58,7 +58,7 @@
 
 @layer components {
   .neon-border {
-    @apply border border-primary rounded-lg shadow-[0_0_10px_rgba(234,255,85,0.7)];
+    @apply border border-primary rounded-lg;
   }
   
   .glass-card {
@@ -66,7 +66,7 @@
   }
   
   .btn-neon {
-    @apply bg-primary text-primary-foreground hover:bg-primary/80 shadow-[0_0_10px_rgba(234,255,85,0.5)] transition-all duration-200;
+    @apply bg-primary text-primary-foreground hover:bg-primary/80 transition-all duration-200;
   }
 
   .table-header-cell {

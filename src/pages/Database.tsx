@@ -14,10 +14,19 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { RefreshCcw, ArrowLeft, Trash2 } from "lucide-react";
+import { 
+  RefreshCcw, 
+  ArrowLeft, 
+  Trash2, 
+  Plus, 
+  UploadCloud, 
+  CalendarCheck 
+} from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Lead } from "@/types/lead";
+import DatabaseAddRecordDialog from "@/components/settings/DatabaseAddRecordDialog";
+import DatabaseImportDialog from "@/components/settings/DatabaseImportDialog";
 
 interface CalendlyBooking {
   id: string;
@@ -37,6 +46,10 @@ const DatabasePage = () => {
   const [isLoadingBookings, setIsLoadingBookings] = useState(true);
   const [recordToDelete, setRecordToDelete] = useState<{ id: string, type: 'lead' | 'booking' } | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isAddRecordDialogOpen, setIsAddRecordDialogOpen] = useState(false);
+  const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
+  const [activeTableForDialog, setActiveTableForDialog] = useState<'lead_generation' | 'booked_call'>('lead_generation');
+  const [isCheckingLeads, setIsCheckingLeads] = useState(false);
 
   const fetchLeads = async () => {
     setIsLoadingLeads(true);
@@ -131,44 +144,121 @@ const DatabasePage = () => {
     });
   };
 
+  const handleManualLeadCheck = async () => {
+    setIsCheckingLeads(true);
+    try {
+      const response = await fetch('https://btcwmuyemmkiteqlopce.functions.supabase.co/lead-check', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${supabase.auth.getSession()}`
+        }
+      });
+      
+      const result = await response.json();
+      
+      if (response.ok) {
+        toast.success(`Controllo completato: aggiornati ${result.updated} lead su ${result.checked} controllati`);
+        // Refresh lead data to show updated status
+        fetchLeads();
+      } else {
+        throw new Error(result.error || 'Unknown error');
+      }
+    } catch (error) {
+      console.error("Errore durante il controllo dei lead:", error);
+      toast.error("Errore durante il controllo dei lead");
+    } finally {
+      setIsCheckingLeads(false);
+    }
+  };
+
+  const openAddDialog = (type: 'lead_generation' | 'booked_call') => {
+    setActiveTableForDialog(type);
+    setIsAddRecordDialogOpen(true);
+  };
+
+  const openImportDialog = (type: 'lead_generation' | 'booked_call') => {
+    setActiveTableForDialog(type);
+    setIsImportDialogOpen(true);
+  };
+
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="flex justify-between items-center mb-8">
         <div className="flex items-center gap-4">
           <Link to="/">
-            <Button variant="outline" size="icon" className="neon-border hover:animate-glow">
+            <Button variant="outline" size="icon">
               <ArrowLeft className="h-4 w-4 text-primary" />
             </Button>
           </Link>
-          <h1 className="text-3xl font-bold neon-text">Database Records</h1>
+          <h1 className="text-3xl font-bold text-primary">Database Records</h1>
         </div>
-        <Button 
-          onClick={handleRefresh} 
-          variant="outline" 
-          className="flex items-center gap-2 neon-border hover:animate-glow"
-        >
-          <RefreshCcw className="h-4 w-4" />
-          Aggiorna dati
-        </Button>
+        <div className="flex gap-2">
+          <Button 
+            onClick={handleManualLeadCheck} 
+            variant="outline" 
+            disabled={isCheckingLeads}
+            className="flex items-center gap-2"
+          >
+            {isCheckingLeads ? (
+              <RefreshCcw className="h-4 w-4 animate-spin" />
+            ) : (
+              <CalendarCheck className="h-4 w-4" />
+            )}
+            Verifica chiamate prenotate
+          </Button>
+          <Button 
+            onClick={handleRefresh} 
+            variant="outline" 
+            className="flex items-center gap-2"
+          >
+            <RefreshCcw className="h-4 w-4" />
+            Aggiorna dati
+          </Button>
+        </div>
       </div>
       
       <Tabs defaultValue="leads" className="w-full">
-        <TabsList className="grid w-full grid-cols-2 mb-8 neon-border">
-          <TabsTrigger value="leads" className="data-[state=active]:text-primary data-[state=active]:shadow-[0_0_8px_rgba(234,255,85,0.5)]">
+        <TabsList className="grid w-full grid-cols-2 mb-8">
+          <TabsTrigger value="leads" className="data-[state=active]:text-primary">
             Lead Generation
           </TabsTrigger>
-          <TabsTrigger value="bookings" className="data-[state=active]:text-primary data-[state=active]:shadow-[0_0_8px_rgba(234,255,85,0.5)]">
+          <TabsTrigger value="bookings" className="data-[state=active]:text-primary">
             Booked Call
           </TabsTrigger>
         </TabsList>
         
         <TabsContent value="leads" className="mt-4">
-          <Card className="glass-card">
+          <Card>
             <CardHeader>
-              <CardTitle>Lead Database</CardTitle>
-              <CardDescription>
-                Tutti i lead generati tramite form o webhook
-              </CardDescription>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>Lead Database</CardTitle>
+                  <CardDescription>
+                    Tutti i lead generati tramite form o webhook
+                  </CardDescription>
+                </div>
+                <div className="flex gap-2">
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    className="flex items-center gap-1"
+                    onClick={() => openAddDialog('lead_generation')}
+                  >
+                    <Plus className="h-4 w-4" />
+                    <span>Aggiungi Record</span>
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    className="flex items-center gap-1"
+                    onClick={() => openImportDialog('lead_generation')}
+                  >
+                    <UploadCloud className="h-4 w-4" />
+                    <span>Importa CSV</span>
+                  </Button>
+                </div>
+              </div>
             </CardHeader>
             <CardContent>
               {isLoadingLeads ? (
@@ -243,12 +333,36 @@ const DatabasePage = () => {
         </TabsContent>
         
         <TabsContent value="bookings" className="mt-4">
-          <Card className="glass-card">
+          <Card>
             <CardHeader>
-              <CardTitle>Booked Call</CardTitle>
-              <CardDescription>
-                Tutte le prenotazioni ricevute tramite Calendly
-              </CardDescription>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>Booked Call</CardTitle>
+                  <CardDescription>
+                    Tutte le prenotazioni ricevute tramite Calendly
+                  </CardDescription>
+                </div>
+                <div className="flex gap-2">
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    className="flex items-center gap-1"
+                    onClick={() => openAddDialog('booked_call')}
+                  >
+                    <Plus className="h-4 w-4" />
+                    <span>Aggiungi Record</span>
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    className="flex items-center gap-1"
+                    onClick={() => openImportDialog('booked_call')}
+                  >
+                    <UploadCloud className="h-4 w-4" />
+                    <span>Importa CSV</span>
+                  </Button>
+                </div>
+              </div>
             </CardHeader>
             <CardContent>
               {isLoadingBookings ? (
@@ -309,7 +423,7 @@ const DatabasePage = () => {
 
       {/* Delete Confirmation Dialog */}
       <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <DialogContent className="glass-card">
+        <DialogContent>
           <DialogHeader>
             <DialogTitle>Conferma eliminazione</DialogTitle>
             <DialogDescription>
@@ -326,6 +440,20 @@ const DatabasePage = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      
+      {/* Add Record Dialog */}
+      <DatabaseAddRecordDialog 
+        isOpen={isAddRecordDialogOpen}
+        setIsOpen={setIsAddRecordDialogOpen}
+        tableName={activeTableForDialog}
+      />
+      
+      {/* Import CSV Dialog */}
+      <DatabaseImportDialog 
+        isOpen={isImportDialogOpen}
+        setIsOpen={setIsImportDialogOpen}
+        tableName={activeTableForDialog} 
+      />
     </div>
   );
 };
