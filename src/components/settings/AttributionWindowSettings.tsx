@@ -13,6 +13,7 @@ export default function AttributionWindowSettings() {
   const [isLoading, setIsLoading] = useState(true);
   const [attributionDays, setAttributionDays] = useState(30);
   const [checkIntervalMinutes, setCheckIntervalMinutes] = useState(15);
+  const [daysBeforeAssignable, setDaysBeforeAssignable] = useState(7);
   
   // Fetch current attribution window and check interval settings
   useEffect(() => {
@@ -47,6 +48,21 @@ export default function AttributionWindowSettings() {
         
         if (intervalData) {
           setCheckIntervalMinutes(parseInt(intervalData.value));
+        }
+
+        // Fetch days before assignable
+        const { data: daysBeforeData, error: daysBeforeError } = await supabase
+          .from('system_settings')
+          .select('value')
+          .eq('key', 'days_before_assignable')
+          .single();
+          
+        if (daysBeforeError && daysBeforeError.code !== 'PGRST116') {
+          throw daysBeforeError;
+        }
+          
+        if (daysBeforeData) {
+          setDaysBeforeAssignable(parseInt(daysBeforeData.value));
         }
       } catch (error) {
         console.error("Error fetching settings:", error);
@@ -96,6 +112,26 @@ export default function AttributionWindowSettings() {
     } catch (error) {
       console.error("Error saving check interval:", error);
       toast.error("Errore nel salvare l'intervallo di controllo");
+    }
+  };
+
+  // Save days before assignable setting
+  const saveDaysBeforeAssignable = async () => {
+    try {
+      const { error } = await supabase
+        .from('system_settings')
+        .upsert({
+          key: 'days_before_assignable',
+          value: daysBeforeAssignable.toString(),
+          descrizione: 'Numero di giorni che devono passare prima che un lead sia assegnabile'
+        });
+      
+      if (error) throw error;
+      
+      toast.success("Giorni prima dell'assegnabilità salvati con successo");
+    } catch (error) {
+      console.error("Error saving days before assignable:", error);
+      toast.error("Errore nel salvare i giorni prima dell'assegnabilità");
     }
   };
   
@@ -158,6 +194,30 @@ export default function AttributionWindowSettings() {
               <p className="text-xs text-muted-foreground mt-1">
                 Questo valore determina ogni quanti minuti il sistema controllerà se ci sono nuove prenotazioni
                 associate ai lead nel database
+              </p>
+            </div>
+
+            <div className="grid gap-2 mt-4">
+              <Label htmlFor="daysBeforeAssignable">
+                Giorni dall'acquisizione del lead prima dell'assegnabilità
+              </Label>
+              <div className="flex items-center gap-4">
+                <Input
+                  id="daysBeforeAssignable"
+                  type="number"
+                  min="0"
+                  max="365"
+                  value={daysBeforeAssignable}
+                  onChange={(e) => setDaysBeforeAssignable(parseInt(e.target.value) || 7)}
+                  disabled={isLoading}
+                />
+                <Button onClick={saveDaysBeforeAssignable} disabled={isLoading}>
+                  Salva
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                Un lead sarà considerato assegnabile solo se non ha una chiamata prenotata 
+                E se sono passati almeno questi giorni dalla sua creazione
               </p>
             </div>
           </div>

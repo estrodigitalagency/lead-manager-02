@@ -34,16 +34,17 @@ export async function addLead(lead: Omit<Lead, 'id' | 'assignable' | 'created_at
       ? lead.booked_call === "SI" 
       : !!lead.booked_call;
     
+    // Lead is assignable only if booked_call is NO
     const leadToInsert = {
       ...lead,
-      booked_call: isBooked ? 'SI' : 'NO' // Always store as string
+      booked_call: isBooked ? 'SI' : 'NO', // Always store as string
+      assignable: !isBooked  // Lead is assignable only if not booked
     };
     
     const { data, error } = await supabase
       .from('lead_generation')
       .insert({
-        ...leadToInsert,
-        assignable: isBooked // Keep this as boolean as the assignable column is still boolean
+        ...leadToInsert
       })
       .select()
       .single();
@@ -108,5 +109,33 @@ export async function markLeadsAsAssigned(numLeads: number, venditore: string, c
     console.error("Error marking leads as assigned:", error);
     toast.error("Errore nell'assegnazione dei lead");
     return [];
+  }
+}
+
+// Manually trigger the lead check function
+export async function triggerLeadCheck(): Promise<boolean> {
+  try {
+    const supabaseUrl = "https://btcwmuyemmkiteqlopce.supabase.co";
+    const response = await fetch(`${supabaseUrl}/functions/v1/lead-check`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error(`Error: ${response.status}`);
+    }
+
+    const result = await response.json();
+    console.log("Lead check result:", result);
+    
+    // Display a toast with the results
+    toast.success(`Controllo completato: ${result.updated} lead aggiornati`);
+    return true;
+  } catch (error) {
+    console.error("Error triggering lead check:", error);
+    toast.error("Errore nell'avvio del controllo dei lead");
+    return false;
   }
 }

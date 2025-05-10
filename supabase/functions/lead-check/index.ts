@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 
@@ -29,7 +28,16 @@ serve(async (req) => {
     
     const attributionWindow = attributionSettings?.value ? parseInt(attributionSettings.value) : 7 // Default to 7 days if not set
     
-    console.log(`Starting lead check with attribution window of ${attributionWindow} days`)
+    // Get days before assignable settings
+    const { data: daysBeforeAssignableSettings } = await supabase
+      .from('system_settings')
+      .select('value')
+      .eq('key', 'days_before_assignable')
+      .single()
+      
+    const daysBeforeAssignable = daysBeforeAssignableSettings?.value ? parseInt(daysBeforeAssignableSettings.value) : 7
+    
+    console.log(`Starting lead check with attribution window of ${attributionWindow} days and ${daysBeforeAssignable} days before assignable`)
     
     // Calculate the start date for attribution window
     const attributionWindowDate = new Date()
@@ -75,7 +83,12 @@ serve(async (req) => {
           continue
         }
         
-        // If we found a matching booking, update the lead
+        // Calculate days since creation
+        const createdDate = new Date(lead.created_at)
+        const today = new Date()
+        const daysSinceCreation = Math.floor((today.getTime() - createdDate.getTime()) / (1000 * 60 * 60 * 24))
+        
+        // If we found a matching booking, update the lead with booked_call = SI
         if (matchingBookings && matchingBookings.length > 0) {
           console.log(`Found booking for lead ${lead.id}, updating status`)
           
@@ -83,7 +96,7 @@ serve(async (req) => {
             .from('lead_generation')
             .update({
               booked_call: 'SI',
-              assignable: true,
+              assignable: false, // Not assignable if booked
               stato: 'prenotato'
             })
             .eq('id', lead.id)
@@ -92,6 +105,36 @@ serve(async (req) => {
             console.error(`Error updating lead ${lead.id}:`, updateError)
           } else {
             updatedLeadsCount++
+          }
+        } 
+        // Otherwise, update assignability based on days since creation
+        else {
+          // Determine if the lead should be assignable (booked_call is NO, and enough days have passed)
+          const shouldBeAssignable = daysSinceCreation >= daysBeforeAssignable
+          
+          // Check if lead already has correct assignability
+          const { data: currentLead } = await supabase
+            .from('lead_generation')
+            .select('assignable')
+            .eq('id', lead.id)
+            .single()
+            
+          // Only update if assignability needs to change
+          if (currentLead && currentLead.assignable !== shouldBeAssignable) {
+            console.log(`Updating assignability for lead ${lead.id} to ${shouldBeAssignable} based on ${daysSinceCreation} days since creation`)
+            
+            const { error: updateError } = await supabase
+              .from('lead_generation')
+              .update({
+                assignable: shouldBeAssignable
+              })
+              .eq('id', lead.id)
+              
+            if (updateError) {
+              console.error(`Error updating lead assignability ${lead.id}:`, updateError)
+            } else {
+              updatedLeadsCount++
+            }
           }
         }
       }

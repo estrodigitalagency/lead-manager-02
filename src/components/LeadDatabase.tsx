@@ -12,6 +12,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Loader2 } from "lucide-react";
 import { getUnassignedLeads } from "@/services/databaseService";
 import { Lead } from "@/types/lead";
+import { Badge } from "@/components/ui/badge";
 
 const LeadDatabase = () => {
   const [leads, setLeads] = useState<Lead[]>([]);
@@ -71,6 +72,7 @@ const LeadDatabase = () => {
             <TableHead className="table-header-cell">Email</TableHead>
             <TableHead className="table-header-cell">Telefono</TableHead>
             <TableHead className="table-header-cell">Chiamata Prenotata</TableHead>
+            <TableHead className="table-header-cell">Assegnabile</TableHead>
             <TableHead className="table-header-cell">Note</TableHead>
           </TableRow>
         </TableHeader>
@@ -83,9 +85,14 @@ const LeadDatabase = () => {
               <TableCell className="table-body-cell">{lead.email}</TableCell>
               <TableCell className="table-body-cell">{lead.telefono}</TableCell>
               <TableCell className="table-body-cell">
-                <span className={lead.booked_call === "SI" ? "text-primary" : "text-muted-foreground"}>
-                  {lead.booked_call}
-                </span>
+                <Badge variant={lead.booked_call === "SI" ? "default" : "secondary"}>
+                  {lead.booked_call || "NO"}
+                </Badge>
+              </TableCell>
+              <TableCell className="table-body-cell">
+                <Badge variant={lead.assignable ? "default" : "secondary"}>
+                  {lead.assignable ? "SI" : "NO"}
+                </Badge>
               </TableCell>
               <TableCell className="table-body-cell">{lead.note || '-'}</TableCell>
             </TableRow>
@@ -94,6 +101,6 @@ const LeadDatabase = () => {
       </Table>
     </ScrollArea>
   );
-};
+}
 
 export default LeadDatabase;
