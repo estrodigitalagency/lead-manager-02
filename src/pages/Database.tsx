@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -13,7 +12,6 @@ import { Lead } from "@/types/lead";
 interface CalendlyBooking {
   id: string;
   nome: string;
-  cognome: string;
   email: string;
   telefono: string;
   created_at: string;
@@ -131,7 +129,6 @@ const DatabasePage = () => {
                       <TableRow>
                         <TableHead>Data</TableHead>
                         <TableHead>Nome</TableHead>
-                        <TableHead>Cognome</TableHead>
                         <TableHead>Email</TableHead>
                         <TableHead>Telefono</TableHead>
                         <TableHead>Campagna</TableHead>
@@ -146,7 +143,6 @@ const DatabasePage = () => {
                           <TableRow key={lead.id}>
                             <TableCell>{formatDate(lead.created_at)}</TableCell>
                             <TableCell>{lead.nome}</TableCell>
-                            <TableCell>{lead.cognome}</TableCell>
                             <TableCell>{lead.email}</TableCell>
                             <TableCell>{lead.telefono}</TableCell>
                             <TableCell>{lead.campagna || '-'}</TableCell>
@@ -162,12 +158,12 @@ const DatabasePage = () => {
                               )}
                             </TableCell>
                             <TableCell>{lead.venditore || '-'}</TableCell>
-                            <TableCell>{lead.booked_call ? 'SI' : 'NO'}</TableCell>
+                            <TableCell>{lead.booked_call}</TableCell>
                           </TableRow>
                         ))
                       ) : (
                         <TableRow>
-                          <TableCell colSpan={9} className="text-center py-8">
+                          <TableCell colSpan={8} className="text-center py-8">
                             Nessun lead trovato
                           </TableCell>
                         </TableRow>
@@ -200,7 +196,6 @@ const DatabasePage = () => {
                       <TableRow>
                         <TableHead>Data</TableHead>
                         <TableHead>Nome</TableHead>
-                        <TableHead>Cognome</TableHead>
                         <TableHead>Email</TableHead>
                         <TableHead>Telefono</TableHead>
                       </TableRow>
@@ -211,14 +206,13 @@ const DatabasePage = () => {
                           <TableRow key={booking.id}>
                             <TableCell>{formatDate(booking.created_at)}</TableCell>
                             <TableCell>{booking.nome}</TableCell>
-                            <TableCell>{booking.cognome || '-'}</TableCell>
                             <TableCell>{booking.email}</TableCell>
                             <TableCell>{booking.telefono}</TableCell>
                           </TableRow>
                         ))
                       ) : (
                         <TableRow>
-                          <TableCell colSpan={5} className="text-center py-8">
+                          <TableCell colSpan={4} className="text-center py-8">
                             Nessuna prenotazione trovata
                           </TableCell>
                         </TableRow>
