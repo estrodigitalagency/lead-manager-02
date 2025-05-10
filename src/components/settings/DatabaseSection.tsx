@@ -40,7 +40,7 @@ export default function DatabaseSection() {
         { name: "telefono", type: "text", nullable: false, default: "-" },
         { name: "campagna", type: "text", nullable: true, default: "-" },
         { name: "created_at", type: "timestamp with time zone", nullable: false, default: "now()" },
-        { name: "assegnabile", type: "boolean", nullable: true, default: "false" },
+        { name: "assignable", type: "boolean", nullable: true, default: "false" },
         { name: "venditore", type: "text", nullable: true, default: "-" },
         { name: "booked_call", type: "text", nullable: true, default: "NO" },
       ],
@@ -64,13 +64,14 @@ export default function DatabaseSection() {
     },
     {
       name: "Venditori",
-      tableName: "salespeople_settings",
+      tableName: "venditori",
       description: "Database dei venditori e delle loro impostazioni",
       columns: [
         { name: "id", type: "uuid", nullable: false, default: "gen_random_uuid()" },
-        { name: "nome_venditore", type: "text", nullable: false, default: "-" },
-        { name: "sheets_file_id", type: "text", nullable: false, default: "-" },
-        { name: "sheets_tab_name", type: "text", nullable: false, default: "-" },
+        { name: "nome", type: "text", nullable: false, default: "-" },
+        { name: "email", type: "text", nullable: false, default: "-" },
+        { name: "lead_capacity", type: "integer", nullable: true, default: "50" },
+        { name: "lead_attuali", type: "integer", nullable: true, default: "0" },
         { name: "created_at", type: "timestamp with time zone", nullable: false, default: "now()" },
         { name: "updated_at", type: "timestamp with time zone", nullable: false, default: "now()" },
       ]

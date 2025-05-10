@@ -50,11 +50,23 @@ export default function DatabaseAddRecordDialog({
           { name: "scheduled_at", label: "Data Chiamata", required: true, type: "datetime-local" },
           { name: "note", label: "Note", required: false },
         ];
-      case "salespeople_settings":
+      case "venditori":
         return [
-          { name: "nome_venditore", label: "Nome Venditore", required: true },
-          { name: "sheets_file_id", label: "ID File Google Sheets", required: true },
-          { name: "sheets_tab_name", label: "Nome Tab Google Sheets", required: true },
+          { name: "nome", label: "Nome Venditore", required: true },
+          { name: "email", label: "Email", required: true },
+          { name: "lead_capacity", label: "Capacità Lead", required: false, type: "number", default: "50" },
+        ];
+      case "system_settings":
+        return [
+          { name: "key", label: "Chiave", required: true },
+          { name: "value", label: "Valore", required: true },
+          { name: "descrizione", label: "Descrizione", required: false },
+        ];
+      case "lead_assignments":
+        return [
+          { name: "lead_id", label: "ID Lead", required: true },
+          { name: "venditore_id", label: "ID Venditore", required: true },
+          { name: "stato", label: "Stato", required: false, default: "attivo" },
         ];
       default:
         return [];
@@ -100,9 +112,9 @@ export default function DatabaseAddRecordDialog({
     
     setIsLoading(true);
     try {
-      // Use a type assertion to tell TypeScript that tableName is a valid table name
+      // Type assertion must match the actual tables in the Supabase database
       const { error } = await supabase
-        .from(tableName as "lead_generation" | "booked_call" | "salespeople_settings" | "venditori" | "system_settings")
+        .from(tableName as "lead_generation" | "booked_call" | "lead_assignments" | "venditori" | "system_settings")
         .insert(formData);
       
       if (error) throw error;
@@ -122,7 +134,9 @@ export default function DatabaseAddRecordDialog({
     switch (tableName) {
       case "lead_generation": return "Lead Generation";
       case "booked_call": return "Booked Call";
-      case "salespeople_settings": return "Venditori";
+      case "venditori": return "Venditori";
+      case "system_settings": return "System Settings";
+      case "lead_assignments": return "Lead Assignments";
       default: return tableName;
     }
   };
