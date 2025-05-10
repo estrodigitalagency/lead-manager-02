@@ -166,3 +166,36 @@ export async function importLeadsFromCSV(leads: Omit<Lead, 'id' | 'assegnabile' 
     return false;
   }
 }
+
+// Check if a lead is assignable based on creation date and booking status
+export async function checkLeadsAssignability(): Promise<void> {
+  try {
+    // Get the assignability window setting
+    const assignabilityWindow = await getSystemSettings('lead_assignability_window_days');
+    const windowDays = assignabilityWindow ? parseInt(assignabilityWindow) : 0;
+    
+    // Calculate the cutoff date
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - windowDays);
+    const cutoffDateStr = cutoffDate.toISOString();
+    
+    console.log(`Checking leads assignability with cutoff date: ${cutoffDateStr}`);
+    
+    // Update leads that meet the criteria: created before cutoff date and no booked call
+    const { data, error } = await supabase
+      .rpc('check_leads_assignability', {
+        window_days: windowDays
+      });
+    
+    if (error) {
+      console.error("Error checking leads assignability:", error);
+      toast.error("Errore nel controllo dell'assegnabilità dei lead");
+      return;
+    }
+    
+    console.log(`Updated ${data || 0} leads assignability status`);
+    
+  } catch (error) {
+    console.error("Error checking leads assignability:", error);
+  }
+}
