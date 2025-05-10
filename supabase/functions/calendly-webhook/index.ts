@@ -30,7 +30,6 @@ serve(async (req) => {
       .from('booked_call_calendly')
       .insert({
         nome: payload.nome || '',
-        cognome: payload.cognome || '',
         email: payload.email || '',
         telefono: payload.telefono || ''
       })

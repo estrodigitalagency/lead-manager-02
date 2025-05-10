@@ -35,12 +35,12 @@ serve(async (req) => {
       .from('lead_generation')
       .insert({
         nome: payload.nome || '',
-        cognome: payload.cognome || '',
         email: payload.email || '',
         telefono: payload.telefono || '',
         campagna: payload.campagna || null,
         booked_call: isBooked ? 'SI' : 'NO', // Always store as string
-        assignable: isBooked  // Keep this as boolean as the assignable column is still boolean
+        assignable: isBooked,  // Keep this as boolean as the assignable column is still boolean
+        note: payload.note || null
       })
       .select()
 

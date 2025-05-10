@@ -34,16 +34,15 @@ export default function DatabaseAddRecordDialog({
       case "lead_generation":
         return [
           { name: "nome", label: "Nome", required: true },
-          { name: "cognome", label: "Cognome", required: true },
           { name: "email", label: "Email", required: true },
           { name: "telefono", label: "Telefono", required: true },
           { name: "campagna", label: "Campagna", required: false },
           { name: "booked_call", label: "Prenotazione Effettuata", required: false, default: "NO" },
+          { name: "note", label: "Note", required: false },
         ];
       case "booked_call_calendly":
         return [
           { name: "nome", label: "Nome", required: true },
-          { name: "cognome", label: "Cognome", required: true },
           { name: "email", label: "Email", required: true },
           { name: "telefono", label: "Telefono", required: true },
         ];
