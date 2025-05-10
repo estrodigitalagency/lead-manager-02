@@ -17,7 +17,8 @@ interface CalendlyBooking {
   email: string;
   telefono: string;
   created_at: string;
-  scheduled_at: string; // Add the missing scheduled_at property
+  scheduled_at: string;
+  note?: string;
 }
 
 const DatabasePage = () => {
@@ -52,7 +53,6 @@ const DatabasePage = () => {
         .order('created_at', { ascending: false });
       
       if (error) throw error;
-      // Since the actual structure may not match CalendlyBooking exactly, use type assertion
       setBookings(data as unknown as CalendlyBooking[] || []);
     } catch (error) {
       console.error("Errore nel caricamento delle prenotazioni:", error);

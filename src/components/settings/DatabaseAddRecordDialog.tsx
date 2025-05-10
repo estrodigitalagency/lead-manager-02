@@ -62,18 +62,13 @@ export default function DatabaseAddRecordDialog({
   };
   
   // Reset form when dialog opens/closes or table changes
-  const resetForm = () => {
-    const initialData: Record<string, string> = {};
-    getTableFields().forEach(field => {
-      initialData[field.name] = field.default || "";
-    });
-    setFormData(initialData);
-  };
-  
-  // Use useEffect to reset the form when dialog opens or tableName changes
   useEffect(() => {
     if (isOpen) {
-      resetForm();
+      const initialData: Record<string, string> = {};
+      getTableFields().forEach(field => {
+        initialData[field.name] = field.default || "";
+      });
+      setFormData(initialData);
     }
   }, [isOpen, tableName]);
   
@@ -106,7 +101,7 @@ export default function DatabaseAddRecordDialog({
     setIsLoading(true);
     try {
       const { error } = await supabase
-        .from(tableName as any)
+        .from(tableName)
         .insert(formData);
       
       if (error) throw error;

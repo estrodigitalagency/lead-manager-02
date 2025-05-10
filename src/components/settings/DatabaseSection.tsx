@@ -48,7 +48,7 @@ export default function DatabaseSection() {
     },
     {
       name: "Booked Call",
-      tableName: "booked_call_calendly",
+      tableName: "booked_call",
       description: "Database delle prenotazioni effettuate tramite Calendly",
       columns: [
         { name: "id", type: "uuid", nullable: false, default: "gen_random_uuid()" },
@@ -57,6 +57,8 @@ export default function DatabaseSection() {
         { name: "email", type: "text", nullable: false, default: "-" },
         { name: "telefono", type: "text", nullable: false, default: "-" },
         { name: "created_at", type: "timestamp with time zone", nullable: false, default: "now()" },
+        { name: "scheduled_at", type: "timestamp with time zone", nullable: false, default: "now()" },
+        { name: "note", type: "text", nullable: true, default: "-" },
       ],
       webhookEndpoint: "https://btcwmuyemmkiteqlopce.functions.supabase.co/calendly-webhook"
     },
