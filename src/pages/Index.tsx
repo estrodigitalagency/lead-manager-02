@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import LeadAssignmentForm from "@/components/LeadAssignmentForm";
 import AssignmentHistory from "@/components/AssignmentHistory";
 import LeadDatabase from "@/components/LeadDatabase";
-import { Settings } from "lucide-react";
+import { Database, Settings, Rocket } from "lucide-react";
 
 const Index = () => {
   const [refreshHistory, setRefreshHistory] = useState(false);
@@ -22,13 +22,24 @@ const Index = () => {
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="flex justify-between items-center mb-8">
-        <h1 className="text-3xl font-bold">Sistema di Assegnazione Lead</h1>
-        <Link to="/settings">
-          <Button variant="outline" className="flex items-center gap-2">
-            <Settings size={18} />
-            Impostazioni
-          </Button>
-        </Link>
+        <div className="flex items-center gap-2">
+          <Rocket size={28} className="text-primary" />
+          <h1 className="text-3xl font-bold">LeadGen Hero</h1>
+        </div>
+        <div className="flex items-center gap-3">
+          <Link to="/database">
+            <Button variant="outline" className="flex items-center gap-2">
+              <Database size={18} />
+              Database Records
+            </Button>
+          </Link>
+          <Link to="/settings">
+            <Button variant="outline" className="flex items-center gap-2">
+              <Settings size={18} />
+              Impostazioni
+            </Button>
+          </Link>
+        </div>
       </div>
       
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 mb-8">

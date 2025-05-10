@@ -17,7 +17,7 @@ import { Database, Link as LinkIcon, ArrowLeftRight, Plus, FileUp, FileText } fr
 import { importLeadsFromCSV, addLead } from "@/services/databaseService";
 import { Lead } from "@/types/lead";
 import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client"; // Add this import
+import { supabase } from "@/integrations/supabase/client";
 
 // Interfaccia per gestire l'importazione CSV
 interface CSVImportDialogProps {
@@ -323,11 +323,184 @@ const AddRecordDialog = ({ onAdd, fields, tableName }: AddRecordDialogProps) => 
   );
 };
 
-const DatabaseManagement = () => {
+// Common Action Buttons Component
+const DatabaseActions = ({ tableName, mappingFields, fields, onAdd, onImport }) => {
   const openSupabaseTable = (table: string) => {
     window.open(`https://supabase.com/dashboard/project/btcwmuyemmkiteqlopce/editor/${table}`, "_blank");
   };
 
+  return (
+    <div className="flex flex-wrap gap-2">
+      <Button 
+        variant="secondary" 
+        onClick={() => openSupabaseTable(tableName)}
+        className="flex items-center"
+      >
+        <LinkIcon className="mr-2 h-4 w-4" />
+        Apri su Supabase
+      </Button>
+      
+      <Dialog>
+        <DialogTrigger asChild>
+          <Button variant="outline" className="flex items-center">
+            <ArrowLeftRight className="mr-2 h-4 w-4" />
+            Struttura tabella
+          </Button>
+        </DialogTrigger>
+        <DialogContent className="sm:max-w-[650px]">
+          <DialogHeader>
+            <DialogTitle>Struttura tabella {tableName}</DialogTitle>
+            <DialogDescription>
+              Informazioni sulla struttura della tabella nel database
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="py-4">
+            {tableName === "lead_generation" && (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Colonna</TableHead>
+                    <TableHead>Tipo</TableHead>
+                    <TableHead>Nullable</TableHead>
+                    <TableHead>Default</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  <TableRow>
+                    <TableCell>id</TableCell>
+                    <TableCell>uuid</TableCell>
+                    <TableCell>No</TableCell>
+                    <TableCell>gen_random_uuid()</TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell>nome</TableCell>
+                    <TableCell>text</TableCell>
+                    <TableCell>No</TableCell>
+                    <TableCell>-</TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell>cognome</TableCell>
+                    <TableCell>text</TableCell>
+                    <TableCell>No</TableCell>
+                    <TableCell>-</TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell>email</TableCell>
+                    <TableCell>text</TableCell>
+                    <TableCell>No</TableCell>
+                    <TableCell>-</TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell>telefono</TableCell>
+                    <TableCell>text</TableCell>
+                    <TableCell>No</TableCell>
+                    <TableCell>-</TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell>campagna</TableCell>
+                    <TableCell>text</TableCell>
+                    <TableCell>Sì</TableCell>
+                    <TableCell>-</TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell>created_at</TableCell>
+                    <TableCell>timestamp with time zone</TableCell>
+                    <TableCell>No</TableCell>
+                    <TableCell>now()</TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell>assegnabile</TableCell>
+                    <TableCell>boolean</TableCell>
+                    <TableCell>Sì</TableCell>
+                    <TableCell>false</TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell>venditore</TableCell>
+                    <TableCell>text</TableCell>
+                    <TableCell>Sì</TableCell>
+                    <TableCell>-</TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell>booked_call</TableCell>
+                    <TableCell>text</TableCell>
+                    <TableCell>Sì</TableCell>
+                    <TableCell>'NO'</TableCell>
+                  </TableRow>
+                </TableBody>
+              </Table>
+            )}
+            
+            {tableName === "booked_call_calendly" && (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Colonna</TableHead>
+                    <TableHead>Tipo</TableHead>
+                    <TableHead>Nullable</TableHead>
+                    <TableHead>Default</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  <TableRow>
+                    <TableCell>id</TableCell>
+                    <TableCell>uuid</TableCell>
+                    <TableCell>No</TableCell>
+                    <TableCell>gen_random_uuid()</TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell>nome</TableCell>
+                    <TableCell>text</TableCell>
+                    <TableCell>No</TableCell>
+                    <TableCell>-</TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell>cognome</TableCell>
+                    <TableCell>text</TableCell>
+                    <TableCell>No</TableCell>
+                    <TableCell>-</TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell>email</TableCell>
+                    <TableCell>text</TableCell>
+                    <TableCell>No</TableCell>
+                    <TableCell>-</TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell>telefono</TableCell>
+                    <TableCell>text</TableCell>
+                    <TableCell>No</TableCell>
+                    <TableCell>-</TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell>created_at</TableCell>
+                    <TableCell>timestamp with time zone</TableCell>
+                    <TableCell>No</TableCell>
+                    <TableCell>now()</TableCell>
+                  </TableRow>
+                </TableBody>
+              </Table>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+      
+      <CSVImportDialog 
+        onImport={onImport}
+        mappingFields={mappingFields}
+        tableName={tableName}
+      />
+      
+      <AddRecordDialog 
+        onAdd={onAdd}
+        fields={fields}
+        tableName={tableName}
+      />
+    </div>
+  );
+};
+
+const DatabaseManagement = () => {
   return (
     <Card>
       <CardHeader>
@@ -338,133 +511,25 @@ const DatabaseManagement = () => {
       </CardHeader>
       <CardContent>
         <Tabs defaultValue="lead_generation">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="lead_generation">Lead Generation</TabsTrigger>
-            <TabsTrigger value="booked_call">Prenotazioni</TabsTrigger>
-            <TabsTrigger value="salespeople">Venditori</TabsTrigger>
+            <TabsTrigger value="booked_call">Call Schedulate</TabsTrigger>
           </TabsList>
           
           <TabsContent value="lead_generation" className="space-y-4 pt-4">
-            <div className="flex flex-wrap gap-2">
-              <Button 
-                variant="secondary" 
-                onClick={() => openSupabaseTable("lead_generation")}
-                className="flex items-center"
-              >
-                <LinkIcon className="mr-2 h-4 w-4" />
-                Apri su Supabase
-              </Button>
-              
-              <Dialog>
-                <DialogTrigger asChild>
-                  <Button variant="outline" className="flex items-center">
-                    <ArrowLeftRight className="mr-2 h-4 w-4" />
-                    Struttura tabella
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="sm:max-w-[650px]">
-                  <DialogHeader>
-                    <DialogTitle>Struttura tabella Lead Generation</DialogTitle>
-                    <DialogDescription>
-                      Informazioni sulla struttura della tabella nel database
-                    </DialogDescription>
-                  </DialogHeader>
-                  
-                  <div className="py-4">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Colonna</TableHead>
-                          <TableHead>Tipo</TableHead>
-                          <TableHead>Nullable</TableHead>
-                          <TableHead>Default</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        <TableRow>
-                          <TableCell>id</TableCell>
-                          <TableCell>uuid</TableCell>
-                          <TableCell>No</TableCell>
-                          <TableCell>gen_random_uuid()</TableCell>
-                        </TableRow>
-                        <TableRow>
-                          <TableCell>nome</TableCell>
-                          <TableCell>text</TableCell>
-                          <TableCell>No</TableCell>
-                          <TableCell>-</TableCell>
-                        </TableRow>
-                        <TableRow>
-                          <TableCell>cognome</TableCell>
-                          <TableCell>text</TableCell>
-                          <TableCell>No</TableCell>
-                          <TableCell>-</TableCell>
-                        </TableRow>
-                        <TableRow>
-                          <TableCell>email</TableCell>
-                          <TableCell>text</TableCell>
-                          <TableCell>No</TableCell>
-                          <TableCell>-</TableCell>
-                        </TableRow>
-                        <TableRow>
-                          <TableCell>telefono</TableCell>
-                          <TableCell>text</TableCell>
-                          <TableCell>No</TableCell>
-                          <TableCell>-</TableCell>
-                        </TableRow>
-                        <TableRow>
-                          <TableCell>campagna</TableCell>
-                          <TableCell>text</TableCell>
-                          <TableCell>Sì</TableCell>
-                          <TableCell>-</TableCell>
-                        </TableRow>
-                        <TableRow>
-                          <TableCell>created_at</TableCell>
-                          <TableCell>timestamp with time zone</TableCell>
-                          <TableCell>No</TableCell>
-                          <TableCell>now()</TableCell>
-                        </TableRow>
-                        <TableRow>
-                          <TableCell>assegnabile</TableCell>
-                          <TableCell>boolean</TableCell>
-                          <TableCell>Sì</TableCell>
-                          <TableCell>false</TableCell>
-                        </TableRow>
-                        <TableRow>
-                          <TableCell>venditore</TableCell>
-                          <TableCell>text</TableCell>
-                          <TableCell>Sì</TableCell>
-                          <TableCell>-</TableCell>
-                        </TableRow>
-                        <TableRow>
-                          <TableCell>booked_call</TableCell>
-                          <TableCell>text</TableCell>
-                          <TableCell>Sì</TableCell>
-                          <TableCell>'NO'</TableCell>
-                        </TableRow>
-                      </TableBody>
-                    </Table>
-                  </div>
-                </DialogContent>
-              </Dialog>
-              
-              <CSVImportDialog 
-                onImport={importLeadsFromCSV}
-                mappingFields={['nome', 'cognome', 'email', 'telefono', 'campagna']}
-                tableName="Lead Generation"
-              />
-              
-              <AddRecordDialog 
-                onAdd={addLead}
-                fields={[
-                  { name: 'nome', label: 'Nome' },
-                  { name: 'cognome', label: 'Cognome' },
-                  { name: 'email', label: 'Email', type: 'email' },
-                  { name: 'telefono', label: 'Telefono' },
-                  { name: 'campagna', label: 'Campagna' }
-                ]}
-                tableName="Lead Generation"
-              />
-            </div>
+            <DatabaseActions 
+              tableName="lead_generation"
+              mappingFields={['nome', 'cognome', 'email', 'telefono', 'campagna']}
+              fields={[
+                { name: 'nome', label: 'Nome' },
+                { name: 'cognome', label: 'Cognome' },
+                { name: 'email', label: 'Email', type: 'email' },
+                { name: 'telefono', label: 'Telefono' },
+                { name: 'campagna', label: 'Campagna' }
+              ]}
+              onAdd={addLead}
+              onImport={importLeadsFromCSV}
+            />
             
             <div className="space-y-2">
               <h3 className="text-lg font-medium">Webhook URL</h3>
@@ -477,113 +542,55 @@ const DatabaseManagement = () => {
           </TabsContent>
           
           <TabsContent value="booked_call" className="space-y-4 pt-4">
-            <div className="flex flex-wrap gap-2">
-              <Button 
-                variant="secondary"
-                onClick={() => openSupabaseTable("booked_call_calendly")}
-                className="flex items-center"
-              >
-                <LinkIcon className="mr-2 h-4 w-4" />
-                Apri su Supabase
-              </Button>
-              
-              <Dialog>
-                <DialogTrigger asChild>
-                  <Button variant="outline" className="flex items-center">
-                    <ArrowLeftRight className="mr-2 h-4 w-4" />
-                    Struttura tabella
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="sm:max-w-[650px]">
-                  <DialogHeader>
-                    <DialogTitle>Struttura tabella Prenotazioni</DialogTitle>
-                    <DialogDescription>
-                      Informazioni sulla struttura della tabella nel database
-                    </DialogDescription>
-                  </DialogHeader>
+            <DatabaseActions 
+              tableName="booked_call_calendly"
+              mappingFields={['nome', 'cognome', 'email', 'telefono']}
+              fields={[
+                { name: 'nome', label: 'Nome' },
+                { name: 'cognome', label: 'Cognome' },
+                { name: 'email', label: 'Email', type: 'email' },
+                { name: 'telefono', label: 'Telefono' }
+              ]}
+              onAdd={async (data) => {
+                try {
+                  const { error } = await supabase
+                    .from('booked_call_calendly')
+                    .insert([data]);
                   
-                  <div className="py-4">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Colonna</TableHead>
-                          <TableHead>Tipo</TableHead>
-                          <TableHead>Nullable</TableHead>
-                          <TableHead>Default</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        <TableRow>
-                          <TableCell>id</TableCell>
-                          <TableCell>uuid</TableCell>
-                          <TableCell>No</TableCell>
-                          <TableCell>gen_random_uuid()</TableCell>
-                        </TableRow>
-                        <TableRow>
-                          <TableCell>nome</TableCell>
-                          <TableCell>text</TableCell>
-                          <TableCell>No</TableCell>
-                          <TableCell>-</TableCell>
-                        </TableRow>
-                        <TableRow>
-                          <TableCell>cognome</TableCell>
-                          <TableCell>text</TableCell>
-                          <TableCell>No</TableCell>
-                          <TableCell>-</TableCell>
-                        </TableRow>
-                        <TableRow>
-                          <TableCell>email</TableCell>
-                          <TableCell>text</TableCell>
-                          <TableCell>No</TableCell>
-                          <TableCell>-</TableCell>
-                        </TableRow>
-                        <TableRow>
-                          <TableCell>telefono</TableCell>
-                          <TableCell>text</TableCell>
-                          <TableCell>No</TableCell>
-                          <TableCell>-</TableCell>
-                        </TableRow>
-                        <TableRow>
-                          <TableCell>created_at</TableCell>
-                          <TableCell>timestamp with time zone</TableCell>
-                          <TableCell>No</TableCell>
-                          <TableCell>now()</TableCell>
-                        </TableRow>
-                      </TableBody>
-                    </Table>
-                  </div>
-                </DialogContent>
-              </Dialog>
-              
-              <AddRecordDialog 
-                onAdd={async (data) => {
-                  try {
-                    const { error } = await supabase
-                      .from('booked_call_calendly')
-                      .insert([data]);
-                    
-                    if (error) {
-                      console.error("Error adding booking:", error);
-                      toast.error("Errore nell'aggiunta della prenotazione");
-                      return null;
-                    }
-                    
-                    return true;
-                  } catch (error) {
+                  if (error) {
                     console.error("Error adding booking:", error);
                     toast.error("Errore nell'aggiunta della prenotazione");
                     return null;
                   }
-                }}
-                fields={[
-                  { name: 'nome', label: 'Nome' },
-                  { name: 'cognome', label: 'Cognome' },
-                  { name: 'email', label: 'Email', type: 'email' },
-                  { name: 'telefono', label: 'Telefono' }
-                ]}
-                tableName="Prenotazioni"
-              />
-            </div>
+                  
+                  return true;
+                } catch (error) {
+                  console.error("Error adding booking:", error);
+                  toast.error("Errore nell'aggiunta della prenotazione");
+                  return null;
+                }
+              }}
+              onImport={async (data) => {
+                try {
+                  const { error } = await supabase
+                    .from('booked_call_calendly')
+                    .insert(data);
+                  
+                  if (error) {
+                    console.error("Error importing bookings:", error);
+                    toast.error("Errore nell'importazione delle prenotazioni");
+                    return false;
+                  }
+                  
+                  toast.success(`Importate ${data.length} prenotazioni con successo!`);
+                  return true;
+                } catch (error) {
+                  console.error("Error importing bookings:", error);
+                  toast.error("Errore nell'importazione delle prenotazioni");
+                  return false;
+                }
+              }}
+            />
             
             <div className="space-y-2">
               <h3 className="text-lg font-medium">Webhook URL</h3>
@@ -592,93 +599,6 @@ const DatabaseManagement = () => {
                   https://btcwmuyemmkiteqlopce.functions.supabase.co/calendly-webhook
                 </code>
               </div>
-            </div>
-          </TabsContent>
-          
-          <TabsContent value="salespeople" className="space-y-4 pt-4">
-            <div className="flex flex-wrap gap-2">
-              <Button 
-                variant="secondary"
-                onClick={() => openSupabaseTable("salespeople_settings")}
-                className="flex items-center"
-              >
-                <LinkIcon className="mr-2 h-4 w-4" />
-                Apri su Supabase
-              </Button>
-              
-              <Dialog>
-                <DialogTrigger asChild>
-                  <Button variant="outline" className="flex items-center">
-                    <ArrowLeftRight className="mr-2 h-4 w-4" />
-                    Struttura tabella
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="sm:max-w-[650px]">
-                  <DialogHeader>
-                    <DialogTitle>Struttura tabella Venditori</DialogTitle>
-                    <DialogDescription>
-                      Informazioni sulla struttura della tabella nel database
-                    </DialogDescription>
-                  </DialogHeader>
-                  
-                  <div className="py-4">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Colonna</TableHead>
-                          <TableHead>Tipo</TableHead>
-                          <TableHead>Nullable</TableHead>
-                          <TableHead>Default</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        <TableRow>
-                          <TableCell>id</TableCell>
-                          <TableCell>uuid</TableCell>
-                          <TableCell>No</TableCell>
-                          <TableCell>gen_random_uuid()</TableCell>
-                        </TableRow>
-                        <TableRow>
-                          <TableCell>nome_venditore</TableCell>
-                          <TableCell>text</TableCell>
-                          <TableCell>No</TableCell>
-                          <TableCell>-</TableCell>
-                        </TableRow>
-                        <TableRow>
-                          <TableCell>sheets_file_id</TableCell>
-                          <TableCell>text</TableCell>
-                          <TableCell>No</TableCell>
-                          <TableCell>-</TableCell>
-                        </TableRow>
-                        <TableRow>
-                          <TableCell>sheets_tab_name</TableCell>
-                          <TableCell>text</TableCell>
-                          <TableCell>No</TableCell>
-                          <TableCell>-</TableCell>
-                        </TableRow>
-                        <TableRow>
-                          <TableCell>created_at</TableCell>
-                          <TableCell>timestamp with time zone</TableCell>
-                          <TableCell>No</TableCell>
-                          <TableCell>now()</TableCell>
-                        </TableRow>
-                        <TableRow>
-                          <TableCell>updated_at</TableCell>
-                          <TableCell>timestamp with time zone</TableCell>
-                          <TableCell>No</TableCell>
-                          <TableCell>now()</TableCell>
-                        </TableRow>
-                      </TableBody>
-                    </Table>
-                  </div>
-                </DialogContent>
-              </Dialog>
-            </div>
-            
-            <div className="mt-4">
-              <p className="text-sm text-muted-foreground">
-                Usa la sezione "Venditori" per gestire i venditori e le loro impostazioni di Google Sheets
-              </p>
             </div>
           </TabsContent>
         </Tabs>

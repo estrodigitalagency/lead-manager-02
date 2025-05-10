@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Database, Users, Settings as SettingsIcon, Calendar } from "lucide-react";
+import { ArrowLeft, Database, Users, Calendar, Rocket } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import SalespeopleSettings from "@/components/SalespeopleSettings";
 import AttributionWindowSettings from "@/components/AttributionWindowSettings";
@@ -19,7 +19,10 @@ const Settings = () => {
               <ArrowLeft className="h-4 w-4" />
             </Button>
           </Link>
-          <h1 className="text-3xl font-bold">Impostazioni</h1>
+          <div className="flex items-center gap-2">
+            <Rocket size={24} className="text-primary" />
+            <h1 className="text-3xl font-bold">LeadGen Hero - Impostazioni</h1>
+          </div>
         </div>
         <Link to="/database">
           <Button variant="outline" className="flex items-center gap-2">
@@ -30,7 +33,7 @@ const Settings = () => {
       </div>
       
       <Tabs defaultValue="database" className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="database">
             <Database className="mr-2 h-4 w-4" />
             Database
@@ -38,10 +41,6 @@ const Settings = () => {
           <TabsTrigger value="salespeople">
             <Users className="mr-2 h-4 w-4" />
             Venditori
-          </TabsTrigger>
-          <TabsTrigger value="attributionWindow">
-            <Calendar className="mr-2 h-4 w-4" />
-            Finestre di Attribuzione
           </TabsTrigger>
         </TabsList>
         
@@ -61,10 +60,6 @@ const Settings = () => {
               <SalespeopleSettings />
             </CardContent>
           </Card>
-        </TabsContent>
-        
-        <TabsContent value="attributionWindow">
-          <AttributionWindowSettings />
         </TabsContent>
       </Tabs>
     </div>

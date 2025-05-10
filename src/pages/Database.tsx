@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -5,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { RefreshCcw, ArrowLeft } from "lucide-react";
+import { RefreshCcw, ArrowLeft, Rocket } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Lead } from "@/types/lead";
 
@@ -87,7 +88,10 @@ const DatabasePage = () => {
               <ArrowLeft className="h-4 w-4" />
             </Button>
           </Link>
-          <h1 className="text-3xl font-bold">Database Records</h1>
+          <div className="flex items-center gap-2">
+            <Rocket size={24} className="text-primary" />
+            <h1 className="text-3xl font-bold">LeadGen Hero - Records</h1>
+          </div>
         </div>
         <Button 
           onClick={handleRefresh} 
@@ -105,7 +109,7 @@ const DatabasePage = () => {
             Lead Generation
           </TabsTrigger>
           <TabsTrigger value="bookings">
-            Booked Call Calendly
+            Call Schedulate
           </TabsTrigger>
         </TabsList>
         
@@ -181,7 +185,7 @@ const DatabasePage = () => {
         <TabsContent value="bookings" className="mt-4">
           <Card>
             <CardHeader>
-              <CardTitle>Booked Call Calendly</CardTitle>
+              <CardTitle>Call Schedulate</CardTitle>
               <CardDescription>
                 Tutte le prenotazioni ricevute tramite Calendly
               </CardDescription>
