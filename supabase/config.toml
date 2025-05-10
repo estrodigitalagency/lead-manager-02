@@ -1,8 +1,1 @@
-
 project_id = "btcwmuyemmkiteqlopce"
-
-[functions.lead-generation-webhook]
-verify_jwt = false
-
-[functions.calendly-webhook]
-verify_jwt = false

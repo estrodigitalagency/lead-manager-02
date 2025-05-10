@@ -89,7 +89,8 @@ export type Database = {
       lead_generation: {
         Row: {
           assignable: boolean | null
-          booked_call: boolean | null
+          booked_call: string | null
+          campagna: string | null
           created_at: string | null
           email: string | null
           id: string
@@ -98,10 +99,12 @@ export type Database = {
           stato: string | null
           telefono: string | null
           updated_at: string | null
+          venditore: string | null
         }
         Insert: {
           assignable?: boolean | null
-          booked_call?: boolean | null
+          booked_call?: string | null
+          campagna?: string | null
           created_at?: string | null
           email?: string | null
           id?: string
@@ -110,10 +113,12 @@ export type Database = {
           stato?: string | null
           telefono?: string | null
           updated_at?: string | null
+          venditore?: string | null
         }
         Update: {
           assignable?: boolean | null
-          booked_call?: boolean | null
+          booked_call?: string | null
+          campagna?: string | null
           created_at?: string | null
           email?: string | null
           id?: string
@@ -122,6 +127,7 @@ export type Database = {
           stato?: string | null
           telefono?: string | null
           updated_at?: string | null
+          venditore?: string | null
         }
         Relationships: []
       }
