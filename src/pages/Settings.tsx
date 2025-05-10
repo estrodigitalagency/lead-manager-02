@@ -4,10 +4,11 @@ import { Link } from "react-router-dom";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { Webhook, ArrowLeft, Users } from "lucide-react";
+import { Webhook, ArrowLeft, Users, Database } from "lucide-react";
 import SalespeopleSettings from "@/components/SalespeopleSettings";
 import DatabaseSection from "@/components/settings/DatabaseSection";
 import AttributionWindowSettings from "@/components/settings/AttributionWindowSettings";
+import WebhookSettings from "@/components/settings/WebhookSettings";
 
 const Settings = () => {
   const [isTestingLead, setIsTestingLead] = useState(false);
@@ -27,13 +28,18 @@ const Settings = () => {
       </div>
       
       <Tabs defaultValue="attribution" className="w-full">
-        <TabsList className="grid w-full grid-cols-3 mb-8 neon-border">
+        <TabsList className="grid w-full grid-cols-4 mb-8 neon-border">
           <TabsTrigger value="database" className="data-[state=active]:text-primary data-[state=active]:shadow-[0_0_8px_rgba(234,255,85,0.5)]">
+            <Database className="mr-2 h-4 w-4" />
             Database
           </TabsTrigger>
           <TabsTrigger value="attribution" className="data-[state=active]:text-primary data-[state=active]:shadow-[0_0_8px_rgba(234,255,85,0.5)]">
             <Webhook className="mr-2 h-4 w-4" />
             Finestre di Attribuzione
+          </TabsTrigger>
+          <TabsTrigger value="webhooks" className="data-[state=active]:text-primary data-[state=active]:shadow-[0_0_8px_rgba(234,255,85,0.5)]">
+            <Webhook className="mr-2 h-4 w-4" />
+            Webhook
           </TabsTrigger>
           <TabsTrigger value="salespeople" className="data-[state=active]:text-primary data-[state=active]:shadow-[0_0_8px_rgba(234,255,85,0.5)]">
             <Users className="mr-2 h-4 w-4" />
@@ -47,6 +53,10 @@ const Settings = () => {
         
         <TabsContent value="attribution">
           <AttributionWindowSettings />
+        </TabsContent>
+        
+        <TabsContent value="webhooks">
+          <WebhookSettings />
         </TabsContent>
         
         <TabsContent value="salespeople">
