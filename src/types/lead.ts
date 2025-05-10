@@ -1,7 +1,7 @@
 
 export interface Lead {
   id?: string;
-  data_generazione: string;
+  created_at: string;
   nome: string;
   cognome: string;
   email: string;

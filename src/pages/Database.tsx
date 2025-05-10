@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -16,7 +15,7 @@ interface CalendlyBooking {
   cognome: string;
   email: string;
   telefono: string;
-  data_generazione: string;
+  created_at: string;
 }
 
 const DatabasePage = () => {
@@ -31,7 +30,7 @@ const DatabasePage = () => {
       const { data, error } = await supabase
         .from('lead_generation')
         .select('*')
-        .order('data_generazione', { ascending: false });
+        .order('created_at', { ascending: false });
       
       if (error) throw error;
       setLeads(data || []);
@@ -48,7 +47,7 @@ const DatabasePage = () => {
       const { data, error } = await supabase
         .from('booked_call_calendly')
         .select('*')
-        .order('data_generazione', { ascending: false });
+        .order('created_at', { ascending: false });
       
       if (error) throw error;
       setBookings(data || []);
@@ -136,13 +135,14 @@ const DatabasePage = () => {
                         <TableHead>Campagna</TableHead>
                         <TableHead>Stato</TableHead>
                         <TableHead>Venditore</TableHead>
+                        <TableHead>Chiamata Prenotata</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {leads.length > 0 ? (
                         leads.map((lead) => (
                           <TableRow key={lead.id}>
-                            <TableCell>{formatDate(lead.data_generazione)}</TableCell>
+                            <TableCell>{formatDate(lead.created_at)}</TableCell>
                             <TableCell>{lead.nome}</TableCell>
                             <TableCell>{lead.cognome}</TableCell>
                             <TableCell>{lead.email}</TableCell>
@@ -160,11 +160,12 @@ const DatabasePage = () => {
                               )}
                             </TableCell>
                             <TableCell>{lead.venditore || '-'}</TableCell>
+                            <TableCell>{lead.booked_call || 'NO'}</TableCell>
                           </TableRow>
                         ))
                       ) : (
                         <TableRow>
-                          <TableCell colSpan={8} className="text-center py-8">
+                          <TableCell colSpan={9} className="text-center py-8">
                             Nessun lead trovato
                           </TableCell>
                         </TableRow>
@@ -206,7 +207,7 @@ const DatabasePage = () => {
                       {bookings.length > 0 ? (
                         bookings.map((booking) => (
                           <TableRow key={booking.id}>
-                            <TableCell>{formatDate(booking.data_generazione)}</TableCell>
+                            <TableCell>{formatDate(booking.created_at)}</TableCell>
                             <TableCell>{booking.nome}</TableCell>
                             <TableCell>{booking.cognome}</TableCell>
                             <TableCell>{booking.email}</TableCell>

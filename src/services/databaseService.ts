@@ -26,7 +26,7 @@ export async function getUnassignedLeads(): Promise<Lead[]> {
 }
 
 // Add a new lead (e.g. from webhook)
-export async function addLead(lead: Omit<Lead, 'id' | 'assegnato'>): Promise<Lead | null> {
+export async function addLead(lead: Omit<Lead, 'id' | 'assegnato' | 'created_at'>): Promise<Lead | null> {
   try {
     const { data, error } = await supabase
       .from('lead_generation')
@@ -59,7 +59,7 @@ export async function markLeadsAsAssigned(numLeads: number, venditore: string, c
       .from('lead_generation')
       .select('*')
       .eq('assegnato', false)
-      .order('data_generazione', { ascending: true })
+      .order('created_at', { ascending: true })
       .limit(numLeads);
     
     if (fetchError || !leadsToAssign || leadsToAssign.length < numLeads) {
