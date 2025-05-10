@@ -26,25 +26,3 @@ export async function assignLeads(data: LeadAssignmentData): Promise<void> {
     throw error;
   }
 }
-
-/**
- * Checks the assignability status of leads based on booked call status
- * This function calls an RPC to update lead assignability
- */
-export async function checkLeadsAssignability(): Promise<void> {
-  try {
-    // Call the RPC function without any parameters
-    const { data, error } = await supabase.rpc('check_leads_assignability');
-
-    if (error) {
-      console.error("Error checking leads assignability:", error);
-      throw error;
-    }
-
-    console.log("Leads assignability checked:", data);
-    return Promise.resolve();
-  } catch (error) {
-    console.error("Error checking leads assignability:", error);
-    throw error;
-  }
-}

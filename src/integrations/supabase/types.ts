@@ -9,120 +9,176 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      booked_call_calendly: {
+      booked_call: {
         Row: {
-          cognome: string
-          created_at: string
-          email: string
+          created_at: string | null
           id: string
-          nome: string
-          telefono: string
+          lead_id: string | null
+          note: string | null
+          scheduled_at: string
+          stato: string | null
+          updated_at: string | null
         }
         Insert: {
-          cognome: string
-          created_at?: string
-          email: string
+          created_at?: string | null
           id?: string
-          nome: string
-          telefono: string
+          lead_id?: string | null
+          note?: string | null
+          scheduled_at: string
+          stato?: string | null
+          updated_at?: string | null
         }
         Update: {
-          cognome?: string
-          created_at?: string
-          email?: string
+          created_at?: string | null
           id?: string
-          nome?: string
-          telefono?: string
+          lead_id?: string | null
+          note?: string | null
+          scheduled_at?: string
+          stato?: string | null
+          updated_at?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "booked_call_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "lead_generation"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lead_assignments: {
+        Row: {
+          assigned_at: string | null
+          id: string
+          lead_id: string | null
+          stato: string | null
+          venditore_id: string | null
+        }
+        Insert: {
+          assigned_at?: string | null
+          id?: string
+          lead_id?: string | null
+          stato?: string | null
+          venditore_id?: string | null
+        }
+        Update: {
+          assigned_at?: string | null
+          id?: string
+          lead_id?: string | null
+          stato?: string | null
+          venditore_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_assignments_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "lead_generation"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lead_assignments_venditore_id_fkey"
+            columns: ["venditore_id"]
+            isOneToOne: false
+            referencedRelation: "venditori"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       lead_generation: {
         Row: {
-          assegnabile: boolean | null
-          booked_call: string | null
-          campagna: string | null
-          cognome: string
-          created_at: string
-          email: string
+          assignable: boolean | null
+          booked_call: boolean | null
+          created_at: string | null
+          email: string | null
           id: string
           nome: string
-          telefono: string
-          venditore: string | null
+          note: string | null
+          stato: string | null
+          telefono: string | null
+          updated_at: string | null
         }
         Insert: {
-          assegnabile?: boolean | null
-          booked_call?: string | null
-          campagna?: string | null
-          cognome: string
-          created_at?: string
-          email: string
+          assignable?: boolean | null
+          booked_call?: boolean | null
+          created_at?: string | null
+          email?: string | null
           id?: string
           nome: string
-          telefono: string
-          venditore?: string | null
+          note?: string | null
+          stato?: string | null
+          telefono?: string | null
+          updated_at?: string | null
         }
         Update: {
-          assegnabile?: boolean | null
-          booked_call?: string | null
-          campagna?: string | null
-          cognome?: string
-          created_at?: string
-          email?: string
+          assignable?: boolean | null
+          booked_call?: boolean | null
+          created_at?: string | null
+          email?: string | null
           id?: string
           nome?: string
-          telefono?: string
-          venditore?: string | null
-        }
-        Relationships: []
-      }
-      salespeople_settings: {
-        Row: {
-          created_at: string
-          id: string
-          nome_venditore: string
-          sheets_file_id: string
-          sheets_tab_name: string
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          nome_venditore: string
-          sheets_file_id: string
-          sheets_tab_name: string
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          nome_venditore?: string
-          sheets_file_id?: string
-          sheets_tab_name?: string
-          updated_at?: string
+          note?: string | null
+          stato?: string | null
+          telefono?: string | null
+          updated_at?: string | null
         }
         Relationships: []
       }
       system_settings: {
         Row: {
-          created_at: string | null
-          description: string | null
+          descrizione: string | null
+          id: string
           key: string
           updated_at: string | null
           value: string
         }
         Insert: {
-          created_at?: string | null
-          description?: string | null
+          descrizione?: string | null
+          id?: string
           key: string
           updated_at?: string | null
           value: string
         }
         Update: {
-          created_at?: string | null
-          description?: string | null
+          descrizione?: string | null
+          id?: string
           key?: string
           updated_at?: string | null
           value?: string
+        }
+        Relationships: []
+      }
+      venditori: {
+        Row: {
+          created_at: string | null
+          email: string
+          id: string
+          lead_attuali: number | null
+          lead_capacity: number | null
+          nome: string
+          stato: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          email: string
+          id?: string
+          lead_attuali?: number | null
+          lead_capacity?: number | null
+          nome: string
+          stato?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          email?: string
+          id?: string
+          lead_attuali?: number | null
+          lead_capacity?: number | null
+          nome?: string
+          stato?: string | null
+          updated_at?: string | null
         }
         Relationships: []
       }
@@ -131,7 +187,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      check_leads_assignability: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never
