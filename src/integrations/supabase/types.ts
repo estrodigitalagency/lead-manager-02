@@ -11,30 +11,42 @@ export type Database = {
     Tables: {
       booked_call: {
         Row: {
+          cognome: string | null
           created_at: string | null
+          email: string | null
           id: string
           lead_id: string | null
+          nome: string | null
           note: string | null
           scheduled_at: string
           stato: string | null
+          telefono: string | null
           updated_at: string | null
         }
         Insert: {
+          cognome?: string | null
           created_at?: string | null
+          email?: string | null
           id?: string
           lead_id?: string | null
+          nome?: string | null
           note?: string | null
           scheduled_at: string
           stato?: string | null
+          telefono?: string | null
           updated_at?: string | null
         }
         Update: {
+          cognome?: string | null
           created_at?: string | null
+          email?: string | null
           id?: string
           lead_id?: string | null
+          nome?: string | null
           note?: string | null
           scheduled_at?: string
           stato?: string | null
+          telefono?: string | null
           updated_at?: string | null
         }
         Relationships: [
@@ -91,6 +103,7 @@ export type Database = {
           assignable: boolean | null
           booked_call: string | null
           campagna: string | null
+          cognome: string | null
           created_at: string | null
           email: string | null
           id: string
@@ -105,6 +118,7 @@ export type Database = {
           assignable?: boolean | null
           booked_call?: string | null
           campagna?: string | null
+          cognome?: string | null
           created_at?: string | null
           email?: string | null
           id?: string
@@ -119,6 +133,7 @@ export type Database = {
           assignable?: boolean | null
           booked_call?: string | null
           campagna?: string | null
+          cognome?: string | null
           created_at?: string | null
           email?: string | null
           id?: string

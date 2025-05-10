@@ -27,11 +27,14 @@ serve(async (req) => {
     // Insert the booking data to the booked_call_calendly table
     // created_at will be set to now() by the default value in the database
     const { data, error } = await supabase
-      .from('booked_call_calendly')
+      .from('booked_call')
       .insert({
         nome: payload.nome || '',
+        cognome: payload.cognome || '',
         email: payload.email || '',
-        telefono: payload.telefono || ''
+        telefono: payload.telefono || '',
+        scheduled_at: payload.scheduled_at || new Date().toISOString(),
+        note: payload.note || null
       })
       .select()
 
@@ -47,7 +50,7 @@ serve(async (req) => {
     if (payload.email || payload.telefono) {
       const { error: updateError } = await supabase
         .from('lead_generation')
-        .update({ booked_call: 'SI' })  // Aggiornato per utilizzare 'SI' invece di true
+        .update({ booked_call: 'SI' })
         .or(`email.eq.${payload.email},telefono.eq.${payload.telefono}`)
 
       if (updateError) {

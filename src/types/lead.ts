@@ -3,6 +3,7 @@ export interface Lead {
   id?: string;
   created_at: string;
   nome: string;
+  cognome: string;
   email: string;
   telefono: string;
   assignable?: boolean;
@@ -12,5 +13,4 @@ export interface Lead {
   note?: string;
   stato?: string;
   updated_at?: string;
-  // La colonna cognome è stata rimossa perché non esiste nella tabella
 }

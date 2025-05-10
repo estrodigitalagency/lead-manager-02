@@ -34,17 +34,21 @@ export default function DatabaseAddRecordDialog({
       case "lead_generation":
         return [
           { name: "nome", label: "Nome", required: true },
+          { name: "cognome", label: "Cognome", required: true },
           { name: "email", label: "Email", required: true },
           { name: "telefono", label: "Telefono", required: true },
           { name: "campagna", label: "Campagna", required: false },
           { name: "booked_call", label: "Prenotazione Effettuata", required: false, default: "NO" },
           { name: "note", label: "Note", required: false },
         ];
-      case "booked_call_calendly":
+      case "booked_call":
         return [
           { name: "nome", label: "Nome", required: true },
+          { name: "cognome", label: "Cognome", required: true },
           { name: "email", label: "Email", required: true },
           { name: "telefono", label: "Telefono", required: true },
+          { name: "scheduled_at", label: "Data Chiamata", required: true },
+          { name: "note", label: "Note", required: false },
         ];
       case "salespeople_settings":
         return [
@@ -149,6 +153,7 @@ export default function DatabaseAddRecordDialog({
                 value={formData[field.name] || ""}
                 onChange={handleChange}
                 required={field.required}
+                type={field.name === "scheduled_at" ? "datetime-local" : "text"}
               />
             </div>
           ))}

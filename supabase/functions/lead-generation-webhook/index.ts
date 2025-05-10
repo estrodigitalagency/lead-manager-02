@@ -35,6 +35,7 @@ serve(async (req) => {
       .from('lead_generation')
       .insert({
         nome: payload.nome || '',
+        cognome: payload.cognome || '',
         email: payload.email || '',
         telefono: payload.telefono || '',
         campagna: payload.campagna || null,

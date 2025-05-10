@@ -67,6 +67,7 @@ const LeadDatabase = () => {
           <TableRow>
             <TableHead>Data</TableHead>
             <TableHead>Nome</TableHead>
+            <TableHead>Cognome</TableHead>
             <TableHead>Email</TableHead>
             <TableHead>Telefono</TableHead>
             <TableHead>Chiamata Prenotata</TableHead>
@@ -78,6 +79,7 @@ const LeadDatabase = () => {
             <TableRow key={lead.id}>
               <TableCell>{formatDate(lead.created_at)}</TableCell>
               <TableCell>{lead.nome}</TableCell>
+              <TableCell>{lead.cognome || '-'}</TableCell>
               <TableCell>{lead.email}</TableCell>
               <TableCell>{lead.telefono}</TableCell>
               <TableCell>{lead.booked_call}</TableCell>
