@@ -1,4 +1,3 @@
-
 import { Lead } from "@/types/lead";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -182,8 +181,7 @@ export async function checkLeadsAssignability(): Promise<void> {
     console.log(`Checking leads assignability with cutoff date: ${cutoffDateStr}`);
     
     // Update leads that meet the criteria: created before cutoff date and no booked call
-    // Fixing the error by removing arguments from the RPC call
-    // or by passing the right parameter type if needed
+    // Fix the error by calling the RPC without parameters
     const { data, error } = await supabase
       .rpc('check_leads_assignability');
     
