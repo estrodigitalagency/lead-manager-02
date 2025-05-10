@@ -30,6 +30,7 @@ const formSchema = z.object({
     .min(1, "Inserisci almeno 1 lead"),
   venditore: z.string().min(1, "Seleziona un venditore"),
   campagna: z.string().optional(),
+  webhookUrl: z.string().url("Inserisci un URL valido").optional().or(z.literal('')),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -51,6 +52,7 @@ const LeadAssignmentForm = ({ onAssignmentSuccess }: LeadAssignmentFormProps) =>
       numLead: undefined,
       venditore: "",
       campagna: "",
+      webhookUrl: "",
     },
   });
 
@@ -85,11 +87,11 @@ const LeadAssignmentForm = ({ onAssignmentSuccess }: LeadAssignmentFormProps) =>
 
     setIsLoading(true);
     try {
-      // Ensure numLead is treated as a required field when passing to assignLeads
       await assignLeads({
         numLead: values.numLead,
         venditore: values.venditore,
         campagna: values.campagna || undefined,
+        webhookUrl: values.webhookUrl || undefined,
       });
       
       toast.success("Lead assegnati con successo!");
@@ -191,6 +193,25 @@ const LeadAssignmentForm = ({ onAssignmentSuccess }: LeadAssignmentFormProps) =>
                 <FormLabel>Campagna</FormLabel>
                 <FormControl>
                   <Input placeholder="Inserisci la campagna (opzionale)" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          {/* Webhook URL Field (Optional) */}
+          <FormField
+            control={form.control}
+            name="webhookUrl"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>URL Webhook</FormLabel>
+                <FormControl>
+                  <Input 
+                    placeholder="Inserisci l'URL del webhook (opzionale)"
+                    type="url"
+                    {...field}
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>

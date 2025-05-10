@@ -109,32 +109,38 @@ serve(async (req) => {
         } 
         // No booking found - check if should be assignable based on "booked_call" status and days since creation
         else {
-          // A lead is assignable if:
-          // 1. No booking (already confirmed by this branch)
-          // 2. booked_call is not "SI"
+          // CORRECTED LOGIC:
+          // A lead is assignable ONLY when:
+          // 1. No booking found (already confirmed by this branch)
+          // 2. booked_call is "NO"
           // 3. Days since creation >= daysBeforeAssignable setting
           
-          // If booked_call is already "SI" but no booking exists, update it to "NO"
-          let updateNeeded = lead.booked_call === 'SI'
-          const shouldBeNO = updateNeeded
+          // First, ensure booked_call status is accurate (if no booking exists, set to "NO")
+          let updateNeeded = false
+          const updates: Record<string, any> = {}
           
-          // Determine assignability based on days since creation
+          // If booked_call is "SI" but no booking exists, update it to "NO"
+          if (lead.booked_call === 'SI') {
+            updates.booked_call = 'NO'
+            updateNeeded = true
+          }
+          
+          // Check if days since creation is sufficient
           const enoughDaysPassed = daysSinceCreation >= daysBeforeAssignable
-          const shouldBeAssignable = enoughDaysPassed
           
-          // Check if assignability status needs to be updated
-          updateNeeded = updateNeeded || lead.assignable !== shouldBeAssignable
+          // Determine assignability - ONLY assignable if both conditions are met:
+          // 1. booked_call is "NO" (or will be updated to "NO")
+          // 2. Enough days have passed
+          const shouldBeAssignable = (lead.booked_call === 'NO' || updates.booked_call === 'NO') && enoughDaysPassed
+          
+          // If assignability needs to change, update it
+          if (lead.assignable !== shouldBeAssignable) {
+            updates.assignable = shouldBeAssignable
+            updateNeeded = true
+          }
           
           if (updateNeeded) {
-            const updates: Record<string, any> = {}
-            
-            if (shouldBeNO) {
-              updates.booked_call = 'NO'
-            }
-            
-            updates.assignable = shouldBeAssignable
-            
-            console.log(`Updating lead ${lead.id}: booked_call=${shouldBeNO ? 'NO' : lead.booked_call}, assignable=${shouldBeAssignable} (days since creation: ${daysSinceCreation})`)
+            console.log(`Updating lead ${lead.id}: booked_call=${updates.booked_call || lead.booked_call}, assignable=${shouldBeAssignable} (days since creation: ${daysSinceCreation})`)
             
             const { error: updateError } = await supabase
               .from('lead_generation')

@@ -2,40 +2,53 @@
 project_id = "btcwmuyemmkiteqlopce"
 
 [api]
-enabled = true
 port = 54321
 schemas = ["public", "storage", "graphql_public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[api.notify]
+enabled = false
 
 [db]
 port = 54322
+shadow_port = 54320
+major_version = 15
 
-[studio]
-enabled = true
-port = 54323
-api_url = "http://localhost"
-
-[inbucket]
-enabled = true
-port = 54324
-
-[storage]
-enabled = true
-port = 54325
-
-[auth]
-enabled = true
-port = 54326
+[db.pooler]
+enabled = false
+port = 54329
+pool_mode = "transaction"
+default_pool_size = 20
+max_client_conn = 100
 
 [realtime]
-enabled = true
-port = 54327
+enabled = false
 
-[functions]
-[functions.calendly-webhook]
+[storage]
+enabled = false
+
+[studio]
+port = 54323
+enabled = true
+
+[inbucket]
+port = 54324
+smtp_port = 54325
+pop3_port = 54326
+enabled = false
+
+[vector]
+enabled = false
+
+[functions.lead-check]
 verify_jwt = false
 
 [functions.lead-generation-webhook]
 verify_jwt = false
 
-[functions.lead-check]
+[functions.lead-assign-webhook]
+verify_jwt = false
+
+[functions.calendly-webhook]
 verify_jwt = false

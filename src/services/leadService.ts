@@ -6,12 +6,18 @@ export interface LeadAssignmentData {
   numLead: number;
   venditore: string;
   campagna?: string;
+  webhookUrl?: string;
 }
 
 export async function assignLeads(data: LeadAssignmentData): Promise<void> {
   try {
     // Mark the leads as assigned in our local database
-    const assignedLeads = await markLeadsAsAssigned(data.numLead, data.venditore, data.campagna);
+    const assignedLeads = await markLeadsAsAssigned(
+      data.numLead, 
+      data.venditore, 
+      data.campagna, 
+      data.webhookUrl
+    );
 
     if (assignedLeads.length < data.numLead) {
       throw new Error(`Solo ${assignedLeads.length} lead disponibili per l'assegnazione.`);

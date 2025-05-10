@@ -72,7 +72,7 @@ export async function addLead(lead: Omit<Lead, 'id' | 'assignable' | 'created_at
 }
 
 // Mark leads as assigned
-export async function markLeadsAsAssigned(numLeads: number, venditore: string, campagna?: string): Promise<Lead[]> {
+export async function markLeadsAsAssigned(numLeads: number, venditore: string, campagna?: string, webhookUrl?: string): Promise<Lead[]> {
   try {
     // Get unassigned leads that are assignable up to the requested number
     const { data: leadsToAssign, error: fetchError } = await supabase
@@ -109,6 +109,53 @@ export async function markLeadsAsAssigned(numLeads: number, venditore: string, c
       console.error("Error marking leads as assigned:", updateError);
       toast.error("Errore nell'assegnazione dei lead");
       return [];
+    }
+    
+    // If a webhook URL is provided, send the lead data to the webhook
+    if (webhookUrl && leadsToAssign && leadsToAssign.length > 0) {
+      try {
+        // Get venditore info from salespeople if available
+        const { data: venditorInfo } = await supabase
+          .from('venditori')
+          .select('sheets_file_id, sheets_tab_name')
+          .eq('nome', venditore)
+          .single();
+        
+        const venditorData = {
+          nome: venditore,
+          sheets_file_id: venditorInfo?.sheets_file_id || '',
+          sheets_tab_name: venditorInfo?.sheets_tab_name || ''
+        };
+        
+        // Prepare data for webhook
+        const assignmentData = {
+          venditore: venditorData,
+          leads: leadsToAssign.map(lead => ({
+            nome: lead.nome,
+            cognome: lead.cognome || '',
+            email: lead.email || '',
+            telefono: lead.telefono || '',
+            created_at: lead.created_at,
+            id: lead.id
+          })),
+          timestamp: new Date().toISOString(),
+          campagna: campagna || ''
+        };
+        
+        // Call the webhook edge function to send the data
+        const response = await supabase.functions.invoke('lead-assign-webhook', {
+          body: { assignmentData, webhookUrl }
+        });
+        
+        if (response.error) {
+          console.error("Error sending lead data to webhook:", response.error);
+        } else {
+          console.log("Lead data sent to webhook successfully:", response.data);
+        }
+      } catch (webhookError) {
+        console.error("Error processing webhook for lead assignment:", webhookError);
+        // Don't return error here, as the leads were successfully assigned in the database
+      }
     }
     
     // Return the assigned leads
