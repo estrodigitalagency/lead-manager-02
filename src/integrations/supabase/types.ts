@@ -13,7 +13,6 @@ export type Database = {
         Row: {
           cognome: string
           created_at: string
-          data_generazione: string
           email: string
           id: string
           nome: string
@@ -22,7 +21,6 @@ export type Database = {
         Insert: {
           cognome: string
           created_at?: string
-          data_generazione?: string
           email: string
           id?: string
           nome: string
@@ -31,7 +29,6 @@ export type Database = {
         Update: {
           cognome?: string
           created_at?: string
-          data_generazione?: string
           email?: string
           id?: string
           nome?: string
@@ -42,10 +39,10 @@ export type Database = {
       lead_generation: {
         Row: {
           assegnato: boolean | null
+          booked_call: string | null
           campagna: string | null
           cognome: string
           created_at: string
-          data_generazione: string
           email: string
           id: string
           nome: string
@@ -54,10 +51,10 @@ export type Database = {
         }
         Insert: {
           assegnato?: boolean | null
+          booked_call?: string | null
           campagna?: string | null
           cognome: string
           created_at?: string
-          data_generazione?: string
           email: string
           id?: string
           nome: string
@@ -66,10 +63,10 @@ export type Database = {
         }
         Update: {
           assegnato?: boolean | null
+          booked_call?: string | null
           campagna?: string | null
           cognome?: string
           created_at?: string
-          data_generazione?: string
           email?: string
           id?: string
           nome?: string

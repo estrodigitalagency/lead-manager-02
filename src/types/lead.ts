@@ -9,4 +9,5 @@ export interface Lead {
   assegnato?: boolean;
   venditore?: string;
   campagna?: string;
+  booked_call?: string;
 }

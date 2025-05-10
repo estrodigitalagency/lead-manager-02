@@ -60,6 +60,7 @@ const LeadDatabase = () => {
             <TableHead>Cognome</TableHead>
             <TableHead>Email</TableHead>
             <TableHead>Telefono</TableHead>
+            <TableHead>Chiamata Prenotata</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -70,6 +71,7 @@ const LeadDatabase = () => {
               <TableCell>{lead.cognome}</TableCell>
               <TableCell>{lead.email}</TableCell>
               <TableCell>{lead.telefono}</TableCell>
+              <TableCell>{lead.booked_call || 'NO'}</TableCell>
             </TableRow>
           ))}
         </TableBody>
