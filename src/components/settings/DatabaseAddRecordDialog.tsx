@@ -47,7 +47,7 @@ export default function DatabaseAddRecordDialog({
           { name: "cognome", label: "Cognome", required: true },
           { name: "email", label: "Email", required: true },
           { name: "telefono", label: "Telefono", required: true },
-          { name: "scheduled_at", label: "Data Chiamata", required: true },
+          { name: "scheduled_at", label: "Data Chiamata", required: true, type: "datetime-local" },
           { name: "note", label: "Note", required: false },
         ];
       case "salespeople_settings":
@@ -125,7 +125,7 @@ export default function DatabaseAddRecordDialog({
   const getTableDisplayName = () => {
     switch (tableName) {
       case "lead_generation": return "Lead Generation";
-      case "booked_call_calendly": return "Booked Call";
+      case "booked_call": return "Booked Call";
       case "salespeople_settings": return "Venditori";
       default: return tableName;
     }
@@ -154,7 +154,7 @@ export default function DatabaseAddRecordDialog({
                 value={formData[field.name] || ""}
                 onChange={handleChange}
                 required={field.required}
-                type={field.name === "scheduled_at" ? "datetime-local" : "text"}
+                type={field.type || "text"}
               />
             </div>
           ))}
