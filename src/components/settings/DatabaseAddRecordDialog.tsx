@@ -100,8 +100,9 @@ export default function DatabaseAddRecordDialog({
     
     setIsLoading(true);
     try {
+      // Use a type assertion to tell TypeScript that tableName is a valid table name
       const { error } = await supabase
-        .from(tableName)
+        .from(tableName as "lead_generation" | "booked_call" | "salespeople_settings" | "venditori" | "system_settings")
         .insert(formData);
       
       if (error) throw error;
