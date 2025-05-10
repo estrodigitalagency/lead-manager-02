@@ -29,11 +29,18 @@ export async function getUnassignedLeads(): Promise<Lead[]> {
 // Add a new lead (e.g. from webhook)
 export async function addLead(lead: Omit<Lead, 'id' | 'assignable' | 'created_at'>): Promise<Lead | null> {
   try {
+    // Convert string booked_call to boolean if it exists
+    const leadToInsert = {
+      ...lead,
+      // If booked_call is a string "SI", convert to true, otherwise false
+      booked_call: lead.booked_call === true || lead.booked_call === "SI"
+    };
+    
     const { data, error } = await supabase
       .from('lead_generation')
       .insert({
-        ...lead,
-        assignable: lead.booked_call === 'SI'
+        ...leadToInsert,
+        assignable: leadToInsert.booked_call
       })
       .select()
       .single();
@@ -77,12 +84,13 @@ export async function markLeadsAsAssigned(numLeads: number, venditore: string, c
       return [];
     }
     
+    // Create update object with only fields that exist in the database
+    const updateObj: Record<string, any> = { venditore };
+    if (campagna) updateObj.campagna = campagna;
+    
     const { error: updateError } = await supabase
       .from('lead_generation')
-      .update({ 
-        venditore,
-        campagna
-      })
+      .update(updateObj)
       .in('id', leadIds);
     
     if (updateError) {

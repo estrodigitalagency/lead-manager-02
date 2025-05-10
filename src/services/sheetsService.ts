@@ -38,7 +38,14 @@ export const fetchAssignmentHistory = async (): Promise<string[]> => {
     return data.map(lead => {
       const date = new Date(lead.created_at).toLocaleDateString('it-IT');
       const time = new Date(lead.created_at).toLocaleTimeString('it-IT');
-      return `${date} ${time} - ${lead.nome} assegnato${lead.campagna ? ` (Campagna: ${lead.campagna})` : ''}`;
+      let message = `${date} ${time} - ${lead.nome} assegnato`;
+      
+      // Add campaign info only if the property exists and has a value
+      if ('campagna' in lead && lead.campagna) {
+        message += ` (Campagna: ${lead.campagna})`;
+      }
+      
+      return message;
     });
   } catch (error) {
     console.error("Failed to fetch assignment history:", error);

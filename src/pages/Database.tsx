@@ -34,7 +34,7 @@ const DatabasePage = () => {
         .order('created_at', { ascending: false });
       
       if (error) throw error;
-      setLeads(data || []);
+      setLeads(data as Lead[] || []);
     } catch (error) {
       console.error("Errore nel caricamento dei lead:", error);
     } finally {
@@ -46,12 +46,13 @@ const DatabasePage = () => {
     setIsLoadingBookings(true);
     try {
       const { data, error } = await supabase
-        .from('booked_call_calendly')
+        .from('booked_call')
         .select('*')
         .order('created_at', { ascending: false });
       
       if (error) throw error;
-      setBookings(data || []);
+      // Since the actual structure may not match CalendlyBooking exactly, use type assertion
+      setBookings(data as unknown as CalendlyBooking[] || []);
     } catch (error) {
       console.error("Errore nel caricamento delle prenotazioni:", error);
     } finally {
@@ -150,7 +151,7 @@ const DatabasePage = () => {
                             <TableCell>{lead.telefono}</TableCell>
                             <TableCell>{lead.campagna || '-'}</TableCell>
                             <TableCell>
-                              {lead.assegnabile ? (
+                              {lead.assignable ? (
                                 <Badge variant="outline" className="bg-green-100 text-green-800 border-green-200">
                                   Assegnabile
                                 </Badge>
@@ -161,7 +162,7 @@ const DatabasePage = () => {
                               )}
                             </TableCell>
                             <TableCell>{lead.venditore || '-'}</TableCell>
-                            <TableCell>{lead.booked_call || 'NO'}</TableCell>
+                            <TableCell>{lead.booked_call ? 'SI' : 'NO'}</TableCell>
                           </TableRow>
                         ))
                       ) : (
@@ -210,7 +211,7 @@ const DatabasePage = () => {
                           <TableRow key={booking.id}>
                             <TableCell>{formatDate(booking.created_at)}</TableCell>
                             <TableCell>{booking.nome}</TableCell>
-                            <TableCell>{booking.cognome}</TableCell>
+                            <TableCell>{booking.cognome || '-'}</TableCell>
                             <TableCell>{booking.email}</TableCell>
                             <TableCell>{booking.telefono}</TableCell>
                           </TableRow>

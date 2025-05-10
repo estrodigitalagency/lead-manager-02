@@ -50,6 +50,16 @@ const LeadDatabase = () => {
     );
   }
 
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleString('it-IT', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
   return (
     <ScrollArea className="h-[400px]">
       <Table>
@@ -66,12 +76,12 @@ const LeadDatabase = () => {
         <TableBody>
           {leads.map((lead) => (
             <TableRow key={lead.id}>
-              <TableCell>{lead.created_at}</TableCell>
+              <TableCell>{formatDate(lead.created_at)}</TableCell>
               <TableCell>{lead.nome}</TableCell>
               <TableCell>{lead.cognome}</TableCell>
               <TableCell>{lead.email}</TableCell>
               <TableCell>{lead.telefono}</TableCell>
-              <TableCell>{lead.booked_call || 'NO'}</TableCell>
+              <TableCell>{lead.booked_call ? 'SI' : 'NO'}</TableCell>
             </TableRow>
           ))}
         </TableBody>
