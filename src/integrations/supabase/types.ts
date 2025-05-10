@@ -9,7 +9,75 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      booked_call_calendly: {
+        Row: {
+          cognome: string
+          created_at: string
+          data_generazione: string
+          email: string
+          id: string
+          nome: string
+          telefono: string
+        }
+        Insert: {
+          cognome: string
+          created_at?: string
+          data_generazione?: string
+          email: string
+          id?: string
+          nome: string
+          telefono: string
+        }
+        Update: {
+          cognome?: string
+          created_at?: string
+          data_generazione?: string
+          email?: string
+          id?: string
+          nome?: string
+          telefono?: string
+        }
+        Relationships: []
+      }
+      lead_generation: {
+        Row: {
+          assegnato: boolean | null
+          campagna: string | null
+          cognome: string
+          created_at: string
+          data_generazione: string
+          email: string
+          id: string
+          nome: string
+          telefono: string
+          venditore: string | null
+        }
+        Insert: {
+          assegnato?: boolean | null
+          campagna?: string | null
+          cognome: string
+          created_at?: string
+          data_generazione?: string
+          email: string
+          id?: string
+          nome: string
+          telefono: string
+          venditore?: string | null
+        }
+        Update: {
+          assegnato?: boolean | null
+          campagna?: string | null
+          cognome?: string
+          created_at?: string
+          data_generazione?: string
+          email?: string
+          id?: string
+          nome?: string
+          telefono?: string
+          venditore?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
