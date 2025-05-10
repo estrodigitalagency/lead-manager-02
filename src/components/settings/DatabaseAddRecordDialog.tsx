@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -70,9 +70,15 @@ export default function DatabaseAddRecordDialog({
     setFormData(initialData);
   };
   
+  // Use useEffect to reset the form when dialog opens or tableName changes
+  useEffect(() => {
+    if (isOpen) {
+      resetForm();
+    }
+  }, [isOpen, tableName]);
+  
   // Handle dialog close
   const handleClose = () => {
-    resetForm();
     setIsOpen(false);
   };
   
@@ -114,11 +120,6 @@ export default function DatabaseAddRecordDialog({
       setIsLoading(false);
     }
   };
-  
-  // Initialize form when dialog opens
-  if (isOpen && Object.keys(formData).length === 0) {
-    resetForm();
-  }
   
   // Get table display name
   const getTableDisplayName = () => {
