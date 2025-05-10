@@ -85,7 +85,13 @@ const LeadAssignmentForm = ({ onAssignmentSuccess }: LeadAssignmentFormProps) =>
 
     setIsLoading(true);
     try {
-      await assignLeads(values);
+      // Ensure numLead is treated as a required field when passing to assignLeads
+      await assignLeads({
+        numLead: values.numLead,
+        venditore: values.venditore,
+        campagna: values.campagna || undefined,
+      });
+      
       toast.success("Lead assegnati con successo!");
       form.reset();
       
