@@ -36,7 +36,7 @@ const LeadDatabase = () => {
   if (loading) {
     return (
       <div className="flex justify-center items-center h-40">
-        <Loader2 className="h-6 w-6 animate-spin mr-2" />
+        <Loader2 className="h-6 w-6 animate-spin mr-2 text-primary" />
         <span>Caricamento lead...</span>
       </div>
     );
@@ -65,25 +65,29 @@ const LeadDatabase = () => {
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Data</TableHead>
-            <TableHead>Nome</TableHead>
-            <TableHead>Cognome</TableHead>
-            <TableHead>Email</TableHead>
-            <TableHead>Telefono</TableHead>
-            <TableHead>Chiamata Prenotata</TableHead>
-            <TableHead>Note</TableHead>
+            <TableHead className="table-header-cell">Data</TableHead>
+            <TableHead className="table-header-cell">Nome</TableHead>
+            <TableHead className="table-header-cell">Cognome</TableHead>
+            <TableHead className="table-header-cell">Email</TableHead>
+            <TableHead className="table-header-cell">Telefono</TableHead>
+            <TableHead className="table-header-cell">Chiamata Prenotata</TableHead>
+            <TableHead className="table-header-cell">Note</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {leads.map((lead) => (
-            <TableRow key={lead.id}>
-              <TableCell>{formatDate(lead.created_at)}</TableCell>
-              <TableCell>{lead.nome}</TableCell>
-              <TableCell>{lead.cognome || '-'}</TableCell>
-              <TableCell>{lead.email}</TableCell>
-              <TableCell>{lead.telefono}</TableCell>
-              <TableCell>{lead.booked_call}</TableCell>
-              <TableCell>{lead.note || '-'}</TableCell>
+            <TableRow key={lead.id} className="hover:bg-muted/30 transition-colors">
+              <TableCell className="table-body-cell">{formatDate(lead.created_at)}</TableCell>
+              <TableCell className="table-body-cell">{lead.nome}</TableCell>
+              <TableCell className="table-body-cell">{lead.cognome || '-'}</TableCell>
+              <TableCell className="table-body-cell">{lead.email}</TableCell>
+              <TableCell className="table-body-cell">{lead.telefono}</TableCell>
+              <TableCell className="table-body-cell">
+                <span className={lead.booked_call === "SI" ? "text-primary" : "text-muted-foreground"}>
+                  {lead.booked_call}
+                </span>
+              </TableCell>
+              <TableCell className="table-body-cell">{lead.note || '-'}</TableCell>
             </TableRow>
           ))}
         </TableBody>

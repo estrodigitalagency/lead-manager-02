@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import LeadAssignmentForm from "@/components/LeadAssignmentForm";
 import AssignmentHistory from "@/components/AssignmentHistory";
 import LeadDatabase from "@/components/LeadDatabase";
-import { Settings, ChevronRight } from "lucide-react";
+import { Settings, Database, ChevronRight } from "lucide-react";
 
 const Index = () => {
   const [refreshHistory, setRefreshHistory] = useState(false);
@@ -23,12 +23,20 @@ const Index = () => {
     <div className="container mx-auto px-4 py-8">
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-3xl font-bold neon-text">Sistema di Assegnazione Lead</h1>
-        <Link to="/settings">
-          <Button variant="outline" className="flex items-center gap-2 neon-border hover:animate-glow">
-            <Settings size={18} className="text-primary" />
-            Impostazioni
-          </Button>
-        </Link>
+        <div className="flex gap-3">
+          <Link to="/database">
+            <Button variant="outline" className="flex items-center gap-2 neon-border hover:animate-glow">
+              <Database size={18} className="text-primary" />
+              Database Records
+            </Button>
+          </Link>
+          <Link to="/settings">
+            <Button variant="outline" className="flex items-center gap-2 neon-border hover:animate-glow">
+              <Settings size={18} className="text-primary" />
+              Impostazioni
+            </Button>
+          </Link>
+        </div>
       </div>
       
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 mb-8">

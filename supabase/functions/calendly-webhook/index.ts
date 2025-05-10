@@ -24,7 +24,7 @@ serve(async (req) => {
     const payload = await req.json()
     console.log('Received calendly webhook payload:', payload)
     
-    // Insert the booking data to the booked_call_calendly table
+    // Insert the booking data to the booked_call table
     // created_at will be set to now() by the default value in the database
     const { data, error } = await supabase
       .from('booked_call')
@@ -46,20 +46,55 @@ serve(async (req) => {
       })
     }
 
-    // Aggiorna anche il lead corrispondente se esiste
+    // Get attribution window settings
+    const { data: settings } = await supabase
+      .from('system_settings')
+      .select('value')
+      .eq('key', 'booking_attribution_window_days')
+      .single()
+    
+    const attributionWindow = settings?.value ? parseInt(settings.value) : 7 // Default to 7 days if not set
+    const attributionWindowDate = new Date()
+    attributionWindowDate.setDate(attributionWindowDate.getDate() - attributionWindow)
+    
+    // Format as ISO string for comparison
+    const attributionWindowISODate = attributionWindowDate.toISOString()
+    
+    // Update corresponding leads if they exist and are within attribution window
     if (payload.email || payload.telefono) {
-      const { error: updateError } = await supabase
-        .from('lead_generation')
-        .update({ booked_call: 'SI' })
-        .or(`email.eq.${payload.email},telefono.eq.${payload.telefono}`)
+      // Build the filter condition
+      const emailCondition = payload.email ? `email.eq.${payload.email}` : ''
+      const phoneCondition = payload.telefono ? `telefono.eq.${payload.telefono}` : ''
+      const timeCondition = `created_at.gte.${attributionWindowISODate}`
+      
+      // Combine conditions with OR for email/phone and AND for time
+      let filterCondition = ''
+      if (emailCondition && phoneCondition) {
+        filterCondition = `(${emailCondition},${phoneCondition}),${timeCondition}`
+      } else if (emailCondition) {
+        filterCondition = `${emailCondition},${timeCondition}`
+      } else if (phoneCondition) {
+        filterCondition = `${phoneCondition},${timeCondition}`
+      }
+      
+      if (filterCondition) {
+        const { error: updateError } = await supabase
+          .from('lead_generation')
+          .update({ 
+            booked_call: 'SI',
+            assignable: true,
+            stato: 'prenotato'
+          })
+          .or(filterCondition)
 
-      if (updateError) {
-        console.error('Error updating lead booked_call status:', updateError)
+        if (updateError) {
+          console.error('Error updating lead booked_call status:', updateError)
+        }
       }
     }
 
     return new Response(
-      JSON.stringify({ success: true, data }),
+      JSON.stringify({ success: true, data, attributionWindow }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 200 

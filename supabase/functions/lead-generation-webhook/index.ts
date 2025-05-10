@@ -41,6 +41,7 @@ serve(async (req) => {
         campagna: payload.campagna || null,
         booked_call: isBooked ? 'SI' : 'NO', // Always store as string
         assignable: isBooked,  // Keep this as boolean as the assignable column is still boolean
+        stato: isBooked ? 'prenotato' : 'nuovo', // Set status based on booking
         note: payload.note || null
       })
       .select()

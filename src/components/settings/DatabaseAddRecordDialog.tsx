@@ -153,7 +153,7 @@ export default function DatabaseAddRecordDialog({
               <Input
                 id={field.name}
                 name={field.name}
-                className="col-span-3 bg-muted border-accent/20 focus:border-primary"
+                className="col-span-3 input-neon"
                 value={formData[field.name] || ""}
                 onChange={handleChange}
                 required={field.required}

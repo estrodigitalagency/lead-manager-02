@@ -68,4 +68,16 @@
   .btn-neon {
     @apply bg-primary text-primary-foreground hover:bg-primary/80 shadow-[0_0_10px_rgba(150,255,0,0.5)] transition-all duration-200;
   }
+
+  .table-header-cell {
+    @apply bg-muted/50 text-primary font-medium p-3;
+  }
+  
+  .table-body-cell {
+    @apply border-t border-border/30 p-3;
+  }
+  
+  .input-neon {
+    @apply bg-muted border-accent/20 focus:border-primary focus:ring-1 focus:ring-primary/50;
+  }
 }
