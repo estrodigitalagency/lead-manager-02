@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 
@@ -44,38 +45,32 @@ serve(async (req) => {
     attributionWindowDate.setDate(attributionWindowDate.getDate() - attributionWindow)
     const attributionWindowISODate = attributionWindowDate.toISOString()
     
-    // Get all leads that aren't marked as having booked a call yet
-    const { data: leadsToCheck, error: leadsFetchError } = await supabase
+    // First, check ALL leads for assignability based on days since creation
+    // This ensures that even if a booked call is deleted, we'll update the lead status
+    const { data: leadsToCheck, error: leadsError } = await supabase
       .from('lead_generation')
-      .select('id, email, telefono, created_at')
-      .or(`booked_call.is.null,booked_call.eq.NO`)
-      .gte('created_at', attributionWindowISODate)
+      .select('id, email, telefono, created_at, booked_call, assignable')
     
-    if (leadsFetchError) {
-      throw leadsFetchError
+    if (leadsError) {
+      throw leadsError
     }
     
-    console.log(`Found ${leadsToCheck?.length || 0} leads to check for bookings`)
+    console.log(`Found ${leadsToCheck?.length || 0} total leads to check for assignability`)
     
     // Track how many leads were updated
     let updatedLeadsCount = 0
     
-    // Check each lead for bookings
+    // Check each lead for bookings and update assignability
     if (leadsToCheck && leadsToCheck.length > 0) {
       for (const lead of leadsToCheck) {
-        // Only check leads that have either email or phone
+        // Only process leads with either email or phone
         if (!lead.email && !lead.telefono) continue
         
-        // Build filters for email and phone
-        const filters = []
-        if (lead.email) filters.push({ column: 'email', value: lead.email })
-        if (lead.telefono) filters.push({ column: 'telefono', value: lead.telefono })
-        
-        // Query for bookings that match this lead
+        // Check if lead has any matching bookings
         const { data: matchingBookings, error: bookingsFetchError } = await supabase
           .from('booked_call')
           .select('id')
-          .or(filters.map(f => `${f.column}.eq.${f.value}`).join(','))
+          .or(`email.eq.${lead.email},telefono.eq.${lead.telefono}`)
           .limit(1)
         
         if (bookingsFetchError) {
@@ -88,50 +83,66 @@ serve(async (req) => {
         const today = new Date()
         const daysSinceCreation = Math.floor((today.getTime() - createdDate.getTime()) / (1000 * 60 * 60 * 24))
         
-        // If we found a matching booking, update the lead with booked_call = SI
+        // Lead has matching booking - mark as booked and not assignable
         if (matchingBookings && matchingBookings.length > 0) {
-          console.log(`Found booking for lead ${lead.id}, updating status`)
+          // Need to update booked_call status AND assignable status
+          const needsUpdate = lead.booked_call !== 'SI' || lead.assignable !== false
           
-          const { error: updateError } = await supabase
-            .from('lead_generation')
-            .update({
-              booked_call: 'SI',
-              assignable: false, // Not assignable if booked
-              stato: 'prenotato'
-            })
-            .eq('id', lead.id)
-          
-          if (updateError) {
-            console.error(`Error updating lead ${lead.id}:`, updateError)
-          } else {
-            updatedLeadsCount++
-          }
-        } 
-        // Otherwise, update assignability based on days since creation
-        else {
-          // Determine if the lead should be assignable (booked_call is NO, and enough days have passed)
-          const shouldBeAssignable = daysSinceCreation >= daysBeforeAssignable
-          
-          // Check if lead already has correct assignability
-          const { data: currentLead } = await supabase
-            .from('lead_generation')
-            .select('assignable')
-            .eq('id', lead.id)
-            .single()
-            
-          // Only update if assignability needs to change
-          if (currentLead && currentLead.assignable !== shouldBeAssignable) {
-            console.log(`Updating assignability for lead ${lead.id} to ${shouldBeAssignable} based on ${daysSinceCreation} days since creation`)
+          if (needsUpdate) {
+            console.log(`Found booking for lead ${lead.id}, updating status to booked and not assignable`)
             
             const { error: updateError } = await supabase
               .from('lead_generation')
               .update({
-                assignable: shouldBeAssignable
+                booked_call: 'SI',
+                assignable: false,
+                stato: 'prenotato'
               })
+              .eq('id', lead.id)
+            
+            if (updateError) {
+              console.error(`Error updating lead ${lead.id}:`, updateError)
+            } else {
+              updatedLeadsCount++
+            }
+          }
+        } 
+        // No booking found - check if should be assignable based on "booked_call" status and days since creation
+        else {
+          // A lead is assignable if:
+          // 1. No booking (already confirmed by this branch)
+          // 2. booked_call is not "SI"
+          // 3. Days since creation >= daysBeforeAssignable setting
+          
+          // If booked_call is already "SI" but no booking exists, update it to "NO"
+          let updateNeeded = lead.booked_call === 'SI'
+          const shouldBeNO = updateNeeded
+          
+          // Determine assignability based on days since creation
+          const enoughDaysPassed = daysSinceCreation >= daysBeforeAssignable
+          const shouldBeAssignable = enoughDaysPassed
+          
+          // Check if assignability status needs to be updated
+          updateNeeded = updateNeeded || lead.assignable !== shouldBeAssignable
+          
+          if (updateNeeded) {
+            const updates: Record<string, any> = {}
+            
+            if (shouldBeNO) {
+              updates.booked_call = 'NO'
+            }
+            
+            updates.assignable = shouldBeAssignable
+            
+            console.log(`Updating lead ${lead.id}: booked_call=${shouldBeNO ? 'NO' : lead.booked_call}, assignable=${shouldBeAssignable} (days since creation: ${daysSinceCreation})`)
+            
+            const { error: updateError } = await supabase
+              .from('lead_generation')
+              .update(updates)
               .eq('id', lead.id)
               
             if (updateError) {
-              console.error(`Error updating lead assignability ${lead.id}:`, updateError)
+              console.error(`Error updating lead ${lead.id}:`, updateError)
             } else {
               updatedLeadsCount++
             }
@@ -156,7 +167,7 @@ serve(async (req) => {
   } catch (error) {
     console.error('Lead check processing error:', error)
     return new Response(
-      JSON.stringify({ error: 'Internal Server Error' }),
+      JSON.stringify({ error: 'Internal Server Error', details: error.message }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 500

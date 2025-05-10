@@ -34,11 +34,11 @@ export async function addLead(lead: Omit<Lead, 'id' | 'assignable' | 'created_at
       ? lead.booked_call === "SI" 
       : !!lead.booked_call;
     
-    // Lead is assignable only if booked_call is NO
+    // Lead is assignable only if booked_call is NO and enough days have passed (this check will be done by the lead-check function)
     const leadToInsert = {
       ...lead,
       booked_call: isBooked ? 'SI' : 'NO', // Always store as string
-      assignable: !isBooked  // Lead is assignable only if not booked
+      assignable: false  // Start as not assignable, will be updated by lead-check function
     };
     
     const { data, error } = await supabase
@@ -53,6 +53,14 @@ export async function addLead(lead: Omit<Lead, 'id' | 'assignable' | 'created_at
       console.error("Error adding lead:", error);
       toast.error("Errore nell'aggiunta del nuovo lead");
       return null;
+    }
+    
+    // After adding a lead, trigger the lead-check function to update assignability
+    try {
+      await triggerLeadCheck();
+    } catch (checkError) {
+      console.error("Error checking lead assignability after adding:", checkError);
+      // Don't return error here, as the lead was successfully added
     }
     
     return data as Lead;
@@ -116,6 +124,10 @@ export async function markLeadsAsAssigned(numLeads: number, venditore: string, c
 export async function triggerLeadCheck(): Promise<boolean> {
   try {
     const supabaseUrl = "https://btcwmuyemmkiteqlopce.supabase.co";
+    
+    // Show loading toast
+    const toastId = toast.loading("Controllo dei lead in corso...");
+    
     const response = await fetch(`${supabaseUrl}/functions/v1/lead-check`, {
       method: 'POST',
       headers: {
@@ -130,8 +142,9 @@ export async function triggerLeadCheck(): Promise<boolean> {
     const result = await response.json();
     console.log("Lead check result:", result);
     
-    // Display a toast with the results
-    toast.success(`Controllo completato: ${result.updated} lead aggiornati`);
+    // Update the toast with results
+    toast.dismiss(toastId);
+    toast.success(`Controllo completato: ${result.updated} lead aggiornati su ${result.checked} controllati`);
     return true;
   } catch (error) {
     console.error("Error triggering lead check:", error);
