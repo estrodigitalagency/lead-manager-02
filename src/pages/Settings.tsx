@@ -5,11 +5,20 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Database, Webhook, Link } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Database, Webhook, Link, Info, ArrowLeftRight } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Lead } from "@/types/lead";
+import { 
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 const Settings = () => {
   const { toast } = useToast();
@@ -142,6 +151,81 @@ const Settings = () => {
                     </AlertDescription>
                   </Alert>
                   
+                  <Dialog>
+                    <DialogTrigger asChild>
+                      <Button variant="outline" className="w-full mt-2 flex items-center gap-2">
+                        <Info className="h-4 w-4" />
+                        Informazioni sul formato dati
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="sm:max-w-[650px]">
+                      <DialogHeader>
+                        <DialogTitle>Formato dati per Lead Generation Webhook</DialogTitle>
+                        <DialogDescription>
+                          Mappatura dei campi richiesti per l'inserimento nel database
+                        </DialogDescription>
+                      </DialogHeader>
+                      
+                      <div className="py-4">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Campo webhook</TableHead>
+                              <TableHead>Colonna database</TableHead>
+                              <TableHead>Tipo</TableHead>
+                              <TableHead>Richiesto</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            <TableRow>
+                              <TableCell>nome</TableCell>
+                              <TableCell>nome</TableCell>
+                              <TableCell>text</TableCell>
+                              <TableCell>Sì</TableCell>
+                            </TableRow>
+                            <TableRow>
+                              <TableCell>cognome</TableCell>
+                              <TableCell>cognome</TableCell>
+                              <TableCell>text</TableCell>
+                              <TableCell>Sì</TableCell>
+                            </TableRow>
+                            <TableRow>
+                              <TableCell>email</TableCell>
+                              <TableCell>email</TableCell>
+                              <TableCell>text</TableCell>
+                              <TableCell>Sì</TableCell>
+                            </TableRow>
+                            <TableRow>
+                              <TableCell>telefono</TableCell>
+                              <TableCell>telefono</TableCell>
+                              <TableCell>text</TableCell>
+                              <TableCell>Sì</TableCell>
+                            </TableRow>
+                            <TableRow>
+                              <TableCell>campagna</TableCell>
+                              <TableCell>campagna</TableCell>
+                              <TableCell>text</TableCell>
+                              <TableCell>No</TableCell>
+                            </TableRow>
+                          </TableBody>
+                        </Table>
+
+                        <div className="mt-6">
+                          <h4 className="font-semibold mb-2">Esempio JSON da inviare:</h4>
+                          <pre className="bg-muted p-4 rounded-md overflow-x-auto">
+                            {JSON.stringify({
+                              nome: "Mario",
+                              cognome: "Rossi",
+                              email: "mario.rossi@example.com",
+                              telefono: "+39 123 456 7890",
+                              campagna: "Facebook Ads"
+                            }, null, 2)}
+                          </pre>
+                        </div>
+                      </div>
+                    </DialogContent>
+                  </Dialog>
+                  
                   <div className="space-y-4 pt-4">
                     <h3 className="text-lg font-medium">Test Webhook</h3>
                     
@@ -231,6 +315,74 @@ const Settings = () => {
                     </AlertDescription>
                   </Alert>
                   
+                  <Dialog>
+                    <DialogTrigger asChild>
+                      <Button variant="outline" className="w-full mt-2 flex items-center gap-2">
+                        <Info className="h-4 w-4" />
+                        Informazioni sul formato dati
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="sm:max-w-[650px]">
+                      <DialogHeader>
+                        <DialogTitle>Formato dati per Calendly Webhook</DialogTitle>
+                        <DialogDescription>
+                          Mappatura dei campi richiesti per l'inserimento nel database
+                        </DialogDescription>
+                      </DialogHeader>
+                      
+                      <div className="py-4">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Campo webhook</TableHead>
+                              <TableHead>Colonna database</TableHead>
+                              <TableHead>Tipo</TableHead>
+                              <TableHead>Richiesto</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            <TableRow>
+                              <TableCell>nome</TableCell>
+                              <TableCell>nome</TableCell>
+                              <TableCell>text</TableCell>
+                              <TableCell>Sì</TableCell>
+                            </TableRow>
+                            <TableRow>
+                              <TableCell>cognome</TableCell>
+                              <TableCell>cognome</TableCell>
+                              <TableCell>text</TableCell>
+                              <TableCell>Sì</TableCell>
+                            </TableRow>
+                            <TableRow>
+                              <TableCell>email</TableCell>
+                              <TableCell>email</TableCell>
+                              <TableCell>text</TableCell>
+                              <TableCell>Sì</TableCell>
+                            </TableRow>
+                            <TableRow>
+                              <TableCell>telefono</TableCell>
+                              <TableCell>telefono</TableCell>
+                              <TableCell>text</TableCell>
+                              <TableCell>Sì</TableCell>
+                            </TableRow>
+                          </TableBody>
+                        </Table>
+
+                        <div className="mt-6">
+                          <h4 className="font-semibold mb-2">Esempio JSON da inviare:</h4>
+                          <pre className="bg-muted p-4 rounded-md overflow-x-auto">
+                            {JSON.stringify({
+                              nome: "Mario",
+                              cognome: "Rossi",
+                              email: "mario.rossi@example.com",
+                              telefono: "+39 123 456 7890"
+                            }, null, 2)}
+                          </pre>
+                        </div>
+                      </div>
+                    </DialogContent>
+                  </Dialog>
+                  
                   <div className="space-y-4 pt-4">
                     <h3 className="text-lg font-medium">Test Webhook</h3>
                     
@@ -316,7 +468,7 @@ const Settings = () => {
                         <p className="text-sm text-muted-foreground">
                           Database dei lead generati attraverso il form di contatto
                         </p>
-                        <div className="flex gap-2">
+                        <div className="grid grid-cols-1 gap-2">
                           <Button 
                             variant="secondary" 
                             onClick={() => openSupabaseTable("lead_generation")}
@@ -325,6 +477,92 @@ const Settings = () => {
                             <Link className="mr-2 h-4 w-4" />
                             Apri su Supabase
                           </Button>
+                          
+                          <Dialog>
+                            <DialogTrigger asChild>
+                              <Button variant="outline" className="flex items-center">
+                                <ArrowLeftRight className="mr-2 h-4 w-4" />
+                                Struttura tabella
+                              </Button>
+                            </DialogTrigger>
+                            <DialogContent className="sm:max-w-[650px]">
+                              <DialogHeader>
+                                <DialogTitle>Struttura tabella Lead Generation</DialogTitle>
+                                <DialogDescription>
+                                  Informazioni sulla struttura della tabella nel database
+                                </DialogDescription>
+                              </DialogHeader>
+                              
+                              <div className="py-4">
+                                <Table>
+                                  <TableHeader>
+                                    <TableRow>
+                                      <TableHead>Colonna</TableHead>
+                                      <TableHead>Tipo</TableHead>
+                                      <TableHead>Nullable</TableHead>
+                                      <TableHead>Default</TableHead>
+                                    </TableRow>
+                                  </TableHeader>
+                                  <TableBody>
+                                    <TableRow>
+                                      <TableCell>id</TableCell>
+                                      <TableCell>uuid</TableCell>
+                                      <TableCell>No</TableCell>
+                                      <TableCell>gen_random_uuid()</TableCell>
+                                    </TableRow>
+                                    <TableRow>
+                                      <TableCell>nome</TableCell>
+                                      <TableCell>text</TableCell>
+                                      <TableCell>No</TableCell>
+                                      <TableCell>-</TableCell>
+                                    </TableRow>
+                                    <TableRow>
+                                      <TableCell>cognome</TableCell>
+                                      <TableCell>text</TableCell>
+                                      <TableCell>No</TableCell>
+                                      <TableCell>-</TableCell>
+                                    </TableRow>
+                                    <TableRow>
+                                      <TableCell>email</TableCell>
+                                      <TableCell>text</TableCell>
+                                      <TableCell>No</TableCell>
+                                      <TableCell>-</TableCell>
+                                    </TableRow>
+                                    <TableRow>
+                                      <TableCell>telefono</TableCell>
+                                      <TableCell>text</TableCell>
+                                      <TableCell>No</TableCell>
+                                      <TableCell>-</TableCell>
+                                    </TableRow>
+                                    <TableRow>
+                                      <TableCell>campagna</TableCell>
+                                      <TableCell>text</TableCell>
+                                      <TableCell>Sì</TableCell>
+                                      <TableCell>-</TableCell>
+                                    </TableRow>
+                                    <TableRow>
+                                      <TableCell>data_generazione</TableCell>
+                                      <TableCell>timestamp with time zone</TableCell>
+                                      <TableCell>No</TableCell>
+                                      <TableCell>now()</TableCell>
+                                    </TableRow>
+                                    <TableRow>
+                                      <TableCell>assegnato</TableCell>
+                                      <TableCell>boolean</TableCell>
+                                      <TableCell>Sì</TableCell>
+                                      <TableCell>false</TableCell>
+                                    </TableRow>
+                                    <TableRow>
+                                      <TableCell>venditore</TableCell>
+                                      <TableCell>text</TableCell>
+                                      <TableCell>Sì</TableCell>
+                                      <TableCell>-</TableCell>
+                                    </TableRow>
+                                  </TableBody>
+                                </Table>
+                              </div>
+                            </DialogContent>
+                          </Dialog>
                         </div>
                       </div>
                     </Card>
@@ -338,7 +576,7 @@ const Settings = () => {
                         <p className="text-sm text-muted-foreground">
                           Database delle prenotazioni effettuate tramite Calendly
                         </p>
-                        <div className="flex gap-2">
+                        <div className="grid grid-cols-1 gap-2">
                           <Button 
                             variant="secondary"
                             onClick={() => openSupabaseTable("booked_call_calendly")}
@@ -347,6 +585,74 @@ const Settings = () => {
                             <Link className="mr-2 h-4 w-4" />
                             Apri su Supabase
                           </Button>
+                          
+                          <Dialog>
+                            <DialogTrigger asChild>
+                              <Button variant="outline" className="flex items-center">
+                                <ArrowLeftRight className="mr-2 h-4 w-4" />
+                                Struttura tabella
+                              </Button>
+                            </DialogTrigger>
+                            <DialogContent className="sm:max-w-[650px]">
+                              <DialogHeader>
+                                <DialogTitle>Struttura tabella Booked Call Calendly</DialogTitle>
+                                <DialogDescription>
+                                  Informazioni sulla struttura della tabella nel database
+                                </DialogDescription>
+                              </DialogHeader>
+                              
+                              <div className="py-4">
+                                <Table>
+                                  <TableHeader>
+                                    <TableRow>
+                                      <TableHead>Colonna</TableHead>
+                                      <TableHead>Tipo</TableHead>
+                                      <TableHead>Nullable</TableHead>
+                                      <TableHead>Default</TableHead>
+                                    </TableRow>
+                                  </TableHeader>
+                                  <TableBody>
+                                    <TableRow>
+                                      <TableCell>id</TableCell>
+                                      <TableCell>uuid</TableCell>
+                                      <TableCell>No</TableCell>
+                                      <TableCell>gen_random_uuid()</TableCell>
+                                    </TableRow>
+                                    <TableRow>
+                                      <TableCell>nome</TableCell>
+                                      <TableCell>text</TableCell>
+                                      <TableCell>No</TableCell>
+                                      <TableCell>-</TableCell>
+                                    </TableRow>
+                                    <TableRow>
+                                      <TableCell>cognome</TableCell>
+                                      <TableCell>text</TableCell>
+                                      <TableCell>No</TableCell>
+                                      <TableCell>-</TableCell>
+                                    </TableRow>
+                                    <TableRow>
+                                      <TableCell>email</TableCell>
+                                      <TableCell>text</TableCell>
+                                      <TableCell>No</TableCell>
+                                      <TableCell>-</TableCell>
+                                    </TableRow>
+                                    <TableRow>
+                                      <TableCell>telefono</TableCell>
+                                      <TableCell>text</TableCell>
+                                      <TableCell>No</TableCell>
+                                      <TableCell>-</TableCell>
+                                    </TableRow>
+                                    <TableRow>
+                                      <TableCell>data_generazione</TableCell>
+                                      <TableCell>timestamp with time zone</TableCell>
+                                      <TableCell>No</TableCell>
+                                      <TableCell>now()</TableCell>
+                                    </TableRow>
+                                  </TableBody>
+                                </Table>
+                              </div>
+                            </DialogContent>
+                          </Dialog>
                         </div>
                       </div>
                     </Card>
