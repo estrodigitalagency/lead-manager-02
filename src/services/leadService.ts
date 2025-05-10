@@ -166,6 +166,7 @@ export const addLead = async (lead: Lead): Promise<any> => {
 
 export const checkLeadsAssignability = async (): Promise<boolean> => {
   try {
+    // Fix: Call the RPC function without any argument
     const { data, error } = await supabase.rpc('check_leads_assignability');
     
     if (error) {
@@ -179,3 +180,4 @@ export const checkLeadsAssignability = async (): Promise<boolean> => {
     return false;
   }
 };
+
