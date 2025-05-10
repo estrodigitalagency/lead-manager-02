@@ -1,4 +1,3 @@
-
 import type { Config } from "tailwindcss";
 
 export default {
@@ -62,12 +61,7 @@ export default {
 					'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
 					border: 'hsl(var(--sidebar-border))',
 					ring: 'hsl(var(--sidebar-ring))'
-				},
-				// New color palette from the image
-				mediumblue: '#6200EE',
-				deeppink: '#EE0D8C',
-				darkviolet: '#A500DE',
-				dodgerblue: '#0D82EE'
+				}
 			},
 			borderRadius: {
 				lg: 'var(--radius)',

@@ -3,8 +3,9 @@ import { Link } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Database } from "lucide-react";
+import { ArrowLeft, Database, Users, Calendar } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import SalespeopleSettings from "@/components/SalespeopleSettings";
 import AttributionWindowSettings from "@/components/AttributionWindowSettings";
 import DatabaseManagement from "@/components/DatabaseManagement";
 
@@ -29,19 +30,37 @@ const Settings = () => {
       </div>
       
       <Tabs defaultValue="database" className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="database">
             <Database className="mr-2 h-4 w-4" />
             Database
           </TabsTrigger>
+          <TabsTrigger value="salespeople">
+            <Users className="mr-2 h-4 w-4" />
+            Venditori
+          </TabsTrigger>
           <TabsTrigger value="attributionWindow">
-            <Database className="mr-2 h-4 w-4" />
-            Finestre di Tempo
+            <Calendar className="mr-2 h-4 w-4" />
+            Finestre di Attribuzione
           </TabsTrigger>
         </TabsList>
         
         <TabsContent value="database">
           <DatabaseManagement />
+        </TabsContent>
+        
+        <TabsContent value="salespeople">
+          <Card>
+            <CardHeader>
+              <CardTitle>Gestione Venditori</CardTitle>
+              <CardDescription>
+                Configura i dati dei venditori e le loro impostazioni di Google Sheets
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <SalespeopleSettings />
+            </CardContent>
+          </Card>
         </TabsContent>
         
         <TabsContent value="attributionWindow">

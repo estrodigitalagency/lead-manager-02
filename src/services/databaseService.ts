@@ -126,7 +126,7 @@ export async function updateSystemSettings(key: string, value: string): Promise<
       .from('system_settings')
       .update({ 
         value, 
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString() // Convert Date to ISO string
       })
       .eq('key', key);
     
@@ -164,36 +164,5 @@ export async function importLeadsFromCSV(leads: Omit<Lead, 'id' | 'assegnabile' 
     console.error("Error importing leads:", error);
     toast.error("Errore nell'importazione dei lead");
     return false;
-  }
-}
-
-// Check if a lead is assignable based on creation date and booking status
-export async function checkLeadsAssignability(): Promise<void> {
-  try {
-    // Get the assignability window setting
-    const assignabilityWindow = await getSystemSettings('lead_assignability_window_days');
-    const windowDays = assignabilityWindow ? parseInt(assignabilityWindow) : 0;
-    
-    // Calculate the cutoff date
-    const cutoffDate = new Date();
-    cutoffDate.setDate(cutoffDate.getDate() - windowDays);
-    const cutoffDateStr = cutoffDate.toISOString();
-    
-    console.log(`Checking leads assignability with cutoff date: ${cutoffDateStr}`);
-    
-    // Update leads that meet the criteria: created before cutoff date and no booked call
-    // Non passiamo nessun parametro alla funzione RPC
-    const { data, error } = await supabase.rpc('check_leads_assignability');
-    
-    if (error) {
-      console.error("Error checking leads assignability:", error);
-      toast.error("Errore nel controllo dell'assegnabilità dei lead");
-      return;
-    }
-    
-    console.log(`Updated ${data || 0} leads assignability status`);
-    
-  } catch (error) {
-    console.error("Error checking leads assignability:", error);
   }
 }
