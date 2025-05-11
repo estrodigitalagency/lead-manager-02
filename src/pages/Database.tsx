@@ -26,7 +26,10 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Lead } from "@/types/lead";
 import DatabaseAddRecordDialog from "@/components/settings/DatabaseAddRecordDialog";
+import DatabaseAddLavoratiDialog from "@/components/settings/DatabaseAddLavoratiDialog";
 import DatabaseImportDialog from "@/components/settings/DatabaseImportDialog";
+import DatabaseFilters from "@/components/DatabaseFilters";
+import { filterLeads } from "@/services/databaseService";
 
 interface CalendlyBooking {
   id: string;
@@ -39,27 +42,39 @@ interface CalendlyBooking {
   note?: string;
 }
 
+interface LeadLavorato {
+  id: string;
+  nome: string;
+  cognome?: string;
+  email?: string;
+  telefono?: string;
+  venditore?: string;
+  esito?: string;
+  obiezioni?: string;
+  data_call?: string;
+  data_contatto?: string;
+  created_at: string;
+}
+
 const DatabasePage = () => {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [bookings, setBookings] = useState<CalendlyBooking[]>([]);
+  const [leadLavorati, setLeadLavorati] = useState<LeadLavorato[]>([]);
   const [isLoadingLeads, setIsLoadingLeads] = useState(true);
   const [isLoadingBookings, setIsLoadingBookings] = useState(true);
-  const [recordToDelete, setRecordToDelete] = useState<{ id: string, type: 'lead' | 'booking' } | null>(null);
+  const [isLoadingLeadLavorati, setIsLoadingLeadLavorati] = useState(true);
+  const [recordToDelete, setRecordToDelete] = useState<{ id: string, type: 'lead' | 'booking' | 'lavorato' } | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isAddRecordDialogOpen, setIsAddRecordDialogOpen] = useState(false);
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
-  const [activeTableForDialog, setActiveTableForDialog] = useState<'lead_generation' | 'booked_call'>('lead_generation');
+  const [activeTableForDialog, setActiveTableForDialog] = useState<'lead_generation' | 'booked_call' | 'lead_lavorati'>('lead_generation');
   const [isCheckingLeads, setIsCheckingLeads] = useState(false);
+  const [activeFilters, setActiveFilters] = useState<Record<string, any>>({});
 
   const fetchLeads = async () => {
     setIsLoadingLeads(true);
     try {
-      const { data, error } = await supabase
-        .from('lead_generation')
-        .select('*')
-        .order('created_at', { ascending: false });
-      
-      if (error) throw error;
+      const data = await filterLeads('lead_generation', activeFilters);
       setLeads(data as Lead[] || []);
     } catch (error) {
       console.error("Errore nel caricamento dei lead:", error);
@@ -71,12 +86,7 @@ const DatabasePage = () => {
   const fetchBookings = async () => {
     setIsLoadingBookings(true);
     try {
-      const { data, error } = await supabase
-        .from('booked_call')
-        .select('*')
-        .order('created_at', { ascending: false });
-      
-      if (error) throw error;
+      const data = await filterLeads('booked_call', activeFilters);
       setBookings(data as unknown as CalendlyBooking[] || []);
     } catch (error) {
       console.error("Errore nel caricamento delle prenotazioni:", error);
@@ -85,17 +95,31 @@ const DatabasePage = () => {
     }
   };
 
+  const fetchLeadLavorati = async () => {
+    setIsLoadingLeadLavorati(true);
+    try {
+      const data = await filterLeads('lead_lavorati', activeFilters);
+      setLeadLavorati(data as LeadLavorato[] || []);
+    } catch (error) {
+      console.error("Errore nel caricamento dei lead lavorati:", error);
+    } finally {
+      setIsLoadingLeadLavorati(false);
+    }
+  };
+
   useEffect(() => {
     fetchLeads();
     fetchBookings();
-  }, []);
+    fetchLeadLavorati();
+  }, [activeFilters]);
 
   const handleRefresh = () => {
     fetchLeads();
     fetchBookings();
+    fetchLeadLavorati();
   };
 
-  const handleDeleteClick = (id: string, type: 'lead' | 'booking') => {
+  const handleDeleteClick = (id: string, type: 'lead' | 'booking' | 'lavorato') => {
     setRecordToDelete({ id, type });
     setIsDeleteDialogOpen(true);
   };
@@ -105,7 +129,11 @@ const DatabasePage = () => {
     
     try {
       const { type, id } = recordToDelete;
-      const table = type === 'lead' ? 'lead_generation' : 'booked_call';
+      let table = '';
+      
+      if (type === 'lead') table = 'lead_generation';
+      else if (type === 'booking') table = 'booked_call';
+      else if (type === 'lavorato') table = 'lead_lavorati';
       
       const { error } = await supabase
         .from(table)
@@ -114,16 +142,21 @@ const DatabasePage = () => {
       
       if (error) throw error;
       
-      toast.success(type === 'lead' 
-        ? "Lead eliminato con successo" 
-        : "Prenotazione eliminata con successo"
+      toast.success(
+        type === 'lead' 
+          ? "Lead eliminato con successo" 
+          : type === 'booking'
+            ? "Prenotazione eliminata con successo"
+            : "Lead lavorato eliminato con successo"
       );
       
       // Refresh the data
       if (type === 'lead') {
         setLeads(leads.filter(lead => lead.id !== id));
-      } else {
+      } else if (type === 'booking') {
         setBookings(bookings.filter(booking => booking.id !== id));
+      } else if (type === 'lavorato') {
+        setLeadLavorati(leadLavorati.filter(lead => lead.id !== id));
       }
     } catch (error) {
       console.error("Errore durante l'eliminazione:", error);
@@ -135,6 +168,7 @@ const DatabasePage = () => {
   };
 
   const formatDate = (dateString: string) => {
+    if (!dateString) return '-';
     return new Date(dateString).toLocaleString('it-IT', {
       day: '2-digit',
       month: '2-digit',
@@ -172,14 +206,18 @@ const DatabasePage = () => {
     }
   };
 
-  const openAddDialog = (type: 'lead_generation' | 'booked_call') => {
+  const openAddDialog = (type: 'lead_generation' | 'booked_call' | 'lead_lavorati') => {
     setActiveTableForDialog(type);
     setIsAddRecordDialogOpen(true);
   };
 
-  const openImportDialog = (type: 'lead_generation' | 'booked_call') => {
+  const openImportDialog = (type: 'lead_generation' | 'booked_call' | 'lead_lavorati') => {
     setActiveTableForDialog(type);
     setIsImportDialogOpen(true);
+  };
+
+  const handleApplyFilters = (filters: Record<string, any>) => {
+    setActiveFilters(filters);
   };
 
   return (
@@ -219,12 +257,15 @@ const DatabasePage = () => {
       </div>
       
       <Tabs defaultValue="leads" className="w-full">
-        <TabsList className="grid w-full grid-cols-2 mb-8 border">
+        <TabsList className="grid w-full grid-cols-3 mb-8 border">
           <TabsTrigger value="leads" className="data-[state=active]:text-primary">
             Lead Generation
           </TabsTrigger>
           <TabsTrigger value="bookings" className="data-[state=active]:text-primary">
             Booked Call
+          </TabsTrigger>
+          <TabsTrigger value="lavorati" className="data-[state=active]:text-primary">
+            Lead Lavorati
           </TabsTrigger>
         </TabsList>
         
@@ -239,6 +280,10 @@ const DatabasePage = () => {
                   </CardDescription>
                 </div>
                 <div className="flex gap-2">
+                  <DatabaseFilters 
+                    onApplyFilters={handleApplyFilters} 
+                    tableName="lead_generation"
+                  />
                   <Button 
                     variant="outline" 
                     size="sm"
@@ -343,6 +388,10 @@ const DatabasePage = () => {
                   </CardDescription>
                 </div>
                 <div className="flex gap-2">
+                  <DatabaseFilters 
+                    onApplyFilters={handleApplyFilters} 
+                    tableName="booked_call"
+                  />
                   <Button 
                     variant="outline" 
                     size="sm"
@@ -419,6 +468,104 @@ const DatabasePage = () => {
             </CardContent>
           </Card>
         </TabsContent>
+
+        <TabsContent value="lavorati" className="mt-4">
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>Lead Lavorati</CardTitle>
+                  <CardDescription>
+                    Tutti i lead che sono stati lavorati dai venditori
+                  </CardDescription>
+                </div>
+                <div className="flex gap-2">
+                  <DatabaseFilters 
+                    onApplyFilters={handleApplyFilters} 
+                    tableName="lead_lavorati"
+                  />
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    className="flex items-center gap-1"
+                    onClick={() => openAddDialog('lead_lavorati')}
+                  >
+                    <Plus className="h-4 w-4" />
+                    <span>Aggiungi Record</span>
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    className="flex items-center gap-1"
+                    onClick={() => openImportDialog('lead_lavorati')}
+                  >
+                    <UploadCloud className="h-4 w-4" />
+                    <span>Importa CSV</span>
+                  </Button>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {isLoadingLeadLavorati ? (
+                <div className="flex justify-center items-center h-32">
+                  <span>Caricamento in corso...</span>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Venditore</TableHead>
+                        <TableHead>Nome</TableHead>
+                        <TableHead>Cognome</TableHead>
+                        <TableHead>Email</TableHead>
+                        <TableHead>Telefono</TableHead>
+                        <TableHead>Esito</TableHead>
+                        <TableHead>Obiezioni</TableHead>
+                        <TableHead>Data Contatto</TableHead>
+                        <TableHead>Data Call</TableHead>
+                        <TableHead>Azioni</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {leadLavorati.length > 0 ? (
+                        leadLavorati.map((lead) => (
+                          <TableRow key={lead.id}>
+                            <TableCell>{lead.venditore || '-'}</TableCell>
+                            <TableCell>{lead.nome}</TableCell>
+                            <TableCell>{lead.cognome || '-'}</TableCell>
+                            <TableCell>{lead.email || '-'}</TableCell>
+                            <TableCell>{lead.telefono || '-'}</TableCell>
+                            <TableCell>{lead.esito || '-'}</TableCell>
+                            <TableCell>{lead.obiezioni || '-'}</TableCell>
+                            <TableCell>{lead.data_contatto ? formatDate(lead.data_contatto) : '-'}</TableCell>
+                            <TableCell>{lead.data_call ? formatDate(lead.data_call) : '-'}</TableCell>
+                            <TableCell>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="text-destructive hover:bg-destructive/10"
+                                onClick={() => handleDeleteClick(lead.id, 'lavorato')}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      ) : (
+                        <TableRow>
+                          <TableCell colSpan={10} className="text-center py-8">
+                            Nessun lead lavorato trovato
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
       </Tabs>
 
       {/* Delete Confirmation Dialog */}
@@ -442,11 +589,19 @@ const DatabasePage = () => {
       </Dialog>
       
       {/* Add Record Dialog */}
-      <DatabaseAddRecordDialog 
-        isOpen={isAddRecordDialogOpen}
-        setIsOpen={setIsAddRecordDialogOpen}
-        tableName={activeTableForDialog}
-      />
+      {activeTableForDialog === 'lead_lavorati' ? (
+        <DatabaseAddLavoratiDialog 
+          isOpen={isAddRecordDialogOpen}
+          setIsOpen={setIsAddRecordDialogOpen}
+          tableName={activeTableForDialog}
+        />
+      ) : (
+        <DatabaseAddRecordDialog 
+          isOpen={isAddRecordDialogOpen}
+          setIsOpen={setIsAddRecordDialogOpen}
+          tableName={activeTableForDialog}
+        />
+      )}
       
       {/* Import CSV Dialog */}
       <DatabaseImportDialog 

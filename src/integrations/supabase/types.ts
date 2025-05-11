@@ -146,6 +146,51 @@ export type Database = {
         }
         Relationships: []
       }
+      lead_lavorati: {
+        Row: {
+          cognome: string | null
+          created_at: string | null
+          data_call: string | null
+          data_contatto: string | null
+          email: string | null
+          esito: string | null
+          id: string
+          nome: string
+          obiezioni: string | null
+          telefono: string | null
+          updated_at: string | null
+          venditore: string | null
+        }
+        Insert: {
+          cognome?: string | null
+          created_at?: string | null
+          data_call?: string | null
+          data_contatto?: string | null
+          email?: string | null
+          esito?: string | null
+          id?: string
+          nome: string
+          obiezioni?: string | null
+          telefono?: string | null
+          updated_at?: string | null
+          venditore?: string | null
+        }
+        Update: {
+          cognome?: string | null
+          created_at?: string | null
+          data_call?: string | null
+          data_contatto?: string | null
+          email?: string | null
+          esito?: string | null
+          id?: string
+          nome?: string
+          obiezioni?: string | null
+          telefono?: string | null
+          updated_at?: string | null
+          venditore?: string | null
+        }
+        Relationships: []
+      }
       system_settings: {
         Row: {
           descrizione: string | null

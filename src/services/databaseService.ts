@@ -199,3 +199,81 @@ export async function triggerLeadCheck(): Promise<boolean> {
     return false;
   }
 }
+
+// Funzione per filtrare i lead in base ai criteri specificati
+export async function filterLeads(table: string, filters: any) {
+  try {
+    let query = supabase.from(table).select('*');
+
+    // Applica i filtri testuali
+    if (filters.nome) {
+      query = query.ilike('nome', `%${filters.nome}%`);
+    }
+    
+    if (filters.email) {
+      query = query.ilike('email', `%${filters.email}%`);
+    }
+    
+    if (filters.telefono) {
+      query = query.ilike('telefono', `%${filters.telefono}%`);
+    }
+    
+    if (filters.venditore) {
+      query = query.ilike('venditore', `%${filters.venditore}%`);
+    }
+    
+    if (filters.campagna && table === 'lead_generation') {
+      query = query.ilike('campagna', `%${filters.campagna}%`);
+    }
+    
+    if (filters.esito && table === 'lead_lavorati') {
+      query = query.ilike('esito', `%${filters.esito}%`);
+    }
+    
+    // Applica i filtri di data
+    if (filters.dataInizio) {
+      // Se è la tabella lead_lavorati, filtra su data_contatto
+      if (table === 'lead_lavorati' && filters.dataInizio) {
+        const dataInizio = new Date(filters.dataInizio);
+        dataInizio.setHours(0, 0, 0, 0);
+        query = query.gte('data_contatto', dataInizio.toISOString());
+      } else {
+        // Altrimenti filtra sulla data di creazione
+        const dataInizio = new Date(filters.dataInizio);
+        dataInizio.setHours(0, 0, 0, 0);
+        query = query.gte('created_at', dataInizio.toISOString());
+      }
+    }
+    
+    if (filters.dataFine) {
+      // Se è la tabella lead_lavorati, filtra su data_contatto
+      if (table === 'lead_lavorati' && filters.dataFine) {
+        const dataFine = new Date(filters.dataFine);
+        dataFine.setHours(23, 59, 59, 999);
+        query = query.lte('data_contatto', dataFine.toISOString());
+      } else {
+        // Altrimenti filtra sulla data di creazione
+        const dataFine = new Date(filters.dataFine);
+        dataFine.setHours(23, 59, 59, 999);
+        query = query.lte('created_at', dataFine.toISOString());
+      }
+    }
+
+    // Ordina i risultati per data di creazione discendente
+    query = query.order('created_at', { ascending: false });
+    
+    const { data, error } = await query;
+    
+    if (error) {
+      console.error(`Error fetching from ${table}:`, error);
+      toast.error(`Errore nel recupero dei dati da ${table}`);
+      return [];
+    }
+    
+    return data;
+  } catch (error) {
+    console.error(`Error filtering ${table}:`, error);
+    toast.error(`Errore nel filtraggio dei dati da ${table}`);
+    return [];
+  }
+}

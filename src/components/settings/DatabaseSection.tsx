@@ -16,6 +16,7 @@ import {
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import DatabaseImportDialog from "./DatabaseImportDialog";
 import DatabaseAddRecordDialog from "./DatabaseAddRecordDialog";
+import DatabaseAddLavoratiDialog from "./DatabaseAddLavoratiDialog";
 
 // Open Supabase table in a new tab
 const openSupabaseTable = (table: string) => {
@@ -61,6 +62,25 @@ export default function DatabaseSection() {
         { name: "note", type: "text", nullable: true, default: "-" },
       ],
       webhookEndpoint: "https://btcwmuyemmkiteqlopce.functions.supabase.co/calendly-webhook"
+    },
+    {
+      name: "Lead Lavorati",
+      tableName: "lead_lavorati",
+      description: "Database dei lead lavorati dai venditori",
+      columns: [
+        { name: "id", type: "uuid", nullable: false, default: "gen_random_uuid()" },
+        { name: "nome", type: "text", nullable: false, default: "-" },
+        { name: "cognome", type: "text", nullable: true, default: "-" },
+        { name: "email", type: "text", nullable: true, default: "-" },
+        { name: "telefono", type: "text", nullable: true, default: "-" },
+        { name: "venditore", type: "text", nullable: true, default: "-" },
+        { name: "esito", type: "text", nullable: true, default: "-" },
+        { name: "obiezioni", type: "text", nullable: true, default: "-" },
+        { name: "data_call", type: "timestamp with time zone", nullable: true, default: null },
+        { name: "data_contatto", type: "timestamp with time zone", nullable: true, default: null },
+        { name: "created_at", type: "timestamp with time zone", nullable: false, default: "now()" },
+      ],
+      webhookEndpoint: null
     }
   ];
   
@@ -217,11 +237,19 @@ export default function DatabaseSection() {
       </CardContent>
       
       {/* Add Record Dialog */}
-      <DatabaseAddRecordDialog 
-        isOpen={isAddRecordDialogOpen}
-        setIsOpen={setIsAddRecordDialogOpen}
-        tableName={activeDialogTable}
-      />
+      {activeDialogTable === 'lead_lavorati' ? (
+        <DatabaseAddLavoratiDialog 
+          isOpen={isAddRecordDialogOpen}
+          setIsOpen={setIsAddRecordDialogOpen}
+          tableName={activeDialogTable}
+        />
+      ) : (
+        <DatabaseAddRecordDialog 
+          isOpen={isAddRecordDialogOpen}
+          setIsOpen={setIsAddRecordDialogOpen}
+          tableName={activeDialogTable}
+        />
+      )}
       
       {/* Import CSV Dialog */}
       <DatabaseImportDialog 
