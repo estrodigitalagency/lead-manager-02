@@ -19,29 +19,29 @@ const Settings = () => {
       <div className="flex justify-between items-center mb-8">
         <div className="flex items-center gap-4">
           <Link to="/">
-            <Button variant="outline" size="icon" className="neon-border hover:animate-glow">
+            <Button variant="outline" size="icon" className="border">
               <ArrowLeft className="h-4 w-4 text-primary" />
             </Button>
           </Link>
-          <h1 className="text-3xl font-bold neon-text">Impostazioni</h1>
+          <h1 className="text-3xl font-bold text-primary">Impostazioni</h1>
         </div>
       </div>
       
       <Tabs defaultValue="attribution" className="w-full">
-        <TabsList className="grid w-full grid-cols-4 mb-8 neon-border">
-          <TabsTrigger value="database" className="data-[state=active]:text-primary data-[state=active]:shadow-[0_0_8px_rgba(234,255,85,0.5)]">
+        <TabsList className="grid w-full grid-cols-4 mb-8 border">
+          <TabsTrigger value="database" className="data-[state=active]:text-primary">
             <Database className="mr-2 h-4 w-4" />
             Database
           </TabsTrigger>
-          <TabsTrigger value="attribution" className="data-[state=active]:text-primary data-[state=active]:shadow-[0_0_8px_rgba(234,255,85,0.5)]">
+          <TabsTrigger value="attribution" className="data-[state=active]:text-primary">
             <Webhook className="mr-2 h-4 w-4" />
             Finestre di Attribuzione
           </TabsTrigger>
-          <TabsTrigger value="webhooks" className="data-[state=active]:text-primary data-[state=active]:shadow-[0_0_8px_rgba(234,255,85,0.5)]">
+          <TabsTrigger value="webhooks" className="data-[state=active]:text-primary">
             <Webhook className="mr-2 h-4 w-4" />
             Webhook
           </TabsTrigger>
-          <TabsTrigger value="salespeople" className="data-[state=active]:text-primary data-[state=active]:shadow-[0_0_8px_rgba(234,255,85,0.5)]">
+          <TabsTrigger value="salespeople" className="data-[state=active]:text-primary">
             <Users className="mr-2 h-4 w-4" />
             Venditori
           </TabsTrigger>
@@ -60,7 +60,7 @@ const Settings = () => {
         </TabsContent>
         
         <TabsContent value="salespeople">
-          <Card className="glass-card">
+          <Card className="border">
             <SalespeopleSettings />
           </Card>
         </TabsContent>

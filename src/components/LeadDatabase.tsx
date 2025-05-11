@@ -61,6 +61,28 @@ const LeadDatabase = () => {
     });
   };
 
+  const getStatusBadge = (lead: Lead) => {
+    if (lead.venditore) {
+      return (
+        <Badge variant="outline" className="bg-blue-100 text-blue-800 border-blue-200">
+          Assegnato
+        </Badge>
+      );
+    } else if (lead.assignable) {
+      return (
+        <Badge variant="outline" className="bg-green-100 text-green-800 border-green-200">
+          Assegnabile
+        </Badge>
+      );
+    } else {
+      return (
+        <Badge variant="outline" className="bg-yellow-100 text-yellow-800 border-yellow-200">
+          Non assegnabile
+        </Badge>
+      );
+    }
+  };
+
   return (
     <ScrollArea className="h-[400px]">
       <Table>
@@ -72,7 +94,8 @@ const LeadDatabase = () => {
             <TableHead className="table-header-cell">Email</TableHead>
             <TableHead className="table-header-cell">Telefono</TableHead>
             <TableHead className="table-header-cell">Chiamata Prenotata</TableHead>
-            <TableHead className="table-header-cell">Assegnabile</TableHead>
+            <TableHead className="table-header-cell">Stato</TableHead>
+            <TableHead className="table-header-cell">Venditore</TableHead>
             <TableHead className="table-header-cell">Note</TableHead>
           </TableRow>
         </TableHeader>
@@ -85,15 +108,14 @@ const LeadDatabase = () => {
               <TableCell className="table-body-cell">{lead.email}</TableCell>
               <TableCell className="table-body-cell">{lead.telefono}</TableCell>
               <TableCell className="table-body-cell">
-                <Badge variant={lead.booked_call === "SI" ? "default" : "secondary"}>
+                <Badge variant="outline" className={lead.booked_call === "SI" ? "bg-green-100 text-green-800 border-green-200" : "bg-gray-100 text-gray-800 border-gray-200"}>
                   {lead.booked_call || "NO"}
                 </Badge>
               </TableCell>
               <TableCell className="table-body-cell">
-                <Badge variant={lead.assignable ? "default" : "secondary"}>
-                  {lead.assignable ? "SI" : "NO"}
-                </Badge>
+                {getStatusBadge(lead)}
               </TableCell>
+              <TableCell className="table-body-cell">{lead.venditore || '-'}</TableCell>
               <TableCell className="table-body-cell">{lead.note || '-'}</TableCell>
             </TableRow>
           ))}

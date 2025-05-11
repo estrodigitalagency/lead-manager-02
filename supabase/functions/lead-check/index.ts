@@ -113,7 +113,7 @@ serve(async (req) => {
           // A lead is assignable ONLY when:
           // 1. No booking found (already confirmed by this branch)
           // 2. booked_call is "NO"
-          // 3. Days since creation >= daysBeforeAssignable setting
+          // 3. Days since creation >= daysBeforeAssignable setting (can now be 0)
           
           // First, ensure booked_call status is accurate (if no booking exists, set to "NO")
           let updateNeeded = false
@@ -125,12 +125,12 @@ serve(async (req) => {
             updateNeeded = true
           }
           
-          // Check if days since creation is sufficient
+          // Check if days since creation is sufficient - allowing for 0 days
           const enoughDaysPassed = daysSinceCreation >= daysBeforeAssignable
           
           // Determine assignability - ONLY assignable if both conditions are met:
           // 1. booked_call is "NO" (or will be updated to "NO")
-          // 2. Enough days have passed
+          // 2. Enough days have passed (can now be immediate if daysBeforeAssignable = 0)
           const shouldBeAssignable = (lead.booked_call === 'NO' || updates.booked_call === 'NO') && enoughDaysPassed
           
           // If assignability needs to change, update it

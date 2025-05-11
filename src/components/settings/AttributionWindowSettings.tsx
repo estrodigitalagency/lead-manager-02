@@ -7,6 +7,12 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Info } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { 
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { supabase } from "@/integrations/supabase/client";
 
 export default function AttributionWindowSettings() {
@@ -128,10 +134,10 @@ export default function AttributionWindowSettings() {
       
       if (error) throw error;
       
-      toast.success("Giorni prima dell'assegnabilità salvati con successo");
+      toast.success("Timer minimo per l'assegnazione salvato con successo");
     } catch (error) {
       console.error("Error saving days before assignable:", error);
-      toast.error("Errore nel salvare i giorni prima dell'assegnabilità");
+      toast.error("Errore nel salvare il timer minimo per l'assegnazione");
     }
   };
   
@@ -156,7 +162,17 @@ export default function AttributionWindowSettings() {
           
           <div className="grid gap-4">
             <div className="grid gap-2">
-              <Label htmlFor="attributionDays">Finestra di Attribuzione (giorni)</Label>
+              <div className="flex items-center gap-2">
+                <Label htmlFor="attributionDays">Intervallo attribuzione call prenotata al lead (giorni)</Label>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Info className="h-4 w-4 text-muted-foreground cursor-help" />
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p className="w-80">Determina per quanti giorni il sistema cercherà di associare una prenotazione Calendly a un lead esistente.</p>
+                  </TooltipContent>
+                </Tooltip>
+              </div>
               <div className="flex items-center gap-4">
                 <Input
                   id="attributionDays"
@@ -174,9 +190,19 @@ export default function AttributionWindowSettings() {
             </div>
             
             <div className="grid gap-2 mt-4">
-              <Label htmlFor="checkIntervalMinutes">
-                Intervallo di controllo prenotazioni (minuti)
-              </Label>
+              <div className="flex items-center gap-2">
+                <Label htmlFor="checkIntervalMinutes">
+                  Intervallo di controllo prenotazioni (minuti)
+                </Label>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Info className="h-4 w-4 text-muted-foreground cursor-help" />
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p className="w-80">Questo valore determina ogni quanti minuti il sistema controllerà se ci sono nuove prenotazioni associate ai lead nel database.</p>
+                  </TooltipContent>
+                </Tooltip>
+              </div>
               <div className="flex items-center gap-4">
                 <Input
                   id="checkIntervalMinutes"
@@ -191,16 +217,22 @@ export default function AttributionWindowSettings() {
                   Salva
                 </Button>
               </div>
-              <p className="text-xs text-muted-foreground mt-1">
-                Questo valore determina ogni quanti minuti il sistema controllerà se ci sono nuove prenotazioni
-                associate ai lead nel database
-              </p>
             </div>
 
             <div className="grid gap-2 mt-4">
-              <Label htmlFor="daysBeforeAssignable">
-                Giorni dall'acquisizione del lead prima dell'assegnabilità
-              </Label>
+              <div className="flex items-center gap-2">
+                <Label htmlFor="daysBeforeAssignable">
+                  Timer minimo per l'assegnazione (giorni)
+                </Label>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Info className="h-4 w-4 text-muted-foreground cursor-help" />
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p className="w-80">Un lead sarà considerato assegnabile solo se non ha una chiamata prenotata E se sono passati almeno questi giorni dalla sua creazione. Può essere impostato a 0 per assegnazione immediata.</p>
+                  </TooltipContent>
+                </Tooltip>
+              </div>
               <div className="flex items-center gap-4">
                 <Input
                   id="daysBeforeAssignable"
@@ -208,17 +240,13 @@ export default function AttributionWindowSettings() {
                   min="0"
                   max="365"
                   value={daysBeforeAssignable}
-                  onChange={(e) => setDaysBeforeAssignable(parseInt(e.target.value) || 7)}
+                  onChange={(e) => setDaysBeforeAssignable(parseInt(e.target.value) || 0)}
                   disabled={isLoading}
                 />
                 <Button onClick={saveDaysBeforeAssignable} disabled={isLoading}>
                   Salva
                 </Button>
               </div>
-              <p className="text-xs text-muted-foreground mt-1">
-                Un lead sarà considerato assegnabile solo se non ha una chiamata prenotata 
-                E se sono passati almeno questi giorni dalla sua creazione
-              </p>
             </div>
           </div>
         </div>

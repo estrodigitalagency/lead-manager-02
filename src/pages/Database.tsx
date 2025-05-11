@@ -187,7 +187,7 @@ const DatabasePage = () => {
       <div className="flex justify-between items-center mb-8">
         <div className="flex items-center gap-4">
           <Link to="/">
-            <Button variant="outline" size="icon">
+            <Button variant="outline" size="icon" className="border">
               <ArrowLeft className="h-4 w-4 text-primary" />
             </Button>
           </Link>
@@ -198,19 +198,19 @@ const DatabasePage = () => {
             onClick={handleManualLeadCheck} 
             variant="outline" 
             disabled={isCheckingLeads}
-            className="flex items-center gap-2"
+            className="flex items-center gap-2 border"
           >
             {isCheckingLeads ? (
               <RefreshCcw className="h-4 w-4 animate-spin" />
             ) : (
               <CalendarCheck className="h-4 w-4" />
             )}
-            Verifica chiamate prenotate
+            Verifica assegnabilità
           </Button>
           <Button 
             onClick={handleRefresh} 
             variant="outline" 
-            className="flex items-center gap-2"
+            className="flex items-center gap-2 border"
           >
             <RefreshCcw className="h-4 w-4" />
             Aggiorna dati
@@ -219,7 +219,7 @@ const DatabasePage = () => {
       </div>
       
       <Tabs defaultValue="leads" className="w-full">
-        <TabsList className="grid w-full grid-cols-2 mb-8">
+        <TabsList className="grid w-full grid-cols-2 mb-8 border">
           <TabsTrigger value="leads" className="data-[state=active]:text-primary">
             Lead Generation
           </TabsTrigger>
