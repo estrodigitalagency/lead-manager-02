@@ -200,12 +200,15 @@ export async function triggerLeadCheck(): Promise<boolean> {
   }
 }
 
-// Funzione per filtrare i lead in base ai criteri specificati
+// Function to filter leads based on specified criteria
 export async function filterLeads(table: string, filters: any) {
   try {
-    let query = supabase.from(table).select('*');
+    // Use type assertion to work around TypeScript's strict type checking for dynamic table names
+    type ValidTableName = "lead_generation" | "booked_call" | "lead_lavorati" | "lead_assignments" | "venditori" | "system_settings";
+    
+    let query = supabase.from(table as ValidTableName).select('*');
 
-    // Applica i filtri testuali
+    // Apply text filters
     if (filters.nome) {
       query = query.ilike('nome', `%${filters.nome}%`);
     }
@@ -230,9 +233,9 @@ export async function filterLeads(table: string, filters: any) {
       query = query.ilike('esito', `%${filters.esito}%`);
     }
     
-    // Applica i filtri di data
+    // Apply date filters
     if (filters.dataInizio) {
-      // Se è la tabella lead_lavorati, filtra su data_contatto
+      // If it's the lead_lavorati table, filter on data_contatto
       if (table === 'lead_lavorati' && filters.dataInizio) {
         const dataInizio = new Date(filters.dataInizio);
         dataInizio.setHours(0, 0, 0, 0);
@@ -246,7 +249,7 @@ export async function filterLeads(table: string, filters: any) {
     }
     
     if (filters.dataFine) {
-      // Se è la tabella lead_lavorati, filtra su data_contatto
+      // If it's the lead_lavorati table, filter on data_contatto
       if (table === 'lead_lavorati' && filters.dataFine) {
         const dataFine = new Date(filters.dataFine);
         dataFine.setHours(23, 59, 59, 999);
@@ -259,7 +262,7 @@ export async function filterLeads(table: string, filters: any) {
       }
     }
 
-    // Ordina i risultati per data di creazione discendente
+    // Sort results by creation date descending
     query = query.order('created_at', { ascending: false });
     
     const { data, error } = await query;

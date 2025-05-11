@@ -78,8 +78,9 @@ export default function DatabaseAddLavoratiDialog({
         data_contatto: formData.data_contatto ? formData.data_contatto.toISOString() : null,
       };
       
+      // Using type assertion to allow dynamic table name
       const { error } = await supabase
-        .from(tableName)
+        .from(tableName as "lead_lavorati")
         .insert(dataToSubmit);
       
       if (error) throw error;
