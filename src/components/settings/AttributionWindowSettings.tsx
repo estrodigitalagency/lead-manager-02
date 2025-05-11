@@ -6,7 +6,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Info } from "lucide-react";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import { 
   Tooltip,
   TooltipContent,
@@ -84,15 +83,33 @@ export default function AttributionWindowSettings() {
   // Save attribution window setting
   const saveAttributionWindow = async () => {
     try {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('system_settings')
-        .upsert({
-          key: 'booking_attribution_window_days',
-          value: attributionDays.toString(),
-          descrizione: 'Numero di giorni per l\'attribuzione delle prenotazioni Calendly ai lead'
-        });
+        .select('*')
+        .eq('key', 'booking_attribution_window_days');
       
       if (error) throw error;
+      
+      if (data && data.length > 0) {
+        // Update existing record
+        const { error: updateError } = await supabase
+          .from('system_settings')
+          .update({ value: attributionDays.toString() })
+          .eq('key', 'booking_attribution_window_days');
+          
+        if (updateError) throw updateError;
+      } else {
+        // Insert new record
+        const { error: insertError } = await supabase
+          .from('system_settings')
+          .insert({
+            key: 'booking_attribution_window_days',
+            value: attributionDays.toString(),
+            descrizione: 'Numero di giorni per l\'attribuzione delle prenotazioni Calendly ai lead'
+          });
+          
+        if (insertError) throw insertError;
+      }
       
       toast.success("Impostazioni di attribuzione salvate con successo");
     } catch (error) {
@@ -104,15 +121,33 @@ export default function AttributionWindowSettings() {
   // Save check interval setting
   const saveCheckInterval = async () => {
     try {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('system_settings')
-        .upsert({
-          key: 'lead_check_interval_minutes',
-          value: checkIntervalMinutes.toString(),
-          descrizione: 'Intervallo in minuti per il controllo delle prenotazioni associate ai lead'
-        });
+        .select('*')
+        .eq('key', 'lead_check_interval_minutes');
       
       if (error) throw error;
+      
+      if (data && data.length > 0) {
+        // Update existing record
+        const { error: updateError } = await supabase
+          .from('system_settings')
+          .update({ value: checkIntervalMinutes.toString() })
+          .eq('key', 'lead_check_interval_minutes');
+          
+        if (updateError) throw updateError;
+      } else {
+        // Insert new record
+        const { error: insertError } = await supabase
+          .from('system_settings')
+          .insert({
+            key: 'lead_check_interval_minutes',
+            value: checkIntervalMinutes.toString(),
+            descrizione: 'Intervallo in minuti per il controllo delle prenotazioni associate ai lead'
+          });
+          
+        if (insertError) throw insertError;
+      }
       
       toast.success("Intervallo di controllo salvato con successo");
     } catch (error) {
@@ -124,15 +159,33 @@ export default function AttributionWindowSettings() {
   // Save days before assignable setting
   const saveDaysBeforeAssignable = async () => {
     try {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('system_settings')
-        .upsert({
-          key: 'days_before_assignable',
-          value: daysBeforeAssignable.toString(),
-          descrizione: 'Numero di giorni che devono passare prima che un lead sia assegnabile'
-        });
+        .select('*')
+        .eq('key', 'days_before_assignable');
       
       if (error) throw error;
+      
+      if (data && data.length > 0) {
+        // Update existing record
+        const { error: updateError } = await supabase
+          .from('system_settings')
+          .update({ value: daysBeforeAssignable.toString() })
+          .eq('key', 'days_before_assignable');
+          
+        if (updateError) throw updateError;
+      } else {
+        // Insert new record
+        const { error: insertError } = await supabase
+          .from('system_settings')
+          .insert({
+            key: 'days_before_assignable',
+            value: daysBeforeAssignable.toString(),
+            descrizione: 'Numero di giorni che devono passare prima che un lead sia assegnabile'
+          });
+          
+        if (insertError) throw insertError;
+      }
       
       toast.success("Timer minimo per l'assegnazione salvato con successo");
     } catch (error) {
@@ -151,15 +204,6 @@ export default function AttributionWindowSettings() {
       </CardHeader>
       <CardContent>
         <div className="space-y-6">
-          <Alert>
-            <Info className="h-4 w-4" />
-            <AlertDescription>
-              La finestra di attribuzione determina per quanto tempo una prenotazione può essere associata a un lead esistente.
-              Se un contatto effettua una prenotazione tramite Calendly, il sistema cercherà di abbinare la prenotazione a un lead
-              esistente creato entro il numero di giorni specificato.
-            </AlertDescription>
-          </Alert>
-          
           <div className="grid gap-4">
             <div className="grid gap-2">
               <div className="flex items-center gap-2">
