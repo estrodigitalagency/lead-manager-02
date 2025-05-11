@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -25,6 +24,7 @@ import {
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Lead } from "@/types/lead";
+import { LeadLavorato } from "@/types/leadLavorato";
 import DatabaseAddRecordDialog from "@/components/settings/DatabaseAddRecordDialog";
 import DatabaseAddLavoratiDialog from "@/components/settings/DatabaseAddLavoratiDialog";
 import DatabaseImportDialog from "@/components/settings/DatabaseImportDialog";
@@ -40,20 +40,6 @@ interface CalendlyBooking {
   created_at: string;
   scheduled_at: string;
   note?: string;
-}
-
-interface LeadLavorato {
-  id: string;
-  nome: string;
-  cognome?: string;
-  email?: string;
-  telefono?: string;
-  venditore?: string;
-  esito?: string;
-  obiezioni?: string;
-  data_call?: string;
-  data_contatto?: string;
-  created_at: string;
 }
 
 const DatabasePage = () => {
@@ -135,8 +121,11 @@ const DatabasePage = () => {
       else if (type === 'booking') table = 'booked_call';
       else if (type === 'lavorato') table = 'lead_lavorati';
       
+      // Use type assertion for the table name
+      type ValidTableName = "lead_generation" | "booked_call" | "lead_lavorati";
+      
       const { error } = await supabase
-        .from(table)
+        .from(table as ValidTableName)
         .delete()
         .eq('id', id);
       
