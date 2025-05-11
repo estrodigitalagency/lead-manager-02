@@ -24,51 +24,60 @@ const ReportsPage = () => {
     setIsLoading(true);
     try {
       // Fetch total lead count
-      const { data: totalLeads, error: totalError } = await supabase
+      const { count: totalCount, error: totalError } = await supabase
         .from('lead_generation')
-        .select('count');
+        .select('*', { count: 'exact', head: true });
       
       // Fetch assignable lead count
-      const { data: assignableLeads, error: assignableError } = await supabase
+      const { count: assignableCount, error: assignableError } = await supabase
         .from('lead_generation')
-        .select('count')
+        .select('*', { count: 'exact', head: true })
         .eq('assignable', true);
       
       // Fetch assigned lead count
-      const { data: assignedLeads, error: assignedError } = await supabase
+      const { count: assignedCount, error: assignedError } = await supabase
         .from('lead_generation')
-        .select('count')
+        .select('*', { count: 'exact', head: true })
         .not('venditore', 'is', null);
         
       // Fetch booked call count
-      const { data: bookedLeads, error: bookedError } = await supabase
+      const { count: bookedCount, error: bookedError } = await supabase
         .from('lead_generation')
-        .select('count')
+        .select('*', { count: 'exact', head: true })
         .eq('booked_call', 'SI');
       
-      // Fetch leads by vendor
+      // Fetch leads by vendor using a workaround for group by
       const { data: vendorLeads, error: vendorError } = await supabase
         .from('lead_generation')
-        .select('venditore, count')
-        .not('venditore', 'is', null)
-        .group('venditore');
+        .select('venditore')
+        .not('venditore', 'is', null);
       
       if (totalError || assignableError || assignedError || bookedError || vendorError) {
         throw new Error("Error fetching lead statistics");
       }
       
       setLeadStats({
-        total: totalLeads ? parseInt(totalLeads[0].count) : 0,
-        assignable: assignableLeads ? parseInt(assignableLeads[0].count) : 0,
-        assigned: assignedLeads ? parseInt(assignedLeads[0].count) : 0,
-        booked: bookedLeads ? parseInt(bookedLeads[0].count) : 0
+        total: totalCount || 0,
+        assignable: assignableCount || 0,
+        assigned: assignedCount || 0,
+        booked: bookedCount || 0
       });
       
+      // Process vendor data by counting occurrences manually since we can't use group by
       if (vendorLeads) {
-        const vendorData = vendorLeads.map(item => ({
-          name: item.venditore,
-          value: parseInt(item.count)
+        const vendorCounts: Record<string, number> = {};
+        vendorLeads.forEach(lead => {
+          const vendorName = lead.venditore as string;
+          if (vendorName) {
+            vendorCounts[vendorName] = (vendorCounts[vendorName] || 0) + 1;
+          }
+        });
+        
+        const vendorData = Object.entries(vendorCounts).map(([name, count]) => ({
+          name,
+          value: count
         }));
+        
         setVendorStats(vendorData);
       }
     } catch (error) {
