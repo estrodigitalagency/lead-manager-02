@@ -58,7 +58,7 @@ export default function DatabaseSection() {
         { name: "email", type: "text", nullable: false, default: "-" },
         { name: "telefono", type: "text", nullable: false, default: "-" },
         { name: "created_at", type: "timestamp with time zone", nullable: false, default: "now()" },
-        { name: "scheduled_at", type: "timestamp with time zone", nullable: false, default: "now()" },
+        { name: "scheduled_at", type: "timestamp with time zone", nullable: false, default: null },
         { name: "note", type: "text", nullable: true, default: "-" },
       ],
       webhookEndpoint: "https://btcwmuyemmkiteqlopce.functions.supabase.co/calendly-webhook"
