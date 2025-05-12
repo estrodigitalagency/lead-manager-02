@@ -204,10 +204,13 @@ export async function triggerLeadCheck(): Promise<boolean> {
 // Function to filter leads based on specified criteria
 export async function filterLeads(table: string, filters: any) {
   try {
-    // Use type assertion to work around TypeScript's strict type checking for dynamic table names
+    // Define valid table names for type safety
     type ValidTableName = "lead_generation" | "booked_call" | "lead_lavorati" | "lead_assignments" | "venditori" | "system_settings";
     
-    let query = supabase.from(table as ValidTableName).select('*');
+    // Cast the table name to the valid type
+    const validTable = table as ValidTableName;
+    
+    let query = supabase.from(validTable).select('*');
 
     // Apply text filters
     if (filters.nome) {

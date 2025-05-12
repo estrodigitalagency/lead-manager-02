@@ -42,6 +42,9 @@ interface CalendlyBooking {
   note?: string;
 }
 
+// Define a type for valid table names in Supabase
+type ValidTableName = "lead_generation" | "booked_call" | "lead_assignments" | "lead_lavorati" | "system_settings" | "venditori";
+
 const DatabasePage = () => {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [bookings, setBookings] = useState<CalendlyBooking[]>([]);
@@ -115,17 +118,14 @@ const DatabasePage = () => {
     
     try {
       const { type, id } = recordToDelete;
-      let table = '';
+      let table: ValidTableName = 'lead_generation';
       
       if (type === 'lead') table = 'lead_generation';
       else if (type === 'booking') table = 'booked_call';
       else if (type === 'lavorato') table = 'lead_lavorati';
       
-      // Use type assertion for the table name
-      type ValidTableName = "lead_generation" | "booked_call" | "lead_lavorati";
-      
       const { error } = await supabase
-        .from(table as ValidTableName)
+        .from(table)
         .delete()
         .eq('id', id);
       

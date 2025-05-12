@@ -18,6 +18,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
 import { CalendarIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { LeadLavorato } from "@/types/leadLavorato";
 
 interface DatabaseAddLavoratiDialogProps {
   isOpen: boolean;
@@ -71,9 +72,10 @@ export default function DatabaseAddLavoratiDialog({
     
     setIsLoading(true);
     try {
-      // Formatta le date se presenti
-      const dataToSubmit = {
+      // Create complete data object with all necessary fields
+      const dataToSubmit: Partial<LeadLavorato> = {
         ...formData,
+        nome: formData.nome, // Ensure nome is included
         data_call: formData.data_call ? formData.data_call.toISOString() : null,
         data_contatto: formData.data_contatto ? formData.data_contatto.toISOString() : null,
       };
