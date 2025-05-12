@@ -73,7 +73,7 @@ export default function DatabaseAddLavoratiDialog({
     setIsLoading(true);
     try {
       // Create complete data object with all necessary fields
-      const dataToSubmit: Partial<LeadLavorato> = {
+      const dataToSubmit = {
         ...formData,
         nome: formData.nome, // Ensure nome is included
         data_call: formData.data_call ? formData.data_call.toISOString() : null,
