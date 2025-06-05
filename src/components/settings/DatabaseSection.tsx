@@ -1,9 +1,10 @@
+
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Database, LinkIcon, Info, ArrowLeftRight, Plus, UploadCloud } from "lucide-react";
+import { Database, LinkIcon, Info, ArrowLeftRight, Plus, UploadCloud, Copy } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -16,6 +17,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import DatabaseImportDialog from "./DatabaseImportDialog";
 import DatabaseAddRecordDialog from "./DatabaseAddRecordDialog";
 import DatabaseAddLavoratiDialog from "./DatabaseAddLavoratiDialog";
+import { toast } from "sonner";
 
 // Open Supabase table in a new tab
 const openSupabaseTable = (table: string) => {
@@ -26,6 +28,32 @@ export default function DatabaseSection() {
   const [activeDialogTable, setActiveDialogTable] = useState("");
   const [isAddRecordDialogOpen, setIsAddRecordDialogOpen] = useState(false);
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
+  
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
+    toast.success("Copiato negli appunti!");
+  };
+
+  const leadGenerationExample = {
+    nome: "Mario",
+    cognome: "Rossi",
+    email: "mario.rossi@email.com",
+    telefono: "+39 123 456 7890",
+    campagna: "Google Ads",
+    fonte: "google, facebook",
+    booked_call: "NO",
+    note: "Interessato al prodotto X"
+  };
+
+  const calendlyBookingExample = {
+    nome: "Luigi",
+    cognome: "Verdi",
+    email: "luigi.verdi@email.com",
+    telefono: "+39 098 765 4321",
+    fonte: "calendly, website",
+    scheduled_at: "2024-01-15T14:30:00Z",
+    note: "Chiamata di consulenza"
+  };
   
   const databases = [
     {
@@ -45,7 +73,18 @@ export default function DatabaseSection() {
         { name: "venditore", type: "text", nullable: true, default: "-" },
         { name: "booked_call", type: "text", nullable: true, default: "NO" },
       ],
-      webhookEndpoint: "https://btcwmuyemmkiteqlopce.functions.supabase.co/lead-generation-webhook"
+      webhookEndpoint: "https://btcwmuyemmkiteqlopce.functions.supabase.co/lead-generation-webhook",
+      webhookExample: leadGenerationExample,
+      webhookFields: [
+        { name: "nome", required: true, description: "Nome del lead" },
+        { name: "cognome", required: false, description: "Cognome del lead" },
+        { name: "email", required: true, description: "Email del lead" },
+        { name: "telefono", required: true, description: "Numero di telefono" },
+        { name: "campagna", required: false, description: "Nome della campagna pubblicitaria" },
+        { name: "fonte", required: false, description: "Fonti del lead separate da virgola (es: google, facebook)" },
+        { name: "booked_call", required: false, description: "\"SI\" o \"NO\" se ha prenotato una chiamata" },
+        { name: "note", required: false, description: "Note aggiuntive sul lead" }
+      ]
     },
     {
       name: "Call Prenotate",
@@ -62,7 +101,17 @@ export default function DatabaseSection() {
         { name: "scheduled_at", type: "timestamp with time zone", nullable: false, default: null },
         { name: "note", type: "text", nullable: true, default: "-" },
       ],
-      webhookEndpoint: "https://btcwmuyemmkiteqlopce.functions.supabase.co/calendly-webhook"
+      webhookEndpoint: "https://btcwmuyemmkiteqlopce.functions.supabase.co/calendly-webhook",
+      webhookExample: calendlyBookingExample,
+      webhookFields: [
+        { name: "nome", required: true, description: "Nome della persona" },
+        { name: "cognome", required: false, description: "Cognome della persona" },
+        { name: "email", required: true, description: "Email della persona" },
+        { name: "telefono", required: true, description: "Numero di telefono" },
+        { name: "fonte", required: false, description: "Fonti della prenotazione separate da virgola (es: calendly, website)" },
+        { name: "scheduled_at", required: true, description: "Data e ora della chiamata (formato ISO 8601)" },
+        { name: "note", required: false, description: "Note aggiuntive sulla prenotazione" }
+      ]
     },
     {
       name: "Lead Lavorati",
@@ -81,7 +130,9 @@ export default function DatabaseSection() {
         { name: "data_contatto", type: "timestamp with time zone", nullable: true, default: null },
         { name: "created_at", type: "timestamp with time zone", nullable: false, default: "now()" },
       ],
-      webhookEndpoint: null
+      webhookEndpoint: null,
+      webhookExample: null,
+      webhookFields: []
     }
   ];
   
@@ -190,23 +241,71 @@ export default function DatabaseSection() {
                       <DialogTrigger asChild>
                         <Button variant="outline" className="flex items-center">
                           <Info className="mr-2 h-4 w-4" />
-                          Webhook
+                          Struttura Webhook
                         </Button>
                       </DialogTrigger>
-                      <DialogContent className="sm:max-w-[650px]">
+                      <DialogContent className="sm:max-w-[750px]">
                         <DialogHeader>
-                          <DialogTitle>Webhook {db.name}</DialogTitle>
+                          <DialogTitle>Struttura Webhook {db.name}</DialogTitle>
                           <DialogDescription>
-                            Endpoint per l'inserimento dei dati via webhook
+                            Endpoint e struttura dati per l'inserimento tramite webhook
                           </DialogDescription>
                         </DialogHeader>
                         
-                        <div className="py-4">
-                          <Alert>
-                            <AlertDescription className="text-sm font-mono break-all">
-                              {db.webhookEndpoint}
-                            </AlertDescription>
-                          </Alert>
+                        <div className="py-4 space-y-4">
+                          <div>
+                            <h4 className="font-medium mb-2">Endpoint URL:</h4>
+                            <Alert>
+                              <AlertDescription className="text-sm font-mono break-all">
+                                {db.webhookEndpoint}
+                              </AlertDescription>
+                            </Alert>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="mt-2"
+                              onClick={() => copyToClipboard(db.webhookEndpoint)}
+                            >
+                              <Copy className="h-4 w-4 mr-1" />
+                              Copia URL
+                            </Button>
+                          </div>
+
+                          <div>
+                            <h4 className="font-medium mb-2">Esempio JSON:</h4>
+                            <div className="bg-gray-50 p-4 rounded-lg">
+                              <pre className="text-sm overflow-x-auto">
+{JSON.stringify(db.webhookExample, null, 2)}
+                              </pre>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="mt-2"
+                                onClick={() => copyToClipboard(JSON.stringify(db.webhookExample, null, 2))}
+                              >
+                                <Copy className="h-4 w-4 mr-1" />
+                                Copia esempio
+                              </Button>
+                            </div>
+                          </div>
+
+                          <div>
+                            <h4 className="font-medium mb-2">Campi supportati:</h4>
+                            <div className="space-y-2">
+                              {db.webhookFields.map((field) => (
+                                <div key={field.name} className="flex items-start gap-2">
+                                  <code className="bg-gray-100 px-2 py-1 rounded text-sm">
+                                    {field.name}
+                                  </code>
+                                  <div className="text-sm">
+                                    {field.required && <span className="text-red-600 font-medium">Obbligatorio</span>}
+                                    {!field.required && <span className="text-gray-500">Opzionale</span>}
+                                    <span className="ml-2">{field.description}</span>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
                         </div>
                       </DialogContent>
                     </Dialog>

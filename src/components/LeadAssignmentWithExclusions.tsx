@@ -22,7 +22,6 @@ const LeadAssignmentWithExclusions = () => {
   const [numLead, setNumLead] = useState(1);
   const [venditore, setVenditore] = useState("");
   const [campagna, setCampagna] = useState("");
-  const [webhookUrl, setWebhookUrl] = useState("");
   const [salespeople, setSalespeople] = useState<Salesperson[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [excludedSources, setExcludedSources] = useState<string[]>([]);
@@ -102,7 +101,6 @@ const LeadAssignmentWithExclusions = () => {
         numLead,
         venditore,
         campagna,
-        webhookUrl,
         excludedSources
       });
       
@@ -112,7 +110,6 @@ const LeadAssignmentWithExclusions = () => {
       setNumLead(1);
       setVenditore("");
       setCampagna("");
-      setWebhookUrl("");
       
       // Aggiorna il conteggio dei lead disponibili
       updateAvailableLeads();
@@ -129,23 +126,19 @@ const LeadAssignmentWithExclusions = () => {
     numLead: number;
     venditore: string;
     campagna?: string;
-    webhookUrl?: string;
     excludedSources: string[];
   }) => {
     try {
-      // Ottieni l'URL webhook di default se non fornito
-      let webhookUrl = data.webhookUrl;
+      // Ottieni l'URL webhook di default dalle impostazioni di sistema
+      const { data: webhookData, error: webhookError } = await supabase
+        .from('system_settings')
+        .select('value')
+        .eq('key', 'lead_assign_webhook_url')
+        .single();
       
-      if (!webhookUrl) {
-        const { data: webhookData, error: webhookError } = await supabase
-          .from('system_settings')
-          .select('value')
-          .eq('key', 'lead_assign_webhook_url')
-          .single();
-        
-        if (!webhookError && webhookData && webhookData.value) {
-          webhookUrl = webhookData.value;
-        }
+      let webhookUrl = '';
+      if (!webhookError && webhookData && webhookData.value) {
+        webhookUrl = webhookData.value;
       }
       
       // Costruisci la query per ottenere i lead assegnabili escludendo le fonti specificate
@@ -236,7 +229,7 @@ const LeadAssignmentWithExclusions = () => {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Assegnazione Lead con Esclusioni</CardTitle>
+        <CardTitle>Assegnazione Lead</CardTitle>
         <CardDescription>
           Assegna lead ai venditori escludendo fonti specifiche. Lead disponibili: {availableLeads}
         </CardDescription>
@@ -279,16 +272,6 @@ const LeadAssignmentWithExclusions = () => {
             value={campagna}
             onChange={(e) => setCampagna(e.target.value)}
             placeholder="Nome della campagna"
-          />
-        </div>
-
-        <div>
-          <Label htmlFor="webhookUrl">URL Webhook (opzionale)</Label>
-          <Input
-            id="webhookUrl"
-            value={webhookUrl}
-            onChange={(e) => setWebhookUrl(e.target.value)}
-            placeholder="https://example.com/webhook"
           />
         </div>
 
