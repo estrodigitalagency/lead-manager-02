@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -39,6 +40,7 @@ interface CalendlyBooking {
   telefono: string;
   created_at: string;
   scheduled_at: string;
+  fonte?: string;
   note?: string;
 }
 
@@ -251,7 +253,7 @@ const DatabasePage = () => {
             Lead Generation
           </TabsTrigger>
           <TabsTrigger value="bookings" className="data-[state=active]:text-primary">
-            Booked Call
+            Call Prenotate
           </TabsTrigger>
           <TabsTrigger value="lavorati" className="data-[state=active]:text-primary">
             Lead Lavorati
@@ -309,6 +311,7 @@ const DatabasePage = () => {
                         <TableHead>Cognome</TableHead>
                         <TableHead>Email</TableHead>
                         <TableHead>Telefono</TableHead>
+                        <TableHead>Fonte</TableHead>
                         <TableHead>Campagna</TableHead>
                         <TableHead>Stato</TableHead>
                         <TableHead>Venditore</TableHead>
@@ -325,6 +328,7 @@ const DatabasePage = () => {
                             <TableCell>{lead.cognome || '-'}</TableCell>
                             <TableCell>{lead.email}</TableCell>
                             <TableCell>{lead.telefono}</TableCell>
+                            <TableCell>{lead.fonte || '-'}</TableCell>
                             <TableCell>{lead.campagna || '-'}</TableCell>
                             <TableCell>
                               {lead.assignable ? (
@@ -353,7 +357,7 @@ const DatabasePage = () => {
                         ))
                       ) : (
                         <TableRow>
-                          <TableCell colSpan={10} className="text-center py-8">
+                          <TableCell colSpan={11} className="text-center py-8">
                             Nessun lead trovato
                           </TableCell>
                         </TableRow>
@@ -371,7 +375,7 @@ const DatabasePage = () => {
             <CardHeader>
               <div className="flex items-center justify-between">
                 <div>
-                  <CardTitle>Booked Call</CardTitle>
+                  <CardTitle>Call Prenotate</CardTitle>
                   <CardDescription>
                     Tutte le prenotazioni ricevute tramite Calendly
                   </CardDescription>
@@ -417,6 +421,7 @@ const DatabasePage = () => {
                         <TableHead>Cognome</TableHead>
                         <TableHead>Email</TableHead>
                         <TableHead>Telefono</TableHead>
+                        <TableHead>Fonte</TableHead>
                         <TableHead>Data Chiamata</TableHead>
                         <TableHead>Azioni</TableHead>
                       </TableRow>
@@ -430,6 +435,7 @@ const DatabasePage = () => {
                             <TableCell>{booking.cognome || '-'}</TableCell>
                             <TableCell>{booking.email}</TableCell>
                             <TableCell>{booking.telefono}</TableCell>
+                            <TableCell>{booking.fonte || '-'}</TableCell>
                             <TableCell>{booking.scheduled_at ? formatDate(booking.scheduled_at) : '-'}</TableCell>
                             <TableCell>
                               <Button
@@ -445,7 +451,7 @@ const DatabasePage = () => {
                         ))
                       ) : (
                         <TableRow>
-                          <TableCell colSpan={7} className="text-center py-8">
+                          <TableCell colSpan={8} className="text-center py-8">
                             Nessuna prenotazione trovata
                           </TableCell>
                         </TableRow>
