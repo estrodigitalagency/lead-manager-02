@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -244,7 +243,7 @@ export default function DatabaseSection() {
                           Struttura Webhook
                         </Button>
                       </DialogTrigger>
-                      <DialogContent className="sm:max-w-[750px]">
+                      <DialogContent className="sm:max-w-[900px] max-h-[80vh] overflow-y-auto">
                         <DialogHeader>
                           <DialogTitle>Struttura Webhook {db.name}</DialogTitle>
                           <DialogDescription>
@@ -252,7 +251,7 @@ export default function DatabaseSection() {
                           </DialogDescription>
                         </DialogHeader>
                         
-                        <div className="py-4 space-y-4">
+                        <div className="py-4 space-y-6">
                           <div>
                             <h4 className="font-medium mb-2">Endpoint URL:</h4>
                             <Alert>
@@ -273,14 +272,14 @@ export default function DatabaseSection() {
 
                           <div>
                             <h4 className="font-medium mb-2">Esempio JSON:</h4>
-                            <div className="bg-gray-50 p-4 rounded-lg">
-                              <pre className="text-sm overflow-x-auto">
+                            <div className="bg-gray-50 p-4 rounded-lg border">
+                              <pre className="text-sm overflow-x-auto whitespace-pre-wrap text-gray-800">
 {JSON.stringify(db.webhookExample, null, 2)}
                               </pre>
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                className="mt-2"
+                                className="mt-3"
                                 onClick={() => copyToClipboard(JSON.stringify(db.webhookExample, null, 2))}
                               >
                                 <Copy className="h-4 w-4 mr-1" />
@@ -290,17 +289,17 @@ export default function DatabaseSection() {
                           </div>
 
                           <div>
-                            <h4 className="font-medium mb-2">Campi supportati:</h4>
-                            <div className="space-y-2">
+                            <h4 className="font-medium mb-3">Campi supportati:</h4>
+                            <div className="space-y-3">
                               {db.webhookFields.map((field) => (
-                                <div key={field.name} className="flex items-start gap-2">
-                                  <code className="bg-gray-100 px-2 py-1 rounded text-sm">
+                                <div key={field.name} className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
+                                  <code className="bg-white px-2 py-1 rounded text-sm font-mono border">
                                     {field.name}
                                   </code>
                                   <div className="text-sm">
                                     {field.required && <span className="text-red-600 font-medium">Obbligatorio</span>}
                                     {!field.required && <span className="text-gray-500">Opzionale</span>}
-                                    <span className="ml-2">{field.description}</span>
+                                    <span className="ml-2 text-gray-700">{field.description}</span>
                                   </div>
                                 </div>
                               ))}
