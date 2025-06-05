@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import {
   Dialog,
@@ -38,6 +37,7 @@ export default function DatabaseAddRecordDialog({
           { name: "email", label: "Email", required: true },
           { name: "telefono", label: "Telefono", required: true },
           { name: "campagna", label: "Campagna", required: false },
+          { name: "fonte", label: "Fonte", required: false },
           { name: "booked_call", label: "Prenotazione Effettuata", required: false, default: "NO" },
           { name: "note", label: "Note", required: false },
         ];
@@ -47,6 +47,7 @@ export default function DatabaseAddRecordDialog({
           { name: "cognome", label: "Cognome", required: true },
           { name: "email", label: "Email", required: true },
           { name: "telefono", label: "Telefono", required: true },
+          { name: "fonte", label: "Fonte", required: false },
           { name: "scheduled_at", label: "Data Chiamata", required: true, type: "datetime-local" },
           { name: "note", label: "Note", required: false },
         ];
@@ -127,7 +128,7 @@ export default function DatabaseAddRecordDialog({
   const getTableDisplayName = () => {
     switch (tableName) {
       case "lead_generation": return "Lead Generation";
-      case "booked_call": return "Booked Call";
+      case "booked_call": return "Call Prenotate";
       case "system_settings": return "System Settings";
       case "lead_assignments": return "Lead Assignments";
       default: return tableName;

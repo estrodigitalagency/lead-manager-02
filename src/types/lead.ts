@@ -10,6 +10,7 @@ export interface Lead {
   booked_call?: string; // 'SI' o 'NO'
   venditore?: string;
   campagna?: string;
+  fonte?: string;
   note?: string;
   stato?: string;
   updated_at?: string;

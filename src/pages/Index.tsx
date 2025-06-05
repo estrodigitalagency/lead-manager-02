@@ -1,24 +1,57 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import LeadAssignmentForm from "@/components/LeadAssignmentForm";
 import AssignmentHistory from "@/components/AssignmentHistory";
 import { Settings, Database, BarChart } from "lucide-react";
+import { triggerLeadCheck } from "@/services/databaseService";
+import { toast } from "sonner";
 
 const Index = () => {
   const [refreshHistory, setRefreshHistory] = useState(false);
+  const [isCheckingLeads, setIsCheckingLeads] = useState(false);
 
   const handleAssignmentSuccess = () => {
     // Trigger history refresh when assignment succeeds
     setRefreshHistory(prev => !prev);
   };
 
+  // Esegui verifica automatica all'apertura dell'applicazione
+  useEffect(() => {
+    const performInitialLeadCheck = async () => {
+      setIsCheckingLeads(true);
+      console.log("Avvio verifica automatica assegnabilità lead...");
+      
+      try {
+        const success = await triggerLeadCheck();
+        if (success) {
+          console.log("Verifica automatica completata con successo");
+        }
+      } catch (error) {
+        console.error("Errore durante la verifica automatica:", error);
+        toast.error("Errore durante la verifica automatica dei lead");
+      } finally {
+        setIsCheckingLeads(false);
+      }
+    };
+
+    performInitialLeadCheck();
+  }, []);
+
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="flex justify-between items-center mb-8">
-        <h1 className="text-3xl font-bold text-primary">LeadHero</h1>
+        <div className="flex items-center gap-4">
+          <h1 className="text-3xl font-bold text-primary">LeadHero</h1>
+          {isCheckingLeads && (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
+              Verifica assegnabilità lead...
+            </div>
+          )}
+        </div>
         <div className="flex gap-3">
           <Link to="/reports">
             <Button variant="outline" className="flex items-center gap-2 border">

@@ -33,6 +33,7 @@ serve(async (req) => {
         cognome: payload.cognome || '',
         email: payload.email || '',
         telefono: payload.telefono || '',
+        fonte: payload.fonte || null,
         scheduled_at: payload.scheduled_at || new Date().toISOString(), // Use provided scheduled_at or fallback to now()
         note: payload.note || null
       })

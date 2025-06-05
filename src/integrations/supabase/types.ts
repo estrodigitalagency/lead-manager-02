@@ -14,6 +14,7 @@ export type Database = {
           cognome: string | null
           created_at: string | null
           email: string | null
+          fonte: string | null
           id: string
           lead_id: string | null
           nome: string | null
@@ -27,6 +28,7 @@ export type Database = {
           cognome?: string | null
           created_at?: string | null
           email?: string | null
+          fonte?: string | null
           id?: string
           lead_id?: string | null
           nome?: string | null
@@ -40,6 +42,7 @@ export type Database = {
           cognome?: string | null
           created_at?: string | null
           email?: string | null
+          fonte?: string | null
           id?: string
           lead_id?: string | null
           nome?: string | null
@@ -106,6 +109,7 @@ export type Database = {
           cognome: string | null
           created_at: string | null
           email: string | null
+          fonte: string | null
           id: string
           nome: string
           note: string | null
@@ -121,6 +125,7 @@ export type Database = {
           cognome?: string | null
           created_at?: string | null
           email?: string | null
+          fonte?: string | null
           id?: string
           nome: string
           note?: string | null
@@ -136,6 +141,7 @@ export type Database = {
           cognome?: string | null
           created_at?: string | null
           email?: string | null
+          fonte?: string | null
           id?: string
           nome?: string
           note?: string | null

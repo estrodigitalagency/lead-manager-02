@@ -39,6 +39,7 @@ serve(async (req) => {
         email: payload.email || '',
         telefono: payload.telefono || '',
         campagna: payload.campagna || null,
+        fonte: payload.fonte || null,
         booked_call: isBooked ? 'SI' : 'NO', // Always store as string
         assignable: isBooked,  // Keep this as boolean as the assignable column is still boolean
         stato: isBooked ? 'prenotato' : 'nuovo', // Set status based on booking

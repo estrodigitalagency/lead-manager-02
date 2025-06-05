@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -40,6 +39,7 @@ export default function DatabaseSection() {
         { name: "email", type: "text", nullable: false, default: "-" },
         { name: "telefono", type: "text", nullable: false, default: "-" },
         { name: "campagna", type: "text", nullable: true, default: "-" },
+        { name: "fonte", type: "text", nullable: true, default: "-" },
         { name: "created_at", type: "timestamp with time zone", nullable: false, default: "now()" },
         { name: "assignable", type: "boolean", nullable: true, default: "false" },
         { name: "venditore", type: "text", nullable: true, default: "-" },
@@ -48,7 +48,7 @@ export default function DatabaseSection() {
       webhookEndpoint: "https://btcwmuyemmkiteqlopce.functions.supabase.co/lead-generation-webhook"
     },
     {
-      name: "Booked Call",
+      name: "Call Prenotate",
       tableName: "booked_call",
       description: "Database delle prenotazioni effettuate tramite Calendly",
       columns: [
@@ -57,6 +57,7 @@ export default function DatabaseSection() {
         { name: "cognome", type: "text", nullable: false, default: "-" },
         { name: "email", type: "text", nullable: false, default: "-" },
         { name: "telefono", type: "text", nullable: false, default: "-" },
+        { name: "fonte", type: "text", nullable: true, default: "-" },
         { name: "created_at", type: "timestamp with time zone", nullable: false, default: "now()" },
         { name: "scheduled_at", type: "timestamp with time zone", nullable: false, default: null },
         { name: "note", type: "text", nullable: true, default: "-" },
