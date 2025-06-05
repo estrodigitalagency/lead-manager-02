@@ -61,6 +61,23 @@ const LeadDatabase = () => {
     });
   };
 
+  const formatFonte = (fonte: string | null) => {
+    if (!fonte) return '-';
+    // Split by comma and display each source as a separate badge
+    const fonti = fonte.split(',').map(f => f.trim()).filter(f => f);
+    if (fonti.length === 0) return '-';
+    
+    return (
+      <div className="flex flex-wrap gap-1">
+        {fonti.map((f, index) => (
+          <Badge key={index} variant="outline" className="text-xs">
+            {f}
+          </Badge>
+        ))}
+      </div>
+    );
+  };
+
   const getStatusBadge = (lead: Lead) => {
     if (lead.venditore) {
       return (
@@ -94,7 +111,7 @@ const LeadDatabase = () => {
             <TableHead className="table-header-cell">Email</TableHead>
             <TableHead className="table-header-cell">Telefono</TableHead>
             <TableHead className="table-header-cell">Fonte</TableHead>
-            <TableHead className="table-header-cell">Chiamata Prenotata</TableHead>
+            <TableHead className="table-header-cell">Call Prenotate</TableHead>
             <TableHead className="table-header-cell">Stato</TableHead>
             <TableHead className="table-header-cell">Venditore</TableHead>
             <TableHead className="table-header-cell">Note</TableHead>
@@ -108,7 +125,7 @@ const LeadDatabase = () => {
               <TableCell className="table-body-cell">{lead.cognome || '-'}</TableCell>
               <TableCell className="table-body-cell">{lead.email}</TableCell>
               <TableCell className="table-body-cell">{lead.telefono}</TableCell>
-              <TableCell className="table-body-cell">{lead.fonte || '-'}</TableCell>
+              <TableCell className="table-body-cell">{formatFonte(lead.fonte)}</TableCell>
               <TableCell className="table-body-cell">
                 <Badge variant="outline" className={lead.booked_call === "SI" ? "bg-green-100 text-green-800 border-green-200" : "bg-gray-100 text-gray-800 border-gray-200"}>
                   {lead.booked_call || "NO"}

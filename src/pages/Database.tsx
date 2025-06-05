@@ -2,10 +2,7 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogContent,
@@ -17,9 +14,6 @@ import {
 import { 
   RefreshCcw, 
   ArrowLeft, 
-  Trash2, 
-  Plus, 
-  UploadCloud, 
   CalendarCheck 
 } from "lucide-react";
 import { toast } from "sonner";
@@ -29,8 +23,11 @@ import { LeadLavorato } from "@/types/leadLavorato";
 import DatabaseAddRecordDialog from "@/components/settings/DatabaseAddRecordDialog";
 import DatabaseAddLavoratiDialog from "@/components/settings/DatabaseAddLavoratiDialog";
 import DatabaseImportDialog from "@/components/settings/DatabaseImportDialog";
-import DatabaseFilters from "@/components/DatabaseFilters";
 import { filterLeads } from "@/services/databaseService";
+import DatabaseTableContainer from "@/components/database/DatabaseTableContainer";
+import LeadsTable from "@/components/database/LeadsTable";
+import BookingsTable from "@/components/database/BookingsTable";
+import LeadLavoratiTable from "@/components/database/LeadLavoratiTable";
 
 interface CalendlyBooking {
   id: string;
@@ -44,7 +41,6 @@ interface CalendlyBooking {
   note?: string;
 }
 
-// Define a type for valid table names in Supabase
 type ValidTableName = "lead_generation" | "booked_call" | "lead_assignments" | "lead_lavorati" | "system_settings" | "venditori";
 
 const DatabasePage = () => {
@@ -158,17 +154,6 @@ const DatabasePage = () => {
     }
   };
 
-  const formatDate = (dateString: string) => {
-    if (!dateString) return '-';
-    return new Date(dateString).toLocaleString('it-IT', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
-
   const handleManualLeadCheck = async () => {
     setIsCheckingLeads(true);
     try {
@@ -184,7 +169,6 @@ const DatabasePage = () => {
       
       if (response.ok) {
         toast.success(`Controllo completato: aggiornati ${result.updated} lead su ${result.checked} controllati`);
-        // Refresh lead data to show updated status
         fetchLeads();
       } else {
         throw new Error(result.error || 'Unknown error');
@@ -261,305 +245,54 @@ const DatabasePage = () => {
         </TabsList>
         
         <TabsContent value="leads" className="mt-4">
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle>Lead Database</CardTitle>
-                  <CardDescription>
-                    Tutti i lead generati tramite form o webhook
-                  </CardDescription>
-                </div>
-                <div className="flex gap-2">
-                  <DatabaseFilters 
-                    onApplyFilters={handleApplyFilters} 
-                    tableName="lead_generation"
-                  />
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    className="flex items-center gap-1"
-                    onClick={() => openAddDialog('lead_generation')}
-                  >
-                    <Plus className="h-4 w-4" />
-                    <span>Aggiungi Record</span>
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    className="flex items-center gap-1"
-                    onClick={() => openImportDialog('lead_generation')}
-                  >
-                    <UploadCloud className="h-4 w-4" />
-                    <span>Importa CSV</span>
-                  </Button>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              {isLoadingLeads ? (
-                <div className="flex justify-center items-center h-32">
-                  <span>Caricamento in corso...</span>
-                </div>
-              ) : (
-                <div className="overflow-x-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Data</TableHead>
-                        <TableHead>Nome</TableHead>
-                        <TableHead>Cognome</TableHead>
-                        <TableHead>Email</TableHead>
-                        <TableHead>Telefono</TableHead>
-                        <TableHead>Fonte</TableHead>
-                        <TableHead>Campagna</TableHead>
-                        <TableHead>Stato</TableHead>
-                        <TableHead>Venditore</TableHead>
-                        <TableHead>Chiamata Prenotata</TableHead>
-                        <TableHead>Azioni</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {leads.length > 0 ? (
-                        leads.map((lead) => (
-                          <TableRow key={lead.id}>
-                            <TableCell>{formatDate(lead.created_at)}</TableCell>
-                            <TableCell>{lead.nome}</TableCell>
-                            <TableCell>{lead.cognome || '-'}</TableCell>
-                            <TableCell>{lead.email}</TableCell>
-                            <TableCell>{lead.telefono}</TableCell>
-                            <TableCell>{lead.fonte || '-'}</TableCell>
-                            <TableCell>{lead.campagna || '-'}</TableCell>
-                            <TableCell>
-                              {lead.assignable ? (
-                                <Badge variant="outline" className="bg-green-100 text-green-800 border-green-200">
-                                  Assegnabile
-                                </Badge>
-                              ) : (
-                                <Badge variant="outline" className="bg-yellow-100 text-yellow-800 border-yellow-200">
-                                  Non assegnabile
-                                </Badge>
-                              )}
-                            </TableCell>
-                            <TableCell>{lead.venditore || '-'}</TableCell>
-                            <TableCell>{lead.booked_call}</TableCell>
-                            <TableCell>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="text-destructive hover:bg-destructive/10"
-                                onClick={() => handleDeleteClick(lead.id as string, 'lead')}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </TableCell>
-                          </TableRow>
-                        ))
-                      ) : (
-                        <TableRow>
-                          <TableCell colSpan={11} className="text-center py-8">
-                            Nessun lead trovato
-                          </TableCell>
-                        </TableRow>
-                      )}
-                    </TableBody>
-                  </Table>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+          <DatabaseTableContainer
+            title="Lead Database"
+            description="Tutti i lead generati tramite form o webhook"
+            tableName="lead_generation"
+            onApplyFilters={handleApplyFilters}
+            onAddRecord={() => openAddDialog('lead_generation')}
+            onImport={() => openImportDialog('lead_generation')}
+          >
+            <LeadsTable 
+              leads={leads}
+              isLoading={isLoadingLeads}
+              onDelete={(id) => handleDeleteClick(id, 'lead')}
+            />
+          </DatabaseTableContainer>
         </TabsContent>
         
         <TabsContent value="bookings" className="mt-4">
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle>Call Prenotate</CardTitle>
-                  <CardDescription>
-                    Tutte le prenotazioni ricevute tramite Calendly
-                  </CardDescription>
-                </div>
-                <div className="flex gap-2">
-                  <DatabaseFilters 
-                    onApplyFilters={handleApplyFilters} 
-                    tableName="booked_call"
-                  />
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    className="flex items-center gap-1"
-                    onClick={() => openAddDialog('booked_call')}
-                  >
-                    <Plus className="h-4 w-4" />
-                    <span>Aggiungi Record</span>
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    className="flex items-center gap-1"
-                    onClick={() => openImportDialog('booked_call')}
-                  >
-                    <UploadCloud className="h-4 w-4" />
-                    <span>Importa CSV</span>
-                  </Button>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              {isLoadingBookings ? (
-                <div className="flex justify-center items-center h-32">
-                  <span>Caricamento in corso...</span>
-                </div>
-              ) : (
-                <div className="overflow-x-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Data</TableHead>
-                        <TableHead>Nome</TableHead>
-                        <TableHead>Cognome</TableHead>
-                        <TableHead>Email</TableHead>
-                        <TableHead>Telefono</TableHead>
-                        <TableHead>Fonte</TableHead>
-                        <TableHead>Data Chiamata</TableHead>
-                        <TableHead>Azioni</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {bookings.length > 0 ? (
-                        bookings.map((booking) => (
-                          <TableRow key={booking.id}>
-                            <TableCell>{formatDate(booking.created_at)}</TableCell>
-                            <TableCell>{booking.nome}</TableCell>
-                            <TableCell>{booking.cognome || '-'}</TableCell>
-                            <TableCell>{booking.email}</TableCell>
-                            <TableCell>{booking.telefono}</TableCell>
-                            <TableCell>{booking.fonte || '-'}</TableCell>
-                            <TableCell>{booking.scheduled_at ? formatDate(booking.scheduled_at) : '-'}</TableCell>
-                            <TableCell>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="text-destructive hover:bg-destructive/10"
-                                onClick={() => handleDeleteClick(booking.id, 'booking')}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </TableCell>
-                          </TableRow>
-                        ))
-                      ) : (
-                        <TableRow>
-                          <TableCell colSpan={8} className="text-center py-8">
-                            Nessuna prenotazione trovata
-                          </TableCell>
-                        </TableRow>
-                      )}
-                    </TableBody>
-                  </Table>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+          <DatabaseTableContainer
+            title="Call Prenotate"
+            description="Tutte le prenotazioni ricevute tramite Calendly"
+            tableName="booked_call"
+            onApplyFilters={handleApplyFilters}
+            onAddRecord={() => openAddDialog('booked_call')}
+            onImport={() => openImportDialog('booked_call')}
+          >
+            <BookingsTable 
+              bookings={bookings}
+              isLoading={isLoadingBookings}
+              onDelete={(id) => handleDeleteClick(id, 'booking')}
+            />
+          </DatabaseTableContainer>
         </TabsContent>
 
         <TabsContent value="lavorati" className="mt-4">
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle>Lead Lavorati</CardTitle>
-                  <CardDescription>
-                    Tutti i lead che sono stati lavorati dai venditori
-                  </CardDescription>
-                </div>
-                <div className="flex gap-2">
-                  <DatabaseFilters 
-                    onApplyFilters={handleApplyFilters} 
-                    tableName="lead_lavorati"
-                  />
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    className="flex items-center gap-1"
-                    onClick={() => openAddDialog('lead_lavorati')}
-                  >
-                    <Plus className="h-4 w-4" />
-                    <span>Aggiungi Record</span>
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    className="flex items-center gap-1"
-                    onClick={() => openImportDialog('lead_lavorati')}
-                  >
-                    <UploadCloud className="h-4 w-4" />
-                    <span>Importa CSV</span>
-                  </Button>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              {isLoadingLeadLavorati ? (
-                <div className="flex justify-center items-center h-32">
-                  <span>Caricamento in corso...</span>
-                </div>
-              ) : (
-                <div className="overflow-x-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Venditore</TableHead>
-                        <TableHead>Nome</TableHead>
-                        <TableHead>Cognome</TableHead>
-                        <TableHead>Email</TableHead>
-                        <TableHead>Telefono</TableHead>
-                        <TableHead>Esito</TableHead>
-                        <TableHead>Obiezioni</TableHead>
-                        <TableHead>Data Contatto</TableHead>
-                        <TableHead>Data Call</TableHead>
-                        <TableHead>Azioni</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {leadLavorati.length > 0 ? (
-                        leadLavorati.map((lead) => (
-                          <TableRow key={lead.id}>
-                            <TableCell>{lead.venditore || '-'}</TableCell>
-                            <TableCell>{lead.nome}</TableCell>
-                            <TableCell>{lead.cognome || '-'}</TableCell>
-                            <TableCell>{lead.email || '-'}</TableCell>
-                            <TableCell>{lead.telefono || '-'}</TableCell>
-                            <TableCell>{lead.esito || '-'}</TableCell>
-                            <TableCell>{lead.obiezioni || '-'}</TableCell>
-                            <TableCell>{lead.data_contatto ? formatDate(lead.data_contatto) : '-'}</TableCell>
-                            <TableCell>{lead.data_call ? formatDate(lead.data_call) : '-'}</TableCell>
-                            <TableCell>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="text-destructive hover:bg-destructive/10"
-                                onClick={() => handleDeleteClick(lead.id, 'lavorato')}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </TableCell>
-                          </TableRow>
-                        ))
-                      ) : (
-                        <TableRow>
-                          <TableCell colSpan={10} className="text-center py-8">
-                            Nessun lead lavorato trovato
-                          </TableCell>
-                        </TableRow>
-                      )}
-                    </TableBody>
-                  </Table>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+          <DatabaseTableContainer
+            title="Lead Lavorati"
+            description="Tutti i lead che sono stati lavorati dai venditori"
+            tableName="lead_lavorati"
+            onApplyFilters={handleApplyFilters}
+            onAddRecord={() => openAddDialog('lead_lavorati')}
+            onImport={() => openImportDialog('lead_lavorati')}
+          >
+            <LeadLavoratiTable 
+              leadLavorati={leadLavorati}
+              isLoading={isLoadingLeadLavorati}
+              onDelete={(id) => handleDeleteClick(id, 'lavorato')}
+            />
+          </DatabaseTableContainer>
         </TabsContent>
       </Tabs>
 
