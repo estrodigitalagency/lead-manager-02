@@ -45,7 +45,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         return null;
       }
 
-      return data;
+      return data as Profile;
     } catch (error) {
       console.error('Error fetching profile:', error);
       return null;

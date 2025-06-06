@@ -51,7 +51,7 @@ const Users = () => {
         console.error('Error fetching users:', error);
         toast.error("Errore nel caricamento degli utenti");
       } else {
-        setUsers(data || []);
+        setUsers((data as Profile[]) || []);
       }
     } catch (error) {
       console.error('Error fetching users:', error);
