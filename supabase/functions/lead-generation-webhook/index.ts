@@ -29,8 +29,10 @@ serve(async (req) => {
       ? payload.booked_call.toUpperCase() === 'SI' || payload.booked_call === 'true'
       : !!payload.booked_call
     
+    // Use provided created_at date or default to now
+    const createdAt = payload.created_at ? new Date(payload.created_at).toISOString() : new Date().toISOString();
+    
     // Insert the lead data to the lead_generation table
-    // created_at will be set to now() by the default value in the database
     const { data, error } = await supabase
       .from('lead_generation')
       .insert({
@@ -40,10 +42,11 @@ serve(async (req) => {
         telefono: payload.telefono || '',
         campagna: payload.campagna || null,
         fonte: payload.fonte || null,
-        booked_call: isBooked ? 'SI' : 'NO', // Always store as string
-        assignable: isBooked,  // Keep this as boolean as the assignable column is still boolean
-        stato: isBooked ? 'prenotato' : 'nuovo', // Set status based on booking
-        note: payload.note || null
+        booked_call: isBooked ? 'SI' : 'NO',
+        assignable: isBooked,
+        stato: isBooked ? 'prenotato' : 'nuovo',
+        note: payload.note || null,
+        created_at: createdAt
       })
       .select()
 

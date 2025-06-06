@@ -4,32 +4,21 @@ import { Link } from "react-router-dom";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { Webhook, ArrowLeft, Users, Database, Code } from "lucide-react";
+import { Webhook, ArrowLeft, Users, Database } from "lucide-react";
 import SalespeopleSettings from "@/components/SalespeopleSettings";
 import DatabaseSection from "@/components/settings/DatabaseSection";
 import AttributionWindowSettings from "@/components/settings/AttributionWindowSettings";
 import WebhookSettings from "@/components/settings/WebhookSettings";
-import WebhookDocumentationSection from "@/components/settings/WebhookDocumentationSection";
 
 const Settings = () => {
-  const [isTestingLead, setIsTestingLead] = useState(false);
-  const [isTestingCalendly, setIsTestingCalendly] = useState(false);
-
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="flex justify-between items-center mb-8">
-        <div className="flex items-center gap-4">
-          <Link to="/">
-            <Button variant="outline" size="icon" className="border">
-              <ArrowLeft className="h-4 w-4 text-primary" />
-            </Button>
-          </Link>
-          <h1 className="text-3xl font-bold text-primary">Impostazioni</h1>
-        </div>
+        <h1 className="text-3xl font-bold text-primary">Impostazioni</h1>
       </div>
       
       <Tabs defaultValue="attribution" className="w-full">
-        <TabsList className="grid w-full grid-cols-5 mb-8 border">
+        <TabsList className="grid w-full grid-cols-4 mb-8 border">
           <TabsTrigger value="database" className="data-[state=active]:text-primary">
             <Database className="mr-2 h-4 w-4" />
             Database
@@ -37,10 +26,6 @@ const Settings = () => {
           <TabsTrigger value="attribution" className="data-[state=active]:text-primary">
             <Webhook className="mr-2 h-4 w-4" />
             Finestre di Attribuzione
-          </TabsTrigger>
-          <TabsTrigger value="webhook-docs" className="data-[state=active]:text-primary">
-            <Code className="mr-2 h-4 w-4" />
-            Documentazione Webhook
           </TabsTrigger>
           <TabsTrigger value="webhooks" className="data-[state=active]:text-primary">
             <Webhook className="mr-2 h-4 w-4" />
@@ -58,10 +43,6 @@ const Settings = () => {
         
         <TabsContent value="attribution">
           <AttributionWindowSettings />
-        </TabsContent>
-        
-        <TabsContent value="webhook-docs">
-          <WebhookDocumentationSection />
         </TabsContent>
         
         <TabsContent value="webhooks">

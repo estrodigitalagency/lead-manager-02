@@ -1,9 +1,16 @@
 
-import { Lead } from "@/types/lead";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Trash2 } from "lucide-react";
+import { Trash2, Loader2 } from "lucide-react";
+import { Lead } from "@/types/lead";
 
 interface LeadsTableProps {
   leads: Lead[];
@@ -12,8 +19,24 @@ interface LeadsTableProps {
 }
 
 const LeadsTable = ({ leads, isLoading, onDelete }: LeadsTableProps) => {
+  if (isLoading) {
+    return (
+      <div className="flex justify-center items-center h-40">
+        <Loader2 className="h-6 w-6 animate-spin mr-2 text-primary" />
+        <span>Caricamento lead...</span>
+      </div>
+    );
+  }
+
+  if (leads.length === 0) {
+    return (
+      <div className="text-center py-10 text-muted-foreground">
+        Nessun lead trovato.
+      </div>
+    );
+  }
+
   const formatDate = (dateString: string) => {
-    if (!dateString) return '-';
     return new Date(dateString).toLocaleString('it-IT', {
       day: '2-digit',
       month: '2-digit',
@@ -25,7 +48,6 @@ const LeadsTable = ({ leads, isLoading, onDelete }: LeadsTableProps) => {
 
   const formatFonte = (fonte: string | null) => {
     if (!fonte) return '-';
-    // Split by comma and display each source as a separate badge
     const fonti = fonte.split(',').map(f => f.trim()).filter(f => f);
     if (fonti.length === 0) return '-';
     
@@ -40,78 +62,78 @@ const LeadsTable = ({ leads, isLoading, onDelete }: LeadsTableProps) => {
     );
   };
 
-  if (isLoading) {
-    return (
-      <div className="flex justify-center items-center h-32">
-        <span>Caricamento in corso...</span>
-      </div>
-    );
-  }
+  const getStatusBadge = (lead: Lead) => {
+    if (lead.venditore) {
+      return (
+        <Badge variant="outline" className="bg-blue-100 text-blue-800 border-blue-200">
+          Assegnato
+        </Badge>
+      );
+    } else if (lead.assignable) {
+      return (
+        <Badge variant="outline" className="bg-green-100 text-green-800 border-green-200">
+          Assegnabile
+        </Badge>
+      );
+    } else {
+      return (
+        <Badge variant="outline" className="bg-yellow-100 text-yellow-800 border-yellow-200">
+          Non assegnabile
+        </Badge>
+      );
+    }
+  };
 
   return (
-    <div className="overflow-x-auto">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Data</TableHead>
-            <TableHead>Nome</TableHead>
-            <TableHead>Cognome</TableHead>
-            <TableHead>Email</TableHead>
-            <TableHead>Telefono</TableHead>
-            <TableHead>Fonte</TableHead>
-            <TableHead>Campagna</TableHead>
-            <TableHead>Stato</TableHead>
-            <TableHead>Venditore</TableHead>
-            <TableHead>Call Prenotate</TableHead>
-            <TableHead>Azioni</TableHead>
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead className="table-header-cell">Data</TableHead>
+          <TableHead className="table-header-cell">Nome</TableHead>
+          <TableHead className="table-header-cell">Cognome</TableHead>
+          <TableHead className="table-header-cell">Email</TableHead>
+          <TableHead className="table-header-cell">Telefono</TableHead>
+          <TableHead className="table-header-cell">Fonte</TableHead>
+          <TableHead className="table-header-cell">Call Prenotate</TableHead>
+          <TableHead className="table-header-cell">Stato</TableHead>
+          <TableHead className="table-header-cell">Venditore</TableHead>
+          <TableHead className="table-header-cell">Note</TableHead>
+          <TableHead className="table-header-cell w-20">Azioni</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {leads.map((lead) => (
+          <TableRow key={lead.id} className="hover:bg-muted/30 transition-colors">
+            <TableCell className="table-body-cell">{formatDate(lead.created_at)}</TableCell>
+            <TableCell className="table-body-cell">{lead.nome}</TableCell>
+            <TableCell className="table-body-cell">{lead.cognome || '-'}</TableCell>
+            <TableCell className="table-body-cell">{lead.email}</TableCell>
+            <TableCell className="table-body-cell">{lead.telefono}</TableCell>
+            <TableCell className="table-body-cell">{formatFonte(lead.fonte)}</TableCell>
+            <TableCell className="table-body-cell">
+              <Badge variant="outline" className={lead.booked_call === "SI" ? "bg-green-100 text-green-800 border-green-200" : "bg-gray-100 text-gray-800 border-gray-200"}>
+                {lead.booked_call || "NO"}
+              </Badge>
+            </TableCell>
+            <TableCell className="table-body-cell">
+              {getStatusBadge(lead)}
+            </TableCell>
+            <TableCell className="table-body-cell">{lead.venditore || '-'}</TableCell>
+            <TableCell className="table-body-cell">{lead.note || '-'}</TableCell>
+            <TableCell className="table-body-cell">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => onDelete(lead.id!)}
+                className="text-red-600 hover:text-red-800 hover:bg-red-100"
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </TableCell>
           </TableRow>
-        </TableHeader>
-        <TableBody>
-          {leads.length > 0 ? (
-            leads.map((lead) => (
-              <TableRow key={lead.id}>
-                <TableCell>{formatDate(lead.created_at)}</TableCell>
-                <TableCell>{lead.nome}</TableCell>
-                <TableCell>{lead.cognome || '-'}</TableCell>
-                <TableCell>{lead.email}</TableCell>
-                <TableCell>{lead.telefono}</TableCell>
-                <TableCell>{formatFonte(lead.fonte)}</TableCell>
-                <TableCell>{lead.campagna || '-'}</TableCell>
-                <TableCell>
-                  {lead.assignable ? (
-                    <Badge variant="outline" className="bg-green-100 text-green-800 border-green-200">
-                      Assegnabile
-                    </Badge>
-                  ) : (
-                    <Badge variant="outline" className="bg-yellow-100 text-yellow-800 border-yellow-200">
-                      Non assegnabile
-                    </Badge>
-                  )}
-                </TableCell>
-                <TableCell>{lead.venditore || '-'}</TableCell>
-                <TableCell>{lead.booked_call}</TableCell>
-                <TableCell>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="text-destructive hover:bg-destructive/10"
-                    onClick={() => onDelete(lead.id as string)}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </TableCell>
-              </TableRow>
-            ))
-          ) : (
-            <TableRow>
-              <TableCell colSpan={11} className="text-center py-8">
-                Nessun lead trovato
-              </TableCell>
-            </TableRow>
-          )}
-        </TableBody>
-      </Table>
-    </div>
+        ))}
+      </TableBody>
+    </Table>
   );
 };
 

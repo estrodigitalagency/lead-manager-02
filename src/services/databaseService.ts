@@ -13,7 +13,7 @@ export async function getUnassignedLeads(): Promise<Lead[]> {
       .eq('assignable', true)
       .is('venditore', null)
       .order('created_at', { ascending: false })
-      .limit(1000); // Limit to prevent overly large queries
+      .limit(1000);
     
     if (error) {
       console.error("Error fetching unassigned leads:", error);
@@ -32,16 +32,14 @@ export async function getUnassignedLeads(): Promise<Lead[]> {
 // Add a new lead (e.g. from webhook)
 export async function addLead(lead: Omit<Lead, 'id' | 'assignable' | 'created_at'>): Promise<Lead | null> {
   try {
-    // Convert boolean booked_call to string 'SI'/'NO' format
     const isBooked = typeof lead.booked_call === 'string' 
       ? lead.booked_call === "SI" 
       : !!lead.booked_call;
     
-    // Lead is assignable only if booked_call is NO and enough days have passed (this check will be done by the lead-check function)
     const leadToInsert = {
       ...lead,
-      booked_call: isBooked ? 'SI' : 'NO', // Always store as string
-      assignable: false  // Start as not assignable, will be updated by lead-check function
+      booked_call: isBooked ? 'SI' : 'NO',
+      assignable: false
     };
     
     const { data, error } = await supabase
@@ -58,12 +56,10 @@ export async function addLead(lead: Omit<Lead, 'id' | 'assignable' | 'created_at
       return null;
     }
     
-    // After adding a lead, trigger the lead-check function to update assignability
     try {
       await triggerLeadCheck();
     } catch (checkError) {
       console.error("Error checking lead assignability after adding:", checkError);
-      // Don't return error here, as the lead was successfully added
     }
     
     return data as Lead;
@@ -77,7 +73,6 @@ export async function addLead(lead: Omit<Lead, 'id' | 'assignable' | 'created_at
 // Mark leads as assigned
 export async function markLeadsAsAssigned(numLeads: number, venditore: string, campagna?: string, webhookUrl?: string): Promise<Lead[]> {
   try {
-    // Get unassigned leads that are assignable up to the requested number
     const { data: leadsToAssign, error: fetchError } = await supabase
       .from('lead_generation')
       .select('*')
@@ -92,14 +87,12 @@ export async function markLeadsAsAssigned(numLeads: number, venditore: string, c
       if (!leadsToAssign) return [];
     }
     
-    // Update leads to mark them as assigned
     const leadIds = leadsToAssign?.map(lead => lead.id) || [];
     
     if (leadIds.length === 0) {
       return [];
     }
     
-    // Create update object with only fields that exist in the database
     const updateObj: Record<string, any> = { venditore };
     if (campagna) updateObj.campagna = campagna;
     
@@ -114,10 +107,8 @@ export async function markLeadsAsAssigned(numLeads: number, venditore: string, c
       return [];
     }
     
-    // If a webhook URL is provided, send the lead data to the webhook
     if (webhookUrl && leadsToAssign && leadsToAssign.length > 0) {
       try {
-        // Get venditore info from salespeople if available
         const { data: venditorInfo } = await supabase
           .from('venditori')
           .select('sheets_file_id, sheets_tab_name')
@@ -130,7 +121,6 @@ export async function markLeadsAsAssigned(numLeads: number, venditore: string, c
           sheets_tab_name: venditorInfo?.sheets_tab_name || ''
         };
         
-        // Prepare data for webhook
         const assignmentData = {
           venditore: venditorData,
           leads: leadsToAssign.map(lead => ({
@@ -145,7 +135,6 @@ export async function markLeadsAsAssigned(numLeads: number, venditore: string, c
           campagna: campagna || ''
         };
         
-        // Call the webhook edge function to send the data
         const response = await supabase.functions.invoke('lead-assign-webhook', {
           body: { assignmentData, webhookUrl }
         });
@@ -157,11 +146,9 @@ export async function markLeadsAsAssigned(numLeads: number, venditore: string, c
         }
       } catch (webhookError) {
         console.error("Error processing webhook for lead assignment:", webhookError);
-        // Don't return error here, as the leads were successfully assigned in the database
       }
     }
     
-    // Return the assigned leads
     return leadsToAssign as Lead[];
   } catch (error) {
     console.error("Error marking leads as assigned:", error);
@@ -175,7 +162,6 @@ export async function triggerLeadCheck(): Promise<boolean> {
   try {
     const supabaseUrl = "https://btcwmuyemmkiteqlopce.supabase.co";
     
-    // Show loading toast
     const toastId = toast.loading("Controllo dei lead in corso...");
     
     const response = await fetch(`${supabaseUrl}/functions/v1/lead-check`, {
@@ -192,7 +178,6 @@ export async function triggerLeadCheck(): Promise<boolean> {
     const result = await response.json();
     console.log("Lead check result:", result);
     
-    // Update the toast with results
     toast.dismiss(toastId);
     toast.success(`Controllo completato: ${result.updated} lead aggiornati su ${result.checked} controllati`);
     return true;
@@ -203,25 +188,29 @@ export async function triggerLeadCheck(): Promise<boolean> {
   }
 }
 
-// Optimized function to filter leads based on specified criteria with better performance
+// Optimized function to filter leads based on specified criteria
 export async function filterLeads(table: string, filters: any) {
   try {
-    // Define valid table names for type safety
-    type ValidTableName = "lead_generation" | "booked_call" | "lead_lavorati" | "lead_assignments" | "venditori" | "system_settings";
+    const tableMap: Record<string, string> = {
+      "lead_generation": "lead_generation",
+      "booked_call": "booked_call", 
+      "lead_lavorati": "lead_lavorati",
+      "lead_assignments": "lead_assignments",
+      "venditori": "venditori",
+      "system_settings": "system_settings"
+    };
     
-    // Cast the table name to the valid type
-    const validTable = table as ValidTableName;
+    const validTable = tableMap[table];
+    if (!validTable) {
+      throw new Error(`Invalid table name: ${table}`);
+    }
     
-    // Start with optimized base query - limit results and add index hints
     let query = supabase
       .from(validTable)
       .select('*')
-      .limit(5000) // Reasonable limit to prevent performance issues
-      .order('created_at', { ascending: false }); // Most recent first
+      .limit(5000)
+      .order('created_at', { ascending: false });
 
-    // Apply filters efficiently - most selective filters first
-    
-    // Date filters first (most selective usually)
     if (filters.dataInizio) {
       const dataInizio = new Date(filters.dataInizio);
       dataInizio.setHours(0, 0, 0, 0);
@@ -244,7 +233,6 @@ export async function filterLeads(table: string, filters: any) {
       }
     }
 
-    // Exact match filters
     if (filters.venditore) {
       query = query.eq('venditore', filters.venditore);
     }
@@ -257,7 +245,6 @@ export async function filterLeads(table: string, filters: any) {
       query = query.eq('esito', filters.esito);
     }
     
-    // Text search filters (less selective, applied last)
     if (filters.nome) {
       query = query.ilike('nome', `%${filters.nome}%`);
     }
@@ -289,8 +276,16 @@ export async function filterLeads(table: string, filters: any) {
 // Optimized function for getting recent data without filters
 export async function getRecentData(table: string, limit: number = 1000) {
   try {
-    type ValidTableName = "lead_generation" | "booked_call" | "lead_lavorati";
-    const validTable = table as ValidTableName;
+    const tableMap: Record<string, string> = {
+      "lead_generation": "lead_generation",
+      "booked_call": "booked_call",
+      "lead_lavorati": "lead_lavorati"
+    };
+    
+    const validTable = tableMap[table];
+    if (!validTable) {
+      throw new Error(`Invalid table name: ${table}`);
+    }
     
     const { data, error } = await supabase
       .from(validTable)
@@ -350,7 +345,6 @@ export async function getVendorStats() {
       return [];
     }
     
-    // Process vendor data efficiently
     const vendorCounts: Record<string, number> = {};
     vendorLeads?.forEach(lead => {
       const vendorName = lead.venditore as string;
