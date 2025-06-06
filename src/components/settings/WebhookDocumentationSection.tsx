@@ -20,7 +20,8 @@ export default function WebhookDocumentationSection() {
     campagna: "Google Ads",
     fonte: "google",
     booked_call: "NO",
-    note: "Interessato al prodotto X"
+    note: "Interessato al prodotto X",
+    created_at: "2024-01-15T10:30:00Z"
   };
 
   const calendlyBookingExample = {
@@ -71,19 +72,18 @@ export default function WebhookDocumentationSection() {
               
               <div className="space-y-3">
                 <h4 className="font-medium">Struttura dati JSON:</h4>
-                <div className="bg-gray-50 p-4 rounded-lg">
-                  <pre className="text-sm overflow-x-auto">
-{JSON.stringify(leadGenerationExample, null, 2)}
-                  </pre>
+                <div className="bg-slate-800 p-4 rounded-lg border relative">
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="mt-2"
+                    className="absolute top-2 right-2 text-white hover:bg-slate-700"
                     onClick={() => copyToClipboard(JSON.stringify(leadGenerationExample, null, 2))}
                   >
-                    <Copy className="h-4 w-4 mr-1" />
-                    Copia esempio
+                    <Copy className="h-4 w-4" />
                   </Button>
+                  <pre className="text-sm overflow-x-auto pr-12 text-green-400">
+{JSON.stringify(leadGenerationExample, null, 2)}
+                  </pre>
                 </div>
                 
                 <div className="space-y-2">
@@ -97,6 +97,7 @@ export default function WebhookDocumentationSection() {
                     <li><code className="bg-gray-100 px-1 rounded">fonte</code> - Fonte del lead (es: google, facebook, linkedin)</li>
                     <li><code className="bg-gray-100 px-1 rounded">booked_call</code> - "SI" o "NO" se ha prenotato una chiamata</li>
                     <li><code className="bg-gray-100 px-1 rounded">note</code> - Note aggiuntive sul lead</li>
+                    <li><code className="bg-gray-100 px-1 rounded">created_at</code> - <strong>Data creazione</strong>: Data di creazione del lead (formato ISO 8601)</li>
                   </ul>
                 </div>
               </div>
@@ -123,19 +124,18 @@ export default function WebhookDocumentationSection() {
               
               <div className="space-y-3">
                 <h4 className="font-medium">Struttura dati JSON:</h4>
-                <div className="bg-gray-50 p-4 rounded-lg">
-                  <pre className="text-sm overflow-x-auto">
-{JSON.stringify(calendlyBookingExample, null, 2)}
-                  </pre>
+                <div className="bg-slate-800 p-4 rounded-lg border relative">
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="mt-2"
+                    className="absolute top-2 right-2 text-white hover:bg-slate-700"
                     onClick={() => copyToClipboard(JSON.stringify(calendlyBookingExample, null, 2))}
                   >
-                    <Copy className="h-4 w-4 mr-1" />
-                    Copia esempio
+                    <Copy className="h-4 w-4" />
                   </Button>
+                  <pre className="text-sm overflow-x-auto pr-12 text-green-400">
+{JSON.stringify(calendlyBookingExample, null, 2)}
+                  </pre>
                 </div>
                 
                 <div className="space-y-2">

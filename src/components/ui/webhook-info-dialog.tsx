@@ -76,16 +76,16 @@ export function WebhookInfoDialog({ isOpen, onOpenChange }: WebhookInfoDialogPro
             
             <div className="mt-4">
               <h4 className="font-medium mb-2">Esempio JSON:</h4>
-              <div className="bg-gray-50 p-4 rounded-lg border relative">
+              <div className="bg-slate-800 p-4 rounded-lg border relative">
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="absolute top-2 right-2"
+                  className="absolute top-2 right-2 text-white hover:bg-slate-700"
                   onClick={() => copyToClipboard(JSON.stringify(leadGenerationExample, null, 2))}
                 >
                   <Copy className="h-4 w-4" />
                 </Button>
-                <pre className="text-xs overflow-x-auto pr-12">
+                <pre className="text-xs overflow-x-auto pr-12 text-green-400">
 {JSON.stringify(leadGenerationExample, null, 2)}
                 </pre>
               </div>
@@ -129,16 +129,16 @@ export function WebhookInfoDialog({ isOpen, onOpenChange }: WebhookInfoDialogPro
             
             <div className="mt-4">
               <h4 className="font-medium mb-2">Esempio JSON:</h4>
-              <div className="bg-gray-50 p-4 rounded-lg border relative">
+              <div className="bg-slate-800 p-4 rounded-lg border relative">
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="absolute top-2 right-2"
+                  className="absolute top-2 right-2 text-white hover:bg-slate-700"
                   onClick={() => copyToClipboard(JSON.stringify(calendlyBookingExample, null, 2))}
                 >
                   <Copy className="h-4 w-4" />
                 </Button>
-                <pre className="text-xs overflow-x-auto pr-12">
+                <pre className="text-xs overflow-x-auto pr-12 text-green-400">
 {JSON.stringify(calendlyBookingExample, null, 2)}
                 </pre>
               </div>
