@@ -28,6 +28,7 @@ const Users = () => {
   const [creating, setCreating] = useState(false);
   const [creatingAdmin, setCreatingAdmin] = useState(false);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [hasRLSError, setHasRLSError] = useState(false);
   const [formData, setFormData] = useState({
     email: "",
     password: "",
@@ -48,13 +49,25 @@ const Users = () => {
 
       if (error) {
         console.error('Error fetching users:', error);
-        toast.error("Errore nel caricamento degli utenti");
+        
+        // Gestisci specificamente l'errore di ricorsione infinita
+        if (error.message.includes('infinite recursion detected')) {
+          setHasRLSError(true);
+          console.log('RLS error detected, proceeding without user list');
+          toast.error("Errore nel caricamento degli utenti (problema RLS), ma puoi comunque creare l'admin");
+        } else {
+          toast.error("Errore nel caricamento degli utenti");
+        }
+        setUsers([]);
       } else {
         setUsers((data as Profile[]) || []);
+        setHasRLSError(false);
       }
     } catch (error) {
       console.error('Error fetching users:', error);
+      setHasRLSError(true);
       toast.error("Errore nel caricamento degli utenti");
+      setUsers([]);
     } finally {
       setLoading(false);
     }
@@ -68,17 +81,25 @@ const Users = () => {
   };
 
   const handleCreateAdmin = async () => {
+    console.log('Starting admin creation...');
     setCreatingAdmin(true);
     try {
+      console.log('Calling create-admin-user function...');
       const { data, error } = await supabase.functions.invoke('create-admin-user');
+      
+      console.log('Function response:', { data, error });
       
       if (error) {
         console.error('Error creating admin:', error);
         toast.error("Errore nella creazione dell'admin: " + error.message);
       } else {
-        console.log('Admin created:', data);
-        toast.success("Admin user creato con successo! Ora puoi fare il login con me@matteonebbioso.com");
-        fetchUsers();
+        console.log('Admin created successfully:', data);
+        toast.success("Admin user creato con successo! Email: me@matteonebbioso.com, Password: Booster2025!");
+        
+        // Prova a ricaricare gli utenti, ma non fallire se c'è un errore RLS
+        setTimeout(() => {
+          fetchUsers();
+        }, 2000);
       }
     } catch (error) {
       console.error('Unexpected error:', error);
@@ -141,7 +162,7 @@ const Users = () => {
     }
   };
 
-  // Check if there are any admin users
+  // Check if there are any admin users (might not work with RLS error)
   const hasAdminUser = users.some(user => user.role === 'admin');
 
   return (
@@ -157,7 +178,8 @@ const Users = () => {
         </div>
         
         <div className="flex gap-2">
-          {!hasAdminUser && (
+          {/* Mostra sempre il bottone di creazione admin se c'è un errore RLS o non ci sono admin */}
+          {(hasRLSError || !hasAdminUser) && (
             <Button
               variant="outline"
               className="flex items-center gap-2"
@@ -244,7 +266,16 @@ const Users = () => {
         </div>
       </div>
 
-      {!hasAdminUser && (
+      {hasRLSError && (
+        <Alert className="mb-6">
+          <AlertDescription>
+            <strong>Problema di configurazione database:</strong> C'è un errore nelle politiche di sicurezza del database che impedisce di visualizzare gli utenti.
+            Tuttavia, puoi comunque creare l'utente amministratore cliccando sul pulsante "Crea Admin User".
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {!hasRLSError && !hasAdminUser && (
         <Alert className="mb-6">
           <AlertDescription>
             <strong>Setup Iniziale:</strong> Non è stato trovato alcun utente amministratore. 
@@ -265,6 +296,14 @@ const Users = () => {
             <div className="text-center py-8">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
               <p className="mt-2 text-gray-600">Caricamento utenti...</p>
+            </div>
+          ) : hasRLSError ? (
+            <div className="text-center py-8">
+              <p className="text-gray-600">
+                Non è possibile visualizzare gli utenti a causa di un errore di configurazione del database.
+                <br />
+                Crea l'admin user usando il pulsante sopra, poi vai a fare il login.
+              </p>
             </div>
           ) : (
             <div className="space-y-4">
@@ -302,7 +341,7 @@ const Users = () => {
                 </div>
               ))}
               
-              {users.length === 0 && (
+              {users.length === 0 && !hasRLSError && (
                 <div className="text-center py-8">
                   <p className="text-gray-600">Nessun utente trovato.</p>
                 </div>
