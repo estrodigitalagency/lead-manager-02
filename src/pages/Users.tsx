@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { ArrowLeft, Plus, Users as UsersIcon, Trash2 } from "lucide-react";
+import { ArrowLeft, Plus, Users as UsersIcon, Trash2, Settings } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
@@ -26,6 +26,7 @@ const Users = () => {
   const [users, setUsers] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
+  const [creatingAdmin, setCreatingAdmin] = useState(false);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [formData, setFormData] = useState({
     email: "",
@@ -35,10 +36,8 @@ const Users = () => {
   });
 
   useEffect(() => {
-    if (isAdmin) {
-      fetchUsers();
-    }
-  }, [isAdmin]);
+    fetchUsers();
+  }, []);
 
   const fetchUsers = async () => {
     try {
@@ -66,6 +65,27 @@ const Users = () => {
       ...formData,
       [e.target.name]: e.target.value
     });
+  };
+
+  const handleCreateAdmin = async () => {
+    setCreatingAdmin(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('create-admin-user');
+      
+      if (error) {
+        console.error('Error creating admin:', error);
+        toast.error("Errore nella creazione dell'admin: " + error.message);
+      } else {
+        console.log('Admin created:', data);
+        toast.success("Admin user creato con successo! Ora puoi fare il login con me@matteonebbioso.com");
+        fetchUsers();
+      }
+    } catch (error) {
+      console.error('Unexpected error:', error);
+      toast.error("Errore inaspettato nella creazione dell'admin");
+    } finally {
+      setCreatingAdmin(false);
+    }
   };
 
   const handleCreateUser = async (e: React.FormEvent) => {
@@ -121,17 +141,8 @@ const Users = () => {
     }
   };
 
-  if (!isAdmin) {
-    return (
-      <div className="container mx-auto px-4 py-8">
-        <Alert>
-          <AlertDescription>
-            Non hai i permessi per accedere a questa sezione.
-          </AlertDescription>
-        </Alert>
-      </div>
-    );
-  }
+  // Check if there are any admin users
+  const hasAdminUser = users.some(user => user.role === 'admin');
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -145,77 +156,102 @@ const Users = () => {
           <h1 className="text-3xl font-bold text-primary">Gestione Utenti</h1>
         </div>
         
-        <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
-          <DialogTrigger asChild>
-            <Button className="flex items-center gap-2">
-              <Plus className="h-4 w-4" />
-              Crea Utente
+        <div className="flex gap-2">
+          {!hasAdminUser && (
+            <Button
+              variant="outline"
+              className="flex items-center gap-2"
+              onClick={handleCreateAdmin}
+              disabled={creatingAdmin}
+            >
+              <Settings className="h-4 w-4" />
+              {creatingAdmin ? "Creazione Admin..." : "Crea Admin User"}
             </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Crea Nuovo Utente</DialogTitle>
-              <DialogDescription>
-                Crea un nuovo utente manager per il sistema.
-              </DialogDescription>
-            </DialogHeader>
-            <form onSubmit={handleCreateUser} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="first_name">Nome</Label>
-                  <Input
-                    id="first_name"
-                    name="first_name"
-                    value={formData.first_name}
-                    onChange={handleInputChange}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="last_name">Cognome</Label>
-                  <Input
-                    id="last_name"
-                    name="last_name"
-                    value={formData.last_name}
-                    onChange={handleInputChange}
-                    required
-                  />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  name="email"
-                  type="email"
-                  value={formData.email}
-                  onChange={handleInputChange}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
-                <Input
-                  id="password"
-                  name="password"
-                  type="password"
-                  value={formData.password}
-                  onChange={handleInputChange}
-                  required
-                />
-              </div>
-              <div className="flex justify-end gap-2">
-                <Button type="button" variant="outline" onClick={() => setShowCreateDialog(false)}>
-                  Annulla
+          )}
+          
+          {isAdmin && (
+            <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
+              <DialogTrigger asChild>
+                <Button className="flex items-center gap-2">
+                  <Plus className="h-4 w-4" />
+                  Crea Utente
                 </Button>
-                <Button type="submit" disabled={creating}>
-                  {creating ? "Creazione..." : "Crea Utente"}
-                </Button>
-              </div>
-            </form>
-          </DialogContent>
-        </Dialog>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Crea Nuovo Utente</DialogTitle>
+                  <DialogDescription>
+                    Crea un nuovo utente manager per il sistema.
+                  </DialogDescription>
+                </DialogHeader>
+                <form onSubmit={handleCreateUser} className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="first_name">Nome</Label>
+                      <Input
+                        id="first_name"
+                        name="first_name"
+                        value={formData.first_name}
+                        onChange={handleInputChange}
+                        required
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="last_name">Cognome</Label>
+                      <Input
+                        id="last_name"
+                        name="last_name"
+                        value={formData.last_name}
+                        onChange={handleInputChange}
+                        required
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="email">Email</Label>
+                    <Input
+                      id="email"
+                      name="email"
+                      type="email"
+                      value={formData.email}
+                      onChange={handleInputChange}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="password">Password</Label>
+                    <Input
+                      id="password"
+                      name="password"
+                      type="password"
+                      value={formData.password}
+                      onChange={handleInputChange}
+                      required
+                    />
+                  </div>
+                  <div className="flex justify-end gap-2">
+                    <Button type="button" variant="outline" onClick={() => setShowCreateDialog(false)}>
+                      Annulla
+                    </Button>
+                    <Button type="submit" disabled={creating}>
+                      {creating ? "Creazione..." : "Crea Utente"}
+                    </Button>
+                  </div>
+                </form>
+              </DialogContent>
+            </Dialog>
+          )}
+        </div>
       </div>
+
+      {!hasAdminUser && (
+        <Alert className="mb-6">
+          <AlertDescription>
+            <strong>Setup Iniziale:</strong> Non è stato trovato alcun utente amministratore. 
+            Clicca su "Crea Admin User" per creare l'utente amministratore iniziale.
+          </AlertDescription>
+        </Alert>
+      )}
 
       <Card className="border">
         <CardHeader>
@@ -253,7 +289,7 @@ const Users = () => {
                       </div>
                     </div>
                   </div>
-                  {user.role !== 'admin' && (
+                  {user.role !== 'admin' && isAdmin && (
                     <Button
                       variant="outline"
                       size="sm"
