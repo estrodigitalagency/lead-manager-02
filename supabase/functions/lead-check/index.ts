@@ -27,7 +27,7 @@ serve(async (req) => {
       .eq('key', 'booking_attribution_window_days')
       .single()
     
-    const attributionWindow = attributionSettings?.value ? parseInt(attributionSettings.value) : 7 // Default to 7 days if not set
+    const attributionWindow = attributionSettings?.value ? parseInt(attributionSettings.value) : 7
     
     // Get days before assignable settings
     const { data: daysBeforeAssignableSettings } = await supabase
@@ -38,132 +38,123 @@ serve(async (req) => {
       
     const daysBeforeAssignable = daysBeforeAssignableSettings?.value ? parseInt(daysBeforeAssignableSettings.value) : 7
     
-    console.log(`Starting lead check with attribution window of ${attributionWindow} days and ${daysBeforeAssignable} days before assignable`)
+    console.log(`Starting optimized lead check with attribution window of ${attributionWindow} days and ${daysBeforeAssignable} days before assignable`)
     
-    // Calculate the start date for attribution window
-    const attributionWindowDate = new Date()
-    attributionWindowDate.setDate(attributionWindowDate.getDate() - attributionWindow)
-    const attributionWindowISODate = attributionWindowDate.toISOString()
+    // Calculate the cutoff date for assignability based on days_before_assignable
+    const assignableCutoffDate = new Date()
+    assignableCutoffDate.setDate(assignableCutoffDate.getDate() - daysBeforeAssignable)
+    const assignableCutoffISODate = assignableCutoffDate.toISOString()
     
-    // First, check ALL leads for assignability based on days since creation
-    // This ensures that even if a booked call is deleted, we'll update the lead status
-    const { data: leadsToCheck, error: leadsError } = await supabase
+    // Get all leads with their contact info
+    const { data: allLeads, error: leadsError } = await supabase
       .from('lead_generation')
       .select('id, email, telefono, created_at, booked_call, assignable')
+      .not('email', 'is', null)
+      .not('telefono', 'is', null)
     
     if (leadsError) {
       throw leadsError
     }
     
-    console.log(`Found ${leadsToCheck?.length || 0} total leads to check for assignability`)
+    console.log(`Found ${allLeads?.length || 0} leads to check`)
     
-    // Track how many leads were updated
-    let updatedLeadsCount = 0
+    if (!allLeads || allLeads.length === 0) {
+      return new Response(
+        JSON.stringify({ success: true, checked: 0, updated: 0 }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
+      )
+    }
     
-    // Check each lead for bookings and update assignability
-    if (leadsToCheck && leadsToCheck.length > 0) {
-      for (const lead of leadsToCheck) {
-        // Only process leads with either email or phone
-        if (!lead.email && !lead.telefono) continue
+    // Get all bookings at once to create a lookup map
+    const emails = allLeads.map(lead => lead.email).filter(email => email)
+    const phones = allLeads.map(lead => lead.telefono).filter(phone => phone)
+    
+    const { data: allBookings, error: bookingsError } = await supabase
+      .from('booked_call')
+      .select('email, telefono')
+      .or(`email.in.(${emails.join(',')}),telefono.in.(${phones.join(',')})`)
+    
+    if (bookingsError) {
+      console.error('Error fetching bookings:', bookingsError)
+      // Continue without bookings data rather than failing
+    }
+    
+    // Create lookup sets for faster checking
+    const bookedEmails = new Set((allBookings || []).map(b => b.email).filter(e => e))
+    const bookedPhones = new Set((allBookings || []).map(b => b.telefono).filter(p => p))
+    
+    // Process leads in batches
+    const batchSize = 100
+    let totalUpdatedLeads = 0
+    
+    for (let i = 0; i < allLeads.length; i += batchSize) {
+      const batch = allLeads.slice(i, i + batchSize)
+      const updates: Array<{ id: string, updates: Record<string, any> }> = []
+      
+      for (const lead of batch) {
+        const hasBooking = (lead.email && bookedEmails.has(lead.email)) || 
+                          (lead.telefono && bookedPhones.has(lead.telefono))
         
-        // Check if lead has any matching bookings
-        const { data: matchingBookings, error: bookingsFetchError } = await supabase
-          .from('booked_call')
-          .select('id')
-          .or(`email.eq.${lead.email},telefono.eq.${lead.telefono}`)
-          .limit(1)
+        const createdDate = new Date(lead.created_at)
+        const enoughDaysPassed = createdDate <= new Date(assignableCutoffISODate)
         
-        if (bookingsFetchError) {
-          console.error(`Error checking bookings for lead ${lead.id}:`, bookingsFetchError)
-          continue
+        let needsUpdate = false
+        const updateObj: Record<string, any> = {}
+        
+        if (hasBooking) {
+          // Lead has booking - mark as booked and not assignable
+          if (lead.booked_call !== 'SI' || lead.assignable !== false) {
+            updateObj.booked_call = 'SI'
+            updateObj.assignable = false
+            updateObj.stato = 'prenotato'
+            needsUpdate = true
+          }
+        } else {
+          // No booking - update booked_call to NO if needed and check assignability
+          if (lead.booked_call === 'SI') {
+            updateObj.booked_call = 'NO'
+            needsUpdate = true
+          }
+          
+          const shouldBeAssignable = (lead.booked_call === 'NO' || updateObj.booked_call === 'NO') && enoughDaysPassed
+          
+          if (lead.assignable !== shouldBeAssignable) {
+            updateObj.assignable = shouldBeAssignable
+            needsUpdate = true
+          }
         }
         
-        // Calculate days since creation
-        const createdDate = new Date(lead.created_at)
-        const today = new Date()
-        const daysSinceCreation = Math.floor((today.getTime() - createdDate.getTime()) / (1000 * 60 * 60 * 24))
-        
-        // Lead has matching booking - mark as booked and not assignable
-        if (matchingBookings && matchingBookings.length > 0) {
-          // Need to update booked_call status AND assignable status
-          const needsUpdate = lead.booked_call !== 'SI' || lead.assignable !== false
+        if (needsUpdate) {
+          updates.push({ id: lead.id, updates: updateObj })
+        }
+      }
+      
+      // Execute batch updates
+      if (updates.length > 0) {
+        for (const { id, updates: updateData } of updates) {
+          const { error: updateError } = await supabase
+            .from('lead_generation')
+            .update(updateData)
+            .eq('id', id)
           
-          if (needsUpdate) {
-            console.log(`Found booking for lead ${lead.id}, updating status to booked and not assignable`)
-            
-            const { error: updateError } = await supabase
-              .from('lead_generation')
-              .update({
-                booked_call: 'SI',
-                assignable: false,
-                stato: 'prenotato'
-              })
-              .eq('id', lead.id)
-            
-            if (updateError) {
-              console.error(`Error updating lead ${lead.id}:`, updateError)
-            } else {
-              updatedLeadsCount++
-            }
-          }
-        } 
-        // No booking found - check if should be assignable based on "booked_call" status and days since creation
-        else {
-          // CORRECTED LOGIC:
-          // A lead is assignable ONLY when:
-          // 1. No booking found (already confirmed by this branch)
-          // 2. booked_call is "NO"
-          // 3. Days since creation >= daysBeforeAssignable setting (can now be 0)
-          
-          // First, ensure booked_call status is accurate (if no booking exists, set to "NO")
-          let updateNeeded = false
-          const updates: Record<string, any> = {}
-          
-          // If booked_call is "SI" but no booking exists, update it to "NO"
-          if (lead.booked_call === 'SI') {
-            updates.booked_call = 'NO'
-            updateNeeded = true
-          }
-          
-          // Check if days since creation is sufficient - allowing for 0 days
-          const enoughDaysPassed = daysSinceCreation >= daysBeforeAssignable
-          
-          // Determine assignability - ONLY assignable if both conditions are met:
-          // 1. booked_call is "NO" (or will be updated to "NO")
-          // 2. Enough days have passed (can now be immediate if daysBeforeAssignable = 0)
-          const shouldBeAssignable = (lead.booked_call === 'NO' || updates.booked_call === 'NO') && enoughDaysPassed
-          
-          // If assignability needs to change, update it
-          if (lead.assignable !== shouldBeAssignable) {
-            updates.assignable = shouldBeAssignable
-            updateNeeded = true
-          }
-          
-          if (updateNeeded) {
-            console.log(`Updating lead ${lead.id}: booked_call=${updates.booked_call || lead.booked_call}, assignable=${shouldBeAssignable} (days since creation: ${daysSinceCreation})`)
-            
-            const { error: updateError } = await supabase
-              .from('lead_generation')
-              .update(updates)
-              .eq('id', lead.id)
-              
-            if (updateError) {
-              console.error(`Error updating lead ${lead.id}:`, updateError)
-            } else {
-              updatedLeadsCount++
-            }
+          if (updateError) {
+            console.error(`Error updating lead ${id}:`, updateError)
+          } else {
+            totalUpdatedLeads++
           }
         }
       }
+      
+      console.log(`Processed batch ${Math.floor(i/batchSize) + 1}/${Math.ceil(allLeads.length/batchSize)}`)
     }
     
-    console.log(`Lead check completed. Updated ${updatedLeadsCount} leads.`)
+    console.log(`Optimized lead check completed. Updated ${totalUpdatedLeads} leads out of ${allLeads.length} checked.`)
     
     return new Response(
       JSON.stringify({ 
         success: true, 
-        checked: leadsToCheck?.length || 0,
-        updated: updatedLeadsCount 
+        checked: allLeads.length,
+        updated: totalUpdatedLeads 
       }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
