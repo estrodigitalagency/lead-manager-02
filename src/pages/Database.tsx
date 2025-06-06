@@ -23,7 +23,7 @@ import { LeadLavorato } from "@/types/leadLavorato";
 import DatabaseAddRecordDialog from "@/components/settings/DatabaseAddRecordDialog";
 import DatabaseAddLavoratiDialog from "@/components/settings/DatabaseAddLavoratiDialog";
 import DatabaseImportDialog from "@/components/settings/DatabaseImportDialog";
-import { filterLeads } from "@/services/databaseService";
+import { filterLeads, getRecentData } from "@/services/databaseService";
 import DatabaseTableContainer from "@/components/database/DatabaseTableContainer";
 import LeadsTable from "@/components/database/LeadsTable";
 import BookingsTable from "@/components/database/BookingsTable";
@@ -61,7 +61,10 @@ const DatabasePage = () => {
   const fetchLeads = async () => {
     setIsLoadingLeads(true);
     try {
-      const data = await filterLeads('lead_generation', activeFilters);
+      // Use optimized data fetching
+      const data = Object.keys(activeFilters).length > 0 
+        ? await filterLeads('lead_generation', activeFilters)
+        : await getRecentData('lead_generation', 1000);
       setLeads(data as Lead[] || []);
     } catch (error) {
       console.error("Errore nel caricamento dei lead:", error);
@@ -73,7 +76,10 @@ const DatabasePage = () => {
   const fetchBookings = async () => {
     setIsLoadingBookings(true);
     try {
-      const data = await filterLeads('booked_call', activeFilters);
+      // Use optimized data fetching
+      const data = Object.keys(activeFilters).length > 0 
+        ? await filterLeads('booked_call', activeFilters)
+        : await getRecentData('booked_call', 1000);
       setBookings(data as unknown as CalendlyBooking[] || []);
     } catch (error) {
       console.error("Errore nel caricamento delle prenotazioni:", error);
@@ -85,7 +91,10 @@ const DatabasePage = () => {
   const fetchLeadLavorati = async () => {
     setIsLoadingLeadLavorati(true);
     try {
-      const data = await filterLeads('lead_lavorati', activeFilters);
+      // Use optimized data fetching
+      const data = Object.keys(activeFilters).length > 0 
+        ? await filterLeads('lead_lavorati', activeFilters)
+        : await getRecentData('lead_lavorati', 1000);
       setLeadLavorati(data as LeadLavorato[] || []);
     } catch (error) {
       console.error("Errore nel caricamento dei lead lavorati:", error);
@@ -95,15 +104,21 @@ const DatabasePage = () => {
   };
 
   useEffect(() => {
-    fetchLeads();
-    fetchBookings();
-    fetchLeadLavorati();
+    // Load data in parallel for better performance
+    Promise.all([
+      fetchLeads(),
+      fetchBookings(),
+      fetchLeadLavorati()
+    ]);
   }, [activeFilters]);
 
   const handleRefresh = () => {
-    fetchLeads();
-    fetchBookings();
-    fetchLeadLavorati();
+    // Refresh all data in parallel
+    Promise.all([
+      fetchLeads(),
+      fetchBookings(),
+      fetchLeadLavorati()
+    ]);
   };
 
   const handleDeleteClick = (id: string, type: 'lead' | 'booking' | 'lavorato') => {

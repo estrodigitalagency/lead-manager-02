@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { ArrowLeft, LayoutDashboard, RefreshCcw } from "lucide-react";
 import { PieChart, Pie, BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, Cell } from "recharts";
 import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
+import { getTableCounts, getVendorStats } from "@/services/databaseService";
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#a480cf', '#82ca9d'];
 
@@ -23,63 +23,14 @@ const ReportsPage = () => {
   const fetchData = async () => {
     setIsLoading(true);
     try {
-      // Fetch total lead count
-      const { count: totalCount, error: totalError } = await supabase
-        .from('lead_generation')
-        .select('*', { count: 'exact', head: true });
+      // Use optimized functions for better performance
+      const [counts, vendors] = await Promise.all([
+        getTableCounts(),
+        getVendorStats()
+      ]);
       
-      // Fetch assignable lead count
-      const { count: assignableCount, error: assignableError } = await supabase
-        .from('lead_generation')
-        .select('*', { count: 'exact', head: true })
-        .eq('assignable', true);
-      
-      // Fetch assigned lead count
-      const { count: assignedCount, error: assignedError } = await supabase
-        .from('lead_generation')
-        .select('*', { count: 'exact', head: true })
-        .not('venditore', 'is', null);
-        
-      // Fetch booked call count
-      const { count: bookedCount, error: bookedError } = await supabase
-        .from('lead_generation')
-        .select('*', { count: 'exact', head: true })
-        .eq('booked_call', 'SI');
-      
-      // Fetch leads by vendor using a workaround for group by
-      const { data: vendorLeads, error: vendorError } = await supabase
-        .from('lead_generation')
-        .select('venditore')
-        .not('venditore', 'is', null);
-      
-      if (totalError || assignableError || assignedError || bookedError || vendorError) {
-        throw new Error("Error fetching lead statistics");
-      }
-      
-      setLeadStats({
-        total: totalCount || 0,
-        assignable: assignableCount || 0,
-        assigned: assignedCount || 0,
-        booked: bookedCount || 0
-      });
-      
-      // Process vendor data by counting occurrences manually since we can't use group by
-      if (vendorLeads) {
-        const vendorCounts: Record<string, number> = {};
-        vendorLeads.forEach(lead => {
-          const vendorName = lead.venditore as string;
-          if (vendorName) {
-            vendorCounts[vendorName] = (vendorCounts[vendorName] || 0) + 1;
-          }
-        });
-        
-        const vendorData = Object.entries(vendorCounts).map(([name, count]) => ({
-          name,
-          value: count
-        }));
-        
-        setVendorStats(vendorData);
-      }
+      setLeadStats(counts);
+      setVendorStats(vendors);
     } catch (error) {
       console.error("Error loading report data:", error);
       toast.error("Errore nel caricamento dei dati per il report");

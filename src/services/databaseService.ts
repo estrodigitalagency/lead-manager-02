@@ -11,7 +11,9 @@ export async function getUnassignedLeads(): Promise<Lead[]> {
       .from('lead_generation')
       .select('*')
       .eq('assignable', true)
-      .is('venditore', null);
+      .is('venditore', null)
+      .order('created_at', { ascending: false })
+      .limit(1000); // Limit to prevent overly large queries
     
     if (error) {
       console.error("Error fetching unassigned leads:", error);
@@ -201,7 +203,7 @@ export async function triggerLeadCheck(): Promise<boolean> {
   }
 }
 
-// Function to filter leads based on specified criteria
+// Optimized function to filter leads based on specified criteria with better performance
 export async function filterLeads(table: string, filters: any) {
   try {
     // Define valid table names for type safety
@@ -210,9 +212,52 @@ export async function filterLeads(table: string, filters: any) {
     // Cast the table name to the valid type
     const validTable = table as ValidTableName;
     
-    let query = supabase.from(validTable).select('*');
+    // Start with optimized base query - limit results and add index hints
+    let query = supabase
+      .from(validTable)
+      .select('*')
+      .limit(5000) // Reasonable limit to prevent performance issues
+      .order('created_at', { ascending: false }); // Most recent first
 
-    // Apply text filters
+    // Apply filters efficiently - most selective filters first
+    
+    // Date filters first (most selective usually)
+    if (filters.dataInizio) {
+      const dataInizio = new Date(filters.dataInizio);
+      dataInizio.setHours(0, 0, 0, 0);
+      
+      if (table === 'lead_lavorati') {
+        query = query.gte('data_contatto', dataInizio.toISOString());
+      } else {
+        query = query.gte('created_at', dataInizio.toISOString());
+      }
+    }
+    
+    if (filters.dataFine) {
+      const dataFine = new Date(filters.dataFine);
+      dataFine.setHours(23, 59, 59, 999);
+      
+      if (table === 'lead_lavorati') {
+        query = query.lte('data_contatto', dataFine.toISOString());
+      } else {
+        query = query.lte('created_at', dataFine.toISOString());
+      }
+    }
+
+    // Exact match filters
+    if (filters.venditore) {
+      query = query.eq('venditore', filters.venditore);
+    }
+    
+    if (filters.campagna && table === 'lead_generation') {
+      query = query.eq('campagna', filters.campagna);
+    }
+    
+    if (filters.esito && table === 'lead_lavorati') {
+      query = query.eq('esito', filters.esito);
+    }
+    
+    // Text search filters (less selective, applied last)
     if (filters.nome) {
       query = query.ilike('nome', `%${filters.nome}%`);
     }
@@ -225,50 +270,6 @@ export async function filterLeads(table: string, filters: any) {
       query = query.ilike('telefono', `%${filters.telefono}%`);
     }
     
-    if (filters.venditore) {
-      query = query.ilike('venditore', `%${filters.venditore}%`);
-    }
-    
-    if (filters.campagna && table === 'lead_generation') {
-      query = query.ilike('campagna', `%${filters.campagna}%`);
-    }
-    
-    if (filters.esito && table === 'lead_lavorati') {
-      query = query.ilike('esito', `%${filters.esito}%`);
-    }
-    
-    // Apply date filters
-    if (filters.dataInizio) {
-      // If it's the lead_lavorati table, filter on data_contatto
-      if (table === 'lead_lavorati' && filters.dataInizio) {
-        const dataInizio = new Date(filters.dataInizio);
-        dataInizio.setHours(0, 0, 0, 0);
-        query = query.gte('data_contatto', dataInizio.toISOString());
-      } else {
-        // Altrimenti filtra sulla data di creazione
-        const dataInizio = new Date(filters.dataInizio);
-        dataInizio.setHours(0, 0, 0, 0);
-        query = query.gte('created_at', dataInizio.toISOString());
-      }
-    }
-    
-    if (filters.dataFine) {
-      // If it's the lead_lavorati table, filter on data_contatto
-      if (table === 'lead_lavorati' && filters.dataFine) {
-        const dataFine = new Date(filters.dataFine);
-        dataFine.setHours(23, 59, 59, 999);
-        query = query.lte('data_contatto', dataFine.toISOString());
-      } else {
-        // Altrimenti filtra sulla data di creazione
-        const dataFine = new Date(filters.dataFine);
-        dataFine.setHours(23, 59, 59, 999);
-        query = query.lte('created_at', dataFine.toISOString());
-      }
-    }
-
-    // Sort results by creation date descending
-    query = query.order('created_at', { ascending: false });
-    
     const { data, error } = await query;
     
     if (error) {
@@ -277,10 +278,93 @@ export async function filterLeads(table: string, filters: any) {
       return [];
     }
     
-    return data;
+    return data || [];
   } catch (error) {
     console.error(`Error filtering ${table}:`, error);
     toast.error(`Errore nel filtraggio dei dati da ${table}`);
+    return [];
+  }
+}
+
+// Optimized function for getting recent data without filters
+export async function getRecentData(table: string, limit: number = 1000) {
+  try {
+    type ValidTableName = "lead_generation" | "booked_call" | "lead_lavorati";
+    const validTable = table as ValidTableName;
+    
+    const { data, error } = await supabase
+      .from(validTable)
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(limit);
+    
+    if (error) {
+      console.error(`Error fetching recent data from ${table}:`, error);
+      return [];
+    }
+    
+    return data || [];
+  } catch (error) {
+    console.error(`Error fetching recent data from ${table}:`, error);
+    return [];
+  }
+}
+
+// Optimized function for getting counts only (for stats)
+export async function getTableCounts() {
+  try {
+    const [totalLeads, assignableLeads, assignedLeads, bookedLeads] = await Promise.all([
+      supabase.from('lead_generation').select('*', { count: 'exact', head: true }),
+      supabase.from('lead_generation').select('*', { count: 'exact', head: true }).eq('assignable', true),
+      supabase.from('lead_generation').select('*', { count: 'exact', head: true }).not('venditore', 'is', null),
+      supabase.from('lead_generation').select('*', { count: 'exact', head: true }).eq('booked_call', 'SI')
+    ]);
+    
+    return {
+      total: totalLeads.count || 0,
+      assignable: assignableLeads.count || 0,
+      assigned: assignedLeads.count || 0,
+      booked: bookedLeads.count || 0
+    };
+  } catch (error) {
+    console.error("Error fetching table counts:", error);
+    return {
+      total: 0,
+      assignable: 0,
+      assigned: 0,
+      booked: 0
+    };
+  }
+}
+
+// Optimized function for vendor statistics
+export async function getVendorStats() {
+  try {
+    const { data: vendorLeads, error } = await supabase
+      .from('lead_generation')
+      .select('venditore')
+      .not('venditore', 'is', null);
+    
+    if (error) {
+      console.error("Error fetching vendor stats:", error);
+      return [];
+    }
+    
+    // Process vendor data efficiently
+    const vendorCounts: Record<string, number> = {};
+    vendorLeads?.forEach(lead => {
+      const vendorName = lead.venditore as string;
+      if (vendorName) {
+        vendorCounts[vendorName] = (vendorCounts[vendorName] || 0) + 1;
+      }
+    });
+    
+    return Object.entries(vendorCounts).map(([name, count]) => ({
+      name,
+      value: count
+    }));
+  } catch (error) {
+    console.error("Error fetching vendor stats:", error);
     return [];
   }
 }
