@@ -1,25 +1,30 @@
 
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff, ArrowLeft } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 
 const Auth = () => {
+  const [searchParams] = useSearchParams();
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     email: "",
     password: "",
+    newPassword: "",
     confirmPassword: ""
   });
   const navigate = useNavigate();
+  const { resetPassword } = useAuth();
+  const defaultTab = searchParams.get('tab') || 'signin';
 
   useEffect(() => {
     // Controlla se l'utente è già autenticato
@@ -70,46 +75,60 @@ const Auth = () => {
     }
   };
 
-  const handleSignUp = async (e: React.FormEvent) => {
+  const handleResetPassword = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.email || !formData.password || !formData.confirmPassword) {
-      toast.error("Compila tutti i campi");
+    if (!formData.email) {
+      toast.error("Inserisci la tua email");
       return;
     }
 
-    if (formData.password !== formData.confirmPassword) {
+    setLoading(true);
+    try {
+      const { error } = await resetPassword(formData.email);
+
+      if (error) {
+        toast.error(error.message);
+      } else {
+        toast.success("Controlla la tua email per il link di reset della password");
+      }
+    } catch (error) {
+      toast.error("Errore durante il reset della password");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handlePasswordUpdate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formData.newPassword || !formData.confirmPassword) {
+      toast.error("Compila entrambi i campi password");
+      return;
+    }
+
+    if (formData.newPassword !== formData.confirmPassword) {
       toast.error("Le password non corrispondono");
       return;
     }
 
-    if (formData.password.length < 6) {
+    if (formData.newPassword.length < 6) {
       toast.error("La password deve essere di almeno 6 caratteri");
       return;
     }
 
     setLoading(true);
     try {
-      const redirectUrl = `${window.location.origin}/`;
-      
-      const { error } = await supabase.auth.signUp({
-        email: formData.email,
-        password: formData.password,
-        options: {
-          emailRedirectTo: redirectUrl
-        }
+      const { error } = await supabase.auth.updateUser({
+        password: formData.newPassword
       });
 
       if (error) {
-        if (error.message.includes("User already registered")) {
-          toast.error("Utente già registrato");
-        } else {
-          toast.error(error.message);
-        }
+        toast.error(error.message);
       } else {
-        toast.success("Registrazione completata! Controlla la tua email per confermare l'account.");
+        toast.success("Password aggiornata con successo!");
+        navigate("/");
       }
     } catch (error) {
-      toast.error("Errore durante la registrazione");
+      toast.error("Errore durante l'aggiornamento della password");
     } finally {
       setLoading(false);
     }
@@ -123,14 +142,15 @@ const Auth = () => {
             Lead Management System
           </CardTitle>
           <CardDescription>
-            Accedi al tuo account o registrati per iniziare
+            Accedi al tuo account
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Tabs defaultValue="signin" className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
+          <Tabs defaultValue={defaultTab} className="w-full">
+            <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="signin">Accedi</TabsTrigger>
-              <TabsTrigger value="signup">Registrati</TabsTrigger>
+              <TabsTrigger value="reset">Reset Password</TabsTrigger>
+              <TabsTrigger value="update">Nuova Password</TabsTrigger>
             </TabsList>
             
             <TabsContent value="signin" className="space-y-4 mt-4">
@@ -180,12 +200,12 @@ const Auth = () => {
               </form>
             </TabsContent>
             
-            <TabsContent value="signup" className="space-y-4 mt-4">
-              <form onSubmit={handleSignUp} className="space-y-4">
+            <TabsContent value="reset" className="space-y-4 mt-4">
+              <form onSubmit={handleResetPassword} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="signup-email">Email</Label>
+                  <Label htmlFor="reset-email">Email</Label>
                   <Input
-                    id="signup-email"
+                    id="reset-email"
                     name="email"
                     type="email"
                     placeholder="nome@esempio.com"
@@ -194,47 +214,40 @@ const Auth = () => {
                     required
                   />
                 </div>
+                <Button type="submit" className="w-full" disabled={loading}>
+                  {loading ? "Invio in corso..." : "Invia link di reset"}
+                </Button>
+              </form>
+            </TabsContent>
+
+            <TabsContent value="update" className="space-y-4 mt-4">
+              <form onSubmit={handlePasswordUpdate} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="signup-password">Password</Label>
-                  <div className="relative">
-                    <Input
-                      id="signup-password"
-                      name="password"
-                      type={showPassword ? "text" : "password"}
-                      placeholder="Crea una password"
-                      value={formData.password}
-                      onChange={handleInputChange}
-                      required
-                    />
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                      onClick={() => setShowPassword(!showPassword)}
-                    >
-                      {showPassword ? (
-                        <EyeOff className="h-4 w-4" />
-                      ) : (
-                        <Eye className="h-4 w-4" />
-                      )}
-                    </Button>
-                  </div>
+                  <Label htmlFor="new-password">Nuova Password</Label>
+                  <Input
+                    id="new-password"
+                    name="newPassword"
+                    type="password"
+                    placeholder="Inserisci la nuova password"
+                    value={formData.newPassword}
+                    onChange={handleInputChange}
+                    required
+                  />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="confirm-password">Conferma Password</Label>
+                  <Label htmlFor="confirm-new-password">Conferma Nuova Password</Label>
                   <Input
-                    id="confirm-password"
+                    id="confirm-new-password"
                     name="confirmPassword"
                     type="password"
-                    placeholder="Conferma la tua password"
+                    placeholder="Conferma la nuova password"
                     value={formData.confirmPassword}
                     onChange={handleInputChange}
                     required
                   />
                 </div>
                 <Button type="submit" className="w-full" disabled={loading}>
-                  {loading ? "Registrazione in corso..." : "Registrati"}
+                  {loading ? "Aggiornamento in corso..." : "Aggiorna Password"}
                 </Button>
               </form>
             </TabsContent>
@@ -242,8 +255,8 @@ const Auth = () => {
           
           <Alert className="mt-4">
             <AlertDescription className="text-sm">
-              Nota: Dopo la registrazione, riceverai un'email di conferma. 
-              Clicca sul link nell'email per attivare il tuo account.
+              <strong>Nota:</strong> Per questioni di sicurezza, la registrazione è disponibile solo per gli amministratori. 
+              Contatta l'amministratore del sistema per ottenere l'accesso.
             </AlertDescription>
           </Alert>
         </CardContent>
