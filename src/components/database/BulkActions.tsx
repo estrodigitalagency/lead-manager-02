@@ -127,10 +127,8 @@ const BulkActions = ({
         <div className="flex items-center gap-2">
           <Checkbox
             checked={isAllSelected}
-            ref={(el) => {
-              if (el) el.indeterminate = isIndeterminate;
-            }}
             onCheckedChange={handleSelectAll}
+            className={isIndeterminate ? "data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground" : ""}
           />
           <span className="text-sm text-muted-foreground">
             {selectedItems.length > 0 
