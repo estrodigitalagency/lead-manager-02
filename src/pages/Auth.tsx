@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Eye, EyeOff, ArrowLeft } from "lucide-react";
+import { Eye, EyeOff } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
@@ -16,6 +16,7 @@ const Auth = () => {
   const [searchParams] = useSearchParams();
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [showResetPassword, setShowResetPassword] = useState(false);
   const [formData, setFormData] = useState({
     email: "",
     password: "",
@@ -90,6 +91,7 @@ const Auth = () => {
         toast.error(error.message);
       } else {
         toast.success("Controlla la tua email per il link di reset della password");
+        setShowResetPassword(false);
       }
     } catch (error) {
       toast.error("Errore durante il reset della password");
@@ -134,6 +136,77 @@ const Auth = () => {
     }
   };
 
+  // Se siamo nella modalità reset password dalla URL
+  if (defaultTab === 'reset' || defaultTab === 'update') {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
+        <Card className="w-full max-w-md">
+          <CardHeader className="text-center">
+            <CardTitle className="text-2xl font-bold text-primary">
+              Lead Management System
+            </CardTitle>
+            <CardDescription>
+              {defaultTab === 'reset' ? 'Reset della password' : 'Aggiorna password'}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {defaultTab === 'reset' && (
+              <form onSubmit={handleResetPassword} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="reset-email">Email</Label>
+                  <Input
+                    id="reset-email"
+                    name="email"
+                    type="email"
+                    placeholder="nome@esempio.com"
+                    value={formData.email}
+                    onChange={handleInputChange}
+                    required
+                  />
+                </div>
+                <Button type="submit" className="w-full" disabled={loading}>
+                  {loading ? "Invio in corso..." : "Invia link di reset"}
+                </Button>
+              </form>
+            )}
+
+            {defaultTab === 'update' && (
+              <form onSubmit={handlePasswordUpdate} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="new-password">Nuova Password</Label>
+                  <Input
+                    id="new-password"
+                    name="newPassword"
+                    type="password"
+                    placeholder="Inserisci la nuova password"
+                    value={formData.newPassword}
+                    onChange={handleInputChange}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="confirm-new-password">Conferma Nuova Password</Label>
+                  <Input
+                    id="confirm-new-password"
+                    name="confirmPassword"
+                    type="password"
+                    placeholder="Conferma la nuova password"
+                    value={formData.confirmPassword}
+                    onChange={handleInputChange}
+                    required
+                  />
+                </div>
+                <Button type="submit" className="w-full" disabled={loading}>
+                  {loading ? "Aggiornamento in corso..." : "Aggiorna Password"}
+                </Button>
+              </form>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
       <Card className="w-full max-w-md">
@@ -146,14 +219,8 @@ const Auth = () => {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Tabs defaultValue={defaultTab} className="w-full">
-            <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="signin">Accedi</TabsTrigger>
-              <TabsTrigger value="reset">Reset Password</TabsTrigger>
-              <TabsTrigger value="update">Nuova Password</TabsTrigger>
-            </TabsList>
-            
-            <TabsContent value="signin" className="space-y-4 mt-4">
+          {!showResetPassword ? (
+            <div className="space-y-4">
               <form onSubmit={handleSignIn} className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="signin-email">Email</Label>
@@ -198,9 +265,20 @@ const Auth = () => {
                   {loading ? "Accesso in corso..." : "Accedi"}
                 </Button>
               </form>
-            </TabsContent>
-            
-            <TabsContent value="reset" className="space-y-4 mt-4">
+              
+              <div className="text-center">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="text-sm text-muted-foreground hover:text-primary"
+                  onClick={() => setShowResetPassword(true)}
+                >
+                  Hai dimenticato la password?
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-4">
               <form onSubmit={handleResetPassword} className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="reset-email">Email</Label>
@@ -218,40 +296,19 @@ const Auth = () => {
                   {loading ? "Invio in corso..." : "Invia link di reset"}
                 </Button>
               </form>
-            </TabsContent>
-
-            <TabsContent value="update" className="space-y-4 mt-4">
-              <form onSubmit={handlePasswordUpdate} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="new-password">Nuova Password</Label>
-                  <Input
-                    id="new-password"
-                    name="newPassword"
-                    type="password"
-                    placeholder="Inserisci la nuova password"
-                    value={formData.newPassword}
-                    onChange={handleInputChange}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="confirm-new-password">Conferma Nuova Password</Label>
-                  <Input
-                    id="confirm-new-password"
-                    name="confirmPassword"
-                    type="password"
-                    placeholder="Conferma la nuova password"
-                    value={formData.confirmPassword}
-                    onChange={handleInputChange}
-                    required
-                  />
-                </div>
-                <Button type="submit" className="w-full" disabled={loading}>
-                  {loading ? "Aggiornamento in corso..." : "Aggiorna Password"}
+              
+              <div className="text-center">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="text-sm text-muted-foreground hover:text-primary"
+                  onClick={() => setShowResetPassword(false)}
+                >
+                  Torna al login
                 </Button>
-              </form>
-            </TabsContent>
-          </Tabs>
+              </div>
+            </div>
+          )}
           
           <Alert className="mt-4">
             <AlertDescription className="text-sm">
