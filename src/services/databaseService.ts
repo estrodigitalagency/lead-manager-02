@@ -188,25 +188,11 @@ export async function triggerLeadCheck(): Promise<boolean> {
   }
 }
 
-// Optimized function to filter leads based on specified criteria
-export async function filterLeads(table: string, filters: any) {
+// Type-safe function to filter leads based on specified criteria
+export async function filterLeads(table: 'lead_generation' | 'booked_call' | 'lead_lavorati' | 'lead_assignments' | 'venditori' | 'system_settings', filters: any) {
   try {
-    const tableMap: Record<string, string> = {
-      "lead_generation": "lead_generation",
-      "booked_call": "booked_call", 
-      "lead_lavorati": "lead_lavorati",
-      "lead_assignments": "lead_assignments",
-      "venditori": "venditori",
-      "system_settings": "system_settings"
-    };
-    
-    const validTable = tableMap[table];
-    if (!validTable) {
-      throw new Error(`Invalid table name: ${table}`);
-    }
-    
     let query = supabase
-      .from(validTable)
+      .from(table)
       .select('*')
       .limit(5000)
       .order('created_at', { ascending: false });
@@ -273,22 +259,11 @@ export async function filterLeads(table: string, filters: any) {
   }
 }
 
-// Optimized function for getting recent data without filters
-export async function getRecentData(table: string, limit: number = 1000) {
+// Type-safe function for getting recent data without filters
+export async function getRecentData(table: 'lead_generation' | 'booked_call' | 'lead_lavorati', limit: number = 1000) {
   try {
-    const tableMap: Record<string, string> = {
-      "lead_generation": "lead_generation",
-      "booked_call": "booked_call",
-      "lead_lavorati": "lead_lavorati"
-    };
-    
-    const validTable = tableMap[table];
-    if (!validTable) {
-      throw new Error(`Invalid table name: ${table}`);
-    }
-    
     const { data, error } = await supabase
-      .from(validTable)
+      .from(table)
       .select('*')
       .order('created_at', { ascending: false })
       .limit(limit);
