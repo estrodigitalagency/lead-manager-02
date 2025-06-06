@@ -1,4 +1,3 @@
-
 import {
   Table,
   TableBody,
@@ -9,16 +8,37 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Trash2, Loader2 } from "lucide-react";
 import { Lead } from "@/types/lead";
+import { useIsMobile } from "@/hooks/use-mobile";
+import MobileLeadsTable from "./MobileLeadsTable";
 
 interface LeadsTableProps {
   leads: Lead[];
   isLoading: boolean;
+  selectedItems: string[];
+  onSelectionChange: (selected: string[]) => void;
   onDelete: (id: string) => void;
 }
 
-const LeadsTable = ({ leads, isLoading, onDelete }: LeadsTableProps) => {
+const LeadsTable = ({ 
+  leads, 
+  isLoading, 
+  selectedItems, 
+  onSelectionChange, 
+  onDelete 
+}: LeadsTableProps) => {
+  const isMobile = useIsMobile();
+
+  const handleItemSelect = (id: string, checked: boolean) => {
+    if (checked) {
+      onSelectionChange([...selectedItems, id]);
+    } else {
+      onSelectionChange(selectedItems.filter(item => item !== id));
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="flex justify-center items-center h-40">
@@ -28,11 +48,14 @@ const LeadsTable = ({ leads, isLoading, onDelete }: LeadsTableProps) => {
     );
   }
 
-  if (leads.length === 0) {
+  if (isMobile) {
     return (
-      <div className="text-center py-10 text-muted-foreground">
-        Nessun lead trovato.
-      </div>
+      <MobileLeadsTable
+        leads={leads}
+        selectedItems={selectedItems}
+        onSelectionChange={onSelectionChange}
+        onDelete={onDelete}
+      />
     );
   }
 
@@ -84,10 +107,30 @@ const LeadsTable = ({ leads, isLoading, onDelete }: LeadsTableProps) => {
     }
   };
 
+  if (leads.length === 0) {
+    return (
+      <div className="text-center py-10 text-muted-foreground">
+        Nessun lead trovato.
+      </div>
+    );
+  }
+
   return (
     <Table>
       <TableHeader>
         <TableRow>
+          <TableHead className="w-12">
+            <Checkbox
+              checked={selectedItems.length === leads.length && leads.length > 0}
+              onCheckedChange={(checked) => {
+                if (checked) {
+                  onSelectionChange(leads.map(lead => lead.id!));
+                } else {
+                  onSelectionChange([]);
+                }
+              }}
+            />
+          </TableHead>
           <TableHead className="table-header-cell">Data</TableHead>
           <TableHead className="table-header-cell">Nome</TableHead>
           <TableHead className="table-header-cell">Cognome</TableHead>
@@ -104,6 +147,12 @@ const LeadsTable = ({ leads, isLoading, onDelete }: LeadsTableProps) => {
       <TableBody>
         {leads.map((lead) => (
           <TableRow key={lead.id} className="hover:bg-muted/30 transition-colors">
+            <TableCell>
+              <Checkbox
+                checked={selectedItems.includes(lead.id!)}
+                onCheckedChange={(checked) => handleItemSelect(lead.id!, !!checked)}
+              />
+            </TableCell>
             <TableCell className="table-body-cell">{formatDate(lead.created_at)}</TableCell>
             <TableCell className="table-body-cell">{lead.nome}</TableCell>
             <TableCell className="table-body-cell">{lead.cognome || '-'}</TableCell>

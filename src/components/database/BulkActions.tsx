@@ -1,0 +1,218 @@
+
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Trash2, MoreHorizontal, Users, FileDown, Mail } from "lucide-react";
+import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
+
+interface BulkActionsProps {
+  selectedItems: string[];
+  allItems: any[];
+  tableName: 'lead_generation' | 'booked_call' | 'lead_lavorati';
+  onSelectionChange: (selected: string[]) => void;
+  onRefresh: () => void;
+}
+
+const BulkActions = ({ 
+  selectedItems, 
+  allItems, 
+  tableName, 
+  onSelectionChange,
+  onRefresh 
+}: BulkActionsProps) => {
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
+
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      onSelectionChange(allItems.map(item => item.id));
+    } else {
+      onSelectionChange([]);
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    setIsProcessing(true);
+    try {
+      const { error } = await supabase
+        .from(tableName)
+        .delete()
+        .in('id', selectedItems);
+
+      if (error) throw error;
+
+      toast.success(`${selectedItems.length} record eliminati con successo`);
+      onSelectionChange([]);
+      onRefresh();
+    } catch (error) {
+      console.error("Errore durante l'eliminazione:", error);
+      toast.error("Errore durante l'eliminazione dei record");
+    } finally {
+      setIsProcessing(false);
+      setShowDeleteDialog(false);
+    }
+  };
+
+  const handleBulkAssign = async () => {
+    if (tableName !== 'lead_generation') return;
+    
+    setIsProcessing(true);
+    try {
+      const { error } = await supabase
+        .from('lead_generation')
+        .update({ assignable: true })
+        .in('id', selectedItems);
+
+      if (error) throw error;
+
+      toast.success(`${selectedItems.length} lead resi assegnabili`);
+      onRefresh();
+    } catch (error) {
+      console.error("Errore durante l'aggiornamento:", error);
+      toast.error("Errore durante l'aggiornamento dei lead");
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleExportCSV = () => {
+    const selectedData = allItems.filter(item => selectedItems.includes(item.id));
+    if (selectedData.length === 0) return;
+
+    const headers = Object.keys(selectedData[0]).filter(key => key !== 'id');
+    const csvContent = [
+      headers.join(','),
+      ...selectedData.map(item => 
+        headers.map(header => `"${item[header] || ''}"`).join(',')
+      )
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${tableName}_export_${new Date().toISOString().split('T')[0]}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+
+    toast.success(`${selectedItems.length} record esportati`);
+  };
+
+  const isAllSelected = selectedItems.length === allItems.length && allItems.length > 0;
+  const isIndeterminate = selectedItems.length > 0 && selectedItems.length < allItems.length;
+
+  return (
+    <>
+      <div className="flex items-center gap-4 p-4 border-b bg-muted/30">
+        <div className="flex items-center gap-2">
+          <Checkbox
+            checked={isAllSelected}
+            ref={(el) => {
+              if (el) el.indeterminate = isIndeterminate;
+            }}
+            onCheckedChange={handleSelectAll}
+          />
+          <span className="text-sm text-muted-foreground">
+            {selectedItems.length > 0 
+              ? `${selectedItems.length} di ${allItems.length} selezionati`
+              : `Seleziona tutto (${allItems.length})`
+            }
+          </span>
+        </div>
+
+        {selectedItems.length > 0 && (
+          <div className="flex items-center gap-2 ml-auto">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleExportCSV}
+              className="flex items-center gap-1"
+            >
+              <FileDown className="h-4 w-4" />
+              Esporta CSV
+            </Button>
+
+            {tableName === 'lead_generation' && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleBulkAssign}
+                disabled={isProcessing}
+                className="flex items-center gap-1"
+              >
+                <Users className="h-4 w-4" />
+                Rendi Assegnabili
+              </Button>
+            )}
+
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm">
+                  <MoreHorizontal className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={handleExportCSV}>
+                  <FileDown className="h-4 w-4 mr-2" />
+                  Esporta Selezionati
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem 
+                  onClick={() => setShowDeleteDialog(true)}
+                  className="text-red-600"
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Elimina Selezionati
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        )}
+      </div>
+
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Conferma eliminazione multipla</AlertDialogTitle>
+            <AlertDialogDescription>
+              Sei sicuro di voler eliminare {selectedItems.length} record selezionati? 
+              Questa azione non può essere annullata.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annulla</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleBulkDelete}
+              disabled={isProcessing}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              {isProcessing ? "Eliminazione..." : "Elimina"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
+  );
+};
+
+export default BulkActions;

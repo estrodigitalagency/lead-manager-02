@@ -50,9 +50,11 @@ const PersistentNavigation = () => {
           <Link key={item.to} to={item.to} onClick={onItemClick}>
             <Button 
               variant={item.isActive ? "default" : "ghost"} 
-              className="flex items-center gap-2 hover:bg-accent hover:text-accent-foreground w-full justify-start"
+              className={`flex items-center gap-2 hover:bg-accent hover:text-accent-foreground w-full justify-start ${
+                isMobile ? 'text-base py-3' : ''
+              }`}
             >
-              <Icon className="h-4 w-4" />
+              <Icon className={`${isMobile ? 'h-5 w-5' : 'h-4 w-4'}`} />
               {item.label}
             </Button>
           </Link>
@@ -73,9 +75,9 @@ const PersistentNavigation = () => {
                   <Menu className="h-5 w-5" />
                 </Button>
               </DrawerTrigger>
-              <DrawerContent>
-                <div className="p-4 space-y-2">
-                  <h2 className="text-lg font-semibold mb-4">Menu</h2>
+              <DrawerContent className="bg-background">
+                <div className="p-6 space-y-3">
+                  <h2 className="text-xl font-semibold mb-6 text-center">Menu</h2>
                   <NavItems onItemClick={() => setOpen(false)} />
                 </div>
               </DrawerContent>

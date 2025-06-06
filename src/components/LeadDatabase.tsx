@@ -13,10 +13,13 @@ import { Loader2 } from "lucide-react";
 import { getUnassignedLeads } from "@/services/databaseService";
 import { Lead } from "@/types/lead";
 import { Badge } from "@/components/ui/badge";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { Card, CardContent } from "@/components/ui/card";
 
 const LeadDatabase = () => {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(true);
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     const loadLeads = async () => {
@@ -63,7 +66,6 @@ const LeadDatabase = () => {
 
   const formatFonte = (fonte: string | null) => {
     if (!fonte) return '-';
-    // Split by comma and display each source as a separate badge
     const fonti = fonte.split(',').map(f => f.trim()).filter(f => f);
     if (fonti.length === 0) return '-';
     
@@ -99,6 +101,68 @@ const LeadDatabase = () => {
       );
     }
   };
+
+  if (isMobile) {
+    return (
+      <div className="space-y-3">
+        {leads.map((lead) => (
+          <Card key={lead.id} className="border">
+            <CardContent className="p-4">
+              <div className="space-y-3">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <div className="font-medium text-sm">
+                      {lead.nome} {lead.cognome || ''}
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      {formatDate(lead.created_at)}
+                    </div>
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    {getStatusBadge(lead)}
+                    {lead.booked_call === "SI" && (
+                      <Badge variant="outline" className="bg-green-100 text-green-800 border-green-200 text-xs">
+                        Call Prenotata
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+                
+                <div className="space-y-2 text-sm">
+                  {lead.email && (
+                    <div className="text-muted-foreground truncate">
+                      📧 {lead.email}
+                    </div>
+                  )}
+                  {lead.telefono && (
+                    <div className="text-muted-foreground">
+                      📞 {lead.telefono}
+                    </div>
+                  )}
+                  {lead.fonte && (
+                    <div>
+                      <span className="text-xs text-muted-foreground">Fonte: </span>
+                      {formatFonte(lead.fonte)}
+                    </div>
+                  )}
+                  {lead.venditore && (
+                    <div className="text-xs text-muted-foreground">
+                      Venditore: {lead.venditore}
+                    </div>
+                  )}
+                  {lead.note && (
+                    <div className="text-xs text-muted-foreground">
+                      Note: {lead.note}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    );
+  }
 
   return (
     <ScrollArea className="h-[400px]">

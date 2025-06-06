@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -20,6 +19,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Lead } from "@/types/lead";
 import { LeadLavorato } from "@/types/leadLavorato";
+import { useIsMobile } from "@/hooks/use-mobile";
 import DatabaseAddRecordDialog from "@/components/settings/DatabaseAddRecordDialog";
 import DatabaseAddLavoratiDialog from "@/components/settings/DatabaseAddLavoratiDialog";
 import DatabaseImportDialog from "@/components/settings/DatabaseImportDialog";
@@ -44,6 +44,7 @@ interface CalendlyBooking {
 type ValidTableName = "lead_generation" | "booked_call" | "lead_assignments" | "lead_lavorati" | "system_settings" | "venditori";
 
 const DatabasePage = () => {
+  const isMobile = useIsMobile();
   const [leads, setLeads] = useState<Lead[]>([]);
   const [bookings, setBookings] = useState<CalendlyBooking[]>([]);
   const [leadLavorati, setLeadLavorati] = useState<LeadLavorato[]>([]);
@@ -57,11 +58,15 @@ const DatabasePage = () => {
   const [activeTableForDialog, setActiveTableForDialog] = useState<'lead_generation' | 'booked_call' | 'lead_lavorati'>('lead_generation');
   const [isCheckingLeads, setIsCheckingLeads] = useState(false);
   const [activeFilters, setActiveFilters] = useState<Record<string, any>>({});
+  
+  // Bulk selection states
+  const [selectedLeads, setSelectedLeads] = useState<string[]>([]);
+  const [selectedBookings, setSelectedBookings] = useState<string[]>([]);
+  const [selectedLavorati, setSelectedLavorati] = useState<string[]>([]);
 
   const fetchLeads = async () => {
     setIsLoadingLeads(true);
     try {
-      // Use optimized data fetching
       const data = Object.keys(activeFilters).length > 0 
         ? await filterLeads('lead_generation', activeFilters)
         : await getRecentData('lead_generation', 1000);
@@ -76,7 +81,6 @@ const DatabasePage = () => {
   const fetchBookings = async () => {
     setIsLoadingBookings(true);
     try {
-      // Use optimized data fetching
       const data = Object.keys(activeFilters).length > 0 
         ? await filterLeads('booked_call', activeFilters)
         : await getRecentData('booked_call', 1000);
@@ -91,7 +95,6 @@ const DatabasePage = () => {
   const fetchLeadLavorati = async () => {
     setIsLoadingLeadLavorati(true);
     try {
-      // Use optimized data fetching
       const data = Object.keys(activeFilters).length > 0 
         ? await filterLeads('lead_lavorati', activeFilters)
         : await getRecentData('lead_lavorati', 1000);
@@ -104,7 +107,6 @@ const DatabasePage = () => {
   };
 
   useEffect(() => {
-    // Load data in parallel for better performance
     Promise.all([
       fetchLeads(),
       fetchBookings(),
@@ -113,12 +115,15 @@ const DatabasePage = () => {
   }, [activeFilters]);
 
   const handleRefresh = () => {
-    // Refresh all data in parallel
     Promise.all([
       fetchLeads(),
       fetchBookings(),
       fetchLeadLavorati()
     ]);
+    // Clear selections on refresh
+    setSelectedLeads([]);
+    setSelectedBookings([]);
+    setSelectedLavorati([]);
   };
 
   const handleDeleteClick = (id: string, type: 'lead' | 'booking' | 'lavorato') => {
@@ -152,13 +157,15 @@ const DatabasePage = () => {
             : "Lead lavorato eliminato con successo"
       );
       
-      // Refresh the data
       if (type === 'lead') {
         setLeads(leads.filter(lead => lead.id !== id));
+        setSelectedLeads(selectedLeads.filter(item => item !== id));
       } else if (type === 'booking') {
         setBookings(bookings.filter(booking => booking.id !== id));
+        setSelectedBookings(selectedBookings.filter(item => item !== id));
       } else if (type === 'lavorato') {
         setLeadLavorati(leadLavorati.filter(lead => lead.id !== id));
+        setSelectedLavorati(selectedLavorati.filter(item => item !== id));
       }
     } catch (error) {
       console.error("Errore durante l'eliminazione:", error);
@@ -211,22 +218,22 @@ const DatabasePage = () => {
   };
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="flex justify-between items-center mb-8">
-        <div className="flex items-center gap-4">
+    <div className={`container mx-auto px-4 py-8 ${isMobile ? 'px-2 py-4' : ''}`}>
+      <div className={`flex justify-between items-center mb-8 ${isMobile ? 'flex-col gap-4' : ''}`}>
+        <div className={`flex items-center gap-4 ${isMobile ? 'flex-col text-center' : ''}`}>
           <Link to="/">
             <Button variant="outline" size="icon" className="border">
               <ArrowLeft className="h-4 w-4 text-primary" />
             </Button>
           </Link>
-          <h1 className="text-3xl font-bold text-primary">Database Records</h1>
+          <h1 className={`text-3xl font-bold text-primary ${isMobile ? 'text-2xl' : ''}`}>Database Records</h1>
         </div>
-        <div className="flex gap-2">
+        <div className={`flex gap-2 ${isMobile ? 'flex-col w-full' : ''}`}>
           <Button 
             onClick={handleManualLeadCheck} 
             variant="outline" 
             disabled={isCheckingLeads}
-            className="flex items-center gap-2 border"
+            className={`flex items-center gap-2 border ${isMobile ? 'w-full justify-center' : ''}`}
           >
             {isCheckingLeads ? (
               <RefreshCcw className="h-4 w-4 animate-spin" />
@@ -238,7 +245,7 @@ const DatabasePage = () => {
           <Button 
             onClick={handleRefresh} 
             variant="outline" 
-            className="flex items-center gap-2 border"
+            className={`flex items-center gap-2 border ${isMobile ? 'w-full justify-center' : ''}`}
           >
             <RefreshCcw className="h-4 w-4" />
             Aggiorna dati
@@ -247,7 +254,7 @@ const DatabasePage = () => {
       </div>
       
       <Tabs defaultValue="leads" className="w-full">
-        <TabsList className="grid w-full grid-cols-3 mb-8 border">
+        <TabsList className={`grid w-full grid-cols-3 mb-8 border ${isMobile ? 'text-xs' : ''}`}>
           <TabsTrigger value="leads" className="data-[state=active]:text-primary">
             Lead Generation
           </TabsTrigger>
@@ -264,13 +271,19 @@ const DatabasePage = () => {
             title="Lead Database"
             description="Tutti i lead generati tramite form o webhook"
             tableName="lead_generation"
+            allItems={leads}
+            selectedItems={selectedLeads}
+            onSelectionChange={setSelectedLeads}
             onApplyFilters={handleApplyFilters}
             onAddRecord={() => openAddDialog('lead_generation')}
             onImport={() => openImportDialog('lead_generation')}
+            onRefresh={handleRefresh}
           >
             <LeadsTable 
               leads={leads}
               isLoading={isLoadingLeads}
+              selectedItems={selectedLeads}
+              onSelectionChange={setSelectedLeads}
               onDelete={(id) => handleDeleteClick(id, 'lead')}
             />
           </DatabaseTableContainer>
@@ -281,13 +294,19 @@ const DatabasePage = () => {
             title="Call Prenotate"
             description="Tutte le prenotazioni ricevute tramite Calendly"
             tableName="booked_call"
+            allItems={bookings}
+            selectedItems={selectedBookings}
+            onSelectionChange={setSelectedBookings}
             onApplyFilters={handleApplyFilters}
             onAddRecord={() => openAddDialog('booked_call')}
             onImport={() => openImportDialog('booked_call')}
+            onRefresh={handleRefresh}
           >
             <BookingsTable 
               bookings={bookings}
               isLoading={isLoadingBookings}
+              selectedItems={selectedBookings}
+              onSelectionChange={setSelectedBookings}
               onDelete={(id) => handleDeleteClick(id, 'booking')}
             />
           </DatabaseTableContainer>
@@ -298,13 +317,19 @@ const DatabasePage = () => {
             title="Lead Lavorati"
             description="Tutti i lead che sono stati lavorati dai venditori"
             tableName="lead_lavorati"
+            allItems={leadLavorati}
+            selectedItems={selectedLavorati}
+            onSelectionChange={setSelectedLavorati}
             onApplyFilters={handleApplyFilters}
             onAddRecord={() => openAddDialog('lead_lavorati')}
             onImport={() => openImportDialog('lead_lavorati')}
+            onRefresh={handleRefresh}
           >
             <LeadLavoratiTable 
               leadLavorati={leadLavorati}
               isLoading={isLoadingLeadLavorati}
+              selectedItems={selectedLavorati}
+              onSelectionChange={setSelectedLavorati}
               onDelete={(id) => handleDeleteClick(id, 'lavorato')}
             />
           </DatabaseTableContainer>
