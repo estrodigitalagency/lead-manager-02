@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -7,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff, Settings } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
@@ -17,6 +16,7 @@ const Auth = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [showResetPassword, setShowResetPassword] = useState(false);
+  const [creatingAdmin, setCreatingAdmin] = useState(false);
   const [formData, setFormData] = useState({
     email: "",
     password: "",
@@ -43,6 +43,26 @@ const Auth = () => {
       ...formData,
       [e.target.name]: e.target.value
     });
+  };
+
+  const handleCreateAdmin = async () => {
+    setCreatingAdmin(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('create-admin-user');
+      
+      if (error) {
+        console.error('Error creating admin:', error);
+        toast.error("Errore nella creazione dell'admin: " + error.message);
+      } else {
+        console.log('Admin created:', data);
+        toast.success("Admin user creato con successo! Ora puoi fare il login.");
+      }
+    } catch (error) {
+      console.error('Unexpected error:', error);
+      toast.error("Errore inaspettato nella creazione dell'admin");
+    } finally {
+      setCreatingAdmin(false);
+    }
   };
 
   const handleSignIn = async (e: React.FormEvent) => {
@@ -275,6 +295,23 @@ const Auth = () => {
                 >
                   Hai dimenticato la password?
                 </Button>
+              </div>
+
+              {/* Pulsante temporaneo per creare admin */}
+              <div className="border-t pt-4">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full flex items-center gap-2"
+                  onClick={handleCreateAdmin}
+                  disabled={creatingAdmin}
+                >
+                  <Settings className="h-4 w-4" />
+                  {creatingAdmin ? "Creazione Admin..." : "Crea Admin User"}
+                </Button>
+                <p className="text-xs text-muted-foreground mt-2 text-center">
+                  Solo per setup iniziale
+                </p>
               </div>
             </div>
           ) : (

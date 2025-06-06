@@ -26,7 +26,16 @@ serve(async (req: Request) => {
 
     console.log("Creating admin user...");
 
-    // Crea l'utente admin
+    // Prima elimina l'utente esistente se presente
+    const { data: existingUsers } = await supabaseAdmin.auth.admin.listUsers();
+    const existingUser = existingUsers.users.find(user => user.email === "me@matteonebbioso.com");
+    
+    if (existingUser) {
+      console.log("Deleting existing user...");
+      await supabaseAdmin.auth.admin.deleteUser(existingUser.id);
+    }
+
+    // Crea l'utente admin con la password corretta
     const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
       email: "me@matteonebbioso.com",
       password: "Booster2025!",
@@ -51,35 +60,47 @@ serve(async (req: Request) => {
 
     console.log("User created successfully:", authData);
 
-    // Crea il profilo nella tabella profiles
-    const { error: profileError } = await supabaseAdmin
+    // Il trigger handle_new_user dovrebbe creare automaticamente il profilo
+    // Verifichiamo e creiamo manualmente se necessario
+    const { data: profileData, error: profileSelectError } = await supabaseAdmin
       .from("profiles")
-      .upsert({
-        id: authData.user.id,
-        email: "me@matteonebbioso.com",
-        first_name: "Matteo Nicola",
-        last_name: "Nebbioso",
-        role: "admin"
-      });
+      .select("*")
+      .eq("id", authData.user.id)
+      .single();
 
-    if (profileError) {
-      console.error("Profile error:", profileError);
-      return new Response(
-        JSON.stringify({ error: profileError.message }),
-        { 
-          status: 400, 
-          headers: { ...corsHeaders, "Content-Type": "application/json" } 
-        }
-      );
+    if (profileSelectError && profileSelectError.code === "PGRST116") {
+      // Profilo non esiste, crealo
+      console.log("Creating profile manually...");
+      const { error: profileError } = await supabaseAdmin
+        .from("profiles")
+        .insert({
+          id: authData.user.id,
+          email: "me@matteonebbioso.com",
+          first_name: "Matteo Nicola",
+          last_name: "Nebbioso",
+          role: "admin"
+        });
+
+      if (profileError) {
+        console.error("Profile creation error:", profileError);
+        return new Response(
+          JSON.stringify({ error: profileError.message }),
+          { 
+            status: 400, 
+            headers: { ...corsHeaders, "Content-Type": "application/json" } 
+          }
+        );
+      }
     }
 
-    console.log("Profile created successfully");
+    console.log("Admin user setup completed successfully");
 
     return new Response(
       JSON.stringify({ 
         success: true, 
         message: "Admin user created successfully",
-        user: authData.user 
+        user: authData.user,
+        profile: profileData || "Created"
       }),
       { 
         status: 200, 
