@@ -26,7 +26,7 @@ serve(async (req: Request) => {
 
     console.log("Starting admin user creation process...");
 
-    // Prima verifica se l'utente esiste già
+    // Prima verifica se l'utente esiste già e eliminalo completamente
     const { data: existingUsers, error: listError } = await supabaseAdmin.auth.admin.listUsers();
     
     if (listError) {
@@ -46,6 +46,18 @@ serve(async (req: Request) => {
     
     if (existingUser) {
       console.log("User already exists, deleting...");
+      
+      // Elimina dal profilo prima
+      const { error: profileDeleteError } = await supabaseAdmin
+        .from("profiles")
+        .delete()
+        .eq("id", existingUser.id);
+      
+      if (profileDeleteError) {
+        console.error("Error deleting existing profile:", profileDeleteError);
+      }
+      
+      // Poi elimina l'utente
       const { error: deleteError } = await supabaseAdmin.auth.admin.deleteUser(existingUser.id);
       
       if (deleteError) {
@@ -61,10 +73,10 @@ serve(async (req: Request) => {
       
       console.log("Existing user deleted successfully");
       // Aspetta un momento per assicurarsi che la cancellazione sia completata
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise(resolve => setTimeout(resolve, 2000));
     }
 
-    // Ora crea l'utente admin
+    // Ora crea l'utente admin usando l'API Admin di Supabase
     console.log("Creating new admin user...");
     const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
       email: "me@matteonebbioso.com",
@@ -90,8 +102,8 @@ serve(async (req: Request) => {
 
     console.log("User created successfully with ID:", authData.user.id);
 
-    // Aspetta un momento e poi verifica il profilo
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    // Aspetta un momento e poi crea il profilo manualmente se non esiste
+    await new Promise(resolve => setTimeout(resolve, 3000));
 
     const { data: profileData, error: profileSelectError } = await supabaseAdmin
       .from("profiles")
