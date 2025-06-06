@@ -24,18 +24,48 @@ serve(async (req: Request) => {
       }
     );
 
-    console.log("Creating admin user...");
+    console.log("Starting admin user creation process...");
 
-    // Prima elimina l'utente esistente se presente
-    const { data: existingUsers } = await supabaseAdmin.auth.admin.listUsers();
+    // Prima verifica se l'utente esiste già
+    const { data: existingUsers, error: listError } = await supabaseAdmin.auth.admin.listUsers();
+    
+    if (listError) {
+      console.error("Error listing users:", listError);
+      return new Response(
+        JSON.stringify({ error: "Error checking existing users: " + listError.message }),
+        { 
+          status: 400, 
+          headers: { ...corsHeaders, "Content-Type": "application/json" } 
+        }
+      );
+    }
+
+    console.log("Current users count:", existingUsers.users.length);
+    
     const existingUser = existingUsers.users.find(user => user.email === "me@matteonebbioso.com");
     
     if (existingUser) {
-      console.log("Deleting existing user...");
-      await supabaseAdmin.auth.admin.deleteUser(existingUser.id);
+      console.log("User already exists, deleting...");
+      const { error: deleteError } = await supabaseAdmin.auth.admin.deleteUser(existingUser.id);
+      
+      if (deleteError) {
+        console.error("Error deleting existing user:", deleteError);
+        return new Response(
+          JSON.stringify({ error: "Error deleting existing user: " + deleteError.message }),
+          { 
+            status: 400, 
+            headers: { ...corsHeaders, "Content-Type": "application/json" } 
+          }
+        );
+      }
+      
+      console.log("Existing user deleted successfully");
+      // Aspetta un momento per assicurarsi che la cancellazione sia completata
+      await new Promise(resolve => setTimeout(resolve, 1000));
     }
 
-    // Crea l'utente admin con la password corretta
+    // Ora crea l'utente admin
+    console.log("Creating new admin user...");
     const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
       email: "me@matteonebbioso.com",
       password: "Booster2025!",
@@ -50,7 +80,7 @@ serve(async (req: Request) => {
     if (authError) {
       console.error("Auth error:", authError);
       return new Response(
-        JSON.stringify({ error: authError.message }),
+        JSON.stringify({ error: "Error creating user: " + authError.message }),
         { 
           status: 400, 
           headers: { ...corsHeaders, "Content-Type": "application/json" } 
@@ -58,10 +88,11 @@ serve(async (req: Request) => {
       );
     }
 
-    console.log("User created successfully:", authData);
+    console.log("User created successfully with ID:", authData.user.id);
 
-    // Il trigger handle_new_user dovrebbe creare automaticamente il profilo
-    // Verifichiamo e creiamo manualmente se necessario
+    // Aspetta un momento e poi verifica il profilo
+    await new Promise(resolve => setTimeout(resolve, 2000));
+
     const { data: profileData, error: profileSelectError } = await supabaseAdmin
       .from("profiles")
       .select("*")
@@ -69,8 +100,8 @@ serve(async (req: Request) => {
       .single();
 
     if (profileSelectError && profileSelectError.code === "PGRST116") {
-      // Profilo non esiste, crealo
-      console.log("Creating profile manually...");
+      // Profilo non esiste, crealo manualmente
+      console.log("Profile not found, creating manually...");
       const { error: profileError } = await supabaseAdmin
         .from("profiles")
         .insert({
@@ -84,13 +115,19 @@ serve(async (req: Request) => {
       if (profileError) {
         console.error("Profile creation error:", profileError);
         return new Response(
-          JSON.stringify({ error: profileError.message }),
+          JSON.stringify({ error: "Error creating profile: " + profileError.message }),
           { 
             status: 400, 
             headers: { ...corsHeaders, "Content-Type": "application/json" } 
           }
         );
       }
+      
+      console.log("Profile created manually");
+    } else if (profileSelectError) {
+      console.error("Error checking profile:", profileSelectError);
+    } else {
+      console.log("Profile already exists:", profileData);
     }
 
     console.log("Admin user setup completed successfully");
@@ -98,9 +135,8 @@ serve(async (req: Request) => {
     return new Response(
       JSON.stringify({ 
         success: true, 
-        message: "Admin user created successfully",
-        user: authData.user,
-        profile: profileData || "Created"
+        message: "Admin user creato con successo! Ora puoi fare il login con me@matteonebbioso.com e password Booster2025!",
+        user_id: authData.user.id
       }),
       { 
         status: 200, 
@@ -111,7 +147,7 @@ serve(async (req: Request) => {
   } catch (error) {
     console.error("Unexpected error:", error);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: "Errore inaspettato: " + error.message }),
       { 
         status: 500, 
         headers: { ...corsHeaders, "Content-Type": "application/json" } 
