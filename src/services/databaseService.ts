@@ -190,64 +190,12 @@ export async function triggerLeadCheck(): Promise<boolean> {
 // Type-safe function to filter leads based on specified criteria
 export async function filterLeads(table: 'lead_generation' | 'booked_call' | 'lead_lavorati' | 'lead_assignments' | 'venditori' | 'system_settings', filters: any) {
   try {
-    // Start with basic query
-    const baseQuery = supabase
-      .from(table)
+    // Build the query step by step to avoid deep type inference
+    const { data, error } = await supabase
+      .from(table as any)
       .select('*')
-      .limit(5000);
-
-    // Apply ordering
-    let query = baseQuery.order('created_at', { ascending: false });
-
-    // Apply date filters
-    if (filters.dataInizio) {
-      const dataInizio = new Date(filters.dataInizio);
-      dataInizio.setHours(0, 0, 0, 0);
-      
-      if (table === 'lead_lavorati') {
-        query = query.gte('data_contatto', dataInizio.toISOString());
-      } else {
-        query = query.gte('created_at', dataInizio.toISOString());
-      }
-    }
-    
-    if (filters.dataFine) {
-      const dataFine = new Date(filters.dataFine);
-      dataFine.setHours(23, 59, 59, 999);
-      
-      if (table === 'lead_lavorati') {
-        query = query.lte('data_contatto', dataFine.toISOString());
-      } else {
-        query = query.lte('created_at', dataFine.toISOString());
-      }
-    }
-
-    // Apply other filters
-    if (filters.venditore) {
-      query = query.eq('venditore', filters.venditore);
-    }
-    
-    if (filters.campagna && table === 'lead_generation') {
-      query = query.eq('campagna', filters.campagna);
-    }
-    
-    if (filters.esito && table === 'lead_lavorati') {
-      query = query.eq('esito', filters.esito);
-    }
-    
-    if (filters.nome) {
-      query = query.ilike('nome', `%${filters.nome}%`);
-    }
-    
-    if (filters.email) {
-      query = query.ilike('email', `%${filters.email}%`);
-    }
-    
-    if (filters.telefono) {
-      query = query.ilike('telefono', `%${filters.telefono}%`);
-    }
-    
-    const { data, error } = await query;
+      .limit(5000)
+      .order('created_at', { ascending: false });
     
     if (error) {
       console.error(`Error fetching from ${table}:`, error);
@@ -255,7 +203,58 @@ export async function filterLeads(table: 'lead_generation' | 'booked_call' | 'le
       return [];
     }
     
-    return data || [];
+    // Apply client-side filtering
+    let filteredData = data || [];
+    
+    // Apply date filters
+    if (filters.dataInizio) {
+      const dataInizio = new Date(filters.dataInizio);
+      dataInizio.setHours(0, 0, 0, 0);
+      
+      filteredData = filteredData.filter((item: any) => {
+        const dateField = table === 'lead_lavorati' ? item.data_contatto : item.created_at;
+        return dateField && new Date(dateField) >= dataInizio;
+      });
+    }
+    
+    if (filters.dataFine) {
+      const dataFine = new Date(filters.dataFine);
+      dataFine.setHours(23, 59, 59, 999);
+      
+      filteredData = filteredData.filter((item: any) => {
+        const dateField = table === 'lead_lavorati' ? item.data_contatto : item.created_at;
+        return dateField && new Date(dateField) <= dataFine;
+      });
+    }
+
+    // Apply other filters
+    if (filters.venditore) {
+      filteredData = filteredData.filter((item: any) => item.venditore === filters.venditore);
+    }
+    
+    if (filters.esito && table === 'lead_lavorati') {
+      filteredData = filteredData.filter((item: any) => item.esito === filters.esito);
+    }
+    
+    if (filters.nome) {
+      filteredData = filteredData.filter((item: any) => 
+        item.nome && item.nome.toLowerCase().includes(filters.nome.toLowerCase())
+      );
+    }
+    
+    if (filters.email) {
+      filteredData = filteredData.filter((item: any) => 
+        item.email && item.email.toLowerCase().includes(filters.email.toLowerCase())
+      );
+    }
+    
+    if (filters.telefono) {
+      filteredData = filteredData.filter((item: any) => 
+        item.telefono && item.telefono.includes(filters.telefono)
+      );
+    }
+    
+    return filteredData;
   } catch (error) {
     console.error(`Error filtering ${table}:`, error);
     toast.error(`Errore nel filtraggio dei dati da ${table}`);
