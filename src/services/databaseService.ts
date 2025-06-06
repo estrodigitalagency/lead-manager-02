@@ -1,4 +1,3 @@
-
 import { Lead } from "@/types/lead";
 import { LeadLavorato } from "@/types/leadLavorato";
 import { supabase } from "@/integrations/supabase/client";
@@ -173,31 +172,40 @@ export async function triggerLeadCheck(): Promise<boolean> {
   try {
     const supabaseUrl = "https://btcwmuyemmkiteqlopce.supabase.co";
     
-    // Show loading toast
-    const toastId = toast.loading("Controllo dei lead in corso...");
+    console.log("🚀 Starting lead check request...");
     
+    // Crea un AbortController per timeout più stretto
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => {
+      controller.abort();
+      console.log("⏰ Lead check request timed out");
+    }, 10000); // 10 secondi timeout
+
     const response = await fetch(`${supabaseUrl}/functions/v1/lead-check`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-      }
+      },
+      signal: controller.signal
     });
 
+    clearTimeout(timeoutId);
+
     if (!response.ok) {
-      throw new Error(`Error: ${response.status}`);
+      throw new Error(`HTTP Error: ${response.status}`);
     }
 
     const result = await response.json();
-    console.log("Lead check result:", result);
+    console.log("✅ Lead check result:", result);
     
-    // Update the toast with results
-    toast.dismiss(toastId);
-    toast.success(`Controllo completato: ${result.updated} lead aggiornati su ${result.checked} controllati`);
     return true;
   } catch (error) {
-    console.error("Error triggering lead check:", error);
-    toast.error("Errore nell'avvio del controllo dei lead");
-    return false;
+    if (error.name === 'AbortError') {
+      console.error("⏰ Lead check was aborted due to timeout");
+      throw new Error("Timeout: Il controllo dei lead ha impiegato troppo tempo");
+    }
+    console.error("❌ Error triggering lead check:", error);
+    throw error;
   }
 }
 
