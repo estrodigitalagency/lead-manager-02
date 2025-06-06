@@ -1,3 +1,4 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -34,11 +35,8 @@ const App = () => (
                 <Settings />
               </ProtectedRoute>
             } />
-            <Route path="/users" element={
-              <ProtectedRoute>
-                <Users />
-              </ProtectedRoute>
-            } />
+            {/* Temporarily remove protection from /users route */}
+            <Route path="/users" element={<Users />} />
             <Route path="/database" element={
               <ProtectedRoute>
                 <DatabasePage />
