@@ -35,8 +35,11 @@ const App = () => (
                 <Settings />
               </ProtectedRoute>
             } />
-            {/* Temporarily remove protection from /users route */}
-            <Route path="/users" element={<Users />} />
+            <Route path="/users" element={
+              <ProtectedRoute>
+                <Users />
+              </ProtectedRoute>
+            } />
             <Route path="/database" element={
               <ProtectedRoute>
                 <DatabasePage />
