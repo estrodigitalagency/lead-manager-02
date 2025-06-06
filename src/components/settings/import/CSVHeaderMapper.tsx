@@ -28,6 +28,9 @@ export default function CSVHeaderMapper({
           { name: "cognome", label: "Cognome" },
           { name: "email", label: "Email" },
           { name: "telefono", label: "Telefono" },
+          { name: "fonte", label: "Fonte" },
+          { name: "booked_call", label: "Call Prenotata" },
+          { name: "created_at", label: "Data Creazione" },
         ];
       case "booked_call_calendly":
         return [
@@ -75,7 +78,7 @@ export default function CSVHeaderMapper({
             </Label>
             <select
               id={`mapping-${field.name}`}
-              className="border rounded px-2 py-1 w-full"
+              className="border rounded px-2 py-1 w-full bg-background"
               value={mappings[field.name] || ''}
               onChange={(e) => handleMappingChange(field.name, e.target.value)}
             >

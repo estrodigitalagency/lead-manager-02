@@ -64,12 +64,35 @@ export default function DatabaseImportDialog({
       const content = await file.text();
       const { records } = parseCSVContent(content, mappings);
       
-      // Add default values if needed
+      // Add default values if needed and process special fields
       const processedRecords = records.map(record => {
-        if (tableName === 'lead_generation' && !record.hasOwnProperty('booked_call')) {
-          return { ...record, booked_call: 'NO' };
+        const processedRecord = { ...record };
+        
+        if (tableName === 'lead_generation') {
+          // Handle booked_call field - convert to proper format
+          if (processedRecord.booked_call) {
+            const bookedValue = processedRecord.booked_call.toLowerCase();
+            processedRecord.booked_call = (bookedValue === 'si' || bookedValue === 'yes' || bookedValue === 'true' || bookedValue === '1') ? 'SI' : 'NO';
+          } else {
+            processedRecord.booked_call = 'NO';
+          }
+          
+          // Handle created_at field - ensure proper date format
+          if (processedRecord.created_at) {
+            try {
+              const date = new Date(processedRecord.created_at);
+              if (!isNaN(date.getTime())) {
+                processedRecord.created_at = date.toISOString();
+              } else {
+                delete processedRecord.created_at; // Let database use default
+              }
+            } catch {
+              delete processedRecord.created_at; // Let database use default
+            }
+          }
         }
-        return record;
+        
+        return processedRecord;
       });
       
       // Insert records in batches
@@ -92,7 +115,7 @@ export default function DatabaseImportDialog({
   
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle>Importa CSV in {getTableDisplayName(tableName)}</DialogTitle>
           <DialogDescription>

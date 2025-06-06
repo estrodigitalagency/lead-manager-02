@@ -34,7 +34,7 @@ const PersistentNavigation = () => {
   ];
 
   return (
-    <nav className="bg-white border-b border-border/30 px-4 py-3 shadow-sm">
+    <nav className="bg-background border-b border-border px-4 py-3 shadow-sm">
       <div className="container mx-auto">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-1">

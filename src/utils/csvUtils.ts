@@ -59,6 +59,9 @@ export function getRequiredFieldsForTable(tableName: string): { name: string; la
         { name: "cognome", label: "Cognome" },
         { name: "email", label: "Email" },
         { name: "telefono", label: "Telefono" },
+        { name: "fonte", label: "Fonte" },
+        { name: "booked_call", label: "Call Prenotata" },
+        { name: "created_at", label: "Data Creazione" },
       ];
     case "booked_call_calendly":
       return [
