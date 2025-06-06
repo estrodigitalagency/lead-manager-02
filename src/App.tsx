@@ -21,13 +21,15 @@ const App = () => (
       <BrowserRouter>
         <div className="min-h-screen bg-background">
           <PersistentNavigation />
-          <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/settings" element={<Settings />} />
-            <Route path="/database" element={<DatabasePage />} />
-            <Route path="/reports" element={<ReportsPage />} />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
+          <div className="pt-16">
+            <Routes>
+              <Route path="/" element={<Index />} />
+              <Route path="/settings" element={<Settings />} />
+              <Route path="/database" element={<DatabasePage />} />
+              <Route path="/reports" element={<ReportsPage />} />
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </div>
         </div>
       </BrowserRouter>
     </TooltipProvider>
