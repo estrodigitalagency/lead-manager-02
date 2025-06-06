@@ -59,14 +59,14 @@ const Index = () => {
       </div>
 
       <Tabs defaultValue="assign" className="w-full">
-        <TabsList className="grid w-full grid-cols-3 mb-8 border">
-          <TabsTrigger value="assign" className="data-[state=active]:text-primary">
+        <TabsList className="grid w-full grid-cols-1 sm:grid-cols-3 mb-8 border h-auto">
+          <TabsTrigger value="assign" className="data-[state=active]:text-primary py-3 px-4 text-sm">
             Assegnazione Lead
           </TabsTrigger>
-          <TabsTrigger value="history" className="data-[state=active]:text-primary">
+          <TabsTrigger value="history" className="data-[state=active]:text-primary py-3 px-4 text-sm">
             Storico Assegnazioni
           </TabsTrigger>
-          <TabsTrigger value="database" className="data-[state=active]:text-primary">
+          <TabsTrigger value="database" className="data-[state=active]:text-primary py-3 px-4 text-sm">
             Database Lead
           </TabsTrigger>
         </TabsList>
