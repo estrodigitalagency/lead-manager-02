@@ -1,4 +1,3 @@
-
 import { Lead } from "@/types/lead";
 import { LeadLavorato } from "@/types/leadLavorato";
 import { supabase } from "@/integrations/supabase/client";
@@ -191,12 +190,16 @@ export async function triggerLeadCheck(): Promise<boolean> {
 // Type-safe function to filter leads based on specified criteria
 export async function filterLeads(table: 'lead_generation' | 'booked_call' | 'lead_lavorati' | 'lead_assignments' | 'venditori' | 'system_settings', filters: any) {
   try {
-    let query = supabase
+    // Start with basic query
+    const baseQuery = supabase
       .from(table)
       .select('*')
-      .limit(5000)
-      .order('created_at', { ascending: false });
+      .limit(5000);
 
+    // Apply ordering
+    let query = baseQuery.order('created_at', { ascending: false });
+
+    // Apply date filters
     if (filters.dataInizio) {
       const dataInizio = new Date(filters.dataInizio);
       dataInizio.setHours(0, 0, 0, 0);
@@ -219,6 +222,7 @@ export async function filterLeads(table: 'lead_generation' | 'booked_call' | 'le
       }
     }
 
+    // Apply other filters
     if (filters.venditore) {
       query = query.eq('venditore', filters.venditore);
     }
