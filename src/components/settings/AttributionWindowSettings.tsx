@@ -17,10 +17,9 @@ import { supabase } from "@/integrations/supabase/client";
 export default function AttributionWindowSettings() {
   const [isLoading, setIsLoading] = useState(true);
   const [attributionDays, setAttributionDays] = useState(30);
-  const [checkIntervalMinutes, setCheckIntervalMinutes] = useState(15);
   const [daysBeforeAssignable, setDaysBeforeAssignable] = useState(7);
   
-  // Fetch current attribution window and check interval settings
+  // Fetch current attribution window and days before assignable settings
   useEffect(() => {
     const fetchSettings = async () => {
       setIsLoading(true);
@@ -38,21 +37,6 @@ export default function AttributionWindowSettings() {
         
         if (attributionData) {
           setAttributionDays(parseInt(attributionData.value));
-        }
-        
-        // Fetch check interval
-        const { data: intervalData, error: intervalError } = await supabase
-          .from('system_settings')
-          .select('value')
-          .eq('key', 'lead_check_interval_minutes')
-          .single();
-        
-        if (intervalError && intervalError.code !== 'PGRST116') {
-          throw intervalError;
-        }
-        
-        if (intervalData) {
-          setCheckIntervalMinutes(parseInt(intervalData.value));
         }
 
         // Fetch days before assignable
@@ -115,44 +99,6 @@ export default function AttributionWindowSettings() {
     } catch (error) {
       console.error("Error saving attribution window:", error);
       toast.error("Errore nel salvare le impostazioni di attribuzione");
-    }
-  };
-  
-  // Save check interval setting
-  const saveCheckInterval = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('system_settings')
-        .select('*')
-        .eq('key', 'lead_check_interval_minutes');
-      
-      if (error) throw error;
-      
-      if (data && data.length > 0) {
-        // Update existing record
-        const { error: updateError } = await supabase
-          .from('system_settings')
-          .update({ value: checkIntervalMinutes.toString() })
-          .eq('key', 'lead_check_interval_minutes');
-          
-        if (updateError) throw updateError;
-      } else {
-        // Insert new record
-        const { error: insertError } = await supabase
-          .from('system_settings')
-          .insert({
-            key: 'lead_check_interval_minutes',
-            value: checkIntervalMinutes.toString(),
-            descrizione: 'Intervallo in minuti per il controllo delle prenotazioni associate ai lead'
-          });
-          
-        if (insertError) throw insertError;
-      }
-      
-      toast.success("Intervallo di controllo salvato con successo");
-    } catch (error) {
-      console.error("Error saving check interval:", error);
-      toast.error("Errore nel salvare l'intervallo di controllo");
     }
   };
 
@@ -228,36 +174,6 @@ export default function AttributionWindowSettings() {
                   disabled={isLoading}
                 />
                 <Button onClick={saveAttributionWindow} disabled={isLoading}>
-                  Salva
-                </Button>
-              </div>
-            </div>
-            
-            <div className="grid gap-2 mt-4">
-              <div className="flex items-center gap-2">
-                <Label htmlFor="checkIntervalMinutes">
-                  Intervallo di controllo prenotazioni (minuti)
-                </Label>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Info className="h-4 w-4 text-muted-foreground cursor-help" />
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p className="w-80">Questo valore determina ogni quanti minuti il sistema controllerà se ci sono nuove prenotazioni associate ai lead nel database.</p>
-                  </TooltipContent>
-                </Tooltip>
-              </div>
-              <div className="flex items-center gap-4">
-                <Input
-                  id="checkIntervalMinutes"
-                  type="number"
-                  min="5"
-                  max="1440"
-                  value={checkIntervalMinutes}
-                  onChange={(e) => setCheckIntervalMinutes(parseInt(e.target.value) || 15)}
-                  disabled={isLoading}
-                />
-                <Button onClick={saveCheckInterval} disabled={isLoading}>
                   Salva
                 </Button>
               </div>
