@@ -1,3 +1,4 @@
+
 import {
   Table,
   TableBody,
@@ -21,6 +22,7 @@ interface CalendlyBooking {
   telefono: string;
   created_at: string;
   scheduled_at: string;
+  data_call?: string;
   fonte?: string;
   note?: string;
 }
@@ -105,7 +107,7 @@ const BookingsTable = ({
             />
           </TableHead>
           <TableHead className="table-header-cell">Data Creazione</TableHead>
-          <TableHead className="table-header-cell">Data Programmata</TableHead>
+          <TableHead className="table-header-cell">Data Call</TableHead>
           <TableHead className="table-header-cell">Nome</TableHead>
           <TableHead className="table-header-cell">Cognome</TableHead>
           <TableHead className="table-header-cell">Email</TableHead>
@@ -125,7 +127,7 @@ const BookingsTable = ({
               />
             </TableCell>
             <TableCell className="table-body-cell">{formatDate(booking.created_at)}</TableCell>
-            <TableCell className="table-body-cell">{formatDate(booking.scheduled_at)}</TableCell>
+            <TableCell className="table-body-cell">{formatDate(booking.data_call || booking.scheduled_at)}</TableCell>
             <TableCell className="table-body-cell">{booking.nome}</TableCell>
             <TableCell className="table-body-cell">{booking.cognome || '-'}</TableCell>
             <TableCell className="table-body-cell">{booking.email}</TableCell>

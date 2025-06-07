@@ -13,6 +13,7 @@ interface CalendlyBooking {
   telefono: string;
   created_at: string;
   scheduled_at: string;
+  data_call?: string;
   fonte?: string;
   note?: string;
 }
@@ -107,7 +108,7 @@ const MobileBookingsTable = ({
               <div className="flex items-center gap-2">
                 <Clock className="h-3 w-3 text-muted-foreground" />
                 <span className="text-muted-foreground text-xs">
-                  Programmata: {formatDate(booking.scheduled_at)}
+                  Data Call: {formatDate(booking.data_call || booking.scheduled_at)}
                 </span>
               </div>
 
