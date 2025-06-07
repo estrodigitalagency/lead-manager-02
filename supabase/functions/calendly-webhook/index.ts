@@ -25,7 +25,7 @@ serve(async (req) => {
     console.log('Received calendly webhook payload:', payload)
     
     // Insert the booking data to the booked_call table
-    // Important: Use the scheduled_at from the payload instead of now()
+    // Important: Use the scheduled_at from the payload for both scheduled_at and data_call
     const { data, error } = await supabase
       .from('booked_call')
       .insert({
@@ -34,7 +34,8 @@ serve(async (req) => {
         email: payload.email || '',
         telefono: payload.telefono || '',
         fonte: payload.fonte || null,
-        scheduled_at: payload.scheduled_at || new Date().toISOString(), // Use provided scheduled_at or fallback to now()
+        scheduled_at: payload.scheduled_at || new Date().toISOString(),
+        data_call: payload.data_call || payload.scheduled_at || new Date().toISOString(), // Nuova colonna per data effettiva call
         note: payload.note || null
       })
       .select()
@@ -99,7 +100,8 @@ serve(async (req) => {
         success: true, 
         data, 
         attributionWindow,
-        scheduled_at: payload.scheduled_at || new Date().toISOString() // Include scheduled_at in response for debugging
+        scheduled_at: payload.scheduled_at || new Date().toISOString(),
+        data_call: payload.data_call || payload.scheduled_at || new Date().toISOString()
       }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

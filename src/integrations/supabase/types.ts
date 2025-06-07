@@ -13,6 +13,7 @@ export type Database = {
         Row: {
           cognome: string | null
           created_at: string | null
+          data_call: string | null
           email: string | null
           fonte: string | null
           id: string
@@ -27,6 +28,7 @@ export type Database = {
         Insert: {
           cognome?: string | null
           created_at?: string | null
+          data_call?: string | null
           email?: string | null
           fonte?: string | null
           id?: string
@@ -41,6 +43,7 @@ export type Database = {
         Update: {
           cognome?: string | null
           created_at?: string | null
+          data_call?: string | null
           email?: string | null
           fonte?: string | null
           id?: string

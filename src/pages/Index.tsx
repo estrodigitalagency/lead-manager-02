@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -12,22 +12,6 @@ import { toast } from "sonner";
 
 const Index = () => {
   const [isCheckingLeads, setIsCheckingLeads] = useState(false);
-
-  useEffect(() => {
-    // Esegui automaticamente il controllo dei lead all'apertura dell'app
-    const performLeadCheck = async () => {
-      setIsCheckingLeads(true);
-      try {
-        await triggerLeadCheck();
-      } catch (error) {
-        console.error("Errore nel controllo automatico dei lead:", error);
-      } finally {
-        setIsCheckingLeads(false);
-      }
-    };
-
-    performLeadCheck();
-  }, []);
 
   const handleManualLeadCheck = async () => {
     setIsCheckingLeads(true);
@@ -49,13 +33,6 @@ const Index = () => {
       <div className="mb-8">
         <h1 className="text-4xl font-bold text-primary mb-2">Lead Management System</h1>
         <p className="text-muted-foreground">Gestisci l'assegnazione e il monitoraggio dei tuoi lead</p>
-        
-        {isCheckingLeads && (
-          <div className="flex items-center gap-2 mt-4 text-sm text-muted-foreground">
-            <Loader2 className="h-4 w-4 animate-spin" />
-            <span>Controllo automatico dell'assegnabilità dei lead in corso...</span>
-          </div>
-        )}
       </div>
 
       <Tabs defaultValue="assign" className="w-full">

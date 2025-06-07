@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Plus, UploadCloud } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
-import DatabaseFilters from "@/components/DatabaseFilters";
+import DatabaseFiltersResponsive from "@/components/DatabaseFiltersResponsive";
 import BulkActions from "./BulkActions";
 
 interface DatabaseTableContainerProps {
@@ -45,7 +45,7 @@ const DatabaseTableContainer = ({
             <CardDescription className={isMobile ? 'text-center' : ''}>{description}</CardDescription>
           </div>
           <div className={`flex gap-2 ${isMobile ? 'flex-col w-full' : ''}`}>
-            <DatabaseFilters 
+            <DatabaseFiltersResponsive 
               onApplyFilters={onApplyFilters} 
               tableName={tableName}
             />
@@ -79,8 +79,10 @@ const DatabaseTableContainer = ({
         onRefresh={onRefresh}
       />
       
-      <CardContent className={isMobile ? 'p-2' : ''}>
-        {children}
+      <CardContent className={isMobile ? 'p-2 overflow-x-auto' : 'overflow-x-auto'}>
+        <div className="min-w-full">
+          {children}
+        </div>
       </CardContent>
     </Card>
   );
