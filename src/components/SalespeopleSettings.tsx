@@ -14,6 +14,10 @@ interface Venditore {
   id: string;
   nome: string;
   cognome: string;
+  email?: string;
+  telefono?: string;
+  sheets_file_id: string;
+  sheets_tab_name: string;
   stato: 'attivo' | 'inattivo';
   created_at: string;
 }
@@ -23,7 +27,11 @@ const SalespeopleSettings = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [newVenditore, setNewVenditore] = useState({
     nome: '',
-    cognome: ''
+    cognome: '',
+    email: '',
+    telefono: '',
+    sheets_file_id: '',
+    sheets_tab_name: ''
   });
 
   useEffect(() => {
@@ -34,7 +42,7 @@ const SalespeopleSettings = () => {
     try {
       const { data, error } = await supabase
         .from('venditori')
-        .select('id, nome, cognome, stato, created_at')
+        .select('id, nome, cognome, email, telefono, sheets_file_id, sheets_tab_name, stato, created_at')
         .order('nome');
       
       if (error) throw error;
@@ -59,14 +67,27 @@ const SalespeopleSettings = () => {
       return;
     }
 
+    if (!newVenditore.sheets_file_id.trim()) {
+      toast.error("L'ID del Google Sheets è obbligatorio");
+      return;
+    }
+
+    if (!newVenditore.sheets_tab_name.trim()) {
+      toast.error("Il nome del tab è obbligatorio");
+      return;
+    }
+
     try {
       const { error } = await supabase
         .from('venditori')
         .insert([{
           nome: newVenditore.nome.trim(),
           cognome: newVenditore.cognome.trim(),
-          stato: 'attivo',
-          delivery_method: 'webhook'
+          email: newVenditore.email.trim() || null,
+          telefono: newVenditore.telefono.trim() || null,
+          sheets_file_id: newVenditore.sheets_file_id.trim(),
+          sheets_tab_name: newVenditore.sheets_tab_name.trim(),
+          stato: 'attivo'
         }]);
 
       if (error) throw error;
@@ -74,7 +95,11 @@ const SalespeopleSettings = () => {
       toast.success("Venditore aggiunto con successo");
       setNewVenditore({
         nome: '',
-        cognome: ''
+        cognome: '',
+        email: '',
+        telefono: '',
+        sheets_file_id: '',
+        sheets_tab_name: ''
       });
       fetchVenditori();
     } catch (error) {
@@ -150,6 +175,47 @@ const SalespeopleSettings = () => {
               placeholder="Cognome venditore"
             />
           </div>
+
+          <div>
+            <Label htmlFor="email">Email</Label>
+            <Input
+              id="email"
+              type="email"
+              value={newVenditore.email}
+              onChange={(e) => setNewVenditore(prev => ({ ...prev, email: e.target.value }))}
+              placeholder="email@esempio.com"
+            />
+          </div>
+
+          <div>
+            <Label htmlFor="telefono">Telefono (con prefisso)</Label>
+            <Input
+              id="telefono"
+              value={newVenditore.telefono}
+              onChange={(e) => setNewVenditore(prev => ({ ...prev, telefono: e.target.value }))}
+              placeholder="+39 123 456 7890"
+            />
+          </div>
+
+          <div>
+            <Label htmlFor="sheets_file_id">Google Sheets ID File *</Label>
+            <Input
+              id="sheets_file_id"
+              value={newVenditore.sheets_file_id}
+              onChange={(e) => setNewVenditore(prev => ({ ...prev, sheets_file_id: e.target.value }))}
+              placeholder="1ABC...XYZ"
+            />
+          </div>
+
+          <div>
+            <Label htmlFor="sheets_tab_name">Nome Tab Google Sheets *</Label>
+            <Input
+              id="sheets_tab_name"
+              value={newVenditore.sheets_tab_name}
+              onChange={(e) => setNewVenditore(prev => ({ ...prev, sheets_tab_name: e.target.value }))}
+              placeholder="Sheet1"
+            />
+          </div>
         </div>
 
         <Button onClick={handleAddVenditore} className="w-full">
@@ -170,7 +236,7 @@ const SalespeopleSettings = () => {
             {venditori.map((venditore) => (
               <Card key={venditore.id} className="border">
                 <CardContent className="p-4">
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-3">
                       <h4 className="font-medium">
                         {venditore.nome} {venditore.cognome}
@@ -194,6 +260,13 @@ const SalespeopleSettings = () => {
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
+                  </div>
+                  
+                  <div className="text-sm text-muted-foreground space-y-1">
+                    {venditore.email && <div>Email: {venditore.email}</div>}
+                    {venditore.telefono && <div>Telefono: {venditore.telefono}</div>}
+                    <div>Google Sheets ID: {venditore.sheets_file_id}</div>
+                    <div>Tab: {venditore.sheets_tab_name}</div>
                   </div>
                 </CardContent>
               </Card>

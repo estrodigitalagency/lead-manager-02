@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -184,7 +183,7 @@ const LeadAssignmentWithExclusions = () => {
 
       const webhookUrl = webhookData.value;
 
-      // Get venditore details
+      // Get venditore details INCLUDING Google Sheets info
       const { data: venditorData, error: venditorError } = await supabase
         .from('venditori')
         .select('*')
@@ -260,12 +259,16 @@ const LeadAssignmentWithExclusions = () => {
         console.error("Error recording assignment history:", historyError);
       }
 
-      // Invia tramite webhook globale con tutti i dati richiesti
+      // Invia tramite webhook globale con TUTTI i dati richiesti inclusi Google Sheets
       if (leadsToAssign.length > 0) {
         try {
           const assignmentData = {
             venditore: data.venditore,
             venditore_cognome: venditorData.cognome || '',
+            venditore_email: venditorData.email || '',
+            venditore_telefono: venditorData.telefono || '',
+            google_sheets_file_id: venditorData.sheets_file_id,
+            google_sheets_tab_name: venditorData.sheets_tab_name,
             campagna: data.campagna || '',
             leads: leadsToAssign.map(lead => ({
               id: lead.id,
@@ -282,7 +285,7 @@ const LeadAssignmentWithExclusions = () => {
             leads_count: leadsToAssign.length
           };
 
-          console.log('Invio dati tramite webhook globale:', assignmentData);
+          console.log('Invio dati tramite webhook globale con Google Sheets info:', assignmentData);
           console.log('Webhook URL:', webhookUrl);
 
           const response = await supabase.functions.invoke('lead-assign-webhook', {

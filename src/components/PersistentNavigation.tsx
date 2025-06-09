@@ -68,7 +68,9 @@ const PersistentNavigation = () => {
       <nav className="bg-background border-b border-border px-4 py-3 shadow-sm fixed top-0 left-0 right-0 z-50">
         <div className="container mx-auto">
           <div className="flex items-center justify-between">
-            <h1 className="text-lg font-semibold text-primary">Lead Manager</h1>
+            <Link to="/">
+              <h1 className="text-lg font-semibold text-primary">Lead Manager</h1>
+            </Link>
             <Drawer open={open} onOpenChange={setOpen}>
               <DrawerTrigger asChild>
                 <Button variant="ghost" size="icon">
@@ -93,7 +95,9 @@ const PersistentNavigation = () => {
       <div className="container mx-auto">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-6">
-            <h1 className="text-xl font-bold text-primary">Lead Manager</h1>
+            <Link to="/">
+              <h1 className="text-xl font-bold text-primary">Lead Manager</h1>
+            </Link>
             <div className="flex items-center gap-1">
               <NavItems />
             </div>

@@ -28,10 +28,14 @@ serve(async (req) => {
       )
     }
     
-    // Payload semplificato per webhook esterno
+    // Payload completo per webhook esterno con TUTTI i dati richiesti
     const webhookPayload = {
       venditore: assignmentData.venditore,
       venditore_cognome: assignmentData.venditore_cognome || '',
+      venditore_email: assignmentData.venditore_email || '',
+      venditore_telefono: assignmentData.venditore_telefono || '',
+      google_sheets_file_id: assignmentData.google_sheets_file_id || '',
+      google_sheets_tab_name: assignmentData.google_sheets_tab_name || '',
       campagna: assignmentData.campagna || '',
       leads_count: assignmentData.leads_count,
       timestamp: assignmentData.timestamp,
@@ -48,8 +52,8 @@ serve(async (req) => {
       }))
     }
     
-    console.log('Sending lead assignment data to webhook:', webhookUrl)
-    console.log('Payload:', JSON.stringify(webhookPayload, null, 2))
+    console.log('Sending complete lead assignment data to webhook:', webhookUrl)
+    console.log('Payload with Google Sheets info:', JSON.stringify(webhookPayload, null, 2))
     
     try {
       const response = await fetch(webhookUrl, {
