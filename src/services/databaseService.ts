@@ -70,7 +70,7 @@ export async function addLead(lead: Omit<Lead, 'id' | 'assignable' | 'created_at
 }
 
 // Mark leads as assigned
-export async function markLeadsAsAssigned(numLeads: number, venditore: string, campagna?: string, webhookUrl?: string): Promise<Lead[]> {
+export async function markLeadsAsAssigned(numLeads: number, venditore: string, campagna?: string, webhookUrl?: string, excludedSources?: string[]): Promise<Lead[]> {
   try {
     const { data: leadsToAssign, error: fetchError } = await supabase
       .from('lead_generation')
@@ -104,6 +104,21 @@ export async function markLeadsAsAssigned(numLeads: number, venditore: string, c
       console.error("Error marking leads as assigned:", updateError);
       toast.error("Errore nell'assegnazione dei lead");
       return [];
+    }
+
+    // Registra nell'assignment_history
+    const { error: historyError } = await supabase
+      .from('assignment_history')
+      .insert({
+        leads_count: leadsToAssign.length,
+        venditore,
+        campagna: campagna || null,
+        fonti_escluse: excludedSources || null
+      });
+
+    if (historyError) {
+      console.error("Error recording assignment history:", historyError);
+      // Non blocchiamo l'operazione per un errore nello storico
     }
     
     if (webhookUrl && leadsToAssign && leadsToAssign.length > 0) {

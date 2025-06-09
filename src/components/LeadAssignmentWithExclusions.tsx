@@ -178,6 +178,20 @@ const LeadAssignmentWithExclusions = () => {
         throw new Error("Errore nell'assegnazione dei lead");
       }
 
+      // Registra nell'assignment_history
+      const { error: historyError } = await supabase
+        .from('assignment_history')
+        .insert({
+          leads_count: leadsToAssign.length,
+          venditore: data.venditore,
+          campagna: data.campagna || null,
+          fonti_escluse: data.excludedSources.length > 0 ? data.excludedSources : null
+        });
+
+      if (historyError) {
+        console.error("Error recording assignment history:", historyError);
+      }
+
       // Invia al webhook se configurato
       if (webhookUrl && leadsToAssign.length > 0) {
         try {

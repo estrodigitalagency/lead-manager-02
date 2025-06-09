@@ -9,6 +9,36 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      assignment_history: {
+        Row: {
+          assigned_at: string
+          campagna: string | null
+          created_at: string
+          fonti_escluse: string[] | null
+          id: string
+          leads_count: number
+          venditore: string
+        }
+        Insert: {
+          assigned_at?: string
+          campagna?: string | null
+          created_at?: string
+          fonti_escluse?: string[] | null
+          id?: string
+          leads_count: number
+          venditore: string
+        }
+        Update: {
+          assigned_at?: string
+          campagna?: string | null
+          created_at?: string
+          fonti_escluse?: string[] | null
+          id?: string
+          leads_count?: number
+          venditore?: string
+        }
+        Relationships: []
+      }
       booked_call: {
         Row: {
           cognome: string | null
