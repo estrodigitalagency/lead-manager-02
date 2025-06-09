@@ -23,16 +23,16 @@ const PersistentNavigation = () => {
       isActive: location.pathname === "/"
     },
     {
-      to: "/database",
-      icon: Database,
-      label: "Database",
-      isActive: location.pathname === "/database"
-    },
-    {
       to: "/cronologia",
       icon: History,
       label: "Cronologia",
       isActive: location.pathname === "/cronologia"
+    },
+    {
+      to: "/database",
+      icon: Database,
+      label: "Database",
+      isActive: location.pathname === "/database"
     },
     {
       to: "/reports",
@@ -83,7 +83,7 @@ const PersistentNavigation = () => {
                   <Menu className="h-5 w-5" />
                 </Button>
               </DrawerTrigger>
-              <DrawerContent className="bg-background" style={{ position: 'fixed', zIndex: 9999 }}>
+              <DrawerContent className="bg-background border-border" style={{ position: 'fixed', zIndex: 9999 }}>
                 <div className="p-6 space-y-3">
                   <h2 className="text-xl font-semibold mb-6 text-center">Menu</h2>
                   <NavItems onItemClick={() => setOpen(false)} />
