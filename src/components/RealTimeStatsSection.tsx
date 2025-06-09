@@ -28,18 +28,28 @@ export const RealTimeStatsSection = () => {
         const analytics = await getAnalyticsData();
         setAnalyticsData(analytics);
 
-        // Fetch detailed lead stats
+        // Fetch detailed lead stats with debug logging
         const { data: allLeads, error } = await supabase
           .from('lead_generation')
           .select('assignable, venditore');
         
         if (error) throw error;
 
+        console.log(`Debug - Total leads in database: ${allLeads.length}`);
+        
+        const assignableLeads = allLeads.filter(lead => lead.assignable === true);
+        const assignedLeads = allLeads.filter(lead => lead.venditore !== null);
+        const unassignedLeads = allLeads.filter(lead => lead.assignable === true && lead.venditore === null);
+
+        console.log(`Debug - Assignable leads: ${assignableLeads.length}`);
+        console.log(`Debug - Assigned leads: ${assignedLeads.length}`);
+        console.log(`Debug - Unassigned leads: ${unassignedLeads.length}`);
+
         const stats = {
           totalLeads: allLeads.length,
-          assignableLeads: allLeads.filter(lead => lead.assignable === true).length,
-          assignedLeads: allLeads.filter(lead => lead.venditore !== null).length,
-          unassignedLeads: allLeads.filter(lead => lead.assignable === true && lead.venditore === null).length
+          assignableLeads: assignableLeads.length,
+          assignedLeads: assignedLeads.length,
+          unassignedLeads: unassignedLeads.length
         };
 
         setLeadStats(stats);
