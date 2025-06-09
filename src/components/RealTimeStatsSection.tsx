@@ -61,7 +61,7 @@ export const RealTimeStatsSection = () => {
   ];
 
   return (
-    <section className="py-24 px-4">
+    <section className="py-24 px-4 pt-32">
       <div className="max-w-7xl mx-auto">
         <div className="text-center mb-16">
           <h2 className="text-4xl md:text-5xl font-bold mb-4">

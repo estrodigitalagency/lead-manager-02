@@ -1,5 +1,4 @@
 
-import { HeroSection } from "@/components/HeroSection";
 import { RealTimeStatsSection } from "@/components/RealTimeStatsSection";
 import LeadAssignmentForm from "@/components/LeadAssignmentForm";
 import PersistentNavigation from "@/components/PersistentNavigation";
@@ -8,7 +7,6 @@ const Index = () => {
   return (
     <div className="min-h-screen">
       <PersistentNavigation />
-      <HeroSection />
       <RealTimeStatsSection />
       
       {/* Tool di Assegnazione Lead */}
