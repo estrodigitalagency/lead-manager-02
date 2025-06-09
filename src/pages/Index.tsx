@@ -1,8 +1,8 @@
 
 import { useEffect } from "react";
 import PersistentNavigation from "@/components/PersistentNavigation";
-import HeroSection from "@/components/HeroSection";
-import RealTimeStatsSection from "@/components/RealTimeStatsSection";
+import { HeroSection } from "@/components/HeroSection";
+import { RealTimeStatsSection } from "@/components/RealTimeStatsSection";
 import LeadAssignmentWithExclusions from "@/components/LeadAssignmentWithExclusions";
 
 const Index = () => {
