@@ -236,6 +236,67 @@ export const getVendorStats = async () => {
   }
 };
 
+// New functions for managing sources and campaigns
+export const getAllFonti = async () => {
+  try {
+    const { data, error } = await supabase
+      .from('database_fonti')
+      .select('*')
+      .eq('attivo', true)
+      .order('nome');
+
+    if (error) {
+      console.error('Errore nel recupero delle fonti:', error);
+      throw error;
+    }
+
+    return data || [];
+  } catch (error) {
+    console.error('Errore nel recupero delle fonti:', error);
+    throw error;
+  }
+};
+
+export const getAllCampagne = async () => {
+  try {
+    const { data, error } = await supabase
+      .from('database_campagne')
+      .select('*')
+      .eq('attivo', true)
+      .order('nome');
+
+    if (error) {
+      console.error('Errore nel recupero delle campagne:', error);
+      throw error;
+    }
+
+    return data || [];
+  } catch (error) {
+    console.error('Errore nel recupero delle campagne:', error);
+    throw error;
+  }
+};
+
+export const addCampagna = async (nome: string, descrizione?: string) => {
+  try {
+    const { data, error } = await supabase
+      .from('database_campagne')
+      .insert([{ nome, descrizione }])
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Errore nell\'aggiunta della campagna:', error);
+      throw error;
+    }
+
+    return data;
+  } catch (error) {
+    console.error('Errore nell\'aggiunta della campagna:', error);
+    throw error;
+  }
+};
+
 export const markLeadsAsAssigned = async (
   numLead: number, 
   venditore: string, 
@@ -243,6 +304,16 @@ export const markLeadsAsAssigned = async (
   webhookUrl?: string
 ): Promise<any[]> => {
   try {
+    // If a campaign is provided, save it to the database
+    if (campagna && campagna.trim()) {
+      try {
+        await addCampagna(campagna.trim());
+      } catch (error) {
+        // Ignore duplicate key errors, campaign already exists
+        console.log('Campagna già esistente o errore nell\'aggiunta:', error);
+      }
+    }
+
     // Ottieni i lead disponibili per l'assegnazione
     const { data: availableLeads, error: fetchError } = await supabase
       .from('lead_generation')

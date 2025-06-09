@@ -95,6 +95,60 @@ export type Database = {
           },
         ]
       }
+      database_campagne: {
+        Row: {
+          attivo: boolean
+          created_at: string
+          descrizione: string | null
+          id: string
+          nome: string
+          updated_at: string
+        }
+        Insert: {
+          attivo?: boolean
+          created_at?: string
+          descrizione?: string | null
+          id?: string
+          nome: string
+          updated_at?: string
+        }
+        Update: {
+          attivo?: boolean
+          created_at?: string
+          descrizione?: string | null
+          id?: string
+          nome?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      database_fonti: {
+        Row: {
+          attivo: boolean
+          created_at: string
+          descrizione: string | null
+          id: string
+          nome: string
+          updated_at: string
+        }
+        Insert: {
+          attivo?: boolean
+          created_at?: string
+          descrizione?: string | null
+          id?: string
+          nome: string
+          updated_at?: string
+        }
+        Update: {
+          attivo?: boolean
+          created_at?: string
+          descrizione?: string | null
+          id?: string
+          nome?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       lead_assignments: {
         Row: {
           assigned_at: string | null

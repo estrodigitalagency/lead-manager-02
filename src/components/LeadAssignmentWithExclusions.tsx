@@ -3,7 +3,6 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { X } from "lucide-react";
@@ -11,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { assignLeads } from "@/services/leadService";
+import { getAllFonti, getAllCampagne } from "@/services/databaseService";
 
 interface Salesperson {
   id: string;
@@ -18,18 +18,33 @@ interface Salesperson {
   cognome: string;
 }
 
+interface Fonte {
+  id: string;
+  nome: string;
+  descrizione?: string;
+}
+
+interface Campagna {
+  id: string;
+  nome: string;
+  descrizione?: string;
+}
+
 const LeadAssignmentWithExclusions = () => {
   const [numLead, setNumLead] = useState(1);
   const [venditore, setVenditore] = useState("");
   const [campagna, setCampagna] = useState("");
   const [salespeople, setSalespeople] = useState<Salesperson[]>([]);
+  const [fonti, setFonti] = useState<Fonte[]>([]);
+  const [campagne, setCampagne] = useState<Campagna[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [excludedSources, setExcludedSources] = useState<string[]>([]);
-  const [newSource, setNewSource] = useState("");
   const [availableLeads, setAvailableLeads] = useState(0);
 
   useEffect(() => {
     fetchSalespeople();
+    fetchFonti();
+    fetchCampagne();
     updateAvailableLeads();
   }, [excludedSources]);
 
@@ -44,6 +59,24 @@ const LeadAssignmentWithExclusions = () => {
       setSalespeople(data || []);
     } catch (error) {
       console.error("Error fetching salespeople:", error);
+    }
+  };
+
+  const fetchFonti = async () => {
+    try {
+      const data = await getAllFonti();
+      setFonti(data);
+    } catch (error) {
+      console.error("Error fetching fonti:", error);
+    }
+  };
+
+  const fetchCampagne = async () => {
+    try {
+      const data = await getAllCampagne();
+      setCampagne(data);
+    } catch (error) {
+      console.error("Error fetching campagne:", error);
     }
   };
 
@@ -72,10 +105,9 @@ const LeadAssignmentWithExclusions = () => {
     }
   };
 
-  const addExcludedSource = () => {
-    if (newSource.trim() && !excludedSources.includes(newSource.trim())) {
-      setExcludedSources([...excludedSources, newSource.trim()]);
-      setNewSource("");
+  const addExcludedSource = (sourceName: string) => {
+    if (sourceName && !excludedSources.includes(sourceName)) {
+      setExcludedSources([...excludedSources, sourceName]);
     }
   };
 
@@ -111,7 +143,8 @@ const LeadAssignmentWithExclusions = () => {
       setVenditore("");
       setCampagna("");
       
-      // Aggiorna il conteggio dei lead disponibili
+      // Refresh data
+      fetchCampagne();
       updateAvailableLeads();
     } catch (error) {
       console.error("Error assigning leads:", error);
@@ -176,6 +209,20 @@ const LeadAssignmentWithExclusions = () => {
       
       if (updateError) {
         throw new Error("Errore nell'assegnazione dei lead");
+      }
+
+      // Salva la nuova campagna se non esiste
+      if (data.campagna && data.campagna.trim()) {
+        try {
+          await supabase
+            .from('database_campagne')
+            .insert([{ nome: data.campagna.trim() }])
+            .select()
+            .single();
+        } catch (error) {
+          // Ignora errori di duplicazione, la campagna esiste già
+          console.log('Campagna già esistente');
+        }
       }
 
       // Registra nell'assignment_history
@@ -280,28 +327,43 @@ const LeadAssignmentWithExclusions = () => {
         </div>
 
         <div>
-          <Label htmlFor="campagna">Campagna (opzionale)</Label>
+          <Label htmlFor="campagna">Campagna</Label>
+          <Select value={campagna} onValueChange={setCampagna}>
+            <SelectTrigger>
+              <SelectValue placeholder="Seleziona o digita una nuova campagna" />
+            </SelectTrigger>
+            <SelectContent>
+              {campagne.map((camp) => (
+                <SelectItem key={camp.id} value={camp.nome}>
+                  {camp.nome}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           <Input
-            id="campagna"
+            className="mt-2"
             value={campagna}
             onChange={(e) => setCampagna(e.target.value)}
-            placeholder="Nome della campagna"
+            placeholder="O digita una nuova campagna"
           />
         </div>
 
         <div>
           <Label>Escludi Fonti</Label>
-          <div className="flex gap-2 mt-2">
-            <Input
-              value={newSource}
-              onChange={(e) => setNewSource(e.target.value)}
-              placeholder="Nome fonte da escludere"
-              onKeyPress={(e) => e.key === 'Enter' && addExcludedSource()}
-            />
-            <Button onClick={addExcludedSource} variant="outline">
-              Aggiungi
-            </Button>
-          </div>
+          <Select onValueChange={addExcludedSource}>
+            <SelectTrigger className="mt-2">
+              <SelectValue placeholder="Seleziona fonte da escludere" />
+            </SelectTrigger>
+            <SelectContent>
+              {fonti
+                .filter(fonte => !excludedSources.includes(fonte.nome))
+                .map((fonte) => (
+                <SelectItem key={fonte.id} value={fonte.nome}>
+                  {fonte.nome}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           
           {excludedSources.length > 0 && (
             <div className="flex flex-wrap gap-2 mt-2">
