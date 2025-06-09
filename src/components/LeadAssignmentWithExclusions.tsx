@@ -318,15 +318,15 @@ const LeadAssignmentWithExclusions = () => {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Assegnazione Lead</CardTitle>
-        <CardDescription>
+        <CardTitle className="text-lg sm:text-xl">Assegnazione Lead</CardTitle>
+        <CardDescription className="text-sm">
           Assegna lead ai venditori escludendo fonti specifiche. Lead disponibili: {availableLeads}
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <Label htmlFor="numLead">Numero di Lead</Label>
+      <CardContent className="space-y-4 sm:space-y-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label htmlFor="numLead" className="text-sm font-medium">Numero di Lead</Label>
             <Input
               id="numLead"
               type="number"
@@ -334,19 +334,20 @@ const LeadAssignmentWithExclusions = () => {
               max={availableLeads}
               value={numLead}
               onChange={(e) => setNumLead(parseInt(e.target.value) || 1)}
+              className="w-full"
             />
           </div>
           
-          <div>
-            <Label htmlFor="venditore">Venditore</Label>
+          <div className="space-y-2">
+            <Label htmlFor="venditore" className="text-sm font-medium">Venditore</Label>
             <Select value={venditore} onValueChange={setVenditore}>
-              <SelectTrigger>
+              <SelectTrigger className="w-full">
                 <SelectValue placeholder="Seleziona venditore" />
               </SelectTrigger>
               <SelectContent>
                 {salespeople.map((person) => (
                   <SelectItem key={person.id} value={person.nome}>
-                    {person.nome} {person.cognome}
+                    <span className="truncate">{person.nome} {person.cognome}</span>
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -354,32 +355,32 @@ const LeadAssignmentWithExclusions = () => {
           </div>
         </div>
 
-        <div>
-          <Label htmlFor="campagna">Campagna</Label>
+        <div className="space-y-2">
+          <Label htmlFor="campagna" className="text-sm font-medium">Campagna</Label>
           <Select value={campagna} onValueChange={setCampagna}>
-            <SelectTrigger>
+            <SelectTrigger className="w-full">
               <SelectValue placeholder="Seleziona o digita una nuova campagna" />
             </SelectTrigger>
             <SelectContent>
               {campagne.map((camp) => (
                 <SelectItem key={camp.id} value={camp.nome}>
-                  {camp.nome}
+                  <span className="truncate">{camp.nome}</span>
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
           <Input
-            className="mt-2"
+            className="w-full mt-2"
             value={campagna}
             onChange={(e) => setCampagna(e.target.value)}
             placeholder="O digita una nuova campagna"
           />
         </div>
 
-        <div>
-          <Label>Escludi Fonti</Label>
+        <div className="space-y-2">
+          <Label className="text-sm font-medium">Escludi Fonti</Label>
           <Select onValueChange={addExcludedSource}>
-            <SelectTrigger className="mt-2">
+            <SelectTrigger className="w-full">
               <SelectValue placeholder="Seleziona fonte da escludere" />
             </SelectTrigger>
             <SelectContent>
@@ -387,20 +388,21 @@ const LeadAssignmentWithExclusions = () => {
                 .filter(source => !excludedSources.includes(source))
                 .map((source) => (
                 <SelectItem key={source} value={source}>
-                  {source}
+                  <span className="truncate">{source}</span>
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
           
           {excludedSources.length > 0 && (
-            <div className="flex flex-wrap gap-2 mt-2">
+            <div className="flex flex-wrap gap-2 mt-3">
               {excludedSources.map((source) => (
-                <Badge key={source} variant="secondary" className="flex items-center gap-1">
-                  {source}
+                <Badge key={source} variant="secondary" className="flex items-center gap-1 text-xs max-w-full">
+                  <span className="truncate">{source}</span>
                   <button
                     onClick={() => removeExcludedSource(source)}
-                    className="ml-1 hover:text-destructive"
+                    className="ml-1 hover:text-destructive flex-shrink-0"
+                    aria-label={`Rimuovi ${source}`}
                   >
                     <X className="h-3 w-3" />
                   </button>
@@ -413,7 +415,7 @@ const LeadAssignmentWithExclusions = () => {
         <Button 
           onClick={handleAssign} 
           disabled={isSubmitting || !venditore || numLead <= 0 || numLead > availableLeads}
-          className="w-full"
+          className="w-full mt-6 text-sm sm:text-base py-2 sm:py-3"
         >
           {isSubmitting ? "Assegnazione in corso..." : "Assegna Lead"}
         </Button>

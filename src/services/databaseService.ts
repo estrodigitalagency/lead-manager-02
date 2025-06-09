@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { Lead } from "@/types/lead";
 import { LeadLavorato } from "@/types/leadLavorato";
@@ -106,23 +107,40 @@ export const deleteLead = async (tableName: TableName, id: string): Promise<bool
   }
 };
 
-// Funzione corretta per eliminazione multipla
+// Funzione migliorata per eliminazione multipla con batching
 export const deleteMultipleLeads = async (tableName: TableName, ids: string[]): Promise<boolean> => {
   try {
-    console.log(`Eliminazione di ${ids.length} record dalla tabella ${tableName}`, ids);
+    console.log(`Eliminazione di ${ids.length} record dalla tabella ${tableName}`);
     
     if (!ids || ids.length === 0) {
       throw new Error('Nessun ID fornito per l\'eliminazione');
     }
 
-    const { error } = await supabase
-      .from(tableName)
-      .delete()
-      .in('id', ids);
+    // Batch size of 100 records at a time to avoid request timeouts
+    const batchSize = 100;
+    const batches = [];
+    
+    for (let i = 0; i < ids.length; i += batchSize) {
+      batches.push(ids.slice(i, i + batchSize));
+    }
 
-    if (error) {
-      console.error(`Errore durante l'eliminazione multipla:`, error);
-      throw new Error(`Errore eliminazione multipla: ${error.message}`);
+    console.log(`Eliminazione in ${batches.length} batch di massimo ${batchSize} record ciascuno`);
+
+    for (let i = 0; i < batches.length; i++) {
+      const batch = batches[i];
+      console.log(`Elaborazione batch ${i + 1}/${batches.length} con ${batch.length} record`);
+      
+      const { error } = await supabase
+        .from(tableName)
+        .delete()
+        .in('id', batch);
+
+      if (error) {
+        console.error(`Errore durante l'eliminazione del batch ${i + 1}:`, error);
+        throw new Error(`Errore eliminazione batch ${i + 1}: ${error.message}`);
+      }
+
+      console.log(`Batch ${i + 1}/${batches.length} eliminato con successo`);
     }
 
     console.log(`${ids.length} record eliminati con successo dalla tabella ${tableName}`);
