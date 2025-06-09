@@ -5,6 +5,8 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Trash2 } from "lucide-react";
 import { Lead } from "@/types/lead";
+import { deleteLead } from "@/services/databaseService";
+import { toast } from "sonner";
 
 interface LeadTableRowProps {
   lead: Lead;
@@ -71,6 +73,17 @@ const LeadTableRow = ({
 
   const isColumnVisible = (key: string) => visibleColumns.includes(key);
 
+  const handleDelete = async () => {
+    try {
+      await deleteLead('lead_generation', lead.id!);
+      toast.success("Lead eliminato con successo");
+      onDelete(lead.id!);
+    } catch (error) {
+      console.error("Errore durante l'eliminazione:", error);
+      toast.error(`Errore durante l'eliminazione: ${error instanceof Error ? error.message : 'Errore sconosciuto'}`);
+    }
+  };
+
   return (
     <TableRow className="hover:bg-muted/30 transition-colors">
       <TableCell>
@@ -119,7 +132,7 @@ const LeadTableRow = ({
         <Button
           variant="ghost"
           size="sm"
-          onClick={() => onDelete(lead.id!)}
+          onClick={handleDelete}
           className="text-red-600 hover:text-red-800 hover:bg-red-100"
         >
           <Trash2 className="h-4 w-4" />

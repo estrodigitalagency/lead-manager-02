@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -19,9 +18,9 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Trash2, MoreHorizontal, Users, FileDown, Mail } from "lucide-react";
+import { Trash2, MoreHorizontal, Users, FileDown } from "lucide-react";
 import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
+import { deleteMultipleLeads } from "@/services/databaseService";
 
 interface BulkActionsProps {
   selectedItems: string[];
@@ -50,21 +49,20 @@ const BulkActions = ({
   };
 
   const handleBulkDelete = async () => {
+    if (!selectedItems || selectedItems.length === 0) {
+      toast.error("Nessun elemento selezionato per l'eliminazione");
+      return;
+    }
+
     setIsProcessing(true);
     try {
-      const { error } = await supabase
-        .from(tableName)
-        .delete()
-        .in('id', selectedItems);
-
-      if (error) throw error;
-
+      await deleteMultipleLeads(tableName, selectedItems);
       toast.success(`${selectedItems.length} record eliminati con successo`);
       onSelectionChange([]);
       onRefresh();
     } catch (error) {
       console.error("Errore durante l'eliminazione:", error);
-      toast.error("Errore durante l'eliminazione dei record");
+      toast.error(`Errore durante l'eliminazione: ${error instanceof Error ? error.message : 'Errore sconosciuto'}`);
     } finally {
       setIsProcessing(false);
       setShowDeleteDialog(false);

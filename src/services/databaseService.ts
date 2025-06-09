@@ -83,10 +83,10 @@ export const addLeadLavorato = async (leadData: Omit<LeadLavorato, 'id' | 'creat
   }
 };
 
-// Fix: Funzione migliorata per eliminazione singola con gestione errori
+// Funzione corretta per eliminazione singola
 export const deleteLead = async (tableName: TableName, id: string): Promise<boolean> => {
   try {
-    console.log(`Tentativo di eliminazione del record ${id} dalla tabella ${tableName}`);
+    console.log(`Eliminazione del record ${id} dalla tabella ${tableName}`);
     
     const { error } = await supabase
       .from(tableName)
@@ -94,8 +94,8 @@ export const deleteLead = async (tableName: TableName, id: string): Promise<bool
       .eq('id', id);
 
     if (error) {
-      console.error(`Errore durante l'eliminazione:`, error);
-      throw error;
+      console.error(`Errore durante l'eliminazione del record ${id}:`, error);
+      throw new Error(`Errore eliminazione: ${error.message}`);
     }
 
     console.log(`Record ${id} eliminato con successo dalla tabella ${tableName}`);
@@ -106,11 +106,15 @@ export const deleteLead = async (tableName: TableName, id: string): Promise<bool
   }
 };
 
-// Fix: Funzione migliorata per eliminazione multipla con gestione errori
+// Funzione corretta per eliminazione multipla
 export const deleteMultipleLeads = async (tableName: TableName, ids: string[]): Promise<boolean> => {
   try {
-    console.log(`Tentativo di eliminazione di ${ids.length} record dalla tabella ${tableName}`);
+    console.log(`Eliminazione di ${ids.length} record dalla tabella ${tableName}`, ids);
     
+    if (!ids || ids.length === 0) {
+      throw new Error('Nessun ID fornito per l\'eliminazione');
+    }
+
     const { error } = await supabase
       .from(tableName)
       .delete()
@@ -118,7 +122,7 @@ export const deleteMultipleLeads = async (tableName: TableName, ids: string[]): 
 
     if (error) {
       console.error(`Errore durante l'eliminazione multipla:`, error);
-      throw error;
+      throw new Error(`Errore eliminazione multipla: ${error.message}`);
     }
 
     console.log(`${ids.length} record eliminati con successo dalla tabella ${tableName}`);
