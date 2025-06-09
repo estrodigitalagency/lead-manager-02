@@ -1,7 +1,7 @@
 
 import { HeroSection } from "@/components/HeroSection";
 import { RealTimeStatsSection } from "@/components/RealTimeStatsSection";
-import { LeadAssignmentForm } from "@/components/LeadAssignmentForm";
+import LeadAssignmentForm from "@/components/LeadAssignmentForm";
 import PersistentNavigation from "@/components/PersistentNavigation";
 
 const Index = () => {
@@ -24,7 +24,7 @@ const Index = () => {
           </div>
           
           <div className="glass-card p-8">
-            <LeadAssignmentForm />
+            <LeadAssignmentForm onAssignmentSuccess={() => {}} />
           </div>
         </div>
       </section>
