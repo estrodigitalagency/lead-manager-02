@@ -86,53 +86,74 @@ export const addLeadLavorato = async (leadData: Omit<LeadLavorato, 'id' | 'creat
 
 export const filterLeads = async (tableName: TableName, filters: Record<string, any>) => {
   try {
-    // Create base query without complex chaining to avoid type issues
-    const baseQuery = supabase.from(tableName).select('*');
+    // Start with a fresh query builder for each filter operation
+    let query: any = supabase.from(tableName).select('*');
     
-    // Build filter conditions separately
-    const conditions: any[] = [];
-    
-    // Handle search filter
+    // Apply search filter first if it exists
     if (filters.search) {
       const searchTerm = filters.search.toLowerCase();
-      conditions.push(`nome.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%,telefono.ilike.%${searchTerm}%`);
+      query = supabase.from(tableName).select('*').or(`nome.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%,telefono.ilike.%${searchTerm}%`);
     }
     
-    // Apply search condition if exists
-    let query = baseQuery;
-    if (conditions.length > 0) {
-      query = query.or(conditions[0]);
-    }
+    // Rebuild query with additional filters
+    const conditions: string[] = [];
     
-    // Apply other filters
     if (filters.dataInizio) {
-      query = query.gte('created_at', filters.dataInizio);
+      conditions.push(`created_at.gte.${filters.dataInizio}`);
     }
     
     if (filters.dataFine) {
       const endDate = new Date(filters.dataFine);
       endDate.setHours(23, 59, 59, 999);
-      query = query.lte('created_at', endDate.toISOString());
+      conditions.push(`created_at.lte.${endDate.toISOString()}`);
     }
     
     if (filters.nome) {
-      query = query.ilike('nome', `%${filters.nome}%`);
+      conditions.push(`nome.ilike.%${filters.nome}%`);
     }
     
     if (filters.email) {
-      query = query.ilike('email', `%${filters.email}%`);
+      conditions.push(`email.ilike.%${filters.email}%`);
     }
     
     if (filters.telefono) {
-      query = query.ilike('telefono', `%${filters.telefono}%`);
+      conditions.push(`telefono.ilike.%${filters.telefono}%`);
     }
     
     if (filters.venditore) {
-      query = query.ilike('venditore', `%${filters.venditore}%`);
+      conditions.push(`venditore.ilike.%${filters.venditore}%`);
     }
     
     if (filters.esito) {
-      query = query.eq('esito', filters.esito);
+      conditions.push(`esito.eq.${filters.esito}`);
+    }
+    
+    // Apply additional conditions using and() if we have them
+    if (conditions.length > 0) {
+      if (filters.search) {
+        // If we already have a search filter, combine with and()
+        query = query.and(conditions.join(','));
+      } else {
+        // No search filter, just apply regular filters
+        query = supabase.from(tableName).select('*');
+        for (const condition of conditions) {
+          const [field, operator, value] = condition.split('.');
+          switch (operator) {
+            case 'gte':
+              query = query.gte(field, value);
+              break;
+            case 'lte':
+              query = query.lte(field, value);
+              break;
+            case 'ilike':
+              query = query.ilike(field, value);
+              break;
+            case 'eq':
+              query = query.eq(field, value);
+              break;
+          }
+        }
+      }
     }
     
     const { data, error } = await query.order('created_at', { ascending: false }).limit(1000);
