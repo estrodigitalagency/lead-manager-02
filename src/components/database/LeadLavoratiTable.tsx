@@ -1,3 +1,4 @@
+
 import {
   Table,
   TableBody,
@@ -12,6 +13,10 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Trash2, Loader2 } from "lucide-react";
 import { LeadLavorato } from "@/types/leadLavorato";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useTableSorting } from "@/hooks/useTableSorting";
+import { useColumnVisibility, ColumnConfig } from "@/hooks/useColumnVisibility";
+import SortableTableHead from "./SortableTableHead";
+import ColumnVisibilityControls from "./ColumnVisibilityControls";
 import MobileLavoratiTable from "./MobileLavoratiTable";
 
 interface LeadLavoratiTableProps {
@@ -22,6 +27,18 @@ interface LeadLavoratiTableProps {
   onDelete: (id: string) => void;
 }
 
+const initialColumns: ColumnConfig[] = [
+  { key: 'data_contatto', label: 'Data Contatto', visible: true },
+  { key: 'data_call', label: 'Data Call', visible: true },
+  { key: 'nome', label: 'Nome', visible: true },
+  { key: 'cognome', label: 'Cognome', visible: true },
+  { key: 'email', label: 'Email', visible: true },
+  { key: 'telefono', label: 'Telefono', visible: true },
+  { key: 'venditore', label: 'Venditore', visible: true },
+  { key: 'esito', label: 'Esito', visible: true },
+  { key: 'obiezioni', label: 'Obiezioni', visible: true },
+];
+
 const LeadLavoratiTable = ({ 
   leadLavorati, 
   isLoading, 
@@ -30,6 +47,8 @@ const LeadLavoratiTable = ({
   onDelete 
 }: LeadLavoratiTableProps) => {
   const isMobile = useIsMobile();
+  const { sortedData, sortConfig, requestSort } = useTableSorting(leadLavorati);
+  const { columns, visibleColumns, toggleColumn } = useColumnVisibility(initialColumns);
 
   const handleItemSelect = (id: string, checked: boolean) => {
     if (checked) {
@@ -51,7 +70,7 @@ const LeadLavoratiTable = ({
   if (isMobile) {
     return (
       <MobileLavoratiTable
-        leadLavorati={leadLavorati}
+        leadLavorati={sortedData}
         selectedItems={selectedItems}
         onSelectionChange={onSelectionChange}
         onDelete={onDelete}
@@ -100,70 +119,173 @@ const LeadLavoratiTable = ({
     );
   }
 
+  const isColumnVisible = (key: string) => visibleColumns.some(col => col.key === key);
+
   return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead className="w-12">
-            <Checkbox
-              checked={selectedItems.length === leadLavorati.length && leadLavorati.length > 0}
-              onCheckedChange={(checked) => {
-                if (checked) {
-                  onSelectionChange(leadLavorati.map(lead => lead.id!));
-                } else {
-                  onSelectionChange([]);
-                }
-              }}
-            />
-          </TableHead>
-          <TableHead className="table-header-cell">Data Contatto</TableHead>
-          <TableHead className="table-header-cell">Data Call</TableHead>
-          <TableHead className="table-header-cell">Nome</TableHead>
-          <TableHead className="table-header-cell">Cognome</TableHead>
-          <TableHead className="table-header-cell">Email</TableHead>
-          <TableHead className="table-header-cell">Telefono</TableHead>
-          <TableHead className="table-header-cell">Venditore</TableHead>
-          <TableHead className="table-header-cell">Esito</TableHead>
-          <TableHead className="table-header-cell">Obiezioni</TableHead>
-          <TableHead className="table-header-cell w-20">Azioni</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {leadLavorati.map((lead) => (
-          <TableRow key={lead.id} className="hover:bg-muted/30 transition-colors">
-            <TableCell>
+    <div className="space-y-4">
+      <div className="flex justify-end">
+        <ColumnVisibilityControls
+          columns={columns}
+          onToggleColumn={toggleColumn}
+        />
+      </div>
+      
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead className="w-12">
               <Checkbox
-                checked={selectedItems.includes(lead.id!)}
-                onCheckedChange={(checked) => handleItemSelect(lead.id!, !!checked)}
+                checked={selectedItems.length === leadLavorati.length && leadLavorati.length > 0}
+                onCheckedChange={(checked) => {
+                  if (checked) {
+                    onSelectionChange(leadLavorati.map(lead => lead.id!));
+                  } else {
+                    onSelectionChange([]);
+                  }
+                }}
               />
-            </TableCell>
-            <TableCell className="table-body-cell">
-              {lead.data_contatto ? formatDate(lead.data_contatto) : '-'}
-            </TableCell>
-            <TableCell className="table-body-cell">
-              {lead.data_call ? formatDate(lead.data_call) : '-'}
-            </TableCell>
-            <TableCell className="table-body-cell">{lead.nome}</TableCell>
-            <TableCell className="table-body-cell">{lead.cognome || '-'}</TableCell>
-            <TableCell className="table-body-cell">{lead.email || '-'}</TableCell>
-            <TableCell className="table-body-cell">{lead.telefono || '-'}</TableCell>
-            <TableCell className="table-body-cell">{lead.venditore || '-'}</TableCell>
-            <TableCell className="table-body-cell">{getEsitoBadge(lead.esito)}</TableCell>
-            <TableCell className="table-body-cell">{lead.obiezioni || '-'}</TableCell>
-            <TableCell className="table-body-cell">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => onDelete(lead.id!)}
-                className="text-red-600 hover:text-red-800 hover:bg-red-100"
+            </TableHead>
+            {isColumnVisible('data_contatto') && (
+              <SortableTableHead
+                sortKey="data_contatto"
+                sortConfig={sortConfig}
+                onSort={requestSort}
+                className="table-header-cell"
               >
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            </TableCell>
+                Data Contatto
+              </SortableTableHead>
+            )}
+            {isColumnVisible('data_call') && (
+              <SortableTableHead
+                sortKey="data_call"
+                sortConfig={sortConfig}
+                onSort={requestSort}
+                className="table-header-cell"
+              >
+                Data Call
+              </SortableTableHead>
+            )}
+            {isColumnVisible('nome') && (
+              <SortableTableHead
+                sortKey="nome"
+                sortConfig={sortConfig}
+                onSort={requestSort}
+                className="table-header-cell"
+              >
+                Nome
+              </SortableTableHead>
+            )}
+            {isColumnVisible('cognome') && (
+              <SortableTableHead
+                sortKey="cognome"
+                sortConfig={sortConfig}
+                onSort={requestSort}
+                className="table-header-cell"
+              >
+                Cognome
+              </SortableTableHead>
+            )}
+            {isColumnVisible('email') && (
+              <SortableTableHead
+                sortKey="email"
+                sortConfig={sortConfig}
+                onSort={requestSort}
+                className="table-header-cell"
+              >
+                Email
+              </SortableTableHead>
+            )}
+            {isColumnVisible('telefono') && (
+              <SortableTableHead
+                sortKey="telefono"
+                sortConfig={sortConfig}
+                onSort={requestSort}
+                className="table-header-cell"
+              >
+                Telefono
+              </SortableTableHead>
+            )}
+            {isColumnVisible('venditore') && (
+              <SortableTableHead
+                sortKey="venditore"
+                sortConfig={sortConfig}
+                onSort={requestSort}
+                className="table-header-cell"
+              >
+                Venditore
+              </SortableTableHead>
+            )}
+            {isColumnVisible('esito') && (
+              <SortableTableHead
+                sortKey="esito"
+                sortConfig={sortConfig}
+                onSort={requestSort}
+                className="table-header-cell"
+              >
+                Esito
+              </SortableTableHead>
+            )}
+            {isColumnVisible('obiezioni') && (
+              <TableHead className="table-header-cell">Obiezioni</TableHead>
+            )}
+            <TableHead className="table-header-cell w-20">Azioni</TableHead>
           </TableRow>
-        ))}
-      </TableBody>
-    </Table>
+        </TableHeader>
+        <TableBody>
+          {sortedData.map((lead) => (
+            <TableRow key={lead.id} className="hover:bg-muted/30 transition-colors">
+              <TableCell>
+                <Checkbox
+                  checked={selectedItems.includes(lead.id!)}
+                  onCheckedChange={(checked) => handleItemSelect(lead.id!, !!checked)}
+                />
+              </TableCell>
+              {isColumnVisible('data_contatto') && (
+                <TableCell className="table-body-cell">
+                  {lead.data_contatto ? formatDate(lead.data_contatto) : '-'}
+                </TableCell>
+              )}
+              {isColumnVisible('data_call') && (
+                <TableCell className="table-body-cell">
+                  {lead.data_call ? formatDate(lead.data_call) : '-'}
+                </TableCell>
+              )}
+              {isColumnVisible('nome') && (
+                <TableCell className="table-body-cell">{lead.nome}</TableCell>
+              )}
+              {isColumnVisible('cognome') && (
+                <TableCell className="table-body-cell">{lead.cognome || '-'}</TableCell>
+              )}
+              {isColumnVisible('email') && (
+                <TableCell className="table-body-cell">{lead.email || '-'}</TableCell>
+              )}
+              {isColumnVisible('telefono') && (
+                <TableCell className="table-body-cell">{lead.telefono || '-'}</TableCell>
+              )}
+              {isColumnVisible('venditore') && (
+                <TableCell className="table-body-cell">{lead.venditore || '-'}</TableCell>
+              )}
+              {isColumnVisible('esito') && (
+                <TableCell className="table-body-cell">{getEsitoBadge(lead.esito)}</TableCell>
+              )}
+              {isColumnVisible('obiezioni') && (
+                <TableCell className="table-body-cell">{lead.obiezioni || '-'}</TableCell>
+              )}
+              <TableCell className="table-body-cell">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => onDelete(lead.id!)}
+                  className="text-red-600 hover:text-red-800 hover:bg-red-100"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </div>
   );
 };
 

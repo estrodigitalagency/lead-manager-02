@@ -1,10 +1,9 @@
 
 import { ReactNode, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Plus, UploadCloud } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import DatabaseFiltersResponsive from "@/components/DatabaseFiltersResponsive";
+import SearchInput from "./SearchInput";
 import BulkActions from "./BulkActions";
 
 interface DatabaseTableContainerProps {
@@ -36,6 +35,19 @@ const DatabaseTableContainer = ({
 }: DatabaseTableContainerProps) => {
   const isMobile = useIsMobile();
 
+  const handleSearch = (searchTerm: string) => {
+    if (!searchTerm.trim()) {
+      onApplyFilters({});
+      return;
+    }
+
+    // Applica filtri di ricerca per nome, email e telefono
+    const searchFilters = {
+      search: searchTerm.trim()
+    };
+    onApplyFilters(searchFilters);
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -49,24 +61,7 @@ const DatabaseTableContainer = ({
               onApplyFilters={onApplyFilters} 
               tableName={tableName}
             />
-            <Button 
-              variant="outline" 
-              size="sm"
-              className={`flex items-center gap-1 ${isMobile ? 'w-full justify-center' : ''}`}
-              onClick={onAddRecord}
-            >
-              <Plus className="h-4 w-4" />
-              <span>Aggiungi Record</span>
-            </Button>
-            <Button 
-              variant="outline" 
-              size="sm"
-              className={`flex items-center gap-1 ${isMobile ? 'w-full justify-center' : ''}`}
-              onClick={onImport}
-            >
-              <UploadCloud className="h-4 w-4" />
-              <span>Importa CSV</span>
-            </Button>
+            <SearchInput onSearch={handleSearch} />
           </div>
         </div>
       </CardHeader>
