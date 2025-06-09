@@ -21,6 +21,7 @@ import {
 import { Trash2, MoreHorizontal, Users, FileDown } from "lucide-react";
 import { toast } from "sonner";
 import { deleteMultipleLeads } from "@/services/databaseService";
+import { supabase } from "@/integrations/supabase/client";
 
 interface BulkActionsProps {
   selectedItems: string[];
