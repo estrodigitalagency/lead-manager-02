@@ -1,6 +1,7 @@
 
+
 import { RealTimeStatsSection } from "@/components/RealTimeStatsSection";
-import LeadAssignmentForm from "@/components/LeadAssignmentForm";
+import LeadAssignmentWithExclusions from "@/components/LeadAssignmentWithExclusions";
 import PersistentNavigation from "@/components/PersistentNavigation";
 
 const Index = () => {
@@ -22,7 +23,7 @@ const Index = () => {
           </div>
           
           <div className="glass-card p-8">
-            <LeadAssignmentForm onAssignmentSuccess={() => {}} />
+            <LeadAssignmentWithExclusions />
           </div>
         </div>
       </section>
@@ -31,3 +32,4 @@ const Index = () => {
 };
 
 export default Index;
+
