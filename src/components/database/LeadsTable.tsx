@@ -68,9 +68,20 @@ const LeadsTable = ({
     endIndex
   } = usePagination({ data: sortedData, initialPageSize: 50 });
 
+  // Fix: Funzione corretta per gestire la selezione di un singolo item
   const handleItemSelect = (id: string, checked: boolean) => {
     if (checked) {
-      onSelectionChange([...new Set([...selectedItems, ...paginatedData.map(lead => lead.id!)])]);
+      onSelectionChange([...selectedItems, id]);
+    } else {
+      onSelectionChange(selectedItems.filter(selectedId => selectedId !== id));
+    }
+  };
+
+  // Fix: Funzione corretta per gestire la selezione di tutti gli item della pagina
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      const currentPageIds = paginatedData.map(lead => lead.id!);
+      onSelectionChange([...new Set([...selectedItems, ...currentPageIds])]);
     } else {
       const currentPageIds = paginatedData.map(lead => lead.id!);
       onSelectionChange(selectedItems.filter(id => !currentPageIds.includes(id)));
@@ -171,6 +182,10 @@ const LeadsTable = ({
 
   const isColumnVisible = (key: string) => visibleColumns.some(col => col.key === key);
 
+  // Fix: Calcolare correttamente se tutti gli item della pagina corrente sono selezionati
+  const currentPageIds = paginatedData.map(lead => lead.id!);
+  const allCurrentPageSelected = currentPageIds.length > 0 && currentPageIds.every(id => selectedItems.includes(id));
+
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
@@ -188,15 +203,8 @@ const LeadsTable = ({
           <TableRow>
             <TableHead className="w-12">
               <Checkbox
-                checked={selectedItems.length === paginatedData.length && paginatedData.length > 0}
-                onCheckedChange={(checked) => {
-                  if (checked) {
-                    onSelectionChange([...new Set([...selectedItems, ...paginatedData.map(lead => lead.id!)])]);
-                  } else {
-                    const currentPageIds = paginatedData.map(lead => lead.id!);
-                    onSelectionChange(selectedItems.filter(id => !currentPageIds.includes(id)));
-                  }
-                }}
+                checked={allCurrentPageSelected}
+                onCheckedChange={handleSelectAll}
               />
             </TableHead>
             {isColumnVisible('data') && (

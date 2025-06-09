@@ -7,6 +7,7 @@ import { Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Venditore } from "@/types/venditore";
+import EditSalespersonDialog from "./EditSalespersonDialog";
 
 interface SalespersonCardProps {
   venditore: Venditore;
@@ -70,6 +71,7 @@ const SalespersonCard = ({ venditore, onUpdate }: SalespersonCardProps) => {
               checked={venditore.stato === 'attivo'}
               onCheckedChange={() => handleToggleStato(venditore.stato)}
             />
+            <EditSalespersonDialog venditore={venditore} onUpdate={onUpdate} />
             <Button
               variant="ghost"
               size="sm"

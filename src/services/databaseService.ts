@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { Lead } from "@/types/lead";
 import { LeadLavorato } from "@/types/leadLavorato";
@@ -80,6 +79,52 @@ export const addLeadLavorato = async (leadData: Omit<LeadLavorato, 'id' | 'creat
     return data as LeadLavorato || null;
   } catch (error) {
     console.error("Errore durante l'aggiunta del lead lavorato:", error);
+    throw error;
+  }
+};
+
+// Fix: Funzione migliorata per eliminazione singola con gestione errori
+export const deleteLead = async (tableName: TableName, id: string): Promise<boolean> => {
+  try {
+    console.log(`Tentativo di eliminazione del record ${id} dalla tabella ${tableName}`);
+    
+    const { error } = await supabase
+      .from(tableName)
+      .delete()
+      .eq('id', id);
+
+    if (error) {
+      console.error(`Errore durante l'eliminazione:`, error);
+      throw error;
+    }
+
+    console.log(`Record ${id} eliminato con successo dalla tabella ${tableName}`);
+    return true;
+  } catch (error) {
+    console.error(`Errore durante l'eliminazione del record ${id}:`, error);
+    throw error;
+  }
+};
+
+// Fix: Funzione migliorata per eliminazione multipla con gestione errori
+export const deleteMultipleLeads = async (tableName: TableName, ids: string[]): Promise<boolean> => {
+  try {
+    console.log(`Tentativo di eliminazione di ${ids.length} record dalla tabella ${tableName}`);
+    
+    const { error } = await supabase
+      .from(tableName)
+      .delete()
+      .in('id', ids);
+
+    if (error) {
+      console.error(`Errore durante l'eliminazione multipla:`, error);
+      throw error;
+    }
+
+    console.log(`${ids.length} record eliminati con successo dalla tabella ${tableName}`);
+    return true;
+  } catch (error) {
+    console.error(`Errore durante l'eliminazione multipla:`, error);
     throw error;
   }
 };
