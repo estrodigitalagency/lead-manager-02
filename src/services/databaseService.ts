@@ -1,8 +1,11 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { Lead } from "@/types/lead";
 import { LeadLavorato } from "@/types/leadLavorato";
 
-export const getRecentData = async (tableName: string, limit: number = 100): Promise<any[]> => {
+type TableName = 'lead_generation' | 'booked_call' | 'lead_lavorati';
+
+export const getRecentData = async (tableName: TableName, limit: number = 100): Promise<any[]> => {
   try {
     const { data, error } = await supabase
       .from(tableName)
@@ -81,7 +84,7 @@ export const addLeadLavorato = async (leadData: Omit<LeadLavorato, 'id' | 'creat
   }
 };
 
-export const filterLeads = async (tableName: string, filters: Record<string, any>) => {
+export const filterLeads = async (tableName: TableName, filters: Record<string, any>) => {
   try {
     let query = supabase.from(tableName).select('*');
     
@@ -132,6 +135,136 @@ export const filterLeads = async (tableName: string, filters: Record<string, any
     return data || [];
   } catch (error) {
     console.error('Errore nel servizio di filtraggio:', error);
+    throw error;
+  }
+};
+
+export const triggerLeadCheck = async (): Promise<boolean> => {
+  try {
+    const { error } = await supabase.rpc('check_leads_assignability');
+    
+    if (error) {
+      console.error('Errore nel controllo dei lead:', error);
+      throw error;
+    }
+    
+    return true;
+  } catch (error) {
+    console.error('Errore durante il controllo dei lead:', error);
+    throw error;
+  }
+};
+
+export const getTableCounts = async () => {
+  try {
+    const [totalResult, assignableResult, assignedResult, bookedResult] = await Promise.all([
+      supabase.from('lead_generation').select('id', { count: 'exact', head: true }),
+      supabase.from('lead_generation').select('id', { count: 'exact', head: true }).eq('assignable', true),
+      supabase.from('lead_generation').select('id', { count: 'exact', head: true }).not('venditore', 'is', null),
+      supabase.from('booked_call').select('id', { count: 'exact', head: true })
+    ]);
+
+    return {
+      total: totalResult.count || 0,
+      assignable: assignableResult.count || 0,
+      assigned: assignedResult.count || 0,
+      booked: bookedResult.count || 0
+    };
+  } catch (error) {
+    console.error('Errore nel conteggio delle tabelle:', error);
+    throw error;
+  }
+};
+
+export const getVendorStats = async () => {
+  try {
+    const { data, error } = await supabase
+      .from('lead_generation')
+      .select('venditore')
+      .not('venditore', 'is', null);
+
+    if (error) {
+      console.error('Errore nel recupero statistiche venditori:', error);
+      throw error;
+    }
+
+    const vendorCounts = (data || []).reduce((acc: Record<string, number>, lead) => {
+      if (lead.venditore) {
+        acc[lead.venditore] = (acc[lead.venditore] || 0) + 1;
+      }
+      return acc;
+    }, {});
+
+    return Object.entries(vendorCounts).map(([name, value]) => ({
+      name,
+      value
+    }));
+  } catch (error) {
+    console.error('Errore nelle statistiche venditori:', error);
+    throw error;
+  }
+};
+
+export const markLeadsAsAssigned = async (
+  numLead: number, 
+  venditore: string, 
+  campagna?: string,
+  webhookUrl?: string
+): Promise<any[]> => {
+  try {
+    // Ottieni i lead disponibili per l'assegnazione
+    const { data: availableLeads, error: fetchError } = await supabase
+      .from('lead_generation')
+      .select('*')
+      .eq('assignable', true)
+      .is('venditore', null)
+      .order('created_at', { ascending: true })
+      .limit(numLead);
+
+    if (fetchError) {
+      console.error('Errore nel recupero dei lead:', fetchError);
+      throw fetchError;
+    }
+
+    if (!availableLeads || availableLeads.length === 0) {
+      throw new Error('Nessun lead disponibile per l\'assegnazione');
+    }
+
+    // Aggiorna i lead con il venditore assegnato
+    const leadIds = availableLeads.map(lead => lead.id);
+    const { data: updatedLeads, error: updateError } = await supabase
+      .from('lead_generation')
+      .update({ 
+        venditore,
+        campagna: campagna || null,
+        updated_at: new Date().toISOString()
+      })
+      .in('id', leadIds)
+      .select();
+
+    if (updateError) {
+      console.error('Errore nell\'aggiornamento dei lead:', updateError);
+      throw updateError;
+    }
+
+    // Registra l'assegnazione nello storico
+    const { error: historyError } = await supabase
+      .from('assignment_history')
+      .insert({
+        leads_count: updatedLeads?.length || 0,
+        venditore,
+        campagna: campagna || null,
+        fonti_escluse: null // Potrà essere implementato in futuro
+      });
+
+    if (historyError) {
+      console.error('Errore nel salvataggio dello storico:', historyError);
+      // Non lanciamo l'errore per non bloccare l'assegnazione
+    }
+
+    return updatedLeads || [];
+  } catch (error) {
+    console.error('Errore nell\'assegnazione dei lead:', error);
     throw error;
   }
 };
