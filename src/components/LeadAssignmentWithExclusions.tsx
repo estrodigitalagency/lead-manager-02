@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { getAllFonti, getAllCampagne, getUniqueSourcesFromLeads, syncSourcesToDatabase } from "@/services/databaseService";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface Salesperson {
   id: string;
@@ -29,7 +30,7 @@ interface Campagna {
 }
 
 const LeadAssignmentWithExclusions = () => {
-  const [numLead, setNumLead] = useState(1);
+  const [numLead, setNumLead] = useState("");
   const [venditore, setVenditore] = useState("");
   const [campagna, setCampagna] = useState("");
   const [salespeople, setSalespeople] = useState<Salesperson[]>([]);
@@ -39,6 +40,7 @@ const LeadAssignmentWithExclusions = () => {
   const [excludedSources, setExcludedSources] = useState<string[]>([]);
   const [availableLeads, setAvailableLeads] = useState(0);
   const [uniqueSources, setUniqueSources] = useState<string[]>([]);
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     fetchSalespeople();
@@ -126,12 +128,13 @@ const LeadAssignmentWithExclusions = () => {
   };
 
   const handleAssign = async () => {
-    if (!venditore || numLead <= 0) {
+    const numLeadValue = parseInt(numLead);
+    if (!venditore || !numLead || numLeadValue <= 0) {
       toast.error("Inserisci tutti i campi obbligatori");
       return;
     }
 
-    if (numLead > availableLeads) {
+    if (numLeadValue > availableLeads) {
       toast.error(`Solo ${availableLeads} lead disponibili per l'assegnazione`);
       return;
     }
@@ -139,16 +142,16 @@ const LeadAssignmentWithExclusions = () => {
     setIsSubmitting(true);
     try {
       await assignLeadsWithExclusions({
-        numLead,
+        numLead: numLeadValue,
         venditore,
         campagna,
         excludedSources
       });
       
-      toast.success(`${numLead} lead assegnati con successo a ${venditore}`);
+      toast.success(`${numLeadValue} lead assegnati con successo a ${venditore}`);
       
       // Reset form
-      setNumLead(1);
+      setNumLead("");
       setVenditore("");
       setCampagna("");
       
@@ -333,7 +336,8 @@ const LeadAssignmentWithExclusions = () => {
               min="1"
               max={availableLeads}
               value={numLead}
-              onChange={(e) => setNumLead(parseInt(e.target.value) || 1)}
+              onChange={(e) => setNumLead(e.target.value)}
+              placeholder="Inserisci numero"
               className="w-full"
             />
           </div>
@@ -344,7 +348,11 @@ const LeadAssignmentWithExclusions = () => {
               <SelectTrigger className="w-full">
                 <SelectValue placeholder="Seleziona venditore" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent 
+                className={isMobile ? "max-h-[200px]" : ""}
+                position={isMobile ? "popper" : "item-aligned"}
+                sideOffset={isMobile ? 5 : undefined}
+              >
                 {salespeople.map((person) => (
                   <SelectItem key={person.id} value={person.nome}>
                     <span className="truncate">{person.nome} {person.cognome}</span>
@@ -361,7 +369,11 @@ const LeadAssignmentWithExclusions = () => {
             <SelectTrigger className="w-full">
               <SelectValue placeholder="Seleziona o digita una nuova campagna" />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent 
+              className={isMobile ? "max-h-[200px]" : ""}
+              position={isMobile ? "popper" : "item-aligned"}
+              sideOffset={isMobile ? 5 : undefined}
+            >
               {campagne.map((camp) => (
                 <SelectItem key={camp.id} value={camp.nome}>
                   <span className="truncate">{camp.nome}</span>
@@ -383,7 +395,11 @@ const LeadAssignmentWithExclusions = () => {
             <SelectTrigger className="w-full">
               <SelectValue placeholder="Seleziona fonte da escludere" />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent 
+              className={isMobile ? "max-h-[200px]" : ""}
+              position={isMobile ? "popper" : "item-aligned"}
+              sideOffset={isMobile ? 5 : undefined}
+            >
               {uniqueSources
                 .filter(source => !excludedSources.includes(source))
                 .map((source) => (
@@ -414,7 +430,7 @@ const LeadAssignmentWithExclusions = () => {
 
         <Button 
           onClick={handleAssign} 
-          disabled={isSubmitting || !venditore || numLead <= 0 || numLead > availableLeads}
+          disabled={isSubmitting || !venditore || !numLead || parseInt(numLead) <= 0 || parseInt(numLead) > availableLeads}
           className="w-full mt-6 text-sm sm:text-base py-2 sm:py-3"
         >
           {isSubmitting ? "Assegnazione in corso..." : "Assegna Lead"}
