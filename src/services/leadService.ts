@@ -6,25 +6,24 @@ export interface LeadAssignmentData {
   numLead: number;
   venditore: string;
   campagna?: string;
-  webhookUrl?: string;
 }
 
 export async function assignLeads(data: LeadAssignmentData): Promise<void> {
   try {
-    // If no webhook URL was provided, try to get the default one from system settings
-    let webhookUrl = data.webhookUrl;
+    // Get the global webhook URL from system settings
+    const { data: webhookData, error: webhookError } = await supabase
+      .from('system_settings')
+      .select('value')
+      .eq('key', 'lead_assign_webhook_url')
+      .single();
+    
+    let webhookUrl = null;
+    if (!webhookError && webhookData && webhookData.value) {
+      webhookUrl = webhookData.value;
+    }
     
     if (!webhookUrl) {
-      // Get the default webhook URL from system settings
-      const { data: webhookData, error: webhookError } = await supabase
-        .from('system_settings')
-        .select('value')
-        .eq('key', 'lead_assign_webhook_url')
-        .single();
-      
-      if (!webhookError && webhookData && webhookData.value) {
-        webhookUrl = webhookData.value;
-      }
+      throw new Error("Webhook URL non configurato nelle impostazioni");
     }
     
     // Mark the leads as assigned in our local database
@@ -41,6 +40,7 @@ export async function assignLeads(data: LeadAssignmentData): Promise<void> {
 
     console.log("Lead assignment data:", data);
     console.log("Leads assigned:", assignedLeads);
+    console.log("Using global webhook URL:", webhookUrl);
 
     return Promise.resolve();
   } catch (error) {

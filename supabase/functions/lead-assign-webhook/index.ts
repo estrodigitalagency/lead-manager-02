@@ -28,12 +28,10 @@ serve(async (req) => {
       )
     }
     
-    // Enhanced payload with all required data
+    // Payload semplificato per webhook esterno
     const webhookPayload = {
       venditore: assignmentData.venditore,
       venditore_cognome: assignmentData.venditore_cognome || '',
-      google_sheets_file_id: assignmentData.google_sheets_file_id,
-      google_sheets_tab_name: assignmentData.google_sheets_tab_name,
       campagna: assignmentData.campagna || '',
       leads_count: assignmentData.leads_count,
       timestamp: assignmentData.timestamp,
@@ -50,8 +48,8 @@ serve(async (req) => {
       }))
     }
     
-    console.log('Sending enhanced lead assignment data to webhook:', webhookUrl)
-    console.log('Enhanced payload:', JSON.stringify(webhookPayload, null, 2))
+    console.log('Sending lead assignment data to webhook:', webhookUrl)
+    console.log('Payload:', JSON.stringify(webhookPayload, null, 2))
     
     try {
       const response = await fetch(webhookUrl, {
@@ -74,7 +72,7 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({ 
           success: true, 
-          message: 'Enhanced lead assignment data sent to webhook successfully',
+          message: 'Lead assignment data sent to webhook successfully',
           webhookResponse,
           payload: webhookPayload
         }),

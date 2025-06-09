@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,9 +15,6 @@ interface Salesperson {
   id: string;
   nome: string;
   cognome: string;
-  webhook_url?: string;
-  sheets_file_id?: string;
-  sheets_tab_name?: string;
 }
 
 interface Fonte {
@@ -55,7 +53,7 @@ const LeadAssignmentWithExclusions = () => {
     try {
       const { data, error } = await supabase
         .from('venditori')
-        .select('id, nome, cognome, webhook_url, sheets_file_id, sheets_tab_name')
+        .select('id, nome, cognome')
         .eq('stato', 'attivo');
       
       if (error) throw error;
@@ -173,7 +171,20 @@ const LeadAssignmentWithExclusions = () => {
     excludedSources: string[];
   }) => {
     try {
-      // Get venditore delivery settings
+      // Get global webhook URL from system settings
+      const { data: webhookData, error: webhookError } = await supabase
+        .from('system_settings')
+        .select('value')
+        .eq('key', 'lead_assign_webhook_url')
+        .single();
+      
+      if (webhookError || !webhookData?.value) {
+        throw new Error('Webhook URL non configurato nelle impostazioni');
+      }
+
+      const webhookUrl = webhookData.value;
+
+      // Get venditore details
       const { data: venditorData, error: venditorError } = await supabase
         .from('venditori')
         .select('*')
@@ -181,11 +192,7 @@ const LeadAssignmentWithExclusions = () => {
         .single();
       
       if (venditorError || !venditorData) {
-        throw new Error('Venditore non trovato o non configurato');
-      }
-
-      if (!venditorData.webhook_url || !venditorData.sheets_file_id || !venditorData.sheets_tab_name) {
-        throw new Error('Venditore non ha configurazione completa (webhook_url, sheets_file_id, sheets_tab_name richiesti)');
+        throw new Error('Venditore non trovato');
       }
 
       // Costruisci la query per ottenere i lead assegnabili
@@ -253,14 +260,12 @@ const LeadAssignmentWithExclusions = () => {
         console.error("Error recording assignment history:", historyError);
       }
 
-      // Invia tramite webhook con tutti i dati richiesti
+      // Invia tramite webhook globale con tutti i dati richiesti
       if (leadsToAssign.length > 0) {
         try {
           const assignmentData = {
             venditore: data.venditore,
             venditore_cognome: venditorData.cognome || '',
-            google_sheets_file_id: venditorData.sheets_file_id,
-            google_sheets_tab_name: venditorData.sheets_tab_name,
             campagna: data.campagna || '',
             leads: leadsToAssign.map(lead => ({
               id: lead.id,
@@ -277,12 +282,13 @@ const LeadAssignmentWithExclusions = () => {
             leads_count: leadsToAssign.length
           };
 
-          console.log('Invio dati tramite webhook:', assignmentData);
+          console.log('Invio dati tramite webhook globale:', assignmentData);
+          console.log('Webhook URL:', webhookUrl);
 
           const response = await supabase.functions.invoke('lead-assign-webhook', {
             body: { 
               assignmentData,
-              webhookUrl: venditorData.webhook_url
+              webhookUrl
             }
           });
           
