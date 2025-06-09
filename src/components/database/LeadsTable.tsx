@@ -1,4 +1,3 @@
-
 import {
   Table,
   TableBody,
@@ -18,6 +17,8 @@ import { useColumnVisibility, ColumnConfig } from "@/hooks/useColumnVisibility";
 import SortableTableHead from "./SortableTableHead";
 import ColumnVisibilityControls from "./ColumnVisibilityControls";
 import MobileLeadsTable from "./MobileLeadsTable";
+import { usePagination } from "@/hooks/usePagination";
+import PaginationControls from "./PaginationControls";
 
 interface LeadsTableProps {
   leads: Lead[];
@@ -50,12 +51,29 @@ const LeadsTable = ({
   const isMobile = useIsMobile();
   const { sortedData, sortConfig, requestSort } = useTableSorting(leads);
   const { columns, visibleColumns, toggleColumn } = useColumnVisibility(initialColumns);
+  
+  const {
+    currentPage,
+    pageSize,
+    totalPages,
+    totalItems,
+    paginatedData,
+    goToPage,
+    nextPage,
+    previousPage,
+    setPageSize,
+    canGoNext,
+    canGoPrevious,
+    startIndex,
+    endIndex
+  } = usePagination({ data: sortedData, initialPageSize: 50 });
 
   const handleItemSelect = (id: string, checked: boolean) => {
     if (checked) {
-      onSelectionChange([...selectedItems, id]);
+      onSelectionChange([...new Set([...selectedItems, ...paginatedData.map(lead => lead.id!)])]);
     } else {
-      onSelectionChange(selectedItems.filter(item => item !== id));
+      const currentPageIds = paginatedData.map(lead => lead.id!);
+      onSelectionChange(selectedItems.filter(id => !currentPageIds.includes(id)));
     }
   };
 
@@ -70,12 +88,28 @@ const LeadsTable = ({
 
   if (isMobile) {
     return (
-      <MobileLeadsTable
-        leads={sortedData}
-        selectedItems={selectedItems}
-        onSelectionChange={onSelectionChange}
-        onDelete={onDelete}
-      />
+      <div className="space-y-4">
+        <MobileLeadsTable
+          leads={paginatedData}
+          selectedItems={selectedItems}
+          onSelectionChange={onSelectionChange}
+          onDelete={onDelete}
+        />
+        <PaginationControls
+          currentPage={currentPage}
+          totalPages={totalPages}
+          totalItems={totalItems}
+          pageSize={pageSize}
+          startIndex={startIndex}
+          endIndex={endIndex}
+          canGoNext={canGoNext}
+          canGoPrevious={canGoPrevious}
+          onPageChange={goToPage}
+          onPageSizeChange={setPageSize}
+          onNextPage={nextPage}
+          onPreviousPage={previousPage}
+        />
+      </div>
     );
   }
 
@@ -139,7 +173,10 @@ const LeadsTable = ({
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-end">
+      <div className="flex justify-between items-center">
+        <div className="text-sm text-muted-foreground">
+          Totale: {totalItems} lead
+        </div>
         <ColumnVisibilityControls
           columns={columns}
           onToggleColumn={toggleColumn}
@@ -151,12 +188,13 @@ const LeadsTable = ({
           <TableRow>
             <TableHead className="w-12">
               <Checkbox
-                checked={selectedItems.length === leads.length && leads.length > 0}
+                checked={selectedItems.length === paginatedData.length && paginatedData.length > 0}
                 onCheckedChange={(checked) => {
                   if (checked) {
-                    onSelectionChange(leads.map(lead => lead.id!));
+                    onSelectionChange([...new Set([...selectedItems, ...paginatedData.map(lead => lead.id!)])]);
                   } else {
-                    onSelectionChange([]);
+                    const currentPageIds = paginatedData.map(lead => lead.id!);
+                    onSelectionChange(selectedItems.filter(id => !currentPageIds.includes(id)));
                   }
                 }}
               />
@@ -244,7 +282,7 @@ const LeadsTable = ({
           </TableRow>
         </TableHeader>
         <TableBody>
-          {sortedData.map((lead) => (
+          {paginatedData.map((lead) => (
             <TableRow key={lead.id} className="hover:bg-muted/30 transition-colors">
               <TableCell>
                 <Checkbox
@@ -302,6 +340,21 @@ const LeadsTable = ({
           ))}
         </TableBody>
       </Table>
+
+      <PaginationControls
+        currentPage={currentPage}
+        totalPages={totalPages}
+        totalItems={totalItems}
+        pageSize={pageSize}
+        startIndex={startIndex}
+        endIndex={endIndex}
+        canGoNext={canGoNext}
+        canGoPrevious={canGoPrevious}
+        onPageChange={goToPage}
+        onPageSizeChange={setPageSize}
+        onNextPage={nextPage}
+        onPreviousPage={previousPage}
+      />
     </div>
   );
 };

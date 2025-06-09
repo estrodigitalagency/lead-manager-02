@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -100,9 +99,7 @@ const LeadAssignmentWithExclusions = () => {
         .eq('assignable', true)
         .is('venditore', null);
 
-      // Se ci sono fonti escluse, filtrale utilizzando la logica corretta per valori separati da virgola
       if (excludedSources.length > 0) {
-        // Per ogni fonte esclusa, escludiamo i lead che contengono quella fonte
         excludedSources.forEach(source => {
           query = query.not('fonte', 'like', `%${source}%`);
         });
@@ -173,19 +170,18 @@ const LeadAssignmentWithExclusions = () => {
     excludedSources: string[];
   }) => {
     try {
-      // Ottieni l'URL webhook di default dalle impostazioni di sistema
-      const { data: webhookData, error: webhookError } = await supabase
-        .from('system_settings')
-        .select('value')
-        .eq('key', 'lead_assign_webhook_url')
+      // Get venditore delivery settings
+      const { data: venditorData, error: venditorError } = await supabase
+        .from('venditori')
+        .select('*')
+        .eq('nome', data.venditore)
         .single();
       
-      let webhookUrl = '';
-      if (!webhookError && webhookData && webhookData.value) {
-        webhookUrl = webhookData.value;
+      if (venditorError || !venditorData) {
+        throw new Error('Venditore non trovato o non configurato');
       }
-      
-      // Costruisci la query per ottenere i lead assegnabili escludendo le fonti specificate
+
+      // Costruisci la query per ottenere i lead assegnabili
       let query = supabase
         .from('lead_generation')
         .select('*')
@@ -194,7 +190,6 @@ const LeadAssignmentWithExclusions = () => {
         .order('created_at', { ascending: true })
         .limit(data.numLead);
 
-      // Applica le esclusioni per fonte (gestendo valori separati da virgola)
       if (data.excludedSources.length > 0) {
         data.excludedSources.forEach(source => {
           query = query.not('fonte', 'like', `%${source}%`);
@@ -231,7 +226,6 @@ const LeadAssignmentWithExclusions = () => {
             .select()
             .single();
         } catch (error) {
-          // Ignora errori di duplicazione, la campagna esiste già
           console.log('Campagna già esistente');
         }
       }
@@ -250,23 +244,14 @@ const LeadAssignmentWithExclusions = () => {
         console.error("Error recording assignment history:", historyError);
       }
 
-      // Invia al webhook se configurato
-      if (webhookUrl && leadsToAssign.length > 0) {
+      // Invia ai sistemi esterni basandosi sulla configurazione del venditore
+      if (leadsToAssign.length > 0) {
         try {
-          const { data: venditorInfo } = await supabase
-            .from('venditori')
-            .select('sheets_file_id, sheets_tab_name')
-            .eq('nome', data.venditore)
-            .single();
-          
-          const venditorData = {
-            nome: data.venditore,
-            sheets_file_id: venditorInfo?.sheets_file_id || '',
-            sheets_tab_name: venditorInfo?.sheets_tab_name || ''
-          };
-          
           const assignmentData = {
-            venditore: venditorData,
+            venditore: {
+              nome: data.venditore,
+              delivery_method: venditorData.delivery_method
+            },
             leads: leadsToAssign.map(lead => ({
               nome: lead.nome,
               cognome: lead.cognome || '',
@@ -278,16 +263,44 @@ const LeadAssignmentWithExclusions = () => {
             timestamp: new Date().toISOString(),
             campagna: data.campagna || ''
           };
-          
-          const response = await supabase.functions.invoke('lead-assign-webhook', {
-            body: { assignmentData, webhookUrl }
-          });
-          
-          if (response.error) {
-            console.error("Error sending lead data to webhook:", response.error);
+
+          if (venditorData.delivery_method === 'sheets' && venditorData.sheets_file_id && venditorData.sheets_tab_name) {
+            // Usa Google Sheets
+            const response = await supabase.functions.invoke('google-sheets-delivery', {
+              body: { 
+                assignmentData,
+                sheetsConfig: {
+                  fileId: venditorData.sheets_file_id,
+                  tabName: venditorData.sheets_tab_name
+                }
+              }
+            });
+            
+            if (response.error) {
+              console.error("Error sending to Google Sheets:", response.error);
+              toast.error("Errore nell'invio a Google Sheets, ma lead assegnati correttamente");
+            } else {
+              console.log("Successfully sent to Google Sheets");
+            }
+          } else if (venditorData.delivery_method === 'webhook' && venditorData.webhook_url) {
+            // Usa webhook esterno
+            const response = await supabase.functions.invoke('lead-assign-webhook', {
+              body: { assignmentData, webhookUrl: venditorData.webhook_url }
+            });
+            
+            if (response.error) {
+              console.error("Error sending to webhook:", response.error);
+              toast.error("Errore nell'invio al webhook, ma lead assegnati correttamente");
+            } else {
+              console.log("Successfully sent to webhook");
+            }
+          } else {
+            console.warn("Venditore delivery method not properly configured");
+            toast.warning("Lead assegnati ma sistema di delivery non configurato");
           }
-        } catch (webhookError) {
-          console.error("Error processing webhook for lead assignment:", webhookError);
+        } catch (error) {
+          console.error("Error in delivery system:", error);
+          toast.warning("Lead assegnati ma errore nel sistema di delivery");
         }
       }
       

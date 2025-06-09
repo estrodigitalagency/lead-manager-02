@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { TrendingUp, Users, Database, Zap } from 'lucide-react';
 import { getAnalyticsData, AnalyticsData } from '@/services/analyticsService';
+import { supabase } from '@/integrations/supabase/client';
 
 export const RealTimeStatsSection = () => {
   const [analyticsData, setAnalyticsData] = useState<AnalyticsData>({
@@ -11,14 +12,37 @@ export const RealTimeStatsSection = () => {
     venditoriAttivi: 0,
     speedToLead: 0
   });
+  const [leadStats, setLeadStats] = useState({
+    totalLeads: 0,
+    assignableLeads: 0,
+    assignedLeads: 0,
+    unassignedLeads: 0
+  });
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const fetchAnalytics = async () => {
+    const fetchAllData = async () => {
       setIsLoading(true);
       try {
-        const data = await getAnalyticsData();
-        setAnalyticsData(data);
+        // Fetch analytics data
+        const analytics = await getAnalyticsData();
+        setAnalyticsData(analytics);
+
+        // Fetch detailed lead stats
+        const { data: allLeads, error } = await supabase
+          .from('lead_generation')
+          .select('assignable, venditore');
+        
+        if (error) throw error;
+
+        const stats = {
+          totalLeads: allLeads.length,
+          assignableLeads: allLeads.filter(lead => lead.assignable === true).length,
+          assignedLeads: allLeads.filter(lead => lead.venditore !== null).length,
+          unassignedLeads: allLeads.filter(lead => lead.assignable === true && lead.venditore === null).length
+        };
+
+        setLeadStats(stats);
       } catch (error) {
         console.error('Errore nel caricamento delle analytics:', error);
       } finally {
@@ -26,37 +50,37 @@ export const RealTimeStatsSection = () => {
       }
     };
 
-    fetchAnalytics();
+    fetchAllData();
   }, []);
 
   const stats = [
     {
-      title: "Lead Generati (30gg)",
-      value: isLoading ? "..." : analyticsData.leadGenerati.toString(),
-      change: "+ultimi 30gg",
+      title: "Lead Totali",
+      value: isLoading ? "..." : leadStats.totalLeads.toString(),
+      change: "tutti i tempi",
       icon: Database,
       color: "text-primary"
     },
     {
-      title: "Conversione Media",
-      value: isLoading ? "..." : `${analyticsData.conversioneMedia}%`,
-      change: "prenotati/generati",
+      title: "Lead Assegnabili",
+      value: isLoading ? "..." : leadStats.assignableLeads.toString(),
+      change: "prenotati",
       icon: TrendingUp,
-      color: "text-accent"
+      color: "text-green-600"
     },
     {
-      title: "Venditori Attivi",
-      value: isLoading ? "..." : analyticsData.venditoriAttivi.toString(),
-      change: "ultimi 30gg",
+      title: "Lead Disponibili",
+      value: isLoading ? "..." : leadStats.unassignedLeads.toString(),
+      change: "per assegnazione",
       icon: Users,
-      color: "text-primary"
+      color: "text-accent"
     },
     {
-      title: "Speed to Lead",
-      value: isLoading ? "..." : `${analyticsData.speedToLead}h`,
-      change: "tempo medio",
+      title: "Lead Assegnati",
+      value: isLoading ? "..." : leadStats.assignedLeads.toString(),
+      change: "ai venditori",
       icon: Zap,
-      color: "text-accent"
+      color: "text-blue-600"
     }
   ];
 
@@ -65,10 +89,10 @@ export const RealTimeStatsSection = () => {
       <div className="max-w-7xl mx-auto">
         <div className="text-center mb-16">
           <h2 className="text-4xl md:text-5xl font-bold mb-4">
-            <span className="gradient-text">Performance Ultimi 30 Giorni</span>
+            <span className="gradient-text">Performance Lead</span>
           </h2>
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-            Dati reali del tuo business aggiornati in tempo reale
+            Dati reali del tuo database aggiornati in tempo reale
           </p>
         </div>
 
