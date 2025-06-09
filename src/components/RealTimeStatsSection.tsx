@@ -2,93 +2,104 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { TrendingUp, Users, Database, Zap } from 'lucide-react';
-import { getAnalyticsData, AnalyticsData } from '@/services/analyticsService';
 import { supabase } from '@/integrations/supabase/client';
 
 export const RealTimeStatsSection = () => {
-  const [analyticsData, setAnalyticsData] = useState<AnalyticsData>({
-    leadGenerati: 0,
-    conversioneMedia: 0,
-    venditoriAttivi: 0,
-    speedToLead: 0
-  });
-  const [leadStats, setLeadStats] = useState({
-    totalLeads: 0,
-    assignableLeads: 0,
-    assignedLeads: 0,
-    unassignedLeads: 0
+  const [stats, setStats] = useState({
+    leadGeneratiUltimi30: 0,
+    leadAssegnabili: 0,
+    callGenerateUltimi30: 0,
+    tempoMedioAssegnazione: 0
   });
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const fetchAllData = async () => {
+    const fetchStats = async () => {
       setIsLoading(true);
       try {
-        // Fetch analytics data
-        const analytics = await getAnalyticsData();
-        setAnalyticsData(analytics);
+        // Data di 30 giorni fa
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-        // Fetch detailed lead stats with debug logging
-        const { data: allLeads, error } = await supabase
+        // 1. Lead Generati - Ultimi 30 giorni
+        const { count: leadGeneratiCount } = await supabase
           .from('lead_generation')
-          .select('assignable, venditore');
-        
-        if (error) throw error;
+          .select('id', { count: 'exact' })
+          .gte('created_at', thirtyDaysAgo.toISOString());
 
-        console.log(`Debug - Total leads in database: ${allLeads.length}`);
-        
-        const assignableLeads = allLeads.filter(lead => lead.assignable === true);
-        const assignedLeads = allLeads.filter(lead => lead.venditore !== null);
-        const unassignedLeads = allLeads.filter(lead => lead.assignable === true && lead.venditore === null);
+        // 2. Lead Assegnabili - tutti quelli con assignable = true
+        const { count: leadAssegnabiliCount } = await supabase
+          .from('lead_generation')
+          .select('id', { count: 'exact' })
+          .eq('assignable', true);
 
-        console.log(`Debug - Assignable leads: ${assignableLeads.length}`);
-        console.log(`Debug - Assigned leads: ${assignedLeads.length}`);
-        console.log(`Debug - Unassigned leads: ${unassignedLeads.length}`);
+        // 3. Call Generate - Ultimi 30 giorni (booked_call)
+        const { count: callGenerateCount } = await supabase
+          .from('booked_call')
+          .select('id', { count: 'exact' })
+          .gte('created_at', thirtyDaysAgo.toISOString());
 
-        const stats = {
-          totalLeads: allLeads.length,
-          assignableLeads: assignableLeads.length,
-          assignedLeads: assignedLeads.length,
-          unassignedLeads: unassignedLeads.length
-        };
+        // 4. Tempo medio assegnazione - calcolo del tempo medio tra created_at e quando vengono assegnati
+        const { data: assignedLeads } = await supabase
+          .from('lead_generation')
+          .select('created_at, updated_at')
+          .not('venditore', 'is', null);
 
-        setLeadStats(stats);
+        let tempoMedio = 0;
+        if (assignedLeads && assignedLeads.length > 0) {
+          const tempiAssegnazione = assignedLeads.map(lead => {
+            const createdAt = new Date(lead.created_at);
+            const assignedAt = new Date(lead.updated_at);
+            return (assignedAt.getTime() - createdAt.getTime()) / (1000 * 60 * 60); // in ore
+          });
+          
+          const sommaTempi = tempiAssegnazione.reduce((acc, tempo) => acc + tempo, 0);
+          tempoMedio = Math.round(sommaTempi / tempiAssegnazione.length);
+        }
+
+        setStats({
+          leadGeneratiUltimi30: leadGeneratiCount || 0,
+          leadAssegnabili: leadAssegnabiliCount || 0,
+          callGenerateUltimi30: callGenerateCount || 0,
+          tempoMedioAssegnazione: tempoMedio
+        });
+
       } catch (error) {
-        console.error('Errore nel caricamento delle analytics:', error);
+        console.error('Errore nel caricamento delle statistiche:', error);
       } finally {
         setIsLoading(false);
       }
     };
 
-    fetchAllData();
+    fetchStats();
   }, []);
 
-  const stats = [
+  const statsConfig = [
     {
-      title: "Lead Totali",
-      value: isLoading ? "..." : leadStats.totalLeads.toString(),
-      change: "tutti i tempi",
+      title: "Lead Generati",
+      value: isLoading ? "..." : stats.leadGeneratiUltimi30.toString(),
+      change: "ultimi 30 giorni",
       icon: Database,
       color: "text-primary"
     },
     {
-      title: "Lead Assegnabili",
-      value: isLoading ? "..." : leadStats.assignableLeads.toString(),
-      change: "prenotati",
+      title: "Lead Assegnabili", 
+      value: isLoading ? "..." : stats.leadAssegnabili.toString(),
+      change: "pronti per assegnazione",
       icon: TrendingUp,
       color: "text-green-600"
     },
     {
-      title: "Lead Disponibili",
-      value: isLoading ? "..." : leadStats.unassignedLeads.toString(),
-      change: "per assegnazione",
+      title: "Call Generate",
+      value: isLoading ? "..." : stats.callGenerateUltimi30.toString(),
+      change: "ultimi 30 giorni",
       icon: Users,
       color: "text-accent"
     },
     {
-      title: "Lead Assegnati",
-      value: isLoading ? "..." : leadStats.assignedLeads.toString(),
-      change: "ai venditori",
+      title: "Tempo Medio Assegnazione",
+      value: isLoading ? "..." : `${stats.tempoMedioAssegnazione}h`,
+      change: "media ore",
       icon: Zap,
       color: "text-blue-600"
     }
@@ -107,7 +118,7 @@ export const RealTimeStatsSection = () => {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {stats.map((stat, index) => (
+          {statsConfig.map((stat, index) => (
             <Card 
               key={stat.title} 
               className="glass-card hover:scale-105 transition-all duration-300 group"
