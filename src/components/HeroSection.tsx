@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -13,8 +12,9 @@ export const HeroSection = () => {
       <div className="absolute bottom-20 right-10 w-48 h-48 bg-accent/10 rounded-full blur-3xl animate-pulse-slow"></div>
       <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-primary/5 rounded-full blur-3xl"></div>
 
-      {/* Main content */}
+      {/* Main content - now empty */}
       <div className="relative z-10 text-center space-y-8 max-w-6xl mx-auto px-4">
+        
         <div className="space-y-4">
           <h1 className="text-6xl md:text-8xl font-bold">
             <span className="gradient-text">Lead Management</span>
@@ -89,6 +89,7 @@ export const HeroSection = () => {
         <div className="relative mt-16 h-2 bg-border/30 rounded-full overflow-hidden">
           <div className="absolute inset-0 data-flow rounded-full"></div>
         </div>
+      
       </div>
 
       {/* Floating elements */}
