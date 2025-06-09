@@ -49,11 +49,11 @@ export type Database = {
           id: string
           lead_id: string | null
           nome: string | null
-          note: string | null
           scheduled_at: string
           stato: string | null
           telefono: string | null
           updated_at: string | null
+          venditore: string | null
         }
         Insert: {
           cognome?: string | null
@@ -64,11 +64,11 @@ export type Database = {
           id?: string
           lead_id?: string | null
           nome?: string | null
-          note?: string | null
           scheduled_at: string
           stato?: string | null
           telefono?: string | null
           updated_at?: string | null
+          venditore?: string | null
         }
         Update: {
           cognome?: string | null
@@ -79,11 +79,11 @@ export type Database = {
           id?: string
           lead_id?: string | null
           nome?: string | null
-          note?: string | null
           scheduled_at?: string
           stato?: string | null
           telefono?: string | null
           updated_at?: string | null
+          venditore?: string | null
         }
         Relationships: [
           {

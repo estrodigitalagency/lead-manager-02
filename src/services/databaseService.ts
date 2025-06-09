@@ -236,7 +236,7 @@ export const getVendorStats = async () => {
   }
 };
 
-// New functions for managing sources and campaigns
+// Functions for managing sources and campaigns
 export const getAllFonti = async () => {
   try {
     const { data, error } = await supabase
@@ -293,6 +293,65 @@ export const addCampagna = async (nome: string, descrizione?: string) => {
     return data;
   } catch (error) {
     console.error('Errore nell\'aggiunta della campagna:', error);
+    throw error;
+  }
+};
+
+// Function to get unique sources from lead data, handling comma-separated values
+export const getUniqueSourcesFromLeads = async () => {
+  try {
+    const { data, error } = await supabase
+      .from('lead_generation')
+      .select('fonte')
+      .not('fonte', 'is', null)
+      .neq('fonte', '');
+
+    if (error) {
+      console.error('Errore nel recupero delle fonti uniche:', error);
+      throw error;
+    }
+
+    // Process comma-separated sources and create unique list
+    const uniqueSources = new Set<string>();
+    
+    data?.forEach(record => {
+      if (record.fonte) {
+        // Split by comma and trim each value
+        const sources = record.fonte.split(',').map(s => s.trim()).filter(s => s.length > 0);
+        sources.forEach(source => uniqueSources.add(source));
+      }
+    });
+
+    // Convert Set to sorted array
+    return Array.from(uniqueSources).sort();
+  } catch (error) {
+    console.error('Errore nel recupero delle fonti uniche:', error);
+    throw error;
+  }
+};
+
+// Function to add unique sources to database_fonti table
+export const syncSourcesToDatabase = async () => {
+  try {
+    const uniqueSources = await getUniqueSourcesFromLeads();
+    
+    // Insert unique sources into database_fonti table
+    for (const source of uniqueSources) {
+      try {
+        await supabase
+          .from('database_fonti')
+          .insert([{ nome: source }])
+          .select()
+          .single();
+      } catch (error) {
+        // Ignore duplicate key errors, source already exists
+        console.log(`Fonte già esistente: ${source}`);
+      }
+    }
+    
+    return uniqueSources;
+  } catch (error) {
+    console.error('Errore nella sincronizzazione delle fonti:', error);
     throw error;
   }
 };

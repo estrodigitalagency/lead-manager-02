@@ -9,8 +9,7 @@ import { X } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { assignLeads } from "@/services/leadService";
-import { getAllFonti, getAllCampagne } from "@/services/databaseService";
+import { getAllFonti, getAllCampagne, getUniqueSourcesFromLeads, syncSourcesToDatabase } from "@/services/databaseService";
 
 interface Salesperson {
   id: string;
@@ -40,11 +39,13 @@ const LeadAssignmentWithExclusions = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [excludedSources, setExcludedSources] = useState<string[]>([]);
   const [availableLeads, setAvailableLeads] = useState(0);
+  const [uniqueSources, setUniqueSources] = useState<string[]>([]);
 
   useEffect(() => {
     fetchSalespeople();
     fetchFonti();
     fetchCampagne();
+    fetchUniqueSources();
     updateAvailableLeads();
   }, [excludedSources]);
 
@@ -64,10 +65,21 @@ const LeadAssignmentWithExclusions = () => {
 
   const fetchFonti = async () => {
     try {
+      // First sync sources from leads to database
+      await syncSourcesToDatabase();
       const data = await getAllFonti();
       setFonti(data);
     } catch (error) {
       console.error("Error fetching fonti:", error);
+    }
+  };
+
+  const fetchUniqueSources = async () => {
+    try {
+      const sources = await getUniqueSourcesFromLeads();
+      setUniqueSources(sources);
+    } catch (error) {
+      console.error("Error fetching unique sources:", error);
     }
   };
 
@@ -88,9 +100,9 @@ const LeadAssignmentWithExclusions = () => {
         .eq('assignable', true)
         .is('venditore', null);
 
-      // Se ci sono fonti escluse, filtrale
+      // Se ci sono fonti escluse, filtrale utilizzando la logica corretta per valori separati da virgola
       if (excludedSources.length > 0) {
-        // Crea condizioni per escludere ogni fonte
+        // Per ogni fonte esclusa, escludiamo i lead che contengono quella fonte
         excludedSources.forEach(source => {
           query = query.not('fonte', 'like', `%${source}%`);
         });
@@ -128,7 +140,6 @@ const LeadAssignmentWithExclusions = () => {
 
     setIsSubmitting(true);
     try {
-      // Modifica temporanea del servizio per supportare le esclusioni
       await assignLeadsWithExclusions({
         numLead,
         venditore,
@@ -154,7 +165,7 @@ const LeadAssignmentWithExclusions = () => {
     }
   };
 
-  // Funzione temporanea per gestire l'assegnazione con esclusioni
+  // Funzione per gestire l'assegnazione con esclusioni
   const assignLeadsWithExclusions = async (data: {
     numLead: number;
     venditore: string;
@@ -183,7 +194,7 @@ const LeadAssignmentWithExclusions = () => {
         .order('created_at', { ascending: true })
         .limit(data.numLead);
 
-      // Applica le esclusioni per fonte
+      // Applica le esclusioni per fonte (gestendo valori separati da virgola)
       if (data.excludedSources.length > 0) {
         data.excludedSources.forEach(source => {
           query = query.not('fonte', 'like', `%${source}%`);
@@ -355,11 +366,11 @@ const LeadAssignmentWithExclusions = () => {
               <SelectValue placeholder="Seleziona fonte da escludere" />
             </SelectTrigger>
             <SelectContent>
-              {fonti
-                .filter(fonte => !excludedSources.includes(fonte.nome))
-                .map((fonte) => (
-                <SelectItem key={fonte.id} value={fonte.nome}>
-                  {fonte.nome}
+              {uniqueSources
+                .filter(source => !excludedSources.includes(source))
+                .map((source) => (
+                <SelectItem key={source} value={source}>
+                  {source}
                 </SelectItem>
               ))}
             </SelectContent>
