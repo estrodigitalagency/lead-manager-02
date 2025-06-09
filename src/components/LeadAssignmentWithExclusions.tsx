@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -170,7 +171,7 @@ const LeadAssignmentWithExclusions = () => {
     excludedSources: string[];
   }) => {
     try {
-      // Get venditore delivery settings
+      // Get venditore delivery settings with all required fields
       const { data: venditorData, error: venditorError } = await supabase
         .from('venditori')
         .select('*')

@@ -342,6 +342,7 @@ export type Database = {
         Row: {
           cognome: string
           created_at: string | null
+          delivery_method: string
           email: string | null
           id: string
           lead_attuali: number | null
@@ -352,10 +353,12 @@ export type Database = {
           stato: string | null
           telefono: string | null
           updated_at: string | null
+          webhook_url: string | null
         }
         Insert: {
           cognome?: string
           created_at?: string | null
+          delivery_method?: string
           email?: string | null
           id?: string
           lead_attuali?: number | null
@@ -366,10 +369,12 @@ export type Database = {
           stato?: string | null
           telefono?: string | null
           updated_at?: string | null
+          webhook_url?: string | null
         }
         Update: {
           cognome?: string
           created_at?: string | null
+          delivery_method?: string
           email?: string | null
           id?: string
           lead_attuali?: number | null
@@ -380,6 +385,7 @@ export type Database = {
           stato?: string | null
           telefono?: string | null
           updated_at?: string | null
+          webhook_url?: string | null
         }
         Relationships: []
       }
