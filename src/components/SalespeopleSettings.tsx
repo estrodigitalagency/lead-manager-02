@@ -47,7 +47,15 @@ const SalespeopleSettings = () => {
         .order('nome');
       
       if (error) throw error;
-      setVenditori(data || []);
+      
+      // Type cast the data to ensure stato is properly typed
+      const typedData: Venditore[] = (data || []).map(item => ({
+        ...item,
+        stato: item.stato as 'attivo' | 'inattivo',
+        delivery_method: item.delivery_method as 'sheets' | 'webhook'
+      }));
+      
+      setVenditori(typedData);
     } catch (error) {
       console.error("Error fetching venditori:", error);
       toast.error("Errore nel caricamento dei venditori");
@@ -429,122 +437,6 @@ const SalespeopleSettings = () => {
       </div>
     </CardContent>
   );
-
-  async function handleAddVenditore() {
-    if (!newVenditore.nome.trim()) {
-      toast.error("Il nome è obbligatorio");
-      return;
-    }
-
-    if (newVenditore.delivery_method === 'sheets' && (!newVenditore.sheets_file_id || !newVenditore.sheets_tab_name)) {
-      toast.error("Per Google Sheets sono richiesti File ID e Nome Tab");
-      return;
-    }
-
-    if (newVenditore.delivery_method === 'webhook' && !newVenditore.webhook_url) {
-      toast.error("Per Webhook è richiesto l'URL");
-      return;
-    }
-
-    try {
-      const { error } = await supabase
-        .from('venditori')
-        .insert([{
-          nome: newVenditore.nome.trim(),
-          cognome: newVenditore.cognome.trim(),
-          stato: 'attivo',
-          delivery_method: newVenditore.delivery_method,
-          sheets_file_id: newVenditore.delivery_method === 'sheets' ? newVenditore.sheets_file_id : null,
-          sheets_tab_name: newVenditore.delivery_method === 'sheets' ? newVenditore.sheets_tab_name : null,
-          webhook_url: newVenditore.delivery_method === 'webhook' ? newVenditore.webhook_url : null
-        }]);
-
-      if (error) throw error;
-
-      toast.success("Venditore aggiunto con successo");
-      setNewVenditore({
-        nome: '',
-        cognome: '',
-        delivery_method: 'webhook',
-        sheets_file_id: '',
-        sheets_tab_name: '',
-        webhook_url: ''
-      });
-      fetchVenditori();
-    } catch (error) {
-      console.error("Error adding venditore:", error);
-      toast.error("Errore nell'aggiunta del venditore");
-    }
-  }
-
-  async function handleToggleStato(id: string, currentStato: 'attivo' | 'inattivo') {
-    const newStato = currentStato === 'attivo' ? 'inattivo' : 'attivo';
-    
-    try {
-      const { error } = await supabase
-        .from('venditori')
-        .update({ stato: newStato })
-        .eq('id', id);
-
-      if (error) throw error;
-
-      toast.success(`Venditore ${newStato === 'attivo' ? 'attivato' : 'disattivato'}`);
-      fetchVenditori();
-    } catch (error) {
-      console.error("Error updating venditore status:", error);
-      toast.error("Errore nell'aggiornamento dello stato");
-    }
-  }
-
-  async function handleUpdateVenditore(venditore: Venditore) {
-    if (venditore.delivery_method === 'sheets' && (!venditore.sheets_file_id || !venditore.sheets_tab_name)) {
-      toast.error("Per Google Sheets sono richiesti File ID e Nome Tab");
-      return;
-    }
-
-    if (venditore.delivery_method === 'webhook' && !venditore.webhook_url) {
-      toast.error("Per Webhook è richiesto l'URL");
-      return;
-    }
-
-    try {
-      const { error } = await supabase
-        .from('venditori')
-        .update({
-          delivery_method: venditore.delivery_method,
-          sheets_file_id: venditore.delivery_method === 'sheets' ? venditore.sheets_file_id : null,
-          sheets_tab_name: venditore.delivery_method === 'sheets' ? venditore.sheets_tab_name : null,
-          webhook_url: venditore.delivery_method === 'webhook' ? venditore.webhook_url : null
-        })
-        .eq('id', venditore.id);
-
-      if (error) throw error;
-      toast.success("Impostazioni venditore aggiornate");
-      fetchVenditori();
-    } catch (error) {
-      console.error("Error updating venditore:", error);
-      toast.error("Errore nell'aggiornamento del venditore");
-    }
-  }
-
-  async function handleDeleteVenditore(id: string) {
-    if (!confirm("Sei sicuro di voler eliminare questo venditore?")) return;
-
-    try {
-      const { error } = await supabase
-        .from('venditori')
-        .delete()
-        .eq('id', id);
-
-      if (error) throw error;
-
-      toast.success("Venditore eliminato con successo");
-      fetchVenditori();
-    } catch (error) {
-      console.error("Error deleting venditore:", error);
-      toast.error("Errore nell'eliminazione del venditore");
-    }
-  }
 };
 
 export default SalespeopleSettings;
