@@ -86,15 +86,25 @@ export const addLeadLavorato = async (leadData: Omit<LeadLavorato, 'id' | 'creat
 
 export const filterLeads = async (tableName: TableName, filters: Record<string, any>) => {
   try {
-    let query = supabase.from(tableName).select('*');
+    // Create base query without complex chaining to avoid type issues
+    const baseQuery = supabase.from(tableName).select('*');
     
-    // Gestione filtro di ricerca
+    // Build filter conditions separately
+    const conditions: any[] = [];
+    
+    // Handle search filter
     if (filters.search) {
       const searchTerm = filters.search.toLowerCase();
-      query = query.or(`nome.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%,telefono.ilike.%${searchTerm}%`);
+      conditions.push(`nome.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%,telefono.ilike.%${searchTerm}%`);
     }
     
-    // Gestione altri filtri esistenti
+    // Apply search condition if exists
+    let query = baseQuery;
+    if (conditions.length > 0) {
+      query = query.or(conditions[0]);
+    }
+    
+    // Apply other filters
     if (filters.dataInizio) {
       query = query.gte('created_at', filters.dataInizio);
     }
