@@ -6,58 +6,58 @@
 
 @layer base {
   :root {
-    --background: 15 15 25; /* Dark blue-gray */
-    --foreground: 220 13% 91%;
-    --card: 20 20 30; /* Darker card */
-    --card-foreground: 220 13% 91%;
-    --popover: 20 20 30;
-    --popover-foreground: 220 13% 91%;
-    --primary: 263 70% 60%; /* Purple */
-    --primary-foreground: 220 13% 91%;
-    --secondary: 215 25% 27%; /* Dark blue-gray */
-    --secondary-foreground: 220 13% 91%;
-    --muted: 215 25% 27%;
-    --muted-foreground: 220 9% 46%;
-    --accent: 240 100% 70%; /* Blue accent */
-    --accent-foreground: 220 13% 91%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 215 25% 27%;
-    --input: 215 25% 27%;
-    --ring: 263 70% 60%;
-    --chart-1: 263 70% 60%;
-    --chart-2: 240 100% 70%;
-    --chart-3: 197 37% 24%;
-    --chart-4: 43 74% 66%;
-    --chart-5: 27 87% 67%;
+    --background: 8 8 12; /* Molto scuro */
+    --foreground: 255 255 255; /* Bianco puro */
+    --card: 15 15 20; /* Card scure */
+    --card-foreground: 255 255 255;
+    --popover: 15 15 20;
+    --popover-foreground: 255 255 255;
+    --primary: 139 92 246; /* Viola brillante */
+    --primary-foreground: 255 255 255;
+    --secondary: 30 41 59; /* Grigio scuro */
+    --secondary-foreground: 255 255 255;
+    --muted: 30 41 59;
+    --muted-foreground: 203 213 225; /* Grigio chiaro */
+    --accent: 59 130 246; /* Blu brillante */
+    --accent-foreground: 255 255 255;
+    --destructive: 239 68 68;
+    --destructive-foreground: 255 255 255;
+    --border: 51 65 85; /* Border ben visibili */
+    --input: 30 41 59;
+    --ring: 139 92 246;
+    --chart-1: 139 92 246;
+    --chart-2: 59 130 246;
+    --chart-3: 16 185 129;
+    --chart-4: 245 158 11;
+    --chart-5: 239 68 68;
     --radius: 0.75rem;
   }
 
   .dark {
-    --background: 15 15 25;
-    --foreground: 220 13% 91%;
-    --card: 20 20 30;
-    --card-foreground: 220 13% 91%;
-    --popover: 20 20 30;
-    --popover-foreground: 220 13% 91%;
-    --primary: 263 70% 60%;
-    --primary-foreground: 220 13% 91%;
-    --secondary: 215 25% 27%;
-    --secondary-foreground: 220 13% 91%;
-    --muted: 215 25% 27%;
-    --muted-foreground: 220 9% 46%;
-    --accent: 240 100% 70%;
-    --accent-foreground: 220 13% 91%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 215 25% 27%;
-    --input: 215 25% 27%;
-    --ring: 263 70% 60%;
-    --chart-1: 263 70% 60%;
-    --chart-2: 240 100% 70%;
-    --chart-3: 30 80% 55%;
-    --chart-4: 280 65% 60%;
-    --chart-5: 340 75% 55%;
+    --background: 8 8 12;
+    --foreground: 255 255 255;
+    --card: 15 15 20;
+    --card-foreground: 255 255 255;
+    --popover: 15 15 20;
+    --popover-foreground: 255 255 255;
+    --primary: 139 92 246;
+    --primary-foreground: 255 255 255;
+    --secondary: 30 41 59;
+    --secondary-foreground: 255 255 255;
+    --muted: 30 41 59;
+    --muted-foreground: 203 213 225;
+    --accent: 59 130 246;
+    --accent-foreground: 255 255 255;
+    --destructive: 239 68 68;
+    --destructive-foreground: 255 255 255;
+    --border: 51 65 85;
+    --input: 30 41 59;
+    --ring: 139 92 246;
+    --chart-1: 139 92 246;
+    --chart-2: 59 130 246;
+    --chart-3: 16 185 129;
+    --chart-4: 245 158 11;
+    --chart-5: 239 68 68;
   }
 }
 
@@ -68,24 +68,20 @@
   body {
     @apply bg-background text-foreground;
     font-family: "Inter", sans-serif;
-    /* Fix for mobile scroll issues */
     position: relative;
     overflow-x: hidden;
   }
   
-  /* Fix mobile viewport and scroll issues */
   html, body {
     height: 100%;
     overflow-x: hidden;
   }
   
-  /* Ensure proper mobile scroll behavior */
   .mobile-scroll-fix {
     -webkit-overflow-scrolling: touch;
     overflow-y: auto;
   }
   
-  /* Fix for mobile navigation scroll blocking */
   body.nav-open {
     overflow: hidden;
     position: fixed;
@@ -95,11 +91,20 @@
 
 @layer components {
   .glass-card {
-    @apply bg-card/50 backdrop-blur-sm border border-border/20 shadow-lg;
+    @apply bg-card/80 backdrop-blur-sm border-2 border-border shadow-xl;
   }
   
   .gradient-text {
     @apply bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent;
+  }
+  
+  .btn-neon {
+    @apply border-primary bg-primary/10 text-primary hover:bg-primary hover:text-primary-foreground transition-all duration-300;
+    box-shadow: 0 0 10px rgba(139, 92, 246, 0.3);
+  }
+  
+  .btn-neon:hover {
+    box-shadow: 0 0 20px rgba(139, 92, 246, 0.5);
   }
 }
 
