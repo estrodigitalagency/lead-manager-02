@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { Lead } from "@/types/lead";
 import { LeadLavorato } from "@/types/leadLavorato";
@@ -30,6 +29,7 @@ export const getUnassignedLeads = async (): Promise<Lead[]> => {
       .from('lead_generation')
       .select('*')
       .is('venditore', null)
+      .neq('booked_call', 'SI') // Escludi lead con call prenotate
       .order('created_at', { ascending: false });
 
     if (error) {
@@ -440,12 +440,13 @@ export const markLeadsAsAssigned = async (
       }
     }
 
-    // Ottieni i lead disponibili per l'assegnazione
+    // Ottieni i lead disponibili per l'assegnazione con condizioni corrette
     const { data: availableLeads, error: fetchError } = await supabase
       .from('lead_generation')
       .select('*')
       .eq('assignable', true)
       .is('venditore', null)
+      .neq('booked_call', 'SI') // Assicurati che non abbiano call prenotate
       .order('created_at', { ascending: true })
       .limit(numLead);
 
@@ -493,6 +494,25 @@ export const markLeadsAsAssigned = async (
     return updatedLeads || [];
   } catch (error) {
     console.error('Errore nell\'assegnazione dei lead:', error);
+    throw error;
+  }
+};
+
+export const getLeadById = async (id: string): Promise<Lead | null> => {
+  try {
+    const { data, error } = await supabase
+      .from('lead_generation')
+      .select('*')
+      .eq('id', id);
+
+    if (error) {
+      console.error(`Errore nel caricamento del lead con id ${id}:`, error);
+      throw error;
+    }
+
+    return data?.[0] || null;
+  } catch (error) {
+    console.error(`Errore durante il recupero del lead con id ${id}:`, error);
     throw error;
   }
 };
