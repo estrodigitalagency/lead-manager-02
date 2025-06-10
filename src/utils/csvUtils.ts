@@ -1,7 +1,36 @@
-
 interface CSVParsingResult {
   headers: string[];
   records: Record<string, string>[];
+}
+
+function parseItalianDate(dateString: string): string {
+  if (!dateString || dateString.trim() === '') {
+    return new Date().toISOString();
+  }
+  
+  // Gestisce formato DD/MM/YYYY HH.mm o DD/MM/YYYY HH:mm
+  const dateRegex = /^(\d{1,2})\/(\d{1,2})\/(\d{4})\s*(\d{1,2})[.:](\d{1,2})$/;
+  const match = dateString.trim().match(dateRegex);
+  
+  if (match) {
+    const [, day, month, year, hour, minute] = match;
+    // Crea la data in formato ISO (YYYY-MM-DDTHH:mm:ss.sssZ)
+    const isoDate = new Date(
+      parseInt(year),
+      parseInt(month) - 1, // I mesi in JS vanno da 0 a 11
+      parseInt(day),
+      parseInt(hour),
+      parseInt(minute)
+    );
+    
+    if (!isNaN(isoDate.getTime())) {
+      return isoDate.toISOString();
+    }
+  }
+  
+  // Se non riesce a parsare, usa la data attuale
+  console.warn(`Impossibile parsare la data: ${dateString}, usando data attuale`);
+  return new Date().toISOString();
 }
 
 export function parseCSVContent(content: string, mappings: Record<string, string>): CSVParsingResult {
@@ -20,7 +49,14 @@ export function parseCSVContent(content: string, mappings: Record<string, string
     Object.entries(mappings).forEach(([fieldName, headerName]) => {
       const headerIndex = csvHeaders.indexOf(headerName);
       if (headerIndex !== -1) {
-        record[fieldName] = values[headerIndex] || '';
+        let value = values[headerIndex] || '';
+        
+        // Gestione speciale per il campo created_at (data creazione)
+        if (fieldName === 'created_at' && value) {
+          value = parseItalianDate(value);
+        }
+        
+        record[fieldName] = value;
       }
     });
     

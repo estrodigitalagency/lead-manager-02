@@ -64,6 +64,8 @@ export default function DatabaseImportDialog({
       const content = await file.text();
       const { records } = parseCSVContent(content, mappings);
       
+      console.log('Records parsed from CSV:', records);
+      
       // Add default values if needed and process special fields
       const processedRecords = records.map(record => {
         const processedRecord = { ...record };
@@ -77,23 +79,14 @@ export default function DatabaseImportDialog({
             processedRecord.booked_call = 'NO';
           }
           
-          // Handle created_at field - ensure proper date format
-          if (processedRecord.created_at) {
-            try {
-              const date = new Date(processedRecord.created_at);
-              if (!isNaN(date.getTime())) {
-                processedRecord.created_at = date.toISOString();
-              } else {
-                delete processedRecord.created_at; // Let database use default
-              }
-            } catch {
-              delete processedRecord.created_at; // Let database use default
-            }
-          }
+          // Il campo created_at è già gestito nella funzione parseCSVContent
+          console.log('Data creazione processata:', processedRecord.created_at);
         }
         
         return processedRecord;
       });
+      
+      console.log('Final processed records:', processedRecords);
       
       // Insert records in batches
       const BATCH_SIZE = 50;
@@ -119,7 +112,7 @@ export default function DatabaseImportDialog({
         <DialogHeader>
           <DialogTitle>Importa CSV in {getTableDisplayName(tableName)}</DialogTitle>
           <DialogDescription>
-            Importa dati da un file CSV nel database
+            Importa dati da un file CSV nel database. Per le date usa il formato DD/MM/YYYY HH.mm
           </DialogDescription>
         </DialogHeader>
         
