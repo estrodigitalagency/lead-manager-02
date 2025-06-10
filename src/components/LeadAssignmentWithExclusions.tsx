@@ -234,15 +234,15 @@ const LeadAssignmentWithExclusions = () => {
 
       console.log("Selected venditore:", selectedVenditore);
 
-      // Costruisci la query per ottenere i lead assegnabili
-      console.log("Costruzione query per lead assegnabili...");
+      // Costruisci la query per ottenere i lead assegnabili - ORDINA PER DATA CREAZIONE (PIÙ VECCHI PRIMA)
+      console.log("Costruzione query per lead assegnabili (ordinati cronologicamente)...");
       let query = supabase
         .from('lead_generation')
         .select('*')
         .eq('assignable', true)
         .is('venditore', null)
         .neq('booked_call', 'SI') // Escludi lead con call prenotate
-        .order('created_at', { ascending: true })
+        .order('created_at', { ascending: true }) // CAMBIATO: I più vecchi prima
         .limit(data.numLead);
 
       if (data.excludedSources.length > 0) {
@@ -254,7 +254,19 @@ const LeadAssignmentWithExclusions = () => {
 
       const { data: leadsToAssign, error: fetchError } = await query;
       
-      console.log("Lead recuperati per assegnazione:", leadsToAssign?.length || 0);
+      console.log("Lead recuperati per assegnazione (ordinati cronologicamente):", leadsToAssign?.length || 0);
+      if (leadsToAssign && leadsToAssign.length > 0) {
+        console.log("Primo lead (più vecchio):", {
+          id: leadsToAssign[0].id,
+          email: leadsToAssign[0].email,
+          created_at: leadsToAssign[0].created_at
+        });
+        console.log("Ultimo lead (più recente):", {
+          id: leadsToAssign[leadsToAssign.length - 1].id,
+          email: leadsToAssign[leadsToAssign.length - 1].email,
+          created_at: leadsToAssign[leadsToAssign.length - 1].created_at
+        });
+      }
       
       if (fetchError) {
         console.error('Errore nel recupero lead:', fetchError);
@@ -266,7 +278,8 @@ const LeadAssignmentWithExclusions = () => {
         throw new Error(`Solo ${availableCount} lead disponibili per l'assegnazione (richiesti: ${data.numLead}).`);
       }
       
-      console.log(`Assegnando ${leadsToAssign.length} lead a ${data.venditore}:`, leadsToAssign.map(l => ({ id: l.id, email: l.email })));
+      console.log(`Assegnando ${leadsToAssign.length} lead a ${data.venditore} (ordinati cronologicamente):`, 
+        leadsToAssign.map(l => ({ id: l.id, email: l.email, created_at: l.created_at })));
       
       // Aggiorna i lead per assegnarli
       const leadIds = leadsToAssign.map(lead => lead.id);
@@ -286,7 +299,7 @@ const LeadAssignmentWithExclusions = () => {
         throw new Error(`Errore aggiornamento lead: ${updateError.message}`);
       }
 
-      console.log("Lead aggiornati con successo");
+      console.log("Lead aggiornati con successo (cronologicamente ordinati)");
 
       // Salva la nuova campagna se non esiste
       if (data.campagna && data.campagna.trim()) {
