@@ -17,6 +17,9 @@ interface AssignmentFormProps {
   isSubmitting: boolean;
   availableLeads: number;
   onAssign: () => Promise<void>;
+  showButton?: boolean;
+  showOnlyButton?: boolean;
+  showOnlyCampaign?: boolean;
 }
 
 export function AssignmentForm({
@@ -30,51 +33,27 @@ export function AssignmentForm({
   campagne,
   isSubmitting,
   availableLeads,
-  onAssign
+  onAssign,
+  showButton = true,
+  showOnlyButton = false,
+  showOnlyCampaign = false
 }: AssignmentFormProps) {
   const isMobile = useIsMobile();
-  
-  return (
-    <>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <Label htmlFor="numLead" className="text-sm font-medium">Numero di Lead</Label>
-          <Input
-            id="numLead"
-            type="number"
-            min="1"
-            max={availableLeads}
-            value={numLead}
-            onChange={(e) => setNumLead(e.target.value)}
-            placeholder="Inserisci numero"
-            className="w-full"
-          />
-        </div>
-        
-        <div className="space-y-2">
-          <Label htmlFor="venditore" className="text-sm font-medium">Venditore</Label>
-          <Select value={venditore} onValueChange={setVenditore}>
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="Seleziona venditore" />
-            </SelectTrigger>
-            <SelectContent className={`${isMobile ? 'max-h-[200px]' : ''} bg-background border border-border`} position="popper">
-              {salespeople.map((person) => {
-                const fullName = `${person.nome} ${person.cognome}`;
-                return (
-                  <SelectItem 
-                    key={person.id} 
-                    value={fullName}
-                    className="hover:bg-accent hover:text-accent-foreground"
-                  >
-                    <span className="truncate">{fullName}</span>
-                  </SelectItem>
-                );
-              })}
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
 
+  if (showOnlyButton) {
+    return (
+      <Button 
+        onClick={onAssign} 
+        disabled={isSubmitting || !venditore || !numLead || parseInt(numLead) <= 0 || parseInt(numLead) > availableLeads}
+        className="w-full mt-6 text-sm sm:text-base py-2 sm:py-3"
+      >
+        {isSubmitting ? "Assegnazione in corso..." : "Assegna Lead"}
+      </Button>
+    );
+  }
+
+  if (showOnlyCampaign) {
+    return (
       <div className="space-y-2">
         <Label htmlFor="campagna" className="text-sm font-medium">Campagna</Label>
         <Select value={campagna} onValueChange={setCampagna}>
@@ -100,14 +79,57 @@ export function AssignmentForm({
           placeholder="O digita una nuova campagna"
         />
       </div>
+    );
+  }
+  
+  return (
+    <>
+      <div className="space-y-2">
+        <Label htmlFor="numLead" className="text-sm font-medium">Numero di Lead</Label>
+        <Input
+          id="numLead"
+          type="number"
+          min="1"
+          max={availableLeads}
+          value={numLead}
+          onChange={(e) => setNumLead(e.target.value)}
+          placeholder="Inserisci numero"
+          className="w-full"
+        />
+      </div>
+      
+      <div className="space-y-2">
+        <Label htmlFor="venditore" className="text-sm font-medium">Venditore</Label>
+        <Select value={venditore} onValueChange={setVenditore}>
+          <SelectTrigger className="w-full">
+            <SelectValue placeholder="Seleziona venditore" />
+          </SelectTrigger>
+          <SelectContent className={`${isMobile ? 'max-h-[200px]' : ''} bg-background border border-border`} position="popper">
+            {salespeople.map((person) => {
+              const fullName = `${person.nome} ${person.cognome}`;
+              return (
+                <SelectItem 
+                  key={person.id} 
+                  value={fullName}
+                  className="hover:bg-accent hover:text-accent-foreground"
+                >
+                  <span className="truncate">{fullName}</span>
+                </SelectItem>
+              );
+            })}
+          </SelectContent>
+        </Select>
+      </div>
 
-      <Button 
-        onClick={onAssign} 
-        disabled={isSubmitting || !venditore || !numLead || parseInt(numLead) <= 0 || parseInt(numLead) > availableLeads}
-        className="w-full mt-6 text-sm sm:text-base py-2 sm:py-3"
-      >
-        {isSubmitting ? "Assegnazione in corso..." : "Assegna Lead"}
-      </Button>
+      {showButton && (
+        <Button 
+          onClick={onAssign} 
+          disabled={isSubmitting || !venditore || !numLead || parseInt(numLead) <= 0 || parseInt(numLead) > availableLeads}
+          className="w-full mt-6 text-sm sm:text-base py-2 sm:py-3"
+        >
+          {isSubmitting ? "Assegnazione in corso..." : "Assegna Lead"}
+        </Button>
+      )}
     </>
   );
 }

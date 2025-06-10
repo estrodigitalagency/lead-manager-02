@@ -3,7 +3,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { ExcludedSources } from "@/components/lead-assignment/ExcludedSources";
 import { AssignmentForm } from "@/components/lead-assignment/AssignmentForm";
 import { useLeadAssignment } from "@/hooks/useLeadAssignment";
-import { assignLeadsWithExclusions } from "@/services/leadAssignmentService";
 
 const LeadAssignmentWithExclusions = () => {
   const {
@@ -33,6 +32,25 @@ const LeadAssignmentWithExclusions = () => {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4 sm:space-y-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {/* Number of leads and Salesperson selection */}
+          <AssignmentForm
+            numLead={numLead}
+            setNumLead={setNumLead}
+            venditore={venditore}
+            setVenditore={setVenditore}
+            campagna={campagna}
+            setCampagna={setCampagna}
+            salespeople={salespeople}
+            campagne={campagne}
+            isSubmitting={isSubmitting}
+            availableLeads={availableLeads}
+            onAssign={handleAssign}
+            showButton={false}
+          />
+        </div>
+
+        {/* Campaign field */}
         <AssignmentForm
           numLead={numLead}
           setNumLead={setNumLead}
@@ -45,13 +63,32 @@ const LeadAssignmentWithExclusions = () => {
           isSubmitting={isSubmitting}
           availableLeads={availableLeads}
           onAssign={handleAssign}
+          showOnlyCampaign={true}
+          showButton={false}
         />
         
+        {/* Excluded Sources - now positioned before the button */}
         <ExcludedSources 
           uniqueSources={uniqueSources}
           excludedSources={excludedSources}
           onAddExcludedSource={addExcludedSource}
           onRemoveExcludedSource={removeExcludedSource}
+        />
+
+        {/* Assignment Button - now at the bottom */}
+        <AssignmentForm
+          numLead={numLead}
+          setNumLead={setNumLead}
+          venditore={venditore}
+          setVenditore={setVenditore}
+          campagna={campagna}
+          setCampagna={setCampagna}
+          salespeople={salespeople}
+          campagne={campagne}
+          isSubmitting={isSubmitting}
+          availableLeads={availableLeads}
+          onAssign={handleAssign}
+          showOnlyButton={true}
         />
       </CardContent>
     </Card>
