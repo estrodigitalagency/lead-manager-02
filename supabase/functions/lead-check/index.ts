@@ -45,6 +45,11 @@ serve(async (req) => {
     assignableCutoffDate.setDate(assignableCutoffDate.getDate() - daysBeforeAssignable)
     const assignableCutoffISODate = assignableCutoffDate.toISOString()
     
+    // Calculate the cutoff date for attribution window
+    const attributionCutoffDate = new Date()
+    attributionCutoffDate.setDate(attributionCutoffDate.getDate() - attributionWindow)
+    const attributionCutoffISODate = attributionCutoffDate.toISOString()
+    
     // Get all leads with their contact info
     const { data: allLeads, error: leadsError } = await supabase
       .from('lead_generation')
@@ -65,24 +70,18 @@ serve(async (req) => {
       )
     }
     
-    // Get all bookings at once to create a lookup map - CORREZIONE: uso OR multipli
+    // Get all bookings created within the attribution window
     const { data: allBookings, error: bookingsError } = await supabase
       .from('booked_call')
-      .select('email, telefono')
+      .select('email, telefono, created_at')
+      .gte('created_at', attributionCutoffISODate)
     
     if (bookingsError) {
       console.error('Error fetching bookings:', bookingsError)
       // Continue without bookings data rather than failing
     }
     
-    console.log(`Found ${allBookings?.length || 0} bookings in database`)
-    
-    // Create lookup sets for faster checking
-    const bookedEmails = new Set((allBookings || []).map(b => b.email).filter(e => e && e.trim() !== ''))
-    const bookedPhones = new Set((allBookings || []).map(b => b.telefono).filter(p => p && p.trim() !== ''))
-    
-    console.log(`Booked emails: ${Array.from(bookedEmails).join(', ')}`)
-    console.log(`Booked phones: ${Array.from(bookedPhones).join(', ')}`)
+    console.log(`Found ${allBookings?.length || 0} bookings in attribution window`)
     
     // Process leads in batches
     const batchSize = 100
@@ -93,22 +92,38 @@ serve(async (req) => {
       const updates: Array<{ id: string, updates: Record<string, any> }> = []
       
       for (const lead of batch) {
-        // CONTROLLO MIGLIORATO PER LE PRENOTAZIONI
-        const emailHasBooking = lead.email && lead.email.trim() !== '' && bookedEmails.has(lead.email.trim())
-        const phoneHasBooking = lead.telefono && lead.telefono.trim() !== '' && bookedPhones.has(lead.telefono.trim())
-        const hasBooking = emailHasBooking || phoneHasBooking
-        
         const createdDate = new Date(lead.created_at)
         const enoughDaysPassed = createdDate <= new Date(assignableCutoffISODate)
         
-        // Debug per lead specifico
-        if (lead.email === 'dora.were1969@gmail.com') {
-          console.log(`DEBUG lead dora.were1969@gmail.com:`)
+        // Check if this lead has a booking within the attribution window
+        let hasBookingInWindow = false
+        
+        if (allBookings) {
+          for (const booking of allBookings) {
+            const bookingCreatedDate = new Date(booking.created_at)
+            const leadCreatedDate = new Date(lead.created_at)
+            
+            // Check if booking is for this lead (email or phone match)
+            const emailMatch = lead.email && booking.email && 
+                              lead.email.trim().toLowerCase() === booking.email.trim().toLowerCase()
+            const phoneMatch = lead.telefono && booking.telefono && 
+                              lead.telefono.trim() === booking.telefono.trim()
+            
+            if ((emailMatch || phoneMatch) && bookingCreatedDate >= leadCreatedDate) {
+              // Booking exists for this lead and was created after the lead
+              hasBookingInWindow = true
+              break
+            }
+          }
+        }
+        
+        // Debug per lead specifici
+        if (lead.email === 'dora.were1969@gmail.com' || lead.email === 'vero.marigo@gmail.com') {
+          console.log(`DEBUG lead ${lead.email}:`)
+          console.log(`- Lead created: ${lead.created_at}`)
           console.log(`- Email: ${lead.email}`)
           console.log(`- Telefono: ${lead.telefono}`)
-          console.log(`- emailHasBooking: ${emailHasBooking}`)
-          console.log(`- phoneHasBooking: ${phoneHasBooking}`)
-          console.log(`- hasBooking: ${hasBooking}`)
+          console.log(`- hasBookingInWindow: ${hasBookingInWindow}`)
           console.log(`- enoughDaysPassed: ${enoughDaysPassed}`)
           console.log(`- booked_call attuale: ${lead.booked_call}`)
           console.log(`- assignable attuale: ${lead.assignable}`)
@@ -119,11 +134,11 @@ serve(async (req) => {
         
         // CONDIZIONI DI ASSEGNABILITÀ CORRETTE:
         // 1. Devono essere passati abbastanza giorni (>= daysBeforeAssignable)
-        // 2. Il lead NON deve avere una call prenotata
-        const shouldBeAssignable = enoughDaysPassed && !hasBooking
+        // 2. Il lead NON deve avere una call prenotata nell'intervallo di attribuzione
+        const shouldBeAssignable = enoughDaysPassed && !hasBookingInWindow
         
-        // Aggiorna booked_call status
-        if (hasBooking) {
+        // Aggiorna booked_call status basato su prenotazioni nell'intervallo
+        if (hasBookingInWindow) {
           if (lead.booked_call !== 'SI') {
             updateObj.booked_call = 'SI'
             updateObj.stato = 'prenotato'
@@ -136,14 +151,14 @@ serve(async (req) => {
           }
         }
         
-        // Aggiorna assignable status - SEMPRE in base alle condizioni corrette
+        // Aggiorna assignable status
         if (lead.assignable !== shouldBeAssignable) {
           updateObj.assignable = shouldBeAssignable
           needsUpdate = true
         }
         
-        // Debug finale per lead specifico
-        if (lead.email === 'dora.were1969@gmail.com') {
+        // Debug finale per lead specifici
+        if (lead.email === 'dora.were1969@gmail.com' || lead.email === 'vero.marigo@gmail.com') {
           console.log(`- shouldBeAssignable: ${shouldBeAssignable}`)
           console.log(`- needsUpdate: ${needsUpdate}`)
           console.log(`- updateObj:`, updateObj)
