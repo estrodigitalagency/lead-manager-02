@@ -14,7 +14,7 @@
     --popover: 222 47% 11%;
     --popover-foreground: 60 9.1% 97.8%;
 
-    --primary: 180 100% 50%; /* Ottanio principale */
+    --primary: 267 100% 77%; /* Viola Stripe principale */
     --primary-foreground: 222 47% 11%;
 
     --secondary: 222 47% 18%;
@@ -23,7 +23,7 @@
     --muted: 222 47% 16%;
     --muted-foreground: 60 5.9% 77%;
 
-    --accent: 180 100% 67%; /* Ottanio più chiaro per accenti */
+    --accent: 267 100% 85%; /* Viola più chiaro per accenti */
     --accent-foreground: 222 47% 11%;
 
     --destructive: 0 62.8% 50.6%;
@@ -31,18 +31,18 @@
 
     --border: 222 47% 20%;
     --input: 222 47% 16%;
-    --ring: 180 100% 50%;
+    --ring: 267 100% 77%;
 
     --radius: 0.75rem;
 
     --sidebar-background: 222 47% 9%;
     --sidebar-foreground: 60 9.1% 97.8%;
-    --sidebar-primary: 180 100% 50%;
+    --sidebar-primary: 267 100% 77%;
     --sidebar-primary-foreground: 222 47% 11%;
     --sidebar-accent: 222 47% 13%;
     --sidebar-accent-foreground: 60 9.1% 97.8%;
     --sidebar-border: 222 47% 16%;
-    --sidebar-ring: 180 100% 50%;
+    --sidebar-ring: 267 100% 77%;
   }
 }
 
@@ -73,23 +73,23 @@
 @layer components {
   .neon-border {
     @apply border border-primary rounded-lg;
-    box-shadow: 0 0 20px rgba(0, 255, 255, 0.3);
+    box-shadow: 0 0 20px rgba(145, 105, 255, 0.3);
   }
   
   .glass-card {
     @apply bg-card/80 backdrop-blur-sm border border-accent/20 rounded-xl;
     background: rgba(30, 35, 48, 0.8);
     backdrop-filter: blur(20px);
-    border: 1px solid rgba(0, 255, 255, 0.2);
+    border: 1px solid rgba(145, 105, 255, 0.2);
   }
   
   .btn-neon {
     @apply bg-primary text-primary-foreground hover:bg-primary/80 transition-all duration-300;
-    box-shadow: 0 0 20px rgba(0, 255, 255, 0.5);
+    box-shadow: 0 0 20px rgba(145, 105, 255, 0.5);
   }
 
   .btn-neon:hover {
-    box-shadow: 0 0 30px rgba(0, 255, 255, 0.7);
+    box-shadow: 0 0 30px rgba(145, 105, 255, 0.7);
     transform: translateY(-2px);
   }
 
@@ -107,7 +107,7 @@
   }
 
   .input-neon:focus {
-    box-shadow: 0 0 15px rgba(0, 255, 255, 0.3);
+    box-shadow: 0 0 15px rgba(145, 105, 255, 0.3);
   }
 
   .gradient-text {
@@ -123,11 +123,11 @@
   }
 
   .hero-glow {
-    background: radial-gradient(circle at center, rgba(0, 255, 255, 0.1) 0%, transparent 70%);
+    background: radial-gradient(circle at center, rgba(145, 105, 255, 0.1) 0%, transparent 70%);
   }
 
   .data-flow {
-    background: linear-gradient(90deg, transparent 0%, rgba(0, 255, 255, 0.1) 50%, transparent 100%);
+    background: linear-gradient(90deg, transparent 0%, rgba(145, 105, 255, 0.1) 50%, transparent 100%);
     animation: flow 3s linear infinite;
   }
 
@@ -172,10 +172,10 @@
 
 @keyframes glow {
   0%, 100% {
-    box-shadow: 0 0 20px rgba(0, 255, 255, 0.5);
+    box-shadow: 0 0 20px rgba(145, 105, 255, 0.5);
   }
   50% {
-    box-shadow: 0 0 40px rgba(0, 255, 255, 0.8);
+    box-shadow: 0 0 40px rgba(145, 105, 255, 0.8);
   }
 }
 

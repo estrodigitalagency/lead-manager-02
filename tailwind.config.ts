@@ -63,17 +63,17 @@ export default {
 					border: 'hsl(var(--sidebar-border))',
 					ring: 'hsl(var(--sidebar-ring))'
 				},
-				ottanio: {
-					50: '#f0fdff',
-					100: '#ccf7fe',
-					200: '#99eefd',
-					300: '#60defa',
-					400: '#21c5f5',
-					500: '#00bcd4', // ottanio principale
-					600: '#0891b2',
-					700: '#0e7490',
-					800: '#155e75',
-					900: '#164e63',
+				stripe: {
+					50: '#f8f4ff',
+					100: '#ede5ff',
+					200: '#dccfff',
+					300: '#c4a9ff',
+					400: '#a479ff',
+					500: '#8c4bff',
+					600: '#7c2dff', // viola principale Stripe
+					700: '#6419e6',
+					800: '#5315c2',
+					900: '#451399',
 				}
 			},
 			borderRadius: {
@@ -100,10 +100,10 @@ export default {
 				},
 				'glow': {
 					'0%, 100%': {
-						boxShadow: '0 0 20px rgba(0, 255, 255, 0.5)'
+						boxShadow: '0 0 20px rgba(145, 105, 255, 0.5)'
 					},
 					'50%': {
-						boxShadow: '0 0 40px rgba(0, 255, 255, 0.8)'
+						boxShadow: '0 0 40px rgba(145, 105, 255, 0.8)'
 					}
 				},
 				'float': {
@@ -151,7 +151,7 @@ export default {
 			backgroundImage: {
 				'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
 				'gradient-conic': 'conic-gradient(from 180deg at 50% 50%, var(--tw-gradient-stops))',
-				'shimmer': 'linear-gradient(90deg, transparent 0%, rgba(0, 255, 255, 0.4) 50%, transparent 100%)'
+				'shimmer': 'linear-gradient(90deg, transparent 0%, rgba(145, 105, 255, 0.4) 50%, transparent 100%)'
 			}
 		}
 	},

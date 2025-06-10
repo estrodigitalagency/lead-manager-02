@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -350,15 +349,18 @@ const LeadAssignmentWithExclusions = () => {
                 <SelectValue placeholder="Seleziona venditore" />
               </SelectTrigger>
               <SelectContent className={`${isMobile ? 'max-h-[200px]' : ''} bg-background border border-border`} position="popper">
-                {salespeople.map((person) => (
-                  <SelectItem 
-                    key={person.id} 
-                    value={person.nome}
-                    className="hover:bg-accent hover:text-accent-foreground"
-                  >
-                    <span className="truncate">{person.nome} {person.cognome}</span>
-                  </SelectItem>
-                ))}
+                {salespeople.map((person) => {
+                  const fullName = `${person.nome} ${person.cognome}`;
+                  return (
+                    <SelectItem 
+                      key={person.id} 
+                      value={fullName}
+                      className="hover:bg-accent hover:text-accent-foreground"
+                    >
+                      <span className="truncate">{fullName}</span>
+                    </SelectItem>
+                  );
+                })}
               </SelectContent>
             </Select>
           </div>
