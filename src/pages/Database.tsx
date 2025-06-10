@@ -28,7 +28,6 @@ import DatabaseTableContainer from "@/components/database/DatabaseTableContainer
 import LeadsTable from "@/components/database/LeadsTable";
 import BookingsTable from "@/components/database/BookingsTable";
 import LeadLavoratiTable from "@/components/database/LeadLavoratiTable";
-import PersistentNavigation from "@/components/PersistentNavigation";
 
 interface CalendlyBooking {
   id: string;
@@ -46,7 +45,6 @@ type ValidTableName = "lead_generation" | "booked_call" | "lead_assignments" | "
 
 const DatabasePage = () => {
   const isMobile = useIsMobile();
-  
   const [leads, setLeads] = useState<Lead[]>([]);
   const [bookings, setBookings] = useState<CalendlyBooking[]>([]);
   const [leadLavorati, setLeadLavorati] = useState<LeadLavorato[]>([]);
@@ -220,169 +218,165 @@ const DatabasePage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      <PersistentNavigation />
-      
-      <div className={`container mx-auto px-4 py-8 pt-24 ${isMobile ? 'px-2 py-4 pt-24' : ''}`}>
-        <div className={`flex justify-between items-center mb-8 ${isMobile ? 'flex-col gap-4' : ''}`}>
-          <div className={`flex items-center gap-4 ${isMobile ? 'flex-col text-center' : ''}`}>
-            <Link to="/">
-              <Button variant="outline" size="icon" className="border">
-                <ArrowLeft className="h-4 w-4 text-primary" />
-              </Button>
-            </Link>
-            <h1 className={`text-3xl font-bold text-primary ${isMobile ? 'text-2xl' : ''}`}>Database Records</h1>
-          </div>
-          <div className={`flex gap-2 ${isMobile ? 'flex-col w-full' : ''}`}>
-            <Button 
-              onClick={handleManualLeadCheck} 
-              variant="outline" 
-              disabled={isCheckingLeads}
-              className={`flex items-center gap-2 border ${isMobile ? 'w-full justify-center' : ''}`}
-            >
-              {isCheckingLeads ? (
-                <RefreshCcw className="h-4 w-4 animate-spin" />
-              ) : (
-                <CalendarCheck className="h-4 w-4" />
-              )}
-              Verifica assegnabilità
+    <div className={`container mx-auto px-4 py-8 ${isMobile ? 'px-2 py-4' : ''}`}>
+      <div className={`flex justify-between items-center mb-8 ${isMobile ? 'flex-col gap-4' : ''}`}>
+        <div className={`flex items-center gap-4 ${isMobile ? 'flex-col text-center' : ''}`}>
+          <Link to="/">
+            <Button variant="outline" size="icon" className="border">
+              <ArrowLeft className="h-4 w-4 text-primary" />
             </Button>
-            <Button 
-              onClick={handleRefresh} 
-              variant="outline" 
-              className={`flex items-center gap-2 border ${isMobile ? 'w-full justify-center' : ''}`}
-            >
-              <RefreshCcw className="h-4 w-4" />
-              Aggiorna dati
-            </Button>
-          </div>
+          </Link>
+          <h1 className={`text-3xl font-bold text-primary ${isMobile ? 'text-2xl' : ''}`}>Database Records</h1>
         </div>
+        <div className={`flex gap-2 ${isMobile ? 'flex-col w-full' : ''}`}>
+          <Button 
+            onClick={handleManualLeadCheck} 
+            variant="outline" 
+            disabled={isCheckingLeads}
+            className={`flex items-center gap-2 border ${isMobile ? 'w-full justify-center' : ''}`}
+          >
+            {isCheckingLeads ? (
+              <RefreshCcw className="h-4 w-4 animate-spin" />
+            ) : (
+              <CalendarCheck className="h-4 w-4" />
+            )}
+            Verifica assegnabilità
+          </Button>
+          <Button 
+            onClick={handleRefresh} 
+            variant="outline" 
+            className={`flex items-center gap-2 border ${isMobile ? 'w-full justify-center' : ''}`}
+          >
+            <RefreshCcw className="h-4 w-4" />
+            Aggiorna dati
+          </Button>
+        </div>
+      </div>
+      
+      <Tabs defaultValue="leads" className="w-full">
+        <TabsList className={`grid w-full grid-cols-3 mb-8 border ${isMobile ? 'text-xs' : ''}`}>
+          <TabsTrigger value="leads" className="data-[state=active]:text-primary">
+            Lead Generation
+          </TabsTrigger>
+          <TabsTrigger value="bookings" className="data-[state=active]:text-primary">
+            Call Prenotate
+          </TabsTrigger>
+          <TabsTrigger value="lavorati" className="data-[state=active]:text-primary">
+            Lead Lavorati
+          </TabsTrigger>
+        </TabsList>
         
-        <Tabs defaultValue="leads" className="w-full">
-          <TabsList className={`grid w-full grid-cols-3 mb-8 border ${isMobile ? 'text-xs' : ''}`}>
-            <TabsTrigger value="leads" className="data-[state=active]:text-primary">
-              Lead Generation
-            </TabsTrigger>
-            <TabsTrigger value="bookings" className="data-[state=active]:text-primary">
-              Call Prenotate
-            </TabsTrigger>
-            <TabsTrigger value="lavorati" className="data-[state=active]:text-primary">
-              Lead Lavorati
-            </TabsTrigger>
-          </TabsList>
-          
-          <TabsContent value="leads" className="mt-4">
-            <DatabaseTableContainer
-              title="Lead Database"
-              description="Tutti i lead generati tramite form o webhook"
-              tableName="lead_generation"
-              allItems={leads}
+        <TabsContent value="leads" className="mt-4">
+          <DatabaseTableContainer
+            title="Lead Database"
+            description="Tutti i lead generati tramite form o webhook"
+            tableName="lead_generation"
+            allItems={leads}
+            selectedItems={selectedLeads}
+            onSelectionChange={setSelectedLeads}
+            onApplyFilters={handleApplyFilters}
+            onAddRecord={() => openAddDialog('lead_generation')}
+            onImport={() => openImportDialog('lead_generation')}
+            onRefresh={handleRefresh}
+          >
+            <LeadsTable 
+              leads={leads}
+              isLoading={isLoadingLeads}
               selectedItems={selectedLeads}
               onSelectionChange={setSelectedLeads}
-              onApplyFilters={handleApplyFilters}
-              onAddRecord={() => openAddDialog('lead_generation')}
-              onImport={() => openImportDialog('lead_generation')}
-              onRefresh={handleRefresh}
-            >
-              <LeadsTable 
-                leads={leads}
-                isLoading={isLoadingLeads}
-                selectedItems={selectedLeads}
-                onSelectionChange={setSelectedLeads}
-                onDelete={(id) => handleDeleteClick(id, 'lead')}
-              />
-            </DatabaseTableContainer>
-          </TabsContent>
-          
-          <TabsContent value="bookings" className="mt-4">
-            <DatabaseTableContainer
-              title="Call Prenotate"
-              description="Tutte le prenotazioni ricevute tramite Calendly"
-              tableName="booked_call"
-              allItems={bookings}
+              onDelete={(id) => handleDeleteClick(id, 'lead')}
+            />
+          </DatabaseTableContainer>
+        </TabsContent>
+        
+        <TabsContent value="bookings" className="mt-4">
+          <DatabaseTableContainer
+            title="Call Prenotate"
+            description="Tutte le prenotazioni ricevute tramite Calendly"
+            tableName="booked_call"
+            allItems={bookings}
+            selectedItems={selectedBookings}
+            onSelectionChange={setSelectedBookings}
+            onApplyFilters={handleApplyFilters}
+            onAddRecord={() => openAddDialog('booked_call')}
+            onImport={() => openImportDialog('booked_call')}
+            onRefresh={handleRefresh}
+          >
+            <BookingsTable 
+              bookings={bookings}
+              isLoading={isLoadingBookings}
               selectedItems={selectedBookings}
               onSelectionChange={setSelectedBookings}
-              onApplyFilters={handleApplyFilters}
-              onAddRecord={() => openAddDialog('booked_call')}
-              onImport={() => openImportDialog('booked_call')}
-              onRefresh={handleRefresh}
-            >
-              <BookingsTable 
-                bookings={bookings}
-                isLoading={isLoadingBookings}
-                selectedItems={selectedBookings}
-                onSelectionChange={setSelectedBookings}
-                onDelete={(id) => handleDeleteClick(id, 'booking')}
-              />
-            </DatabaseTableContainer>
-          </TabsContent>
+              onDelete={(id) => handleDeleteClick(id, 'booking')}
+            />
+          </DatabaseTableContainer>
+        </TabsContent>
 
-          <TabsContent value="lavorati" className="mt-4">
-            <DatabaseTableContainer
-              title="Lead Lavorati"
-              description="Tutti i lead che sono stati lavorati dai venditori"
-              tableName="lead_lavorati"
-              allItems={leadLavorati}
+        <TabsContent value="lavorati" className="mt-4">
+          <DatabaseTableContainer
+            title="Lead Lavorati"
+            description="Tutti i lead che sono stati lavorati dai venditori"
+            tableName="lead_lavorati"
+            allItems={leadLavorati}
+            selectedItems={selectedLavorati}
+            onSelectionChange={setSelectedLavorati}
+            onApplyFilters={handleApplyFilters}
+            onAddRecord={() => openAddDialog('lead_lavorati')}
+            onImport={() => openImportDialog('lead_lavorati')}
+            onRefresh={handleRefresh}
+          >
+            <LeadLavoratiTable 
+              leadLavorati={leadLavorati}
+              isLoading={isLoadingLeadLavorati}
               selectedItems={selectedLavorati}
               onSelectionChange={setSelectedLavorati}
-              onApplyFilters={handleApplyFilters}
-              onAddRecord={() => openAddDialog('lead_lavorati')}
-              onImport={() => openImportDialog('lead_lavorati')}
-              onRefresh={handleRefresh}
-            >
-              <LeadLavoratiTable 
-                leadLavorati={leadLavorati}
-                isLoading={isLoadingLeadLavorati}
-                selectedItems={selectedLavorati}
-                onSelectionChange={setSelectedLavorati}
-                onDelete={(id) => handleDeleteClick(id, 'lavorato')}
-              />
-            </DatabaseTableContainer>
-          </TabsContent>
-        </Tabs>
+              onDelete={(id) => handleDeleteClick(id, 'lavorato')}
+            />
+          </DatabaseTableContainer>
+        </TabsContent>
+      </Tabs>
 
-        {/* Delete Confirmation Dialog */}
-        <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Conferma eliminazione</DialogTitle>
-              <DialogDescription>
-                Sei sicuro di voler eliminare questo record? Questa azione non può essere annullata.
-              </DialogDescription>
-            </DialogHeader>
-            <DialogFooter className="flex gap-2 justify-end mt-4">
-              <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>
-                Annulla
-              </Button>
-              <Button variant="destructive" onClick={handleDeleteConfirm}>
-                Elimina
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-        
-        {/* Add Record Dialog */}
-        {activeTableForDialog === 'lead_lavorati' ? (
-          <DatabaseAddLavoratiDialog 
-            isOpen={isAddRecordDialogOpen}
-            setIsOpen={setIsAddRecordDialogOpen}
-            tableName={activeTableForDialog}
-          />
-        ) : (
-          <DatabaseAddRecordDialog 
-            isOpen={isAddRecordDialogOpen}
-            setIsOpen={setIsAddRecordDialogOpen}
-            tableName={activeTableForDialog}
-          />
-        )}
-        
-        {/* Import CSV Dialog */}
-        <DatabaseImportDialog 
-          isOpen={isImportDialogOpen}
-          setIsOpen={setIsImportDialogOpen}
-          tableName={activeTableForDialog} 
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Conferma eliminazione</DialogTitle>
+            <DialogDescription>
+              Sei sicuro di voler eliminare questo record? Questa azione non può essere annullata.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex gap-2 justify-end mt-4">
+            <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>
+              Annulla
+            </Button>
+            <Button variant="destructive" onClick={handleDeleteConfirm}>
+              Elimina
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Add Record Dialog */}
+      {activeTableForDialog === 'lead_lavorati' ? (
+        <DatabaseAddLavoratiDialog 
+          isOpen={isAddRecordDialogOpen}
+          setIsOpen={setIsAddRecordDialogOpen}
+          tableName={activeTableForDialog}
         />
-      </div>
+      ) : (
+        <DatabaseAddRecordDialog 
+          isOpen={isAddRecordDialogOpen}
+          setIsOpen={setIsAddRecordDialogOpen}
+          tableName={activeTableForDialog}
+        />
+      )}
+      
+      {/* Import CSV Dialog */}
+      <DatabaseImportDialog 
+        isOpen={isImportDialogOpen}
+        setIsOpen={setIsImportDialogOpen}
+        tableName={activeTableForDialog} 
+      />
     </div>
   );
 };

@@ -9,7 +9,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { getAllFonti, getAllCampagne, getUniqueSourcesFromLeads, syncSourcesToDatabase } from "@/services/databaseService";
-import { useIsMobile } from "@/hooks/use-mobile";
 
 interface Salesperson {
   id: string;
@@ -30,7 +29,7 @@ interface Campagna {
 }
 
 const LeadAssignmentWithExclusions = () => {
-  const [numLead, setNumLead] = useState("");
+  const [numLead, setNumLead] = useState(1);
   const [venditore, setVenditore] = useState("");
   const [campagna, setCampagna] = useState("");
   const [salespeople, setSalespeople] = useState<Salesperson[]>([]);
@@ -40,7 +39,6 @@ const LeadAssignmentWithExclusions = () => {
   const [excludedSources, setExcludedSources] = useState<string[]>([]);
   const [availableLeads, setAvailableLeads] = useState(0);
   const [uniqueSources, setUniqueSources] = useState<string[]>([]);
-  const isMobile = useIsMobile();
 
   useEffect(() => {
     fetchSalespeople();
@@ -128,13 +126,12 @@ const LeadAssignmentWithExclusions = () => {
   };
 
   const handleAssign = async () => {
-    const numLeadValue = parseInt(numLead);
-    if (!venditore || !numLead || numLeadValue <= 0) {
+    if (!venditore || numLead <= 0) {
       toast.error("Inserisci tutti i campi obbligatori");
       return;
     }
 
-    if (numLeadValue > availableLeads) {
+    if (numLead > availableLeads) {
       toast.error(`Solo ${availableLeads} lead disponibili per l'assegnazione`);
       return;
     }
@@ -142,16 +139,16 @@ const LeadAssignmentWithExclusions = () => {
     setIsSubmitting(true);
     try {
       await assignLeadsWithExclusions({
-        numLead: numLeadValue,
+        numLead,
         venditore,
         campagna,
         excludedSources
       });
       
-      toast.success(`${numLeadValue} lead assegnati con successo a ${venditore}`);
+      toast.success(`${numLead} lead assegnati con successo a ${venditore}`);
       
       // Reset form
-      setNumLead("");
+      setNumLead(1);
       setVenditore("");
       setCampagna("");
       
@@ -319,46 +316,37 @@ const LeadAssignmentWithExclusions = () => {
   };
 
   return (
-    <Card className="border-border bg-card">
+    <Card>
       <CardHeader>
-        <CardTitle className="text-lg sm:text-xl text-card-foreground">Assegnazione Lead</CardTitle>
-        <CardDescription className="text-sm text-muted-foreground">
+        <CardTitle className="text-lg sm:text-xl">Assegnazione Lead</CardTitle>
+        <CardDescription className="text-sm">
           Assegna lead ai venditori escludendo fonti specifiche. Lead disponibili: {availableLeads}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4 sm:space-y-6">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="space-y-2">
-            <Label htmlFor="numLead" className="text-sm font-medium text-foreground">Numero di Lead</Label>
+            <Label htmlFor="numLead" className="text-sm font-medium">Numero di Lead</Label>
             <Input
               id="numLead"
               type="number"
               min="1"
               max={availableLeads}
               value={numLead}
-              onChange={(e) => setNumLead(e.target.value)}
-              placeholder="Inserisci numero"
-              className="w-full bg-input border-border text-foreground"
+              onChange={(e) => setNumLead(parseInt(e.target.value) || 1)}
+              className="w-full"
             />
           </div>
           
           <div className="space-y-2">
-            <Label htmlFor="venditore" className="text-sm font-medium text-foreground">Venditore</Label>
+            <Label htmlFor="venditore" className="text-sm font-medium">Venditore</Label>
             <Select value={venditore} onValueChange={setVenditore}>
-              <SelectTrigger className="w-full bg-input border-border text-foreground">
+              <SelectTrigger className="w-full">
                 <SelectValue placeholder="Seleziona venditore" />
               </SelectTrigger>
-              <SelectContent 
-                className={`bg-popover border-border ${isMobile ? "max-h-[200px]" : ""}`}
-                position={isMobile ? "popper" : "item-aligned"}
-                sideOffset={isMobile ? 5 : undefined}
-              >
+              <SelectContent>
                 {salespeople.map((person) => (
-                  <SelectItem 
-                    key={`${person.id}-${person.nome}-${person.cognome}`} 
-                    value={`${person.nome} ${person.cognome}`.trim()}
-                    className="text-popover-foreground hover:bg-accent"
-                  >
+                  <SelectItem key={person.id} value={person.nome}>
                     <span className="truncate">{person.nome} {person.cognome}</span>
                   </SelectItem>
                 ))}
@@ -368,29 +356,21 @@ const LeadAssignmentWithExclusions = () => {
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="campagna" className="text-sm font-medium text-foreground">Campagna</Label>
+          <Label htmlFor="campagna" className="text-sm font-medium">Campagna</Label>
           <Select value={campagna} onValueChange={setCampagna}>
-            <SelectTrigger className="w-full bg-input border-border text-foreground">
+            <SelectTrigger className="w-full">
               <SelectValue placeholder="Seleziona o digita una nuova campagna" />
             </SelectTrigger>
-            <SelectContent 
-              className={`bg-popover border-border ${isMobile ? "max-h-[200px]" : ""}`}
-              position={isMobile ? "popper" : "item-aligned"}
-              sideOffset={isMobile ? 5 : undefined}
-            >
+            <SelectContent>
               {campagne.map((camp) => (
-                <SelectItem 
-                  key={camp.id} 
-                  value={camp.nome}
-                  className="text-popover-foreground hover:bg-accent"
-                >
+                <SelectItem key={camp.id} value={camp.nome}>
                   <span className="truncate">{camp.nome}</span>
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
           <Input
-            className="w-full mt-2 bg-input border-border text-foreground"
+            className="w-full mt-2"
             value={campagna}
             onChange={(e) => setCampagna(e.target.value)}
             placeholder="O digita una nuova campagna"
@@ -398,24 +378,16 @@ const LeadAssignmentWithExclusions = () => {
         </div>
 
         <div className="space-y-2">
-          <Label className="text-sm font-medium text-foreground">Escludi Fonti</Label>
+          <Label className="text-sm font-medium">Escludi Fonti</Label>
           <Select onValueChange={addExcludedSource}>
-            <SelectTrigger className="w-full bg-input border-border text-foreground">
+            <SelectTrigger className="w-full">
               <SelectValue placeholder="Seleziona fonte da escludere" />
             </SelectTrigger>
-            <SelectContent 
-              className={`bg-popover border-border ${isMobile ? "max-h-[200px]" : ""}`}
-              position={isMobile ? "popper" : "item-aligned"}
-              sideOffset={isMobile ? 5 : undefined}
-            >
+            <SelectContent>
               {uniqueSources
                 .filter(source => !excludedSources.includes(source))
                 .map((source) => (
-                <SelectItem 
-                  key={source} 
-                  value={source}
-                  className="text-popover-foreground hover:bg-accent"
-                >
+                <SelectItem key={source} value={source}>
                   <span className="truncate">{source}</span>
                 </SelectItem>
               ))}
@@ -425,7 +397,7 @@ const LeadAssignmentWithExclusions = () => {
           {excludedSources.length > 0 && (
             <div className="flex flex-wrap gap-2 mt-3">
               {excludedSources.map((source) => (
-                <Badge key={source} variant="secondary" className="flex items-center gap-1 text-xs max-w-full bg-secondary text-secondary-foreground">
+                <Badge key={source} variant="secondary" className="flex items-center gap-1 text-xs max-w-full">
                   <span className="truncate">{source}</span>
                   <button
                     onClick={() => removeExcludedSource(source)}
@@ -442,8 +414,8 @@ const LeadAssignmentWithExclusions = () => {
 
         <Button 
           onClick={handleAssign} 
-          disabled={isSubmitting || !venditore || !numLead || parseInt(numLead) <= 0 || parseInt(numLead) > availableLeads}
-          className="w-full mt-6 text-sm sm:text-base py-2 sm:py-3 bg-primary text-primary-foreground hover:bg-primary/90"
+          disabled={isSubmitting || !venditore || numLead <= 0 || numLead > availableLeads}
+          className="w-full mt-6 text-sm sm:text-base py-2 sm:py-3"
         >
           {isSubmitting ? "Assegnazione in corso..." : "Assegna Lead"}
         </Button>
