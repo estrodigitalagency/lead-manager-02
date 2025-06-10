@@ -15,7 +15,7 @@ interface CalendlyBooking {
   scheduled_at: string;
   data_call?: string;
   fonte?: string;
-  note?: string;
+  venditore?: string;
 }
 
 interface MobileBookingsTableProps {
@@ -129,9 +129,9 @@ const MobileBookingsTable = ({
                 </div>
               )}
 
-              {booking.note && (
-                <div className="text-xs text-muted-foreground mt-2 line-clamp-2">
-                  Note: {booking.note}
+              {booking.venditore && (
+                <div className="text-xs text-muted-foreground mt-2">
+                  Venditore: {booking.venditore}
                 </div>
               )}
             </div>

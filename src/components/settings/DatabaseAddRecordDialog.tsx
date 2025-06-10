@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import {
   Dialog,
@@ -49,7 +50,7 @@ export default function DatabaseAddRecordDialog({
           { name: "telefono", label: "Telefono", required: true },
           { name: "fonte", label: "Fonte", required: false },
           { name: "scheduled_at", label: "Data Chiamata", required: true, type: "datetime-local" },
-          { name: "note", label: "Note", required: false },
+          { name: "venditore", label: "Venditore", required: false },
         ];
       case "system_settings":
         return [

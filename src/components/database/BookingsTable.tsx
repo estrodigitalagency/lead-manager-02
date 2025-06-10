@@ -28,7 +28,7 @@ interface CalendlyBooking {
   scheduled_at: string;
   data_call?: string;
   fonte?: string;
-  note?: string;
+  venditore?: string;
 }
 
 interface BookingsTableProps {
@@ -61,7 +61,7 @@ const BookingsTable = ({
     { key: 'email', label: 'Email', visible: true },
     { key: 'telefono', label: 'Telefono', visible: true },
     { key: 'fonte', label: 'Fonte', visible: true },
-    { key: 'note', label: 'Note', visible: true },
+    { key: 'venditore', label: 'Venditore', visible: true },
   ]);
 
   const handleItemSelect = (id: string, checked: boolean) => {
@@ -126,8 +126,8 @@ const BookingsTable = ({
         return booking.telefono;
       case 'fonte':
         return booking.fonte || '-';
-      case 'note':
-        return booking.note || '-';
+      case 'venditore':
+        return booking.venditore || '-';
       default:
         return '-';
     }

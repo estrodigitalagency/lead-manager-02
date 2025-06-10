@@ -35,8 +35,8 @@ serve(async (req) => {
         telefono: payload.telefono || '',
         fonte: payload.fonte || null,
         scheduled_at: payload.scheduled_at || new Date().toISOString(),
-        data_call: payload.data_call || payload.scheduled_at || new Date().toISOString(), // Nuova colonna per data effettiva call
-        note: payload.note || null
+        data_call: payload.data_call || payload.scheduled_at || new Date().toISOString(),
+        venditore: payload.venditore || null
       })
       .select()
 
