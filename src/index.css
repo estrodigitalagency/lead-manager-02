@@ -55,6 +55,18 @@
     @apply bg-background text-foreground;
     background: linear-gradient(135deg, hsl(var(--background)) 0%, hsl(222 47% 8%) 100%);
     min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  /* Fix scroll issues on mobile */
+  body.no-scroll {
+    overflow: hidden;
+    position: fixed;
+    width: 100%;
   }
 }
 
@@ -117,6 +129,26 @@
   .data-flow {
     background: linear-gradient(90deg, transparent 0%, rgba(0, 255, 255, 0.1) 50%, transparent 100%);
     animation: flow 3s linear infinite;
+  }
+
+  /* Mobile-specific improvements */
+  @media (max-width: 768px) {
+    .container {
+      @apply px-2;
+    }
+    
+    /* Fix dropdown positioning on mobile */
+    [data-radix-popper-content-wrapper] {
+      z-index: 9999 !important;
+      transform: none !important;
+      will-change: auto !important;
+    }
+    
+    /* Ensure select content is properly positioned */
+    [data-radix-select-content] {
+      position: fixed !important;
+      z-index: 9999 !important;
+    }
   }
 }
 

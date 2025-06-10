@@ -1,7 +1,7 @@
 
 import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Users, Database, BarChart3, Settings, Menu } from "lucide-react";
+import { Users, Database, BarChart3, Settings, Menu, History } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import {
   Drawer,
@@ -21,6 +21,12 @@ const PersistentNavigation = () => {
       icon: Users,
       label: "Home",
       isActive: location.pathname === "/"
+    },
+    {
+      to: "/history",
+      icon: History,
+      label: "Cronologia",
+      isActive: location.pathname === "/history"
     },
     {
       to: "/database",
@@ -77,8 +83,8 @@ const PersistentNavigation = () => {
                   <Menu className="h-5 w-5" />
                 </Button>
               </DrawerTrigger>
-              <DrawerContent className="bg-background">
-                <div className="p-6 space-y-3">
+              <DrawerContent className="bg-background max-h-[80vh]">
+                <div className="p-6 space-y-3 overflow-y-auto">
                   <h2 className="text-xl font-semibold mb-6 text-center">Menu</h2>
                   <NavItems onItemClick={() => setOpen(false)} />
                 </div>
