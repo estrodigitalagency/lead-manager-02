@@ -20,60 +20,59 @@ const Settings = () => {
         <h1 className="text-3xl font-bold text-primary">Impostazioni</h1>
       </div>
       
-      <Tabs defaultValue="attribution" className="w-full">
-        <TabsList className={`grid w-full ${isMobile ? 'grid-cols-2' : 'grid-cols-4'} mb-8 border ${isMobile ? 'h-auto' : ''}`}>
-          <TabsTrigger value="database" className={`data-[state=active]:text-primary ${isMobile ? 'text-xs px-2 py-3' : ''}`}>
-            <Database className={`mr-2 ${isMobile ? 'h-3 w-3' : 'h-4 w-4'}`} />
-            {isMobile ? 'DB' : 'Database'}
-          </TabsTrigger>
-          <TabsTrigger value="attribution" className={`data-[state=active]:text-primary ${isMobile ? 'text-xs px-2 py-3' : ''}`}>
-            <Webhook className={`mr-2 ${isMobile ? 'h-3 w-3' : 'h-4 w-4'}`} />
-            {isMobile ? 'Finestre' : 'Finestre di Attribuzione'}
-          </TabsTrigger>
-          {!isMobile && (
-            <>
-              <TabsTrigger value="webhooks" className="data-[state=active]:text-primary">
-                <Webhook className="mr-2 h-4 w-4" />
-                Webhook
-              </TabsTrigger>
-              <TabsTrigger value="salespeople" className="data-[state=active]:text-primary">
-                <Users className="mr-2 h-4 w-4" />
-                Venditori
-              </TabsTrigger>
-            </>
-          )}
-        </TabsList>
-        
-        {isMobile && (
-          <TabsList className="grid w-full grid-cols-2 mb-8 border h-auto">
-            <TabsTrigger value="webhooks" className="data-[state=active]:text-primary text-xs px-2 py-3">
-              <Webhook className="mr-2 h-3 w-3" />
+      <Tabs defaultValue="attribution" className="w-full" orientation={isMobile ? "vertical" : "horizontal"}>
+        <div className={`${isMobile ? 'flex flex-col space-y-4' : 'block'}`}>
+          <TabsList className={`${isMobile ? 'flex flex-col h-auto w-full space-y-1 p-1' : 'grid w-full grid-cols-4'} mb-8 border`}>
+            <TabsTrigger 
+              value="database" 
+              className={`data-[state=active]:text-primary ${isMobile ? 'w-full justify-start text-left px-4 py-3' : ''}`}
+            >
+              <Database className={`mr-2 ${isMobile ? 'h-4 w-4' : 'h-4 w-4'}`} />
+              Database
+            </TabsTrigger>
+            <TabsTrigger 
+              value="attribution" 
+              className={`data-[state=active]:text-primary ${isMobile ? 'w-full justify-start text-left px-4 py-3' : ''}`}
+            >
+              <Webhook className={`mr-2 ${isMobile ? 'h-4 w-4' : 'h-4 w-4'}`} />
+              Finestre di Attribuzione
+            </TabsTrigger>
+            <TabsTrigger 
+              value="webhooks" 
+              className={`data-[state=active]:text-primary ${isMobile ? 'w-full justify-start text-left px-4 py-3' : ''}`}
+            >
+              <Webhook className={`mr-2 ${isMobile ? 'h-4 w-4' : 'h-4 w-4'}`} />
               Webhook
             </TabsTrigger>
-            <TabsTrigger value="salespeople" className="data-[state=active]:text-primary text-xs px-2 py-3">
-              <Users className="mr-2 h-3 w-3" />
+            <TabsTrigger 
+              value="salespeople" 
+              className={`data-[state=active]:text-primary ${isMobile ? 'w-full justify-start text-left px-4 py-3' : ''}`}
+            >
+              <Users className={`mr-2 ${isMobile ? 'h-4 w-4' : 'h-4 w-4'}`} />
               Venditori
             </TabsTrigger>
           </TabsList>
-        )}
-        
-        <TabsContent value="database">
-          <DatabaseSection />
-        </TabsContent>
-        
-        <TabsContent value="attribution">
-          <AttributionWindowSettings />
-        </TabsContent>
-        
-        <TabsContent value="webhooks">
-          <WebhookSettings />
-        </TabsContent>
-        
-        <TabsContent value="salespeople">
-          <Card className="border">
-            <SalespeopleSettings />
-          </Card>
-        </TabsContent>
+          
+          <div className={`${isMobile ? 'flex-1' : ''}`}>
+            <TabsContent value="database">
+              <DatabaseSection />
+            </TabsContent>
+            
+            <TabsContent value="attribution">
+              <AttributionWindowSettings />
+            </TabsContent>
+            
+            <TabsContent value="webhooks">
+              <WebhookSettings />
+            </TabsContent>
+            
+            <TabsContent value="salespeople">
+              <Card className="border">
+                <SalespeopleSettings />
+              </Card>
+            </TabsContent>
+          </div>
+        </div>
       </Tabs>
     </div>
   );
