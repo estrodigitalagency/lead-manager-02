@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -203,11 +202,13 @@ const LeadAssignmentWithExclusions = () => {
       console.log("Using webhook URL:", webhookUrl);
 
       // Get venditore details INCLUDING Google Sheets info
+      // Fix: search by concatenated name and surname
       const { data: venditorData, error: venditorError } = await supabase
         .from('venditori')
         .select('*')
-        .eq('nome', data.venditore)
-        .single();
+        .eq('stato', 'attivo')
+        .ilike('nome', `%${data.venditore.split(' ')[0]}%`)
+        .ilike('cognome', `%${data.venditore.split(' ')[1] || ''}%`);
       
       console.log("Venditore data retrieved:", venditorData);
       
@@ -216,9 +217,22 @@ const LeadAssignmentWithExclusions = () => {
         throw new Error(`Errore venditore: ${venditorError.message}`);
       }
       
-      if (!venditorData) {
-        throw new Error('Venditore non trovato');
+      if (!venditorData || venditorData.length === 0) {
+        throw new Error(`Venditore "${data.venditore}" non trovato nella tabella venditori`);
       }
+
+      // If multiple results, try to find exact match
+      let selectedVenditore = venditorData[0];
+      if (venditorData.length > 1) {
+        const exactMatch = venditorData.find(v => 
+          `${v.nome} ${v.cognome}`.toLowerCase() === data.venditore.toLowerCase()
+        );
+        if (exactMatch) {
+          selectedVenditore = exactMatch;
+        }
+      }
+
+      console.log("Selected venditore:", selectedVenditore);
 
       // Costruisci la query per ottenere i lead assegnabili
       console.log("Costruzione query per lead assegnabili...");
@@ -312,11 +326,11 @@ const LeadAssignmentWithExclusions = () => {
           console.log("Preparazione dati per webhook...");
           const assignmentData = {
             venditore: data.venditore,
-            venditore_cognome: venditorData.cognome || '',
-            venditore_email: venditorData.email || '',
-            venditore_telefono: venditorData.telefono || '',
-            google_sheets_file_id: venditorData.sheets_file_id,
-            google_sheets_tab_name: venditorData.sheets_tab_name,
+            venditore_cognome: selectedVenditore.cognome || '',
+            venditore_email: selectedVenditore.email || '',
+            venditore_telefono: selectedVenditore.telefono || '',
+            google_sheets_file_id: selectedVenditore.sheets_file_id,
+            google_sheets_tab_name: selectedVenditore.sheets_tab_name,
             campagna: data.campagna || '',
             leads: leadsToAssign.map(lead => ({
               id: lead.id,
