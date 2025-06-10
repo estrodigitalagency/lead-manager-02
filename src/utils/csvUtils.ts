@@ -1,3 +1,4 @@
+
 interface CSVParsingResult {
   headers: string[];
   records: Record<string, string>[];
@@ -8,20 +9,55 @@ function parseItalianDate(dateString: string): string {
     return new Date().toISOString();
   }
   
-  // Gestisce formato DD/MM/YYYY HH.mm o DD/MM/YYYY HH:mm
+  console.log('Parsing date string:', dateString);
+  
+  // Gestisce formato DD/MM/YYYY HH.mm o DD/MM/YYYY HH:mm o DD/MM/YYYY H.mm
   const dateRegex = /^(\d{1,2})\/(\d{1,2})\/(\d{4})\s*(\d{1,2})[.:](\d{1,2})$/;
   const match = dateString.trim().match(dateRegex);
   
   if (match) {
     const [, day, month, year, hour, minute] = match;
-    // Crea la data in formato ISO (YYYY-MM-DDTHH:mm:ss.sssZ)
+    console.log('Parsed components:', { day, month, year, hour, minute });
+    
+    // Crea la data specificando esplicitamente i valori per evitare problemi di timezone
+    // Formato italiano: DD/MM/YYYY quindi day è il primo, month è il secondo
     const isoDate = new Date(
       parseInt(year),
       parseInt(month) - 1, // I mesi in JS vanno da 0 a 11
       parseInt(day),
       parseInt(hour),
-      parseInt(minute)
+      parseInt(minute),
+      0, // secondi
+      0  // millisecondi
     );
+    
+    console.log('Created date object:', isoDate);
+    console.log('ISO string:', isoDate.toISOString());
+    
+    if (!isNaN(isoDate.getTime())) {
+      return isoDate.toISOString();
+    }
+  }
+  
+  // Prova anche formato senza orario DD/MM/YYYY
+  const dateOnlyRegex = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/;
+  const dateOnlyMatch = dateString.trim().match(dateOnlyRegex);
+  
+  if (dateOnlyMatch) {
+    const [, day, month, year] = dateOnlyMatch;
+    console.log('Parsed date-only components:', { day, month, year });
+    
+    const isoDate = new Date(
+      parseInt(year),
+      parseInt(month) - 1,
+      parseInt(day),
+      0, // ore
+      0, // minuti
+      0, // secondi
+      0  // millisecondi
+    );
+    
+    console.log('Created date-only object:', isoDate);
     
     if (!isNaN(isoDate.getTime())) {
       return isoDate.toISOString();
