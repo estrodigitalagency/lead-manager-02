@@ -65,23 +65,24 @@ serve(async (req) => {
       )
     }
     
-    // Get all bookings at once to create a lookup map
-    const emails = allLeads.map(lead => lead.email).filter(email => email)
-    const phones = allLeads.map(lead => lead.telefono).filter(phone => phone)
-    
+    // Get all bookings at once to create a lookup map - CORREZIONE: uso OR multipli
     const { data: allBookings, error: bookingsError } = await supabase
       .from('booked_call')
       .select('email, telefono')
-      .or(`email.in.(${emails.join(',')}),telefono.in.(${phones.join(',')})`)
     
     if (bookingsError) {
       console.error('Error fetching bookings:', bookingsError)
       // Continue without bookings data rather than failing
     }
     
+    console.log(`Found ${allBookings?.length || 0} bookings in database`)
+    
     // Create lookup sets for faster checking
-    const bookedEmails = new Set((allBookings || []).map(b => b.email).filter(e => e))
-    const bookedPhones = new Set((allBookings || []).map(b => b.telefono).filter(p => p))
+    const bookedEmails = new Set((allBookings || []).map(b => b.email).filter(e => e && e.trim() !== ''))
+    const bookedPhones = new Set((allBookings || []).map(b => b.telefono).filter(p => p && p.trim() !== ''))
+    
+    console.log(`Booked emails: ${Array.from(bookedEmails).join(', ')}`)
+    console.log(`Booked phones: ${Array.from(bookedPhones).join(', ')}`)
     
     // Process leads in batches
     const batchSize = 100
@@ -92,11 +93,26 @@ serve(async (req) => {
       const updates: Array<{ id: string, updates: Record<string, any> }> = []
       
       for (const lead of batch) {
-        const hasBooking = (lead.email && bookedEmails.has(lead.email)) || 
-                          (lead.telefono && bookedPhones.has(lead.telefono))
+        // CONTROLLO MIGLIORATO PER LE PRENOTAZIONI
+        const emailHasBooking = lead.email && lead.email.trim() !== '' && bookedEmails.has(lead.email.trim())
+        const phoneHasBooking = lead.telefono && lead.telefono.trim() !== '' && bookedPhones.has(lead.telefono.trim())
+        const hasBooking = emailHasBooking || phoneHasBooking
         
         const createdDate = new Date(lead.created_at)
         const enoughDaysPassed = createdDate <= new Date(assignableCutoffISODate)
+        
+        // Debug per lead specifico
+        if (lead.email === 'dora.were1969@gmail.com') {
+          console.log(`DEBUG lead dora.were1969@gmail.com:`)
+          console.log(`- Email: ${lead.email}`)
+          console.log(`- Telefono: ${lead.telefono}`)
+          console.log(`- emailHasBooking: ${emailHasBooking}`)
+          console.log(`- phoneHasBooking: ${phoneHasBooking}`)
+          console.log(`- hasBooking: ${hasBooking}`)
+          console.log(`- enoughDaysPassed: ${enoughDaysPassed}`)
+          console.log(`- booked_call attuale: ${lead.booked_call}`)
+          console.log(`- assignable attuale: ${lead.assignable}`)
+        }
         
         let needsUpdate = false
         const updateObj: Record<string, any> = {}
@@ -120,16 +136,17 @@ serve(async (req) => {
           }
         }
         
-        // Aggiorna assignable status in base alle condizioni corrette
+        // Aggiorna assignable status - SEMPRE in base alle condizioni corrette
         if (lead.assignable !== shouldBeAssignable) {
           updateObj.assignable = shouldBeAssignable
           needsUpdate = true
         }
         
-        // Se ha una call prenotata, deve essere NON assegnabile
-        if (hasBooking && lead.assignable !== false) {
-          updateObj.assignable = false
-          needsUpdate = true
+        // Debug finale per lead specifico
+        if (lead.email === 'dora.were1969@gmail.com') {
+          console.log(`- shouldBeAssignable: ${shouldBeAssignable}`)
+          console.log(`- needsUpdate: ${needsUpdate}`)
+          console.log(`- updateObj:`, updateObj)
         }
         
         if (needsUpdate) {
@@ -166,7 +183,7 @@ serve(async (req) => {
       }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 200 
+        status: 200
       }
     )
   } catch (error) {
