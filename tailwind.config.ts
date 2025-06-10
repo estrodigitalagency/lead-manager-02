@@ -63,46 +63,54 @@ export default {
 					border: 'hsl(var(--sidebar-border))',
 					ring: 'hsl(var(--sidebar-ring))'
 				},
-				// Nuovi colori ispirati alle referenze
-				'soft-purple': 'rgb(var(--soft-purple))',
-				'soft-peach': 'rgb(var(--soft-peach))',
-				'soft-blue': 'rgb(var(--soft-blue))',
-				'modern-purple': {
-					50: '#f4f3ff',
-					100: '#ebe9fe',
-					200: '#d9d6fe',
-					300: '#bfb8fc',
-					400: '#9f90f8',
-					500: '#7c5dfa', // Colore principale
-					600: '#6d47f0',
-					700: '#5d38dc',
-					800: '#4e30b8',
-					900: '#412a96',
+				// Colori moderni dalle referenze
+				'modern-blue': {
+					50: '#eff6ff',
+					100: '#dbeafe',
+					200: '#bfdbfe',
+					300: '#93c5fd',
+					400: '#60a5fa',
+					500: '#3b82f6',
+					600: '#2563eb', // Colore principale delle referenze
+					700: '#1d4ed8',
+					800: '#1e40af',
+					900: '#1e3a8a',
 				},
-				'modern-peach': {
-					50: '#fff7ed',
-					100: '#ffedd5',
-					200: '#fed7aa',
-					300: '#fdba74',
-					400: '#fb923c', // Colore principale
-					500: '#f97316',
-					600: '#ea580c',
-					700: '#c2410c',
-					800: '#9a3412',
-					900: '#7c2d12',
+				'modern-purple': {
+					50: '#faf5ff',
+					100: '#f3e8ff',
+					200: '#e9d5ff',
+					300: '#d8b4fe',
+					400: '#c084fc',
+					500: '#a855f7',
+					600: '#9333ea', // Viola delle referenze
+					700: '#7c3aed',
+					800: '#6b21a8',
+					900: '#581c87',
+				},
+				'modern-yellow': {
+					50: '#fffbeb',
+					100: '#fef3c7',
+					200: '#fde68a',
+					300: '#fcd34d',
+					400: '#fbbf24',
+					500: '#f59e0b',
+					600: '#d97706', // Giallo/oro delle referenze
+					700: '#b45309',
+					800: '#92400e',
+					900: '#78350f',
 				}
 			},
 			borderRadius: {
 				lg: 'var(--radius)',
 				md: 'calc(var(--radius) - 2px)',
 				sm: 'calc(var(--radius) - 4px)',
-				'xl': '1rem',
-				'2xl': '1.5rem',
-				'3xl': '2rem'
+				'xl': '0.75rem',
+				'2xl': '1rem',
+				'3xl': '1.5rem'
 			},
 			fontFamily: {
-				'poppins': ['Poppins', 'sans-serif'],
-				'inter': ['Inter', 'sans-serif'],
+				'inter': ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
 			},
 			keyframes: {
 				'accordion-down': {
@@ -129,14 +137,6 @@ export default {
 						transform: 'translateY(-10px)'
 					}
 				},
-				'pulse-soft': {
-					'0%, 100%': {
-						opacity: '1'
-					},
-					'50%': {
-						opacity: '0.8'
-					}
-				},
 				'slide-up': {
 					'0%': {
 						transform: 'translateY(20px)',
@@ -146,25 +146,38 @@ export default {
 						transform: 'translateY(0)',
 						opacity: '1'
 					}
+				},
+				'fade-in': {
+					'0%': {
+						opacity: '0'
+					},
+					'100%': {
+						opacity: '1'
+					}
 				}
 			},
 			animation: {
 				'accordion-down': 'accordion-down 0.2s ease-out',
 				'accordion-up': 'accordion-up 0.2s ease-out',
-				'float': 'float 6s ease-in-out infinite',
-				'pulse-soft': 'pulse-soft 2s ease-in-out infinite',
-				'slide-up': 'slide-up 0.3s ease-out'
+				'float': 'float 3s ease-in-out infinite',
+				'slide-up': 'slide-up 0.3s ease-out',
+				'fade-in': 'fade-in 0.3s ease-out'
 			},
 			backgroundImage: {
 				'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
 				'gradient-conic': 'conic-gradient(from 180deg at 50% 50%, var(--tw-gradient-stops))',
-				'modern-gradient': 'linear-gradient(135deg, rgb(124, 93, 250) 0%, rgb(251, 146, 60) 100%)',
-				'soft-gradient': 'linear-gradient(135deg, rgb(248, 249, 252) 0%, rgb(243, 244, 254) 100%)'
+				'modern-gradient': 'linear-gradient(135deg, rgb(99, 102, 241) 0%, rgb(147, 51, 234) 100%)',
+				'card-gradient': 'linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0.8) 100%)'
 			},
 			boxShadow: {
-				'soft': '0 4px 6px -1px rgba(124, 93, 250, 0.1), 0 2px 4px -1px rgba(124, 93, 250, 0.06)',
-				'modern': '0 25px 50px -12px rgba(124, 93, 250, 0.25)',
-				'card': '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)'
+				'modern': '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+				'card': '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)',
+				'button': '0 4px 14px 0 rgba(99, 102, 241, 0.3)',
+				'accent': '0 4px 14px 0 rgba(255, 193, 7, 0.3)'
+			},
+			spacing: {
+				'18': '4.5rem',
+				'88': '22rem',
 			}
 		}
 	},

@@ -1,71 +1,66 @@
 
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@400;500;600;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap");
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
   :root {
-    --background: 248 249 252; /* Sfondo molto chiaro come nelle referenze */
-    --foreground: 30 33 47; /* Testo scuro */
-    --card: 255 255 255; /* Bianco puro per le card */
-    --card-foreground: 30 33 47;
+    /* Colori moderni basati sulle referenze */
+    --background: 248 250 252; /* Grigio molto chiaro */
+    --foreground: 15 23 42; /* Quasi nero per testo principale */
+    --card: 255 255 255; /* Bianco puro */
+    --card-foreground: 15 23 42;
     --popover: 255 255 255;
-    --popover-foreground: 30 33 47;
-    --primary: 124 93 250; /* Viola principale dalle referenze */
+    --popover-foreground: 15 23 42;
+    --primary: 99 102 241; /* Blu moderno delle referenze */
     --primary-foreground: 255 255 255;
-    --secondary: 243 244 254; /* Viola molto chiaro */
-    --secondary-foreground: 30 33 47;
-    --muted: 241 243 250; /* Grigio chiaro */
+    --secondary: 241 245 249; /* Grigio chiarissimo */
+    --secondary-foreground: 51 65 85;
+    --muted: 248 250 252;
     --muted-foreground: 100 116 139;
-    --accent: 251 146 60; /* Arancione pesca dalle referenze */
-    --accent-foreground: 255 255 255;
+    --accent: 255 193 7; /* Giallo/oro delle referenze */
+    --accent-foreground: 15 23 42;
     --destructive: 239 68 68;
     --destructive-foreground: 255 255 255;
-    --border: 229 231 235; /* Border sottili */
+    --border: 226 232 240; /* Border sottili */
     --input: 255 255 255;
-    --ring: 124 93 250;
-    --chart-1: 124 93 250;
-    --chart-2: 251 146 60;
-    --chart-3: 16 185 129;
-    --chart-4: 245 158 11;
+    --ring: 99 102 241;
+    --chart-1: 99 102 241;
+    --chart-2: 255 193 7;
+    --chart-3: 34 197 94;
+    --chart-4: 249 115 22;
     --chart-5: 239 68 68;
-    --radius: 1rem; /* Border radius più generoso */
+    --radius: 1rem;
     
-    /* Nuovi colori ispirati alle referenze */
-    --soft-purple: 226 232 255; /* Viola pastello */
-    --soft-peach: 255 237 213; /* Pesca pastello */
-    --soft-blue: 219 234 254; /* Blu pastello */
-    --gradient-purple: 139 92 246;
-    --gradient-pink: 236 72 153;
-    --gradient-orange: 251 146 60;
+    /* Colori aggiuntivi dalle referenze */
+    --purple-gradient-start: 124 58 237;
+    --purple-gradient-end: 147 51 234;
+    --success: 34 197 94;
+    --warning: 245 158 11;
+    --info: 59 130 246;
   }
 
   .dark {
-    --background: 248 249 252;
-    --foreground: 30 33 47;
-    --card: 255 255 255;
-    --card-foreground: 30 33 47;
-    --popover: 255 255 255;
-    --popover-foreground: 30 33 47;
-    --primary: 124 93 250;
+    --background: 2 6 23;
+    --foreground: 248 250 252;
+    --card: 15 23 42;
+    --card-foreground: 248 250 252;
+    --popover: 15 23 42;
+    --popover-foreground: 248 250 252;
+    --primary: 99 102 241;
     --primary-foreground: 255 255 255;
-    --secondary: 243 244 254;
-    --secondary-foreground: 30 33 47;
-    --muted: 241 243 250;
-    --muted-foreground: 100 116 139;
-    --accent: 251 146 60;
-    --accent-foreground: 255 255 255;
-    --destructive: 239 68 68;
-    --destructive-foreground: 255 255 255;
-    --border: 229 231 235;
-    --input: 255 255 255;
-    --ring: 124 93 250;
-    --chart-1: 124 93 250;
-    --chart-2: 251 146 60;
-    --chart-3: 16 185 129;
-    --chart-4: 245 158 11;
-    --chart-5: 239 68 68;
+    --secondary: 30 41 59;
+    --secondary-foreground: 226 232 240;
+    --muted: 30 41 59;
+    --muted-foreground: 148 163 184;
+    --accent: 255 193 7;
+    --accent-foreground: 15 23 42;
+    --destructive: 220 38 38;
+    --destructive-foreground: 248 250 252;
+    --border: 30 41 59;
+    --input: 30 41 59;
+    --ring: 99 102 241;
   }
 }
 
@@ -73,94 +68,141 @@
   * {
     @apply border-border;
   }
+  
   body {
-    @apply bg-background text-foreground;
-    font-family: "Poppins", "Inter", sans-serif;
-    position: relative;
-    overflow-x: hidden;
-    background: linear-gradient(135deg, rgb(248, 249, 252) 0%, rgb(243, 244, 254) 100%);
-    min-height: 100vh;
+    @apply bg-background text-foreground antialiased;
+    font-family: "Inter", system-ui, -apple-system, sans-serif;
+    line-height: 1.6;
   }
   
   html, body {
     height: 100%;
-    overflow-x: hidden;
-  }
-  
-  .mobile-scroll-fix {
-    -webkit-overflow-scrolling: touch;
-    overflow-y: auto;
-  }
-  
-  body.nav-open {
-    overflow: hidden;
-    position: fixed;
-    width: 100%;
+    scroll-behavior: smooth;
   }
 }
 
 @layer components {
+  /* Card moderne come nelle referenze */
+  .modern-card {
+    @apply bg-white rounded-2xl shadow-sm border border-slate-100 p-6;
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+  }
+  
   .glass-card {
-    @apply bg-white/90 backdrop-blur-xl border border-white/20 shadow-2xl;
-    border-radius: 1.5rem;
-    box-shadow: 
-      0 25px 50px -12px rgba(124, 93, 250, 0.15),
-      0 0 0 1px rgba(255, 255, 255, 0.8);
+    @apply bg-white/80 backdrop-blur-xl rounded-2xl border border-white/20;
+    box-shadow: 0 8px 32px 0 rgba(99, 102, 241, 0.1);
   }
   
-  .soft-card {
-    @apply bg-white border-0 shadow-lg;
-    border-radius: 1.5rem;
-    box-shadow: 
-      0 20px 25px -5px rgba(0, 0, 0, 0.06),
-      0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  /* Buttons moderni */
+  .btn-primary {
+    @apply bg-primary text-white font-medium px-6 py-3 rounded-xl transition-all duration-200 hover:scale-[1.02] hover:shadow-lg;
+    box-shadow: 0 4px 14px 0 rgba(99, 102, 241, 0.3);
   }
   
-  .gradient-text {
-    background: linear-gradient(135deg, rgb(124, 93, 250) 0%, rgb(251, 146, 60) 100%);
-    @apply bg-clip-text text-transparent;
+  .btn-secondary {
+    @apply bg-slate-100 text-slate-700 font-medium px-6 py-3 rounded-xl transition-all duration-200 hover:bg-slate-200;
   }
   
-  .btn-modern {
-    @apply bg-gradient-to-r from-primary to-accent text-white font-medium px-6 py-3 transition-all duration-300 hover:scale-105 hover:shadow-xl;
-    border-radius: 1rem;
-    box-shadow: 0 10px 25px -5px rgba(124, 93, 250, 0.4);
+  .btn-accent {
+    @apply bg-accent text-accent-foreground font-medium px-6 py-3 rounded-xl transition-all duration-200 hover:scale-[1.02];
+    box-shadow: 0 4px 14px 0 rgba(255, 193, 7, 0.3);
   }
   
-  .btn-soft {
-    @apply bg-white text-primary font-medium px-6 py-3 border border-primary/20 transition-all duration-300 hover:bg-primary hover:text-white hover:scale-105;
-    border-radius: 1rem;
-    box-shadow: 0 4px 15px -3px rgba(124, 93, 250, 0.1);
+  /* Gradient moderni dalle referenze */
+  .gradient-purple {
+    background: linear-gradient(135deg, rgb(124, 58, 237) 0%, rgb(147, 51, 234) 100%);
   }
   
-  .purple-gradient {
-    background: linear-gradient(135deg, rgb(124, 93, 250) 0%, rgb(139, 92, 246) 100%);
+  .gradient-blue {
+    background: linear-gradient(135deg, rgb(59, 130, 246) 0%, rgb(99, 102, 241) 100%);
   }
   
-  .peach-gradient {
-    background: linear-gradient(135deg, rgb(251, 146, 60) 0%, rgb(255, 154, 0) 100%);
+  /* Typography moderna */
+  .heading-1 {
+    @apply text-4xl font-bold text-slate-900 leading-tight;
   }
   
-  .soft-purple-bg {
-    background-color: rgb(226, 232, 255);
+  .heading-2 {
+    @apply text-3xl font-semibold text-slate-900 leading-tight;
   }
   
-  .soft-peach-bg {
-    background-color: rgb(255, 237, 213);
+  .heading-3 {
+    @apply text-2xl font-semibold text-slate-800 leading-tight;
   }
   
-  .soft-blue-bg {
-    background-color: rgb(219, 234, 254);
+  .body-large {
+    @apply text-lg text-slate-600 leading-relaxed;
+  }
+  
+  .body-medium {
+    @apply text-base text-slate-600 leading-relaxed;
+  }
+  
+  .body-small {
+    @apply text-sm text-slate-500;
+  }
+  
+  /* Stats cards come nelle referenze */
+  .stat-card {
+    @apply modern-card flex flex-col items-center justify-center text-center min-h-[120px];
+  }
+  
+  .stat-number {
+    @apply text-3xl font-bold text-slate-900 mb-1;
+  }
+  
+  .stat-label {
+    @apply text-sm font-medium text-slate-500 uppercase tracking-wide;
+  }
+  
+  /* Navigation moderna */
+  .nav-item {
+    @apply px-4 py-2 rounded-lg font-medium transition-all duration-200 hover:bg-slate-100 text-slate-700;
+  }
+  
+  .nav-item.active {
+    @apply bg-primary text-white shadow-lg;
+  }
+  
+  /* Input moderni */
+  .input-modern {
+    @apply w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-primary focus:ring-4 focus:ring-primary/20 transition-all duration-200 bg-white;
+  }
+  
+  /* Badges come nelle referenze */
+  .badge-primary {
+    @apply inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-primary/10 text-primary;
+  }
+  
+  .badge-success {
+    @apply inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-700;
+  }
+  
+  .badge-warning {
+    @apply inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-amber-100 text-amber-700;
+  }
+  
+  .badge-info {
+    @apply inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-700;
   }
 }
 
 @layer utilities {
-  .animate-float {
-    animation: float 6s ease-in-out infinite;
+  .text-gradient {
+    background: linear-gradient(135deg, rgb(99, 102, 241) 0%, rgb(147, 51, 234) 100%);
+    @apply bg-clip-text text-transparent;
   }
   
-  .animate-pulse-soft {
-    animation: pulse-soft 2s ease-in-out infinite;
+  .shadow-modern {
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  }
+  
+  .shadow-card {
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+  }
+  
+  .animate-float {
+    animation: float 3s ease-in-out infinite;
   }
   
   @keyframes float {
@@ -170,18 +212,5 @@
     50% {
       transform: translateY(-10px);
     }
-  }
-  
-  @keyframes pulse-soft {
-    0%, 100% {
-      opacity: 1;
-    }
-    50% {
-      opacity: 0.8;
-    }
-  }
-  
-  .text-shadow-sm {
-    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
   }
 }
