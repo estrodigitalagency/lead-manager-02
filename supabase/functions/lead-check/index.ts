@@ -38,7 +38,7 @@ serve(async (req) => {
       
     const daysBeforeAssignable = daysBeforeAssignableSettings?.value ? parseInt(daysBeforeAssignableSettings.value) : 7
     
-    console.log(`Starting optimized lead check with attribution window of ${attributionWindow} days and ${daysBeforeAssignable} days before assignable`)
+    console.log(`Starting lead check with attribution window of ${attributionWindow} days and ${daysBeforeAssignable} days before assignable`)
     
     // Calculate the cutoff date for assignability based on days_before_assignable
     const assignableCutoffDate = new Date()
@@ -101,27 +101,35 @@ serve(async (req) => {
         let needsUpdate = false
         const updateObj: Record<string, any> = {}
         
+        // CONDIZIONI DI ASSEGNABILITÀ CORRETTE:
+        // 1. Devono essere passati abbastanza giorni (>= daysBeforeAssignable)
+        // 2. Il lead NON deve avere una call prenotata
+        const shouldBeAssignable = enoughDaysPassed && !hasBooking
+        
+        // Aggiorna booked_call status
         if (hasBooking) {
-          // Lead has booking - mark as booked and not assignable
-          if (lead.booked_call !== 'SI' || lead.assignable !== false) {
+          if (lead.booked_call !== 'SI') {
             updateObj.booked_call = 'SI'
-            updateObj.assignable = false
             updateObj.stato = 'prenotato'
             needsUpdate = true
           }
         } else {
-          // No booking - update booked_call to NO if needed and check assignability
           if (lead.booked_call === 'SI') {
             updateObj.booked_call = 'NO'
             needsUpdate = true
           }
-          
-          const shouldBeAssignable = (lead.booked_call === 'NO' || updateObj.booked_call === 'NO') && enoughDaysPassed
-          
-          if (lead.assignable !== shouldBeAssignable) {
-            updateObj.assignable = shouldBeAssignable
-            needsUpdate = true
-          }
+        }
+        
+        // Aggiorna assignable status in base alle condizioni corrette
+        if (lead.assignable !== shouldBeAssignable) {
+          updateObj.assignable = shouldBeAssignable
+          needsUpdate = true
+        }
+        
+        // Se ha una call prenotata, deve essere NON assegnabile
+        if (hasBooking && lead.assignable !== false) {
+          updateObj.assignable = false
+          needsUpdate = true
         }
         
         if (needsUpdate) {
@@ -148,7 +156,7 @@ serve(async (req) => {
       console.log(`Processed batch ${Math.floor(i/batchSize) + 1}/${Math.ceil(allLeads.length/batchSize)}`)
     }
     
-    console.log(`Optimized lead check completed. Updated ${totalUpdatedLeads} leads out of ${allLeads.length} checked.`)
+    console.log(`Lead check completed. Updated ${totalUpdatedLeads} leads out of ${allLeads.length} checked.`)
     
     return new Response(
       JSON.stringify({ 
