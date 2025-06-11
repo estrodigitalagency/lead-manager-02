@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Trash2, Phone, Mail, Calendar, User } from "lucide-react";
 import { Lead } from "@/types/lead";
+import FonteDisplay from "./FonteDisplay";
 
 interface MobileLeadsTableProps {
   leads: Lead[];
@@ -129,24 +130,14 @@ const MobileLeadsTable = ({
               </div>
 
               {lead.fonte && (
-                <div className="flex flex-wrap gap-1 mt-2">
-                  {lead.fonte.split(',').map((fonte, index) => (
-                    <Badge key={index} variant="outline" className="text-xs">
-                      {fonte.trim()}
-                    </Badge>
-                  ))}
+                <div className="mt-2">
+                  <FonteDisplay fonte={lead.fonte} />
                 </div>
               )}
 
               {lead.venditore && (
                 <div className="text-xs text-muted-foreground mt-2">
                   Venditore: {lead.venditore}
-                </div>
-              )}
-
-              {lead.note && (
-                <div className="text-xs text-muted-foreground mt-2 line-clamp-2">
-                  Note: {lead.note}
                 </div>
               )}
             </div>
