@@ -58,7 +58,7 @@ export function AssignmentForm({
         <Label htmlFor="campagna" className="text-sm font-medium">Campagna</Label>
         <Select value={campagna} onValueChange={setCampagna}>
           <SelectTrigger className="w-full">
-            <SelectValue placeholder="Seleziona o digita una nuova campagna" />
+            <SelectValue placeholder="Seleziona una campagna" />
           </SelectTrigger>
           <SelectContent className={`${isMobile ? 'max-h-[200px]' : ''} bg-background border border-border`} position="popper">
             {campagne.map((camp) => (
@@ -72,12 +72,6 @@ export function AssignmentForm({
             ))}
           </SelectContent>
         </Select>
-        <Input
-          className="w-full mt-2"
-          value={campagna}
-          onChange={(e) => setCampagna(e.target.value)}
-          placeholder="O digita una nuova campagna"
-        />
       </div>
     );
   }

@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -16,7 +15,7 @@ export async function assignLeadsWithExclusions(data: LeadAssignmentData) {
     console.log(`Attempting to assign ${numLead} leads to ${venditore}`);
     console.log('Excluded sources:', excludedSources);
 
-    // QUERY CRITICA: Escludere SEMPRE lead con call prenotate
+    // QUERY CRITICA: Escludere SEMPRE lead con call prenotate e ordinare dal più vecchio al più nuovo
     let query = supabase
       .from('lead_generation')
       .select('id, nome, cognome, email, telefono, fonte, created_at')
@@ -31,9 +30,9 @@ export async function assignLeadsWithExclusions(data: LeadAssignmentData) {
       });
     }
 
-    // Get available leads
+    // Get available leads - ORDINAMENTO DAL PIÙ VECCHIO AL PIÙ NUOVO
     const { data: availableLeads, error: fetchError } = await query
-      .order('created_at', { ascending: true })
+      .order('created_at', { ascending: true }) // Dal più vecchio al più nuovo
       .limit(numLead);
 
     if (fetchError) {
@@ -52,7 +51,7 @@ export async function assignLeadsWithExclusions(data: LeadAssignmentData) {
     const actualAssignedCount = availableLeads.length;
     const leadIds = availableLeads.map(lead => lead.id);
 
-    console.log(`Assigning ${actualAssignedCount} leads:`, leadIds);
+    console.log(`Assigning ${actualAssignedCount} leads (from oldest to newest):`, leadIds);
 
     // Update the leads with the assigned salesperson and set stato to 'assegnato'
     const { error: updateError } = await supabase
@@ -174,7 +173,7 @@ export async function assignLeadsWithExclusions(data: LeadAssignmentData) {
       }
     }
 
-    console.log(`Successfully assigned ${actualAssignedCount} leads to ${venditore}`);
+    console.log(`Successfully assigned ${actualAssignedCount} leads to ${venditore} (from oldest to newest)`);
     return { assignedCount: actualAssignedCount, leads: availableLeads };
 
   } catch (error) {
