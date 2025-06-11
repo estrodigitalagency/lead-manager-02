@@ -117,9 +117,9 @@ serve(async (req) => {
           }
         }
         
-        // Debug per lead specifici
-        if (lead.email === 'dora.were1969@gmail.com' || lead.email === 'vero.marigo@gmail.com') {
-          console.log(`DEBUG lead ${lead.email}:`)
+        // Debug per lead specifici problematici
+        if (lead.email === 'morenapitari@libero.it' || lead.email === 'inspiration.aerial@gmail.com') {
+          console.log(`DEBUG LEAD PROBLEMATICO ${lead.email}:`)
           console.log(`- Lead created: ${lead.created_at}`)
           console.log(`- Email: ${lead.email}`)
           console.log(`- Telefono: ${lead.telefono}`)
@@ -132,34 +132,35 @@ serve(async (req) => {
         let needsUpdate = false
         const updateObj: Record<string, any> = {}
         
-        // CONDIZIONI DI ASSEGNABILITÀ CORRETTE:
-        // 1. Devono essere passati abbastanza giorni (>= daysBeforeAssignable)
-        // 2. Il lead NON deve avere una call prenotata nell'intervallo di attribuzione
-        const shouldBeAssignable = enoughDaysPassed && !hasBookingInWindow
-        
-        // Aggiorna booked_call status basato su prenotazioni nell'intervallo
+        // LOGICA CORRETTA: Se il lead ha una call prenotata, NON deve essere assegnabile
+        // INDIPENDENTEMENTE da quando è passato tempo
         if (hasBookingInWindow) {
+          // Lead con call prenotata: deve avere booked_call = 'SI' e assignable = false
           if (lead.booked_call !== 'SI') {
             updateObj.booked_call = 'SI'
-            updateObj.stato = 'prenotato'
             needsUpdate = true
           }
+          if (lead.assignable !== false) {
+            updateObj.assignable = false
+            needsUpdate = true
+          }
+          updateObj.stato = 'prenotato'
         } else {
+          // Lead senza call prenotata: può essere assegnabile solo se è passato abbastanza tempo
           if (lead.booked_call === 'SI') {
             updateObj.booked_call = 'NO'
             needsUpdate = true
           }
-        }
-        
-        // Aggiorna assignable status
-        if (lead.assignable !== shouldBeAssignable) {
-          updateObj.assignable = shouldBeAssignable
-          needsUpdate = true
+          
+          const shouldBeAssignable = enoughDaysPassed
+          if (lead.assignable !== shouldBeAssignable) {
+            updateObj.assignable = shouldBeAssignable
+            needsUpdate = true
+          }
         }
         
         // Debug finale per lead specifici
-        if (lead.email === 'dora.were1969@gmail.com' || lead.email === 'vero.marigo@gmail.com') {
-          console.log(`- shouldBeAssignable: ${shouldBeAssignable}`)
+        if (lead.email === 'morenapitari@libero.it' || lead.email === 'inspiration.aerial@gmail.com') {
           console.log(`- needsUpdate: ${needsUpdate}`)
           console.log(`- updateObj:`, updateObj)
         }
