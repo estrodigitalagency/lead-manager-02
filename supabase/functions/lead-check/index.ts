@@ -109,7 +109,7 @@ serve(async (req) => {
         const createdDate = new Date(lead.created_at)
         const enoughDaysPassed = createdDate <= new Date(assignableCutoffISODate)
         
-        // MATCHING PIÙ PRECISO: Check if this lead has a booking within the attribution window
+        // MATCHING SEMPLIFICATO: Check if this lead has a booking within the attribution window
         let hasBookingInWindow = false
         
         if (allBookings) {
@@ -117,14 +117,14 @@ serve(async (req) => {
             const bookingCreatedDate = new Date(booking.created_at)
             const leadCreatedDate = new Date(lead.created_at)
             
-            // MATCHING RIGOROSO: Email E telefono devono corrispondere esattamente E booking dopo lead
+            // MATCHING SEMPLIFICATO: Email OR telefono devono corrispondere E booking creato dopo lead
             const emailMatch = lead.email && booking.email && 
                               lead.email.trim().toLowerCase() === booking.email.trim().toLowerCase()
             const phoneMatch = lead.telefono && booking.telefono && 
                               lead.telefono.trim().replace(/\s+/g, '') === booking.telefono.trim().replace(/\s+/g, '')
             
-            // CONDIZIONE RIGOROSA: Sia email che telefono devono corrispondere (non OR ma AND) E booking creato dopo lead
-            if (emailMatch && phoneMatch && bookingCreatedDate >= leadCreatedDate) {
+            // CONDIZIONE SEMPLIFICATA: Email OR telefono devono corrispondere E booking creato dopo lead
+            if ((emailMatch || phoneMatch) && bookingCreatedDate >= leadCreatedDate) {
               hasBookingInWindow = true
               console.log(`MATCH TROVATO per lead ${lead.id}: email=${lead.email}, telefono=${lead.telefono}`)
               break
