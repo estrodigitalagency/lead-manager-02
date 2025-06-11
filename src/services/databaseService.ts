@@ -23,13 +23,13 @@ export async function getRecentData(tableName: ValidTableName, limit: number = 1
 
 export async function getUnassignedLeads(): Promise<Lead[]> {
   try {
-    // QUERY CRITICA: Escludere SEMPRE lead con call prenotate
+    // QUERY CRITICA: Escludere SEMPRE lead con call prenotate (booked_call = 'SI')
     const { data, error } = await supabase
       .from('lead_generation')
       .select('*')
       .eq('assignable', true)
       .is('venditore', null)
-      .neq('booked_call', 'SI') // CRITICO: Non mostrare lead con call prenotate
+      .eq('booked_call', 'NO') // CRITICO: Solo lead senza call prenotate
       .order('created_at', { ascending: false })
       .limit(500);
     
@@ -180,7 +180,7 @@ export async function getLeadsStats() {
       supabase.from('lead_generation').select('id', { count: 'exact', head: true })
         .eq('assignable', true)
         .is('venditore', null)
-        .neq('booked_call', 'SI'), // CRITICO: Escludere lead con call prenotate
+        .eq('booked_call', 'NO'), // CRITICO: Solo lead senza call prenotate
       supabase.from('lead_generation').select('id', { count: 'exact', head: true })
         .not('venditore', 'is', null),
       supabase.from('booked_call').select('id', { count: 'exact', head: true })
@@ -242,13 +242,13 @@ export async function markLeadsAsAssigned(
   webhookUrl?: string
 ) {
   try {
-    // Get available leads
+    // Get available leads - CRITICO: Solo lead senza call prenotate
     const { data: availableLeads, error: fetchError } = await supabase
       .from('lead_generation')
       .select('*')
       .eq('assignable', true)
       .is('venditore', null)
-      .neq('booked_call', 'SI') // CRITICO: Escludere lead con call prenotate
+      .eq('booked_call', 'NO') // CRITICO: Solo lead senza call prenotate
       .order('created_at', { ascending: true })
       .limit(numLead);
 

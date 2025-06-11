@@ -64,35 +64,46 @@ serve(async (req) => {
     
     console.log(`Attribution window: ${attributionWindow} days, cutoff date: ${attributionWindowISODate}`)
     
-    // Update corresponding leads if they exist and are within attribution window
-    // IMPORTANTE: Usare query corrette per evitare errori di sintassi
+    // LOGICA CORRETTA: Update corresponding leads if they exist and are within attribution window
     if (payload.email || payload.telefono) {
-      let updateQuery = supabase
+      let query = supabase
         .from('lead_generation')
-        .update({ 
-          booked_call: 'SI',
-          assignable: false,  // CRITICO: Lead con call prenotate NON sono assegnabili
-          stato: 'prenotato'
-        })
+        .select('id, email, telefono, created_at')
         .gte('created_at', attributionWindowISODate)
 
-      // Applica filtri per email o telefono in modo corretto
+      // Apply filters for email or telefono
       if (payload.email && payload.telefono) {
-        updateQuery = updateQuery.or(`email.eq.${payload.email},telefono.eq.${payload.telefono}`)
+        query = query.or(`email.eq.${payload.email},telefono.eq.${payload.telefono}`)
       } else if (payload.email) {
-        updateQuery = updateQuery.eq('email', payload.email)
+        query = query.eq('email', payload.email)
       } else if (payload.telefono) {
-        updateQuery = updateQuery.eq('telefono', payload.telefono)
+        query = query.eq('telefono', payload.telefono)
       }
 
-      console.log(`Searching for leads with email: ${payload.email}, phone: ${payload.telefono}`)
-      
-      const { data: updatedLeads, error: updateError } = await updateQuery.select()
+      const { data: matchingLeads, error: searchError } = await query
 
-      if (updateError) {
-        console.error('Error updating lead booked_call status:', updateError)
+      if (searchError) {
+        console.error('Error searching for matching leads:', searchError)
+      } else if (matchingLeads && matchingLeads.length > 0) {
+        console.log(`Found ${matchingLeads.length} matching leads to update`)
+        
+        // Update all matching leads
+        const { error: updateError } = await supabase
+          .from('lead_generation')
+          .update({ 
+            booked_call: 'SI',
+            assignable: false,  // CRITICO: Lead con call prenotate NON sono MAI assegnabili
+            stato: 'prenotato'
+          })
+          .in('id', matchingLeads.map(lead => lead.id))
+
+        if (updateError) {
+          console.error('Error updating lead booked_call status:', updateError)
+        } else {
+          console.log(`Updated ${matchingLeads.length} leads to booked_call=SI and assignable=false`)
+        }
       } else {
-        console.log(`Updated ${updatedLeads?.length || 0} leads to booked_call=SI and assignable=false`)
+        console.log('No matching leads found within attribution window')
       }
     }
 

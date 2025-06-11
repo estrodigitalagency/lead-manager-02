@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -15,13 +16,13 @@ export async function assignLeadsWithExclusions(data: LeadAssignmentData) {
     console.log(`Attempting to assign ${numLead} leads to ${venditore}`);
     console.log('Excluded sources:', excludedSources);
 
-    // QUERY CRITICA: Escludere SEMPRE lead con call prenotate e ordinare dal più vecchio al più nuovo
+    // QUERY CRITICA: Escludere SEMPRE lead con call prenotate (booked_call = 'SI') e ordinare dal più vecchio al più nuovo
     let query = supabase
       .from('lead_generation')
       .select('id, nome, cognome, email, telefono, fonte, created_at')
       .eq('assignable', true)
       .is('venditore', null)
-      .neq('booked_call', 'SI'); // CRITICO: Non assegnare lead con call prenotate
+      .eq('booked_call', 'NO'); // CRITICO: Solo lead senza call prenotate
 
     // Apply source exclusions
     if (excludedSources.length > 0) {
@@ -263,13 +264,13 @@ export async function assignLeadsWithExclusions(data: LeadAssignmentData) {
 
 export async function getAvailableLeadsCount(excludedSources: string[] = []): Promise<number> {
   try {
-    // QUERY CRITICA: Contare solo lead senza call prenotate
+    // QUERY CRITICA: Contare solo lead senza call prenotate (booked_call = 'NO')
     let query = supabase
       .from('lead_generation')
       .select('id', { count: 'exact', head: true })
       .eq('assignable', true)
       .is('venditore', null)
-      .neq('booked_call', 'SI'); // CRITICO: Escludere lead con call prenotate
+      .eq('booked_call', 'NO'); // CRITICO: Solo lead senza call prenotate
 
     // Apply source exclusions
     if (excludedSources.length > 0) {

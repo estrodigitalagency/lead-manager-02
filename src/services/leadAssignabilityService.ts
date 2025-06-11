@@ -21,13 +21,13 @@ export async function checkLeadsAssignability(): Promise<AssignabilityCheckResul
     
     console.log("Verifica assegnabilità completata:", data);
     
-    // Conta i lead disponibili dopo la verifica
+    // Conta i lead disponibili dopo la verifica - CRITICO: Solo quelli senza call prenotate
     const { count: availableCount, error: countError } = await supabase
       .from('lead_generation')
       .select('id', { count: 'exact', head: true })
       .eq('assignable', true)
       .is('venditore', null)
-      .neq('booked_call', 'SI');
+      .eq('booked_call', 'NO'); // CRITICO: Solo lead senza call prenotate
     
     if (countError) {
       console.error('Errore nel conteggio lead disponibili:', countError);
@@ -52,7 +52,7 @@ export async function getOptimizedLeadCounts() {
       supabase.from('lead_generation').select('id', { count: 'exact', head: true })
         .eq('assignable', true)
         .is('venditore', null)
-        .neq('booked_call', 'SI'),
+        .eq('booked_call', 'NO'), // CRITICO: Solo lead senza call prenotate
       supabase.from('lead_generation').select('id', { count: 'exact', head: true })
         .not('venditore', 'is', null),
       supabase.from('booked_call').select('id', { count: 'exact', head: true })
