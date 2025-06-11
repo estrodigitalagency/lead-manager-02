@@ -7,6 +7,7 @@ import { Lead } from "@/types/lead";
 import { format } from "date-fns";
 import { it } from "date-fns/locale";
 import FonteDisplay from "./FonteDisplay";
+import { getLeadStatus } from "@/utils/leadStatus";
 
 interface LeadTableRowProps {
   lead: Lead;
@@ -18,6 +19,8 @@ interface LeadTableRowProps {
 }
 
 const LeadTableRow = ({ lead, isSelected, visibleColumns, onSelect, onDelete, onShowDetails }: LeadTableRowProps) => {
+  const status = getLeadStatus(lead);
+
   return (
     <TableRow>
       <TableCell>
@@ -62,12 +65,8 @@ const LeadTableRow = ({ lead, isSelected, visibleColumns, onSelect, onDelete, on
       )}
       {visibleColumns.includes('stato') && (
         <TableCell>
-          <span className={`px-2 py-1 rounded-full text-xs ${
-            lead.assignable 
-              ? 'bg-blue-100 text-blue-800' 
-              : 'bg-gray-100 text-gray-800'
-          }`}>
-            {lead.assignable ? 'Assegnabile' : 'Non assegnabile'}
+          <span className={`px-2 py-1 rounded-full text-xs ${status.className}`}>
+            {status.label}
           </span>
         </TableCell>
       )}

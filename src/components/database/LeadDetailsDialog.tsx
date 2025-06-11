@@ -11,6 +11,7 @@ import { Lead } from "@/types/lead";
 import { format } from "date-fns";
 import { it } from "date-fns/locale";
 import { Calendar, Mail, Phone, User, Tag, Users, CheckCircle } from "lucide-react";
+import { getLeadStatus } from "@/utils/leadStatus";
 
 interface LeadDetailsDialogProps {
   lead: Lead | null;
@@ -26,6 +27,7 @@ const LeadDetailsDialog = ({ lead, open, onOpenChange }: LeadDetailsDialogProps)
   };
 
   const fonti = lead.fonte ? lead.fonte.split(',').map(f => f.trim()).filter(f => f) : [];
+  const status = getLeadStatus(lead);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -104,12 +106,8 @@ const LeadDetailsDialog = ({ lead, open, onOpenChange }: LeadDetailsDialogProps)
                 <CheckCircle className="h-4 w-4 text-muted-foreground" />
                 <span className="text-sm">
                   <strong>Stato:</strong> 
-                  <Badge variant="outline" className={`ml-2 text-xs ${
-                    lead.assignable 
-                      ? 'bg-green-100 text-green-800 border-green-200' 
-                      : 'bg-yellow-100 text-yellow-800 border-yellow-200'
-                  }`}>
-                    {lead.assignable ? 'Assegnabile' : 'Non assegnabile'}
+                  <Badge variant="outline" className={`ml-2 text-xs ${status.className}`}>
+                    {status.label}
                   </Badge>
                 </span>
               </div>

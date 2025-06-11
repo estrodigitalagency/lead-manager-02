@@ -54,13 +54,14 @@ export async function assignLeadsWithExclusions(data: LeadAssignmentData) {
 
     console.log(`Assigning ${actualAssignedCount} leads:`, leadIds);
 
-    // Update the leads with the assigned salesperson
+    // Update the leads with the assigned salesperson and set stato to 'assegnato'
     const { error: updateError } = await supabase
       .from('lead_generation')
       .update({ 
         venditore,
         campagna: campagna || null,
-        stato: 'assegnato'
+        stato: 'assegnato',
+        assignable: false // Aggiorno anche assignable per consistenza
       })
       .in('id', leadIds);
 

@@ -16,6 +16,7 @@ import { Badge } from "@/components/ui/badge";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Card, CardContent } from "@/components/ui/card";
 import FonteDisplay from "./database/FonteDisplay";
+import { getLeadStatus } from "@/utils/leadStatus";
 
 const LeadDatabase = () => {
   const [leads, setLeads] = useState<Lead[]>([]);
@@ -65,81 +66,65 @@ const LeadDatabase = () => {
     });
   };
 
-  const getStatusBadge = (lead: Lead) => {
-    if (lead.venditore) {
-      return (
-        <Badge variant="outline" className="bg-blue-100 text-blue-800 border-blue-200">
-          Assegnato
-        </Badge>
-      );
-    } else if (lead.assignable) {
-      return (
-        <Badge variant="outline" className="bg-green-100 text-green-800 border-green-200">
-          Assegnabile
-        </Badge>
-      );
-    } else {
-      return (
-        <Badge variant="outline" className="bg-yellow-100 text-yellow-800 border-yellow-200">
-          Non assegnabile
-        </Badge>
-      );
-    }
-  };
-
   if (isMobile) {
     return (
       <div className="space-y-3">
-        {leads.map((lead) => (
-          <Card key={lead.id} className="border">
-            <CardContent className="p-4">
-              <div className="space-y-3">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <div className="font-medium text-sm">
-                      {lead.nome} {lead.cognome || ''}
+        {leads.map((lead) => {
+          const status = getLeadStatus(lead);
+          
+          return (
+            <Card key={lead.id} className="border">
+              <CardContent className="p-4">
+                <div className="space-y-3">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <div className="font-medium text-sm">
+                        {lead.nome} {lead.cognome || ''}
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {formatDate(lead.created_at)}
+                      </div>
                     </div>
-                    <div className="text-xs text-muted-foreground">
-                      {formatDate(lead.created_at)}
+                    <div className="flex flex-col gap-1">
+                      <Badge variant="outline" className={`text-xs ${status.className}`}>
+                        {status.label}
+                      </Badge>
+                      {lead.booked_call === "SI" && (
+                        <Badge variant="outline" className="bg-green-100 text-green-800 border-green-200 text-xs">
+                          Call Prenotata
+                        </Badge>
+                      )}
                     </div>
                   </div>
-                  <div className="flex flex-col gap-1">
-                    {getStatusBadge(lead)}
-                    {lead.booked_call === "SI" && (
-                      <Badge variant="outline" className="bg-green-100 text-green-800 border-green-200 text-xs">
-                        Call Prenotata
-                      </Badge>
+                  
+                  <div className="space-y-2 text-sm">
+                    {lead.email && (
+                      <div className="text-muted-foreground truncate">
+                        📧 {lead.email}
+                      </div>
+                    )}
+                    {lead.telefono && (
+                      <div className="text-muted-foreground">
+                        📞 {lead.telefono}
+                      </div>
+                    )}
+                    {lead.fonte && (
+                      <div>
+                        <span className="text-xs text-muted-foreground">Fonte: </span>
+                        <FonteDisplay fonte={lead.fonte} />
+                      </div>
+                    )}
+                    {lead.venditore && (
+                      <div className="text-xs text-muted-foreground">
+                        Venditore: {lead.venditore}
+                      </div>
                     )}
                   </div>
                 </div>
-                
-                <div className="space-y-2 text-sm">
-                  {lead.email && (
-                    <div className="text-muted-foreground truncate">
-                      📧 {lead.email}
-                    </div>
-                  )}
-                  {lead.telefono && (
-                    <div className="text-muted-foreground">
-                      📞 {lead.telefono}
-                    </div>
-                  )}
-                  {lead.fonte && (
-                    <div>
-                      <span className="text-xs text-muted-foreground">Fonte: </span>
-                      <FonteDisplay fonte={lead.fonte} />
-                    </div>
-                  )}
-                  {lead.venditore && (
-                    <div className="text-xs text-muted-foreground">
-                      Venditore: {lead.venditore}
-                    </div>
-                  )}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+              </CardContent>
+            </Card>
+          );
+        })}
       </div>
     );
   }
@@ -161,27 +146,33 @@ const LeadDatabase = () => {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {leads.map((lead) => (
-            <TableRow key={lead.id} className="hover:bg-muted/30 transition-colors">
-              <TableCell className="table-body-cell">{formatDate(lead.created_at)}</TableCell>
-              <TableCell className="table-body-cell">{lead.nome}</TableCell>
-              <TableCell className="table-body-cell">{lead.cognome || '-'}</TableCell>
-              <TableCell className="table-body-cell">{lead.email}</TableCell>
-              <TableCell className="table-body-cell">{lead.telefono}</TableCell>
-              <TableCell className="table-body-cell">
-                <FonteDisplay fonte={lead.fonte} />
-              </TableCell>
-              <TableCell className="table-body-cell">
-                <Badge variant="outline" className={lead.booked_call === "SI" ? "bg-green-100 text-green-800 border-green-200" : "bg-gray-100 text-gray-800 border-gray-200"}>
-                  {lead.booked_call || "NO"}
-                </Badge>
-              </TableCell>
-              <TableCell className="table-body-cell">
-                {getStatusBadge(lead)}
-              </TableCell>
-              <TableCell className="table-body-cell">{lead.venditore || '-'}</TableCell>
-            </TableRow>
-          ))}
+          {leads.map((lead) => {
+            const status = getLeadStatus(lead);
+            
+            return (
+              <TableRow key={lead.id} className="hover:bg-muted/30 transition-colors">
+                <TableCell className="table-body-cell">{formatDate(lead.created_at)}</TableCell>
+                <TableCell className="table-body-cell">{lead.nome}</TableCell>
+                <TableCell className="table-body-cell">{lead.cognome || '-'}</TableCell>
+                <TableCell className="table-body-cell">{lead.email}</TableCell>
+                <TableCell className="table-body-cell">{lead.telefono}</TableCell>
+                <TableCell className="table-body-cell">
+                  <FonteDisplay fonte={lead.fonte} />
+                </TableCell>
+                <TableCell className="table-body-cell">
+                  <Badge variant="outline" className={lead.booked_call === "SI" ? "bg-green-100 text-green-800 border-green-200" : "bg-gray-100 text-gray-800 border-gray-200"}>
+                    {lead.booked_call || "NO"}
+                  </Badge>
+                </TableCell>
+                <TableCell className="table-body-cell">
+                  <Badge variant="outline" className={`text-xs ${status.className}`}>
+                    {status.label}
+                  </Badge>
+                </TableCell>
+                <TableCell className="table-body-cell">{lead.venditore || '-'}</TableCell>
+              </TableRow>
+            );
+          })}
         </TableBody>
       </Table>
     </ScrollArea>
