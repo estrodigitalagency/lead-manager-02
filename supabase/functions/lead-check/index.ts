@@ -132,21 +132,21 @@ serve(async (req) => {
         let needsUpdate = false
         const updateObj: Record<string, any> = {}
         
-        // LOGICA CORRETTA: Se il lead ha una call prenotata, NON deve essere assegnabile
-        // INDIPENDENTEMENTE da quando è passato tempo
-        if (hasBookingInWindow) {
-          // Lead con call prenotata: deve avere booked_call = 'SI' e assignable = false
+        // REGOLA PRINCIPALE: I lead con call prenotate NON possono MAI essere assegnabili
+        if (hasBookingInWindow || lead.booked_call === 'SI') {
+          // Lead con call prenotata: SEMPRE NON assegnabile
           if (lead.booked_call !== 'SI') {
             updateObj.booked_call = 'SI'
             needsUpdate = true
           }
+          // CRITICO: assignable deve sempre essere FALSE per lead con call prenotate
           if (lead.assignable !== false) {
             updateObj.assignable = false
             needsUpdate = true
           }
           updateObj.stato = 'prenotato'
         } else {
-          // Lead senza call prenotata: può essere assegnabile solo se è passato abbastanza tempo
+          // Lead SENZA call prenotata: può essere assegnabile solo se sono passati i giorni
           if (lead.booked_call === 'SI') {
             updateObj.booked_call = 'NO'
             needsUpdate = true
