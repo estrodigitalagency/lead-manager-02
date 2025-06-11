@@ -32,7 +32,7 @@ serve(async (req) => {
     // Use provided created_at date or default to now
     const createdAt = payload.created_at ? new Date(payload.created_at).toISOString() : new Date().toISOString();
     
-    // Insert the lead data to the lead_generation table
+    // Insert the lead data to the lead_generation table (REMOVED note field)
     const { data, error } = await supabase
       .from('lead_generation')
       .insert({
@@ -45,7 +45,6 @@ serve(async (req) => {
         booked_call: isBooked ? 'SI' : 'NO',
         assignable: isBooked,
         stato: isBooked ? 'prenotato' : 'nuovo',
-        note: payload.note || null,
         created_at: createdAt
       })
       .select()
