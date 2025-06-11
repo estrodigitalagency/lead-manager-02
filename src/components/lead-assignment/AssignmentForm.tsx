@@ -83,6 +83,7 @@ export function AssignmentForm({
         <Input
           id="numLead"
           type="number"
+          inputMode="numeric"
           min="1"
           max={availableLeads}
           value={numLead}
