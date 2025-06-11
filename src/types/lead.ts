@@ -11,7 +11,6 @@ export interface Lead {
   venditore?: string;
   campagna?: string;
   fonte?: string;
-  note?: string;
   stato?: string;
   updated_at?: string;
 }

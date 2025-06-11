@@ -199,7 +199,6 @@ export type Database = {
           fonte: string | null
           id: string
           nome: string
-          note: string | null
           stato: string | null
           telefono: string | null
           updated_at: string | null
@@ -215,7 +214,6 @@ export type Database = {
           fonte?: string | null
           id?: string
           nome: string
-          note?: string | null
           stato?: string | null
           telefono?: string | null
           updated_at?: string | null
@@ -231,7 +229,6 @@ export type Database = {
           fonte?: string | null
           id?: string
           nome?: string
-          note?: string | null
           stato?: string | null
           telefono?: string | null
           updated_at?: string | null

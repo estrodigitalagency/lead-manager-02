@@ -6,6 +6,7 @@ import { Trash2 } from "lucide-react";
 import { Lead } from "@/types/lead";
 import { format } from "date-fns";
 import { it } from "date-fns/locale";
+import FonteDisplay from "./FonteDisplay";
 
 interface LeadTableRowProps {
   lead: Lead;
@@ -43,7 +44,9 @@ const LeadTableRow = ({ lead, isSelected, visibleColumns, onSelect, onDelete }: 
         <TableCell>{lead.telefono || '-'}</TableCell>
       )}
       {visibleColumns.includes('fonte') && (
-        <TableCell className="max-w-[150px] truncate">{lead.fonte || '-'}</TableCell>
+        <TableCell className="max-w-[150px]">
+          <FonteDisplay fonte={lead.fonte} />
+        </TableCell>
       )}
       {visibleColumns.includes('booked_call') && (
         <TableCell>
@@ -71,9 +74,6 @@ const LeadTableRow = ({ lead, isSelected, visibleColumns, onSelect, onDelete }: 
         <TableCell>
           {lead.venditore || 'Non assegnato'}
         </TableCell>
-      )}
-      {visibleColumns.includes('note') && (
-        <TableCell className="max-w-[200px] truncate">{lead.note || '-'}</TableCell>
       )}
       <TableCell>
         <Button

@@ -1,4 +1,3 @@
-
 import {
   Table,
   TableBody,
@@ -33,7 +32,6 @@ const initialColumns: ColumnConfig[] = [
   { key: 'booked_call', label: 'Call Prenotate', visible: true },
   { key: 'stato', label: 'Stato', visible: true },
   { key: 'venditore', label: 'Venditore', visible: true },
-  { key: 'note', label: 'Note', visible: true },
 ];
 
 const LeadsTable = ({ 
