@@ -101,13 +101,14 @@ export function useLeadAssignment() {
 
   const updateAvailableLeads = async () => {
     try {
-      // Query ottimizzata per contare lead disponibili
+      // Query ottimizzata per contare lead disponibili - CRITICAMENTE IMPORTANTE:
+      // ESCLUDERE LEAD CON CALL PRENOTATE
       let query = supabase
         .from('lead_generation')
         .select('id', { count: 'exact', head: true })
         .eq('assignable', true)
         .is('venditore', null)
-        .neq('booked_call', 'SI');
+        .neq('booked_call', 'SI'); // CRITICO: Escludere lead con call prenotate
 
       // Applica esclusioni se presenti
       if (excludedSources.length > 0) {
@@ -120,7 +121,7 @@ export function useLeadAssignment() {
       
       if (error) throw error;
       
-      console.log(`Lead disponibili per assegnazione: ${count}`);
+      console.log(`Lead disponibili per assegnazione (escludendo call prenotate): ${count}`);
       setAvailableLeads(count || 0);
     } catch (error) {
       console.error("Error fetching available leads:", error);

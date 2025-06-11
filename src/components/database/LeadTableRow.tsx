@@ -6,7 +6,6 @@ import { Trash2 } from "lucide-react";
 import { Lead } from "@/types/lead";
 import { format } from "date-fns";
 import { it } from "date-fns/locale";
-import EditLeadVenditoreDialog from "./EditLeadVenditoreDialog";
 
 interface LeadTableRowProps {
   lead: Lead;
@@ -17,11 +16,6 @@ interface LeadTableRowProps {
 }
 
 const LeadTableRow = ({ lead, isSelected, visibleColumns, onSelect, onDelete }: LeadTableRowProps) => {
-  const handleRefresh = () => {
-    // Trigger a refresh of the parent component
-    window.location.reload();
-  };
-
   return (
     <TableRow>
       <TableCell>
@@ -75,10 +69,7 @@ const LeadTableRow = ({ lead, isSelected, visibleColumns, onSelect, onDelete }: 
       )}
       {visibleColumns.includes('venditore') && (
         <TableCell>
-          <div className="flex items-center gap-2">
-            <span className="flex-1">{lead.venditore || 'Non assegnato'}</span>
-            <EditLeadVenditoreDialog lead={lead} onUpdate={handleRefresh} />
-          </div>
+          {lead.venditore || 'Non assegnato'}
         </TableCell>
       )}
       {visibleColumns.includes('note') && (
