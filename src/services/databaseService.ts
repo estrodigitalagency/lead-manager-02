@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { Lead } from "@/types/lead";
 import { LeadLavorato } from "@/types/leadLavorato";
@@ -42,20 +43,21 @@ export async function getUnassignedLeads(): Promise<Lead[]> {
 
 export async function filterLeads(tableName: ValidTableName, filters: Record<string, any>): Promise<any[]> {
   try {
-    // Start with a base query
-    const baseQuery = supabase.from(tableName).select('*');
+    // Build query with simple approach to avoid type recursion
+    const query = supabase.from(tableName).select('*');
     
-    // Build the query step by step to avoid type recursion
-    let finalQuery = baseQuery;
+    // Apply each filter individually using a more direct approach
+    const filterEntries = Object.entries(filters).filter(([_, value]) => 
+      value !== null && value !== undefined && value !== ''
+    );
     
-    // Apply filters one by one
-    for (const [key, value] of Object.entries(filters)) {
-      if (value !== null && value !== undefined && value !== '') {
-        if (typeof value === 'string') {
-          finalQuery = finalQuery.ilike(key, `%${value}%`);
-        } else {
-          finalQuery = finalQuery.eq(key, value);
-        }
+    let finalQuery = query;
+    
+    for (const [key, value] of filterEntries) {
+      if (typeof value === 'string') {
+        finalQuery = finalQuery.ilike(key, `%${value}%`);
+      } else {
+        finalQuery = finalQuery.eq(key, value);
       }
     }
     
