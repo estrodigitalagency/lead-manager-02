@@ -40,6 +40,17 @@ serve(async (req) => {
     
     console.log(`Starting lead check with attribution window of ${attributionWindow} days and ${daysBeforeAssignable} days before assignable`)
     
+    // STEP 1: FORCE ALL LEADS WITH booked_call='SI' TO BE NON-ASSIGNABLE
+    console.log("STEP 1: Forcing all leads with booked_call='SI' to be non-assignable")
+    const { error: forceUpdateError } = await supabase
+      .from('lead_generation')
+      .update({ assignable: false })
+      .eq('booked_call', 'SI')
+    
+    if (forceUpdateError) {
+      console.error('Error in force update:', forceUpdateError)
+    }
+    
     // Calculate the cutoff date for assignability based on days_before_assignable
     const assignableCutoffDate = new Date()
     assignableCutoffDate.setDate(assignableCutoffDate.getDate() - daysBeforeAssignable)
@@ -132,21 +143,19 @@ serve(async (req) => {
         let needsUpdate = false
         const updateObj: Record<string, any> = {}
         
-        // REGOLA PRINCIPALE: I lead con call prenotate NON possono MAI essere assegnabili
+        // REGOLA ASSOLUTA: Lead con call prenotate NON SONO MAI ASSEGNABILI
         if (hasBookingInWindow || lead.booked_call === 'SI') {
-          // Lead con call prenotata: SEMPRE NON assegnabile
+          // Set booked_call to SI
           if (lead.booked_call !== 'SI') {
             updateObj.booked_call = 'SI'
             needsUpdate = true
           }
-          // CRITICO: assignable deve sempre essere FALSE per lead con call prenotate
-          if (lead.assignable !== false) {
-            updateObj.assignable = false
-            needsUpdate = true
-          }
+          // SEMPRE non assegnabile
+          updateObj.assignable = false
           updateObj.stato = 'prenotato'
+          needsUpdate = true
         } else {
-          // Lead SENZA call prenotata: può essere assegnabile solo se sono passati i giorni
+          // Lead SENZA call prenotata
           if (lead.booked_call === 'SI') {
             updateObj.booked_call = 'NO'
             needsUpdate = true
@@ -187,6 +196,17 @@ serve(async (req) => {
       }
       
       console.log(`Processed batch ${Math.floor(i/batchSize) + 1}/${Math.ceil(allLeads.length/batchSize)}`)
+    }
+    
+    // STEP 2: FINAL SAFETY CHECK - Force update any remaining leads with booked_call='SI'
+    console.log("STEP 2: Final safety check for leads with booked_call='SI'")
+    const { error: finalUpdateError } = await supabase
+      .from('lead_generation')
+      .update({ assignable: false })
+      .eq('booked_call', 'SI')
+    
+    if (finalUpdateError) {
+      console.error('Error in final safety update:', finalUpdateError)
     }
     
     console.log(`Lead check completed. Updated ${totalUpdatedLeads} leads out of ${allLeads.length} checked.`)
