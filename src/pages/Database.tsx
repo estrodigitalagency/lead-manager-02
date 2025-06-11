@@ -68,9 +68,9 @@ const DatabasePage = () => {
     setIsLoadingLeads(true);
     try {
       const data = Object.keys(activeFilters).length > 0 
-        ? await filterLeads('lead_generation', activeFilters)
-        : await getRecentData('lead_generation', 1000);
-      setLeads(data as Lead[] || []);
+        ? await filterLeads('lead_generation' as ValidTableName, activeFilters)
+        : await getRecentData('lead_generation' as ValidTableName, 1000);
+      setLeads((data || []) as Lead[]);
     } catch (error) {
       console.error("Errore nel caricamento dei lead:", error);
     } finally {
@@ -82,9 +82,9 @@ const DatabasePage = () => {
     setIsLoadingBookings(true);
     try {
       const data = Object.keys(activeFilters).length > 0 
-        ? await filterLeads('booked_call', activeFilters)
-        : await getRecentData('booked_call', 1000);
-      setBookings(data as unknown as CalendlyBooking[] || []);
+        ? await filterLeads('booked_call' as ValidTableName, activeFilters)
+        : await getRecentData('booked_call' as ValidTableName, 1000);
+      setBookings((data || []) as CalendlyBooking[]);
     } catch (error) {
       console.error("Errore nel caricamento delle prenotazioni:", error);
     } finally {
@@ -96,9 +96,9 @@ const DatabasePage = () => {
     setIsLoadingLeadLavorati(true);
     try {
       const data = Object.keys(activeFilters).length > 0 
-        ? await filterLeads('lead_lavorati', activeFilters)
-        : await getRecentData('lead_lavorati', 1000);
-      setLeadLavorati(data as LeadLavorato[] || []);
+        ? await filterLeads('lead_lavorati' as ValidTableName, activeFilters)
+        : await getRecentData('lead_lavorati' as ValidTableName, 1000);
+      setLeadLavorati((data || []) as LeadLavorato[]);
     } catch (error) {
       console.error("Errore nel caricamento dei lead lavorati:", error);
     } finally {
@@ -382,3 +382,5 @@ const DatabasePage = () => {
 };
 
 export default DatabasePage;
+
+}

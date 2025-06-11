@@ -3,10 +3,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { Lead } from "@/types/lead";
 import { LeadLavorato } from "@/types/leadLavorato";
 
-export async function getRecentData(tableName: string, limit: number = 100) {
+type ValidTableName = "lead_generation" | "booked_call" | "lead_assignments" | "lead_lavorati" | "system_settings" | "venditori";
+
+export async function getRecentData(tableName: ValidTableName, limit: number = 100) {
   try {
     const { data, error } = await supabase
-      .from(tableName as any)
+      .from(tableName)
       .select('*')
       .order('created_at', { ascending: false })
       .limit(limit);
@@ -39,9 +41,9 @@ export async function getUnassignedLeads(): Promise<Lead[]> {
   }
 }
 
-export async function filterLeads(tableName: string, filters: Record<string, any>) {
+export async function filterLeads(tableName: ValidTableName, filters: Record<string, any>) {
   try {
-    let query = supabase.from(tableName as any).select('*');
+    let query = supabase.from(tableName).select('*');
     
     // Apply filters
     Object.entries(filters).forEach(([key, value]) => {
@@ -64,10 +66,10 @@ export async function filterLeads(tableName: string, filters: Record<string, any
   }
 }
 
-export async function bulkDeleteLeads(tableName: string, ids: string[]) {
+export async function bulkDeleteLeads(tableName: ValidTableName, ids: string[]) {
   try {
     const { error } = await supabase
-      .from(tableName as any)
+      .from(tableName)
       .delete()
       .in('id', ids);
     
