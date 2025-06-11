@@ -8,6 +8,7 @@ import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, For
 import { toast } from "sonner";
 import { useForm } from "react-hook-form";
 import { supabase } from "@/integrations/supabase/client";
+import WebhookTestSection from "./WebhookTestSection";
 
 interface WebhookFormValues {
   leadAssignWebhook: string;
@@ -81,43 +82,47 @@ export default function WebhookSettings() {
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Configurazione Webhook</CardTitle>
-        <CardDescription>
-          Configura gli URL dei webhook per inviare automaticamente i dati a sistemi esterni
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-            <FormField
-              control={form.control}
-              name="leadAssignWebhook"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>URL Webhook Assegnazione Lead</FormLabel>
-                  <FormControl>
-                    <Input 
-                      placeholder="https://example.com/webhook" 
-                      {...field} 
-                      className="font-mono"
-                    />
-                  </FormControl>
-                  <FormDescription>
-                    Questo URL riceverà i dati dei lead quando vengono assegnati a un venditore
-                  </FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            
-            <Button type="submit" disabled={isLoading}>
-              {isLoading ? "Salvataggio..." : "Salva impostazioni"}
-            </Button>
-          </form>
-        </Form>
-      </CardContent>
-    </Card>
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle>Configurazione Webhook</CardTitle>
+          <CardDescription>
+            Configura gli URL dei webhook per inviare automaticamente i dati a sistemi esterni
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+              <FormField
+                control={form.control}
+                name="leadAssignWebhook"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>URL Webhook Assegnazione Lead</FormLabel>
+                    <FormControl>
+                      <Input 
+                        placeholder="https://example.com/webhook" 
+                        {...field} 
+                        className="font-mono"
+                      />
+                    </FormControl>
+                    <FormDescription>
+                      Questo URL riceverà i dati dei lead quando vengono assegnati a un venditore
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <Button type="submit" disabled={isLoading}>
+                {isLoading ? "Salvataggio..." : "Salva impostazioni"}
+              </Button>
+            </form>
+          </Form>
+        </CardContent>
+      </Card>
+
+      <WebhookTestSection />
+    </div>
   );
 }
