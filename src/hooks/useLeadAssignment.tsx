@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -111,14 +110,34 @@ export function useLeadAssignment() {
     }
   };
 
-  const addExcludedSource = (sourceName: string) => {
+  const addExcludedSource = async (sourceName: string) => {
     if (sourceName && !excludedSources.includes(sourceName)) {
-      setExcludedSources([...excludedSources, sourceName]);
+      const newExcludedSources = [...excludedSources, sourceName];
+      setExcludedSources(newExcludedSources);
+      
+      // Aggiorna immediatamente il conteggio dei lead disponibili
+      try {
+        const count = await getAvailableLeadsCount(newExcludedSources);
+        console.log(`Lead disponibili dopo esclusione di ${sourceName}: ${count}`);
+        setAvailableLeads(count);
+      } catch (error) {
+        console.error("Error updating available leads after exclusion:", error);
+      }
     }
   };
 
-  const removeExcludedSource = (source: string) => {
-    setExcludedSources(excludedSources.filter(s => s !== source));
+  const removeExcludedSource = async (source: string) => {
+    const newExcludedSources = excludedSources.filter(s => s !== source);
+    setExcludedSources(newExcludedSources);
+    
+    // Aggiorna immediatamente il conteggio dei lead disponibili
+    try {
+      const count = await getAvailableLeadsCount(newExcludedSources);
+      console.log(`Lead disponibili dopo rimozione esclusione di ${source}: ${count}`);
+      setAvailableLeads(count);
+    } catch (error) {
+      console.error("Error updating available leads after removing exclusion:", error);
+    }
   };
 
   const handleAssign = async () => {
