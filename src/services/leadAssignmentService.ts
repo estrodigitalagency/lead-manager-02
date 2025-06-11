@@ -69,6 +69,74 @@ export async function assignLeadsWithExclusions(data: LeadAssignmentData) {
       throw new Error(`Errore nell'aggiornamento dei lead: ${updateError.message}`);
     }
 
+    // Get venditore details for webhook
+    const { data: venditoreDates, error: venditoreError } = await supabase
+      .from('venditori')
+      .select('cognome, email, telefono, sheets_file_id, sheets_tab_name')
+      .eq('nome', venditore)
+      .single();
+
+    if (venditoreError) {
+      console.warn('Could not fetch venditore details:', venditoreError);
+    }
+
+    // Get webhook URL
+    const { data: webhookData, error: webhookError } = await supabase
+      .from('system_settings')
+      .select('value')
+      .eq('key', 'lead_assign_webhook_url')
+      .single();
+
+    if (!webhookError && webhookData?.value) {
+      console.log('Calling webhook for lead assignment...');
+      
+      // Prepare webhook payload with all required data
+      const assignmentPayload = {
+        venditore,
+        venditore_cognome: venditoreDates?.cognome || '',
+        venditore_email: venditoreDates?.email || '',
+        venditore_telefono: venditoreDates?.telefono || '',
+        google_sheets_file_id: venditoreDates?.sheets_file_id || '',
+        google_sheets_tab_name: venditoreDates?.sheets_tab_name || '',
+        campagna: campagna || '',
+        leads_count: actualAssignedCount,
+        timestamp: new Date().toISOString(),
+        leads: availableLeads.map(lead => ({
+          id: lead.id,
+          nome: lead.nome,
+          cognome: lead.cognome || '',
+          email: lead.email || '',
+          telefono: lead.telefono || '',
+          fonte: lead.fonte || '',
+          created_at: lead.created_at,
+          assigned_at: new Date().toISOString()
+        }))
+      };
+
+      try {
+        const { data: webhookResponse, error: webhookCallError } = await supabase.functions.invoke('lead-assign-webhook', {
+          body: {
+            assignmentData: assignmentPayload,
+            webhookUrl: webhookData.value
+          }
+        });
+
+        if (webhookCallError) {
+          console.error('Webhook call error:', webhookCallError);
+          toast.error('Lead assegnati ma errore nell\'invio del webhook');
+        } else {
+          console.log('Webhook called successfully:', webhookResponse);
+          toast.success('Lead assegnati e webhook inviato con successo');
+        }
+      } catch (webhookError) {
+        console.error('Error calling webhook:', webhookError);
+        toast.error('Lead assegnati ma errore nell\'invio del webhook');
+      }
+    } else {
+      console.warn('No webhook URL configured');
+      toast.success('Lead assegnati (nessun webhook configurato)');
+    }
+
     // Record the assignment in history
     const { error: historyError } = await supabase
       .from('assignment_history')

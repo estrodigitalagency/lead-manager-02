@@ -12,10 +12,21 @@ serve(async (req) => {
   }
 
   try {
+    console.log('Lead assignment webhook called');
     const body = await req.json()
     const { assignmentData, webhookUrl } = body
     
+    console.log('Received assignment data:', JSON.stringify(assignmentData, null, 2));
+    console.log('Target webhook URL:', webhookUrl);
+    
     if (!assignmentData || !assignmentData.leads || !assignmentData.venditore || !webhookUrl) {
+      console.error('Missing required parameters:', { 
+        hasAssignmentData: !!assignmentData,
+        hasLeads: !!assignmentData?.leads,
+        hasVenditore: !!assignmentData?.venditore,
+        hasWebhookUrl: !!webhookUrl
+      });
+      
       return new Response(
         JSON.stringify({ 
           error: 'Missing required parameters',
@@ -53,7 +64,11 @@ serve(async (req) => {
     }
     
     console.log('Sending complete lead assignment data to webhook:', webhookUrl)
-    console.log('Payload with Google Sheets info:', JSON.stringify(webhookPayload, null, 2))
+    console.log('Payload details:', JSON.stringify({
+      venditore: webhookPayload.venditore,
+      leads_count: webhookPayload.leads_count,
+      has_google_sheets_info: !!(webhookPayload.google_sheets_file_id && webhookPayload.google_sheets_tab_name)
+    }));
     
     try {
       const response = await fetch(webhookUrl, {
@@ -90,7 +105,8 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({ 
           error: 'Webhook error',
-          details: webhookError.message
+          details: webhookError.message,
+          webhookUrl
         }),
         { 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
