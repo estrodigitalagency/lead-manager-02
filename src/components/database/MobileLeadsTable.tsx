@@ -74,11 +74,6 @@ const MobileLeadsTable = ({
                       <Badge variant="outline" className={`text-xs ${status.className}`}>
                         {status.label}
                       </Badge>
-                      {lead.booked_call === "SI" && (
-                        <Badge variant="outline" className="bg-green-100 text-green-800 border-green-200 text-xs">
-                          Call Prenotata
-                        </Badge>
-                      )}
                     </div>
                   </div>
                 </div>
@@ -135,6 +130,10 @@ const MobileLeadsTable = ({
                     Venditore: {lead.venditore}
                   </div>
                 )}
+
+                <div className="text-xs text-muted-foreground mt-2">
+                  Call prenotata: {lead.booked_call === 'SI' ? 'Sì' : 'No'}
+                </div>
               </div>
             </CardContent>
           </Card>
