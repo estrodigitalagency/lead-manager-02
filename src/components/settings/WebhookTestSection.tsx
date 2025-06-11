@@ -2,7 +2,6 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
@@ -11,7 +10,6 @@ import { Send, TestTube } from "lucide-react";
 
 export default function WebhookTestSection() {
   const [isLoading, setIsLoading] = useState(false);
-  const [testWebhookUrl, setTestWebhookUrl] = useState("");
   const [testResponse, setTestResponse] = useState("");
 
   const generateTestPayload = () => {
@@ -51,21 +49,30 @@ export default function WebhookTestSection() {
   };
 
   const testWebhook = async () => {
-    if (!testWebhookUrl) {
-      toast.error("Inserisci l'URL del webhook da testare");
-      return;
-    }
-
-    if (!testWebhookUrl.startsWith('http')) {
-      toast.error("L'URL del webhook deve iniziare con http:// o https://");
-      return;
-    }
-
-    setIsLoading(true);
-    setTestResponse("");
-
+    // Prima recupera l'URL webhook configurato
     try {
-      console.log("Testing webhook with URL:", testWebhookUrl);
+      const { data: webhookData, error: webhookError } = await supabase
+        .from('system_settings')
+        .select('value')
+        .eq('key', 'lead_assign_webhook_url')
+        .single();
+
+      if (webhookError || !webhookData?.value) {
+        toast.error("Nessun webhook configurato nelle impostazioni");
+        return;
+      }
+
+      const webhookUrl = webhookData.value;
+
+      if (!webhookUrl.startsWith('http')) {
+        toast.error("L'URL del webhook deve iniziare con http:// o https://");
+        return;
+      }
+
+      setIsLoading(true);
+      setTestResponse("");
+
+      console.log("Testing webhook with URL:", webhookUrl);
       
       const testPayload = generateTestPayload();
       console.log("Test payload:", testPayload);
@@ -73,7 +80,7 @@ export default function WebhookTestSection() {
       const { data: response, error } = await supabase.functions.invoke('lead-assign-webhook', {
         body: {
           assignmentData: testPayload,
-          webhookUrl: testWebhookUrl
+          webhookUrl: webhookUrl
         }
       });
 
@@ -83,8 +90,18 @@ export default function WebhookTestSection() {
         setTestResponse(`Errore: ${error.message}`);
       } else {
         console.log('Test webhook response:', response);
-        toast.success('Test webhook completato con successo!');
-        setTestResponse(JSON.stringify(response, null, 2));
+        // Se la risposta contiene un status code 2xx o se Make ha ricevuto i dati, consideriamo il test riuscito
+        if (response?.status && response.status >= 200 && response.status < 300) {
+          toast.success('Test webhook completato con successo!');
+          setTestResponse(`Successo: Webhook inviato correttamente (Status: ${response.status})`);
+        } else if (response?.success || response?.message?.includes('success') || response?.message?.includes('Accepted')) {
+          // Make spesso restituisce "Accepted" anche se non è JSON valido
+          toast.success('Test webhook completato con successo!');
+          setTestResponse('Successo: Dati inviati e ricevuti correttamente da Make');
+        } else {
+          toast.success('Test webhook inviato - Verifica i log di Make per confermare la ricezione');
+          setTestResponse(JSON.stringify(response, null, 2));
+        }
       }
     } catch (error) {
       console.error('Error testing webhook:', error);
@@ -96,27 +113,6 @@ export default function WebhookTestSection() {
     }
   };
 
-  const useConfiguredWebhook = async () => {
-    try {
-      const { data: webhookData, error } = await supabase
-        .from('system_settings')
-        .select('value')
-        .eq('key', 'lead_assign_webhook_url')
-        .single();
-
-      if (error || !webhookData?.value) {
-        toast.error("Nessun webhook configurato nelle impostazioni");
-        return;
-      }
-
-      setTestWebhookUrl(webhookData.value);
-      toast.success("URL webhook caricato dalle impostazioni");
-    } catch (error) {
-      console.error("Error loading webhook URL:", error);
-      toast.error("Errore nel caricamento dell'URL webhook");
-    }
-  };
-
   return (
     <Card className="mt-6">
       <CardHeader>
@@ -125,30 +121,10 @@ export default function WebhookTestSection() {
           Test Webhook Assegnazione Lead
         </CardTitle>
         <CardDescription>
-          Testa il webhook di assegnazione lead con dati di esempio per verificare che tutto funzioni correttamente
+          Testa il webhook di assegnazione lead con dati di esempio usando l'URL configurato sopra
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="space-y-2">
-          <Label htmlFor="test-webhook-url">URL Webhook per Test</Label>
-          <div className="flex gap-2">
-            <Input
-              id="test-webhook-url"
-              placeholder="https://example.com/webhook"
-              value={testWebhookUrl}
-              onChange={(e) => setTestWebhookUrl(e.target.value)}
-              className="font-mono"
-            />
-            <Button
-              variant="outline"
-              onClick={useConfiguredWebhook}
-              disabled={isLoading}
-            >
-              Usa Configurato
-            </Button>
-          </div>
-        </div>
-
         <div className="bg-muted/50 p-4 rounded-lg">
           <h4 className="font-medium mb-2">Dati di Test che verranno inviati:</h4>
           <pre className="text-sm bg-background p-3 rounded border overflow-auto max-h-40">
@@ -158,7 +134,7 @@ export default function WebhookTestSection() {
 
         <Button 
           onClick={testWebhook} 
-          disabled={isLoading || !testWebhookUrl}
+          disabled={isLoading}
           className="w-full"
         >
           <Send className="h-4 w-4 mr-2" />
@@ -172,7 +148,7 @@ export default function WebhookTestSection() {
               value={testResponse}
               readOnly
               className="font-mono text-sm"
-              rows={8}
+              rows={6}
             />
           </div>
         )}

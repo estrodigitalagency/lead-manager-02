@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import {
   Dialog,
@@ -40,7 +39,6 @@ export default function DatabaseAddRecordDialog({
           { name: "campagna", label: "Campagna", required: false },
           { name: "fonte", label: "Fonte", required: false },
           { name: "booked_call", label: "Prenotazione Effettuata", required: false, default: "NO" },
-          { name: "note", label: "Note", required: false },
         ];
       case "booked_call":
         return [
