@@ -40,8 +40,8 @@ serve(async (req) => {
     
     console.log(`Starting lead check with attribution window of ${attributionWindow} days and ${daysBeforeAssignable} days before assignable`)
     
-    // STEP 1: FORCE ALL LEADS WITH booked_call='SI' TO BE NON-ASSIGNABLE
-    console.log("STEP 1: Forcing all leads with booked_call='SI' to be non-assignable")
+    // STEP 1: REGOLA ASSOLUTA - TUTTI i lead con booked_call='SI' NON SONO MAI ASSEGNABILI
+    console.log("STEP 1: Setting all leads with booked_call='SI' to be NON-assignable")
     const { error: forceUpdateError } = await supabase
       .from('lead_generation')
       .update({ assignable: false })
@@ -60,6 +60,9 @@ serve(async (req) => {
     const attributionCutoffDate = new Date()
     attributionCutoffDate.setDate(attributionCutoffDate.getDate() - attributionWindow)
     const attributionCutoffISODate = attributionCutoffDate.toISOString()
+    
+    console.log(`Assignable cutoff date: ${assignableCutoffISODate}`)
+    console.log(`Attribution cutoff date: ${attributionCutoffISODate}`)
     
     // Get all leads with their contact info
     const { data: allLeads, error: leadsError } = await supabase
@@ -106,7 +109,7 @@ serve(async (req) => {
         const createdDate = new Date(lead.created_at)
         const enoughDaysPassed = createdDate <= new Date(assignableCutoffISODate)
         
-        // Check if this lead has a booking within the attribution window
+        // MATCHING PIÙ PRECISO: Check if this lead has a booking within the attribution window
         let hasBookingInWindow = false
         
         if (allBookings) {
@@ -114,64 +117,55 @@ serve(async (req) => {
             const bookingCreatedDate = new Date(booking.created_at)
             const leadCreatedDate = new Date(lead.created_at)
             
-            // Check if booking is for this lead (email or phone match)
+            // MATCHING RIGOROSO: Email E telefono devono corrispondere esattamente E booking dopo lead
             const emailMatch = lead.email && booking.email && 
                               lead.email.trim().toLowerCase() === booking.email.trim().toLowerCase()
             const phoneMatch = lead.telefono && booking.telefono && 
-                              lead.telefono.trim() === booking.telefono.trim()
+                              lead.telefono.trim().replace(/\s+/g, '') === booking.telefono.trim().replace(/\s+/g, '')
             
-            if ((emailMatch || phoneMatch) && bookingCreatedDate >= leadCreatedDate) {
-              // Booking exists for this lead and was created after the lead
+            // CONDIZIONE RIGOROSA: Sia email che telefono devono corrispondere (non OR ma AND) E booking creato dopo lead
+            if (emailMatch && phoneMatch && bookingCreatedDate >= leadCreatedDate) {
               hasBookingInWindow = true
+              console.log(`MATCH TROVATO per lead ${lead.id}: email=${lead.email}, telefono=${lead.telefono}`)
               break
             }
           }
         }
         
-        // Debug per lead specifici problematici
-        if (lead.email === 'morenapitari@libero.it' || lead.email === 'inspiration.aerial@gmail.com') {
-          console.log(`DEBUG LEAD PROBLEMATICO ${lead.email}:`)
-          console.log(`- Lead created: ${lead.created_at}`)
-          console.log(`- Email: ${lead.email}`)
-          console.log(`- Telefono: ${lead.telefono}`)
-          console.log(`- hasBookingInWindow: ${hasBookingInWindow}`)
-          console.log(`- enoughDaysPassed: ${enoughDaysPassed}`)
-          console.log(`- booked_call attuale: ${lead.booked_call}`)
-          console.log(`- assignable attuale: ${lead.assignable}`)
-        }
-        
         let needsUpdate = false
         const updateObj: Record<string, any> = {}
         
-        // REGOLA ASSOLUTA: Lead con call prenotate NON SONO MAI ASSEGNABILI
-        if (hasBookingInWindow || lead.booked_call === 'SI') {
-          // Set booked_call to SI
+        // REGOLA CRITICA: Lead con call prenotate NON SONO MAI ASSEGNABILI
+        if (hasBookingInWindow) {
+          // Ha una call prenotata -> booked_call = SI, assignable = false
           if (lead.booked_call !== 'SI') {
             updateObj.booked_call = 'SI'
             needsUpdate = true
           }
-          // SEMPRE non assegnabile
           updateObj.assignable = false
           updateObj.stato = 'prenotato'
           needsUpdate = true
+          
+          console.log(`Lead ${lead.id} ha call prenotata -> NON assegnabile`)
         } else {
-          // Lead SENZA call prenotata
+          // NON ha call prenotata
           if (lead.booked_call === 'SI') {
+            // Ma era marcato come SI -> correggere
             updateObj.booked_call = 'NO'
             needsUpdate = true
           }
           
+          // Assegnabilità basata solo sui giorni trascorsi per lead SENZA call
           const shouldBeAssignable = enoughDaysPassed
           if (lead.assignable !== shouldBeAssignable) {
             updateObj.assignable = shouldBeAssignable
+            updateObj.stato = shouldBeAssignable ? 'nuovo' : 'nuovo'
             needsUpdate = true
           }
-        }
-        
-        // Debug finale per lead specifici
-        if (lead.email === 'morenapitari@libero.it' || lead.email === 'inspiration.aerial@gmail.com') {
-          console.log(`- needsUpdate: ${needsUpdate}`)
-          console.log(`- updateObj:`, updateObj)
+          
+          if (shouldBeAssignable) {
+            console.log(`Lead ${lead.id} SENZA call e abbastanza vecchio -> assegnabile`)
+          }
         }
         
         if (needsUpdate) {

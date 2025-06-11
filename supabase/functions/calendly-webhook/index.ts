@@ -62,36 +62,37 @@ serve(async (req) => {
     // Format as ISO string for comparison
     const attributionWindowISODate = attributionWindowDate.toISOString()
     
+    console.log(`Attribution window: ${attributionWindow} days, cutoff date: ${attributionWindowISODate}`)
+    
     // Update corresponding leads if they exist and are within attribution window
+    // IMPORTANTE: Usare query corrette per evitare errori di sintassi
     if (payload.email || payload.telefono) {
-      // Build the filter condition
-      const emailCondition = payload.email ? `email.eq.${payload.email}` : ''
-      const phoneCondition = payload.telefono ? `telefono.eq.${payload.telefono}` : ''
-      const timeCondition = `created_at.gte.${attributionWindowISODate}`
-      
-      // Combine conditions with OR for email/phone and AND for time
-      let filterCondition = ''
-      if (emailCondition && phoneCondition) {
-        filterCondition = `(${emailCondition},${phoneCondition}),${timeCondition}`
-      } else if (emailCondition) {
-        filterCondition = `${emailCondition},${timeCondition}`
-      } else if (phoneCondition) {
-        filterCondition = `${phoneCondition},${timeCondition}`
-      }
-      
-      if (filterCondition) {
-        const { error: updateError } = await supabase
-          .from('lead_generation')
-          .update({ 
-            booked_call: 'SI',
-            assignable: false,
-            stato: 'prenotato'
-          })
-          .or(filterCondition)
+      let updateQuery = supabase
+        .from('lead_generation')
+        .update({ 
+          booked_call: 'SI',
+          assignable: false,  // CRITICO: Lead con call prenotate NON sono assegnabili
+          stato: 'prenotato'
+        })
+        .gte('created_at', attributionWindowISODate)
 
-        if (updateError) {
-          console.error('Error updating lead booked_call status:', updateError)
-        }
+      // Applica filtri per email o telefono in modo corretto
+      if (payload.email && payload.telefono) {
+        updateQuery = updateQuery.or(`email.eq.${payload.email},telefono.eq.${payload.telefono}`)
+      } else if (payload.email) {
+        updateQuery = updateQuery.eq('email', payload.email)
+      } else if (payload.telefono) {
+        updateQuery = updateQuery.eq('telefono', payload.telefono)
+      }
+
+      console.log(`Searching for leads with email: ${payload.email}, phone: ${payload.telefono}`)
+      
+      const { data: updatedLeads, error: updateError } = await updateQuery.select()
+
+      if (updateError) {
+        console.error('Error updating lead booked_call status:', updateError)
+      } else {
+        console.log(`Updated ${updatedLeads?.length || 0} leads to booked_call=SI and assignable=false`)
       }
     }
 
