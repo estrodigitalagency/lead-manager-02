@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { getLeadStatus } from "@/utils/leadStatus";
@@ -25,7 +26,7 @@ export async function assignLeadsWithExclusions(data: LeadAssignmentData) {
 
     const daysBeforeAssignable = settingsData?.value ? parseInt(settingsData.value) : 7;
 
-    // QUERY CRITICA: Recupera tutti i lead candidati e filtra solo quelli "Assegnabile"
+    // QUERY CRITICA: Recupera tutti i lead candidati con tutti i campi necessari per il tipo Lead
     let query = supabase
       .from('lead_generation')
       .select('id, nome, cognome, email, telefono, fonte, created_at, booked_call, venditore')
@@ -294,10 +295,10 @@ export async function getAvailableLeadsCount(excludedSources: string[] = []): Pr
 
     const daysBeforeAssignable = settingsData?.value ? parseInt(settingsData.value) : 7;
 
-    // Recupera tutti i candidati
+    // Recupera tutti i candidati con tutti i campi necessari
     let query = supabase
       .from('lead_generation')
-      .select('id, created_at, booked_call, venditore, fonte')
+      .select('id, nome, cognome, email, telefono, fonte, created_at, booked_call, venditore')
       .is('venditore', null)
       .eq('booked_call', 'NO');
 
