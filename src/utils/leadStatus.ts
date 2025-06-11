@@ -1,57 +1,47 @@
 
 import { Lead } from "@/types/lead";
 
-export const getLeadStatus = (lead: Lead) => {
-  // REGOLA PRINCIPALE: Se ha una call prenotata, NON è mai assegnabile
-  if (lead.booked_call === 'SI') {
+export const getLeadStatus = (lead: Lead, daysBeforeAssignable: number = 7) => {
+  const now = new Date();
+  const leadCreatedAt = new Date(lead.created_at);
+  const hoursSinceCreation = (now.getTime() - leadCreatedAt.getTime()) / (1000 * 60 * 60);
+  const daysSinceCreation = hoursSinceCreation / 24;
+
+  // 1. NUOVO: lead entrato nelle ultime 24 ore
+  if (hoursSinceCreation < 24) {
     return {
-      label: 'Call Prenotata',
-      className: 'bg-green-100 text-green-800 border-green-200'
+      label: 'Nuovo',
+      className: 'bg-gray-100 text-gray-800 border-gray-200'
     };
   }
-  
-  // Priorità: se ha un venditore, è assegnato
+
+  // 2. Se ha una call prenotata = SI -> NON ASSEGNABILE
+  if (lead.booked_call === 'SI') {
+    return {
+      label: 'Non assegnabile',
+      className: 'bg-red-100 text-red-800 border-red-200'
+    };
+  }
+
+  // 3. Se ha già un venditore -> ASSEGNATO
   if (lead.venditore) {
     return {
       label: 'Assegnato',
       className: 'bg-blue-100 text-blue-800 border-blue-200'
     };
   }
-  
-  // Per i lead senza call prenotate, usa la logica assignable
-  if (lead.assignable) {
+
+  // 4. Call = NO e è passato il tempo minimo -> ASSEGNABILE
+  if (lead.booked_call === 'NO' && daysSinceCreation >= daysBeforeAssignable) {
     return {
       label: 'Assegnabile',
       className: 'bg-green-100 text-green-800 border-green-200'
     };
   }
-  
-  // Altrimenti usa il campo stato dal database come fallback
-  switch (lead.stato) {
-    case 'assegnato':
-      return {
-        label: 'Assegnato',
-        className: 'bg-blue-100 text-blue-800 border-blue-200'
-      };
-    case 'nuovo':
-      return {
-        label: 'Nuovo',
-        className: 'bg-gray-100 text-gray-800 border-gray-200'
-      };
-    case 'lavorato':
-      return {
-        label: 'Lavorato',
-        className: 'bg-purple-100 text-purple-800 border-purple-200'
-      };
-    case 'prenotato':
-      return {
-        label: 'Call Prenotata',
-        className: 'bg-green-100 text-green-800 border-green-200'
-      };
-    default:
-      return {
-        label: 'Non assegnabile',
-        className: 'bg-yellow-100 text-yellow-800 border-yellow-200'
-      };
-  }
+
+  // 5. Call = NO ma non è passato il tempo minimo -> NON ASSEGNABILE
+  return {
+    label: 'Non assegnabile',
+    className: 'bg-yellow-100 text-yellow-800 border-yellow-200'
+  };
 };

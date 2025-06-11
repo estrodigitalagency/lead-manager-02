@@ -1,4 +1,3 @@
-
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -6,7 +5,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Trash2, Phone, Mail, Calendar, User, Info } from "lucide-react";
 import { Lead } from "@/types/lead";
 import FonteDisplay from "./FonteDisplay";
-import { getLeadStatus } from "@/utils/leadStatus";
+import { useLeadStatus } from "@/hooks/useLeadStatus";
 
 interface MobileLeadsTableProps {
   leads: Lead[];
@@ -23,6 +22,8 @@ const MobileLeadsTable = ({
   onDelete,
   onShowDetails
 }: MobileLeadsTableProps) => {
+  const { getStatus } = useLeadStatus();
+
   const handleItemSelect = (id: string, checked: boolean) => {
     if (checked) {
       onSelectionChange([...selectedItems, id]);
@@ -52,7 +53,7 @@ const MobileLeadsTable = ({
   return (
     <div className="space-y-3">
       {leads.map((lead) => {
-        const status = getLeadStatus(lead);
+        const status = getStatus(lead);
         
         return (
           <Card key={lead.id} className="border">

@@ -2,12 +2,11 @@
 import { TableCell, TableRow } from "@/components/ui/table";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Trash2, Info } from "lucide-react";
 import { Lead } from "@/types/lead";
-import { format } from "date-fns";
-import { it } from "date-fns/locale";
 import FonteDisplay from "./FonteDisplay";
-import { getLeadStatus } from "@/utils/leadStatus";
+import { useLeadStatus } from "@/hooks/useLeadStatus";
 
 interface LeadTableRowProps {
   lead: Lead;
@@ -18,70 +17,102 @@ interface LeadTableRowProps {
   onShowDetails: (lead: Lead) => void;
 }
 
-const LeadTableRow = ({ lead, isSelected, visibleColumns, onSelect, onDelete, onShowDetails }: LeadTableRowProps) => {
-  const status = getLeadStatus(lead);
+const LeadTableRow = ({
+  lead,
+  isSelected,
+  visibleColumns,
+  onSelect,
+  onDelete,
+  onShowDetails
+}: LeadTableRowProps) => {
+  const { getStatus } = useLeadStatus();
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('it-IT', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  const status = getStatus(lead);
 
   return (
-    <TableRow>
-      <TableCell>
+    <TableRow className="hover:bg-muted/50">
+      <TableCell className="w-12">
         <Checkbox
           checked={isSelected}
           onCheckedChange={(checked) => onSelect(lead.id!, !!checked)}
-          aria-label={`Seleziona lead ${lead.nome}`}
         />
       </TableCell>
+      
       {visibleColumns.includes('data') && (
-        <TableCell className="whitespace-nowrap">
-          {format(new Date(lead.created_at), "dd/MM/yyyy HH:mm", { locale: it })}
+        <TableCell className="text-sm">
+          {formatDate(lead.created_at)}
         </TableCell>
       )}
+      
       {visibleColumns.includes('nome') && (
-        <TableCell className="font-medium">{lead.nome}</TableCell>
+        <TableCell className="font-medium text-sm">
+          {lead.nome}
+        </TableCell>
       )}
+      
       {visibleColumns.includes('cognome') && (
-        <TableCell>{lead.cognome || '-'}</TableCell>
+        <TableCell className="text-sm">
+          {lead.cognome || '-'}
+        </TableCell>
       )}
+      
       {visibleColumns.includes('email') && (
-        <TableCell className="max-w-[200px] truncate">{lead.email || '-'}</TableCell>
+        <TableCell className="text-sm max-w-[200px] truncate">
+          {lead.email || '-'}
+        </TableCell>
       )}
+      
       {visibleColumns.includes('telefono') && (
-        <TableCell>{lead.telefono || '-'}</TableCell>
+        <TableCell className="text-sm">
+          {lead.telefono || '-'}
+        </TableCell>
       )}
+      
       {visibleColumns.includes('fonte') && (
-        <TableCell className="max-w-[150px]">
+        <TableCell className="text-sm">
           <FonteDisplay fonte={lead.fonte} />
         </TableCell>
       )}
+
       {visibleColumns.includes('booked_call') && (
-        <TableCell>
-          <span className={`px-2 py-1 rounded-full text-xs ${
-            lead.booked_call === 'SI' 
-              ? 'bg-green-100 text-green-800' 
-              : 'bg-gray-100 text-gray-800'
-          }`}>
+        <TableCell className="text-sm">
+          <Badge variant="outline" className={lead.booked_call === 'SI' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}>
             {lead.booked_call === 'SI' ? 'Sì' : 'No'}
-          </span>
+          </Badge>
         </TableCell>
       )}
+      
       {visibleColumns.includes('stato') && (
-        <TableCell>
-          <span className={`px-2 py-1 rounded-full text-xs ${status.className}`}>
+        <TableCell className="text-sm">
+          <Badge variant="outline" className={status.className}>
             {status.label}
-          </span>
+          </Badge>
         </TableCell>
       )}
+      
       {visibleColumns.includes('venditore') && (
-        <TableCell>
-          {lead.venditore || 'Non assegnato'}
+        <TableCell className="text-sm">
+          {lead.venditore || '-'}
         </TableCell>
       )}
-      <TableCell>
-        <div className="flex items-center gap-1">
+      
+      <TableCell className="w-24">
+        <div className="flex gap-1">
           <Button
             variant="ghost"
             size="sm"
             onClick={() => onShowDetails(lead)}
-            className="h-8 w-8 p-0 text-blue-600 hover:text-blue-800 hover:bg-blue-100"
+            className="text-blue-600 hover:text-blue-800 hover:bg-blue-100 p-2"
           >
             <Info className="h-4 w-4" />
           </Button>
@@ -89,7 +120,7 @@ const LeadTableRow = ({ lead, isSelected, visibleColumns, onSelect, onDelete, on
             variant="ghost"
             size="sm"
             onClick={() => onDelete(lead.id!)}
-            className="h-8 w-8 p-0 text-destructive hover:text-destructive-foreground hover:bg-destructive"
+            className="text-red-600 hover:text-red-800 hover:bg-red-100 p-2"
           >
             <Trash2 className="h-4 w-4" />
           </Button>
