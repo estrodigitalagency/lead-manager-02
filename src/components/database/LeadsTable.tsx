@@ -1,3 +1,5 @@
+
+import { useState } from "react";
 import {
   Table,
   TableBody,
@@ -13,6 +15,7 @@ import PaginationControls from "./PaginationControls";
 import LeadTableHeader from "./LeadTableHeader";
 import LeadTableRow from "./LeadTableRow";
 import LeadTableControls from "./LeadTableControls";
+import LeadDetailsDialog from "./LeadDetailsDialog";
 
 interface LeadsTableProps {
   leads: Lead[];
@@ -44,6 +47,8 @@ const LeadsTable = ({
   const isMobile = useIsMobile();
   const { sortedData, sortConfig, requestSort } = useTableSorting(leads);
   const { columns, visibleColumns, toggleColumn } = useColumnVisibility(initialColumns);
+  const [selectedLeadForDetails, setSelectedLeadForDetails] = useState<Lead | null>(null);
+  const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false);
   
   const {
     currentPage,
@@ -61,7 +66,6 @@ const LeadsTable = ({
     endIndex
   } = usePagination({ data: sortedData, initialPageSize: 50 });
 
-  // Fix: Funzione corretta per gestire la selezione di un singolo item
   const handleItemSelect = (id: string, checked: boolean) => {
     if (checked) {
       onSelectionChange([...selectedItems, id]);
@@ -70,7 +74,6 @@ const LeadsTable = ({
     }
   };
 
-  // Fix: Funzione corretta per gestire la selezione di tutti gli item della pagina
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
       const currentPageIds = paginatedData.map(lead => lead.id!);
@@ -79,6 +82,11 @@ const LeadsTable = ({
       const currentPageIds = paginatedData.map(lead => lead.id!);
       onSelectionChange(selectedItems.filter(id => !currentPageIds.includes(id)));
     }
+  };
+
+  const handleShowDetails = (lead: Lead) => {
+    setSelectedLeadForDetails(lead);
+    setIsDetailsDialogOpen(true);
   };
 
   if (isLoading) {
@@ -98,6 +106,7 @@ const LeadsTable = ({
           selectedItems={selectedItems}
           onSelectionChange={onSelectionChange}
           onDelete={onDelete}
+          onShowDetails={handleShowDetails}
         />
         <PaginationControls
           currentPage={currentPage}
@@ -125,7 +134,6 @@ const LeadsTable = ({
     );
   }
 
-  // Fix: Calcolare correttamente se tutti gli item della pagina corrente sono selezionati
   const currentPageIds = paginatedData.map(lead => lead.id!);
   const allCurrentPageSelected = currentPageIds.length > 0 && currentPageIds.every(id => selectedItems.includes(id));
   const visibleColumnKeys = visibleColumns.map(col => col.key);
@@ -155,6 +163,7 @@ const LeadsTable = ({
               visibleColumns={visibleColumnKeys}
               onSelect={handleItemSelect}
               onDelete={onDelete}
+              onShowDetails={handleShowDetails}
             />
           ))}
         </TableBody>
@@ -173,6 +182,12 @@ const LeadsTable = ({
         onPageSizeChange={setPageSize}
         onNextPage={nextPage}
         onPreviousPage={previousPage}
+      />
+
+      <LeadDetailsDialog
+        lead={selectedLeadForDetails}
+        open={isDetailsDialogOpen}
+        onOpenChange={setIsDetailsDialogOpen}
       />
     </div>
   );

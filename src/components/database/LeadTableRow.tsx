@@ -2,7 +2,7 @@
 import { TableCell, TableRow } from "@/components/ui/table";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
-import { Trash2 } from "lucide-react";
+import { Trash2, Info } from "lucide-react";
 import { Lead } from "@/types/lead";
 import { format } from "date-fns";
 import { it } from "date-fns/locale";
@@ -14,9 +14,10 @@ interface LeadTableRowProps {
   visibleColumns: string[];
   onSelect: (id: string, checked: boolean) => void;
   onDelete: (id: string) => void;
+  onShowDetails: (lead: Lead) => void;
 }
 
-const LeadTableRow = ({ lead, isSelected, visibleColumns, onSelect, onDelete }: LeadTableRowProps) => {
+const LeadTableRow = ({ lead, isSelected, visibleColumns, onSelect, onDelete, onShowDetails }: LeadTableRowProps) => {
   return (
     <TableRow>
       <TableCell>
@@ -76,14 +77,24 @@ const LeadTableRow = ({ lead, isSelected, visibleColumns, onSelect, onDelete }: 
         </TableCell>
       )}
       <TableCell>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => onDelete(lead.id!)}
-          className="h-8 w-8 p-0 text-destructive hover:text-destructive-foreground hover:bg-destructive"
-        >
-          <Trash2 className="h-4 w-4" />
-        </Button>
+        <div className="flex items-center gap-1">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => onShowDetails(lead)}
+            className="h-8 w-8 p-0 text-blue-600 hover:text-blue-800 hover:bg-blue-100"
+          >
+            <Info className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => onDelete(lead.id!)}
+            className="h-8 w-8 p-0 text-destructive hover:text-destructive-foreground hover:bg-destructive"
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </div>
       </TableCell>
     </TableRow>
   );

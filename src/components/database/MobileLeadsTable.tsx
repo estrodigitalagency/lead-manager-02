@@ -1,10 +1,9 @@
 
-import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Trash2, Phone, Mail, Calendar, User } from "lucide-react";
+import { Trash2, Phone, Mail, Calendar, User, Info } from "lucide-react";
 import { Lead } from "@/types/lead";
 import FonteDisplay from "./FonteDisplay";
 
@@ -13,13 +12,15 @@ interface MobileLeadsTableProps {
   selectedItems: string[];
   onSelectionChange: (selected: string[]) => void;
   onDelete: (id: string) => void;
+  onShowDetails: (lead: Lead) => void;
 }
 
 const MobileLeadsTable = ({ 
   leads, 
   selectedItems, 
   onSelectionChange, 
-  onDelete 
+  onDelete,
+  onShowDetails
 }: MobileLeadsTableProps) => {
   const handleItemSelect = (id: string, checked: boolean) => {
     if (checked) {
@@ -97,14 +98,24 @@ const MobileLeadsTable = ({
                   </div>
                 </div>
               </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => onDelete(lead.id!)}
-                className="text-red-600 hover:text-red-800 hover:bg-red-100 p-2"
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
+              <div className="flex gap-1">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => onShowDetails(lead)}
+                  className="text-blue-600 hover:text-blue-800 hover:bg-blue-100 p-2"
+                >
+                  <Info className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => onDelete(lead.id!)}
+                  className="text-red-600 hover:text-red-800 hover:bg-red-100 p-2"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
 
             <div className="space-y-2 text-sm">
