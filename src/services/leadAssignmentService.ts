@@ -85,16 +85,24 @@ export async function assignLeadsWithExclusions(data: LeadAssignmentData) {
     }
 
     // Update salesperson's current lead count
-    const { error: venditorError } = await supabase
+    const { data: currentVenditore, error: venditoreFetchError } = await supabase
       .from('venditori')
-      .update({
-        lead_attuali: supabase.rpc('increment_lead_count', { venditore_name: venditore, increment: actualAssignedCount })
-      })
-      .eq('nome', venditore);
+      .select('lead_attuali')
+      .eq('nome', venditore)
+      .single();
 
-    if (venditorError) {
-      console.error('Error updating salesperson lead count:', venditorError);
-      // Don't throw here as the main assignment succeeded
+    if (!venditoreFetchError && currentVenditore) {
+      const newLeadCount = (currentVenditore.lead_attuali || 0) + actualAssignedCount;
+      
+      const { error: venditoreUpdateError } = await supabase
+        .from('venditori')
+        .update({ lead_attuali: newLeadCount })
+        .eq('nome', venditore);
+
+      if (venditoreUpdateError) {
+        console.error('Error updating salesperson lead count:', venditoreUpdateError);
+        // Don't throw here as the main assignment succeeded
+      }
     }
 
     console.log(`Successfully assigned ${actualAssignedCount} leads to ${venditore}`);

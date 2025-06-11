@@ -6,7 +6,7 @@ import { LeadLavorato } from "@/types/leadLavorato";
 export async function getRecentData(tableName: string, limit: number = 100) {
   try {
     const { data, error } = await supabase
-      .from(tableName)
+      .from(tableName as any)
       .select('*')
       .order('created_at', { ascending: false })
       .limit(limit);
@@ -41,7 +41,7 @@ export async function getUnassignedLeads(): Promise<Lead[]> {
 
 export async function filterLeads(tableName: string, filters: Record<string, any>) {
   try {
-    let query = supabase.from(tableName).select('*');
+    let query = supabase.from(tableName as any).select('*');
     
     // Apply filters
     Object.entries(filters).forEach(([key, value]) => {
@@ -67,7 +67,7 @@ export async function filterLeads(tableName: string, filters: Record<string, any
 export async function bulkDeleteLeads(tableName: string, ids: string[]) {
   try {
     const { error } = await supabase
-      .from(tableName)
+      .from(tableName as any)
       .delete()
       .in('id', ids);
     
@@ -78,6 +78,9 @@ export async function bulkDeleteLeads(tableName: string, ids: string[]) {
     throw error;
   }
 }
+
+// Alias for compatibility
+export const deleteMultipleLeads = bulkDeleteLeads;
 
 export async function getAllFonti() {
   try {
@@ -193,5 +196,81 @@ export async function getLeadsStats() {
       assigned: 0,
       booked: 0
     };
+  }
+}
+
+// Alias for compatibility with Reports page
+export const getTableCounts = getLeadsStats;
+
+export async function getVendorStats() {
+  try {
+    const { data, error } = await supabase
+      .from('lead_generation')
+      .select('venditore')
+      .not('venditore', 'is', null);
+    
+    if (error) throw error;
+    
+    // Count leads per vendor
+    const vendorCounts: Record<string, number> = {};
+    data?.forEach(lead => {
+      if (lead.venditore) {
+        vendorCounts[lead.venditore] = (vendorCounts[lead.venditore] || 0) + 1;
+      }
+    });
+    
+    // Convert to array format for charts
+    return Object.entries(vendorCounts).map(([name, value]) => ({
+      name,
+      value
+    }));
+  } catch (error) {
+    console.error('Error fetching vendor stats:', error);
+    return [];
+  }
+}
+
+// Legacy function for compatibility
+export async function markLeadsAsAssigned(
+  numLead: number, 
+  venditore: string, 
+  campagna?: string, 
+  webhookUrl?: string
+) {
+  try {
+    // Get available leads
+    const { data: availableLeads, error: fetchError } = await supabase
+      .from('lead_generation')
+      .select('*')
+      .eq('assignable', true)
+      .is('venditore', null)
+      .neq('booked_call', 'SI') // CRITICO: Escludere lead con call prenotate
+      .order('created_at', { ascending: true })
+      .limit(numLead);
+
+    if (fetchError) throw fetchError;
+    
+    if (!availableLeads || availableLeads.length === 0) {
+      throw new Error('Nessun lead disponibile per l\'assegnazione');
+    }
+
+    const leadIds = availableLeads.map(lead => lead.id);
+
+    // Update the leads
+    const { error: updateError } = await supabase
+      .from('lead_generation')
+      .update({ 
+        venditore,
+        campagna: campagna || null,
+        stato: 'assegnato'
+      })
+      .in('id', leadIds);
+
+    if (updateError) throw updateError;
+
+    return availableLeads;
+  } catch (error) {
+    console.error('Error marking leads as assigned:', error);
+    throw error;
   }
 }
