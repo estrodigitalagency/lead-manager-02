@@ -43,25 +43,22 @@ export async function getUnassignedLeads(): Promise<Lead[]> {
 
 export async function filterLeads(tableName: ValidTableName, filters: Record<string, any>): Promise<any[]> {
   try {
-    // Build query with simple approach to avoid type recursion
-    const query = supabase.from(tableName).select('*');
+    // Simple approach without complex chaining to avoid TypeScript issues
+    let queryBuilder = supabase.from(tableName);
     
-    // Apply each filter individually using a more direct approach
-    const filterEntries = Object.entries(filters).filter(([_, value]) => 
-      value !== null && value !== undefined && value !== ''
-    );
-    
-    let finalQuery = query;
-    
-    for (const [key, value] of filterEntries) {
-      if (typeof value === 'string') {
-        finalQuery = finalQuery.ilike(key, `%${value}%`);
-      } else {
-        finalQuery = finalQuery.eq(key, value);
+    // Build where conditions
+    const conditions: any = {};
+    for (const [key, value] of Object.entries(filters)) {
+      if (value !== null && value !== undefined && value !== '') {
+        conditions[key] = value;
       }
     }
     
-    const { data, error } = await finalQuery.order('created_at', { ascending: false });
+    // Execute query with conditions
+    const { data, error } = await queryBuilder
+      .select('*')
+      .match(conditions)
+      .order('created_at', { ascending: false });
     
     if (error) throw error;
     return data || [];
