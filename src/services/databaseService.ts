@@ -25,14 +25,14 @@ export const getRecentData = async (tableName: TableName, limit: number = 100): 
 
 export const getUnassignedLeads = async (): Promise<Lead[]> => {
   try {
-    // Query ottimizzata con indici
+    // Query ottimizzata con indici - ORDINATA CRONOLOGICAMENTE (PIÙ VECCHI PRIMA)
     const { data: leads, error } = await supabase
       .from('lead_generation')
       .select('*')
       .is('venditore', null)
       .neq('booked_call', 'SI') // Escludi lead con call prenotate
       .eq('assignable', true) // Solo lead assegnabili
-      .order('created_at', { ascending: false })
+      .order('created_at', { ascending: true }) // I più vecchi prima
       .limit(500); // Limita per performance
 
     if (error) {
@@ -420,14 +420,14 @@ export const markLeadsAsAssigned = async (
       }
     }
 
-    // Query ottimizzata per ottenere lead disponibili
+    // Query ottimizzata per ottenere lead disponibili - ORDINATA CRONOLOGICAMENTE (PIÙ VECCHI PRIMA)
     const { data: availableLeads, error: fetchError } = await supabase
       .from('lead_generation')
       .select('*')
       .eq('assignable', true)
       .is('venditore', null)
       .neq('booked_call', 'SI') // Condizione critica per escludere call prenotate
-      .order('created_at', { ascending: true })
+      .order('created_at', { ascending: true }) // I più vecchi prima
       .limit(numLead);
 
     if (fetchError) {
@@ -448,6 +448,9 @@ export const markLeadsAsAssigned = async (
 
     const leadsToUpdate = validLeads.slice(0, numLead);
     const leadIds = leadsToUpdate.map(lead => lead.id);
+
+    console.log(`Assegnando ${leadsToUpdate.length} lead (cronologicamente ordinati) a ${venditore}:`, 
+      leadsToUpdate.map(l => ({ id: l.id, email: l.email, created_at: l.created_at })));
 
     // Aggiorna i lead selezionati
     const { data: updatedLeads, error: updateError } = await supabase

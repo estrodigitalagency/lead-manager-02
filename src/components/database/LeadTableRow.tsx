@@ -1,12 +1,12 @@
 
 import { TableCell, TableRow } from "@/components/ui/table";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Button } from "@/components/ui/button";
 import { Trash2 } from "lucide-react";
 import { Lead } from "@/types/lead";
-import { deleteLead } from "@/services/databaseService";
-import { toast } from "sonner";
+import { format } from "date-fns";
+import { it } from "date-fns/locale";
+import EditLeadVenditoreDialog from "./EditLeadVenditoreDialog";
 
 interface LeadTableRowProps {
   lead: Lead;
@@ -16,124 +16,80 @@ interface LeadTableRowProps {
   onDelete: (id: string) => void;
 }
 
-const LeadTableRow = ({ 
-  lead, 
-  isSelected, 
-  visibleColumns, 
-  onSelect, 
-  onDelete 
-}: LeadTableRowProps) => {
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleString('it-IT', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
-
-  const formatFonte = (fonte: string | null) => {
-    if (!fonte) return '-';
-    const fonti = fonte.split(',').map(f => f.trim()).filter(f => f);
-    if (fonti.length === 0) return '-';
-    
-    return (
-      <div className="flex flex-wrap gap-1">
-        {fonti.map((f, index) => (
-          <Badge key={index} variant="outline" className="text-xs">
-            {f}
-          </Badge>
-        ))}
-      </div>
-    );
-  };
-
-  const getStatusBadge = (lead: Lead) => {
-    if (lead.venditore) {
-      return (
-        <Badge variant="outline" className="bg-blue-100 text-blue-800 border-blue-200">
-          Assegnato
-        </Badge>
-      );
-    } else if (lead.assignable) {
-      return (
-        <Badge variant="outline" className="bg-green-100 text-green-800 border-green-200">
-          Assegnabile
-        </Badge>
-      );
-    } else {
-      return (
-        <Badge variant="outline" className="bg-yellow-100 text-yellow-800 border-yellow-200">
-          Non assegnabile
-        </Badge>
-      );
-    }
-  };
-
-  const isColumnVisible = (key: string) => visibleColumns.includes(key);
-
-  const handleDelete = async () => {
-    try {
-      await deleteLead('lead_generation', lead.id!);
-      toast.success("Lead eliminato con successo");
-      onDelete(lead.id!);
-    } catch (error) {
-      console.error("Errore durante l'eliminazione:", error);
-      toast.error(`Errore durante l'eliminazione: ${error instanceof Error ? error.message : 'Errore sconosciuto'}`);
-    }
+const LeadTableRow = ({ lead, isSelected, visibleColumns, onSelect, onDelete }: LeadTableRowProps) => {
+  const handleRefresh = () => {
+    // Trigger a refresh of the parent component
+    window.location.reload();
   };
 
   return (
-    <TableRow className="hover:bg-muted/30 transition-colors">
+    <TableRow>
       <TableCell>
         <Checkbox
           checked={isSelected}
           onCheckedChange={(checked) => onSelect(lead.id!, !!checked)}
+          aria-label={`Seleziona lead ${lead.nome}`}
         />
       </TableCell>
-      {isColumnVisible('data') && (
-        <TableCell className="table-body-cell">{formatDate(lead.created_at)}</TableCell>
-      )}
-      {isColumnVisible('nome') && (
-        <TableCell className="table-body-cell">{lead.nome}</TableCell>
-      )}
-      {isColumnVisible('cognome') && (
-        <TableCell className="table-body-cell">{lead.cognome || '-'}</TableCell>
-      )}
-      {isColumnVisible('email') && (
-        <TableCell className="table-body-cell">{lead.email}</TableCell>
-      )}
-      {isColumnVisible('telefono') && (
-        <TableCell className="table-body-cell">{lead.telefono}</TableCell>
-      )}
-      {isColumnVisible('fonte') && (
-        <TableCell className="table-body-cell">{formatFonte(lead.fonte)}</TableCell>
-      )}
-      {isColumnVisible('booked_call') && (
-        <TableCell className="table-body-cell">
-          <Badge variant="outline" className={lead.booked_call === "SI" ? "bg-green-100 text-green-800 border-green-200" : "bg-gray-100 text-gray-800 border-gray-200"}>
-            {lead.booked_call || "NO"}
-          </Badge>
+      {visibleColumns.includes('data') && (
+        <TableCell className="whitespace-nowrap">
+          {format(new Date(lead.created_at), "dd/MM/yyyy HH:mm", { locale: it })}
         </TableCell>
       )}
-      {isColumnVisible('stato') && (
-        <TableCell className="table-body-cell">
-          {getStatusBadge(lead)}
+      {visibleColumns.includes('nome') && (
+        <TableCell className="font-medium">{lead.nome}</TableCell>
+      )}
+      {visibleColumns.includes('cognome') && (
+        <TableCell>{lead.cognome || '-'}</TableCell>
+      )}
+      {visibleColumns.includes('email') && (
+        <TableCell className="max-w-[200px] truncate">{lead.email || '-'}</TableCell>
+      )}
+      {visibleColumns.includes('telefono') && (
+        <TableCell>{lead.telefono || '-'}</TableCell>
+      )}
+      {visibleColumns.includes('fonte') && (
+        <TableCell className="max-w-[150px] truncate">{lead.fonte || '-'}</TableCell>
+      )}
+      {visibleColumns.includes('booked_call') && (
+        <TableCell>
+          <span className={`px-2 py-1 rounded-full text-xs ${
+            lead.booked_call === 'SI' 
+              ? 'bg-green-100 text-green-800' 
+              : 'bg-gray-100 text-gray-800'
+          }`}>
+            {lead.booked_call === 'SI' ? 'Sì' : 'No'}
+          </span>
         </TableCell>
       )}
-      {isColumnVisible('venditore') && (
-        <TableCell className="table-body-cell">{lead.venditore || '-'}</TableCell>
+      {visibleColumns.includes('stato') && (
+        <TableCell>
+          <span className={`px-2 py-1 rounded-full text-xs ${
+            lead.assignable 
+              ? 'bg-blue-100 text-blue-800' 
+              : 'bg-gray-100 text-gray-800'
+          }`}>
+            {lead.assignable ? 'Assegnabile' : 'Non assegnabile'}
+          </span>
+        </TableCell>
       )}
-      {isColumnVisible('note') && (
-        <TableCell className="table-body-cell">{lead.note || '-'}</TableCell>
+      {visibleColumns.includes('venditore') && (
+        <TableCell>
+          <div className="flex items-center gap-2">
+            <span className="flex-1">{lead.venditore || 'Non assegnato'}</span>
+            <EditLeadVenditoreDialog lead={lead} onUpdate={handleRefresh} />
+          </div>
+        </TableCell>
       )}
-      <TableCell className="table-body-cell">
+      {visibleColumns.includes('note') && (
+        <TableCell className="max-w-[200px] truncate">{lead.note || '-'}</TableCell>
+      )}
+      <TableCell>
         <Button
           variant="ghost"
           size="sm"
-          onClick={handleDelete}
-          className="text-red-600 hover:text-red-800 hover:bg-red-100"
+          onClick={() => onDelete(lead.id!)}
+          className="h-8 w-8 p-0 text-destructive hover:text-destructive-foreground hover:bg-destructive"
         >
           <Trash2 className="h-4 w-4" />
         </Button>
