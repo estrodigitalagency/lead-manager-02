@@ -1,11 +1,10 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { Lead } from "@/types/lead";
 import { LeadLavorato } from "@/types/leadLavorato";
 
 type ValidTableName = "lead_generation" | "booked_call" | "lead_assignments" | "lead_lavorati" | "system_settings" | "venditori";
 
-export async function getRecentData(tableName: ValidTableName, limit: number = 100) {
+export async function getRecentData(tableName: ValidTableName, limit: number = 100): Promise<any[]> {
   try {
     const { data, error } = await supabase
       .from(tableName)
@@ -14,7 +13,7 @@ export async function getRecentData(tableName: ValidTableName, limit: number = 1
       .limit(limit);
     
     if (error) throw error;
-    return data;
+    return data || [];
   } catch (error) {
     console.error(`Error fetching recent data from ${tableName}:`, error);
     throw error;
@@ -41,25 +40,29 @@ export async function getUnassignedLeads(): Promise<Lead[]> {
   }
 }
 
-export async function filterLeads(tableName: ValidTableName, filters: Record<string, any>) {
+export async function filterLeads(tableName: ValidTableName, filters: Record<string, any>): Promise<any[]> {
   try {
-    let query = supabase.from(tableName).select('*');
+    // Start with a base query
+    const baseQuery = supabase.from(tableName).select('*');
     
-    // Apply filters
-    Object.entries(filters).forEach(([key, value]) => {
+    // Build the query step by step to avoid type recursion
+    let finalQuery = baseQuery;
+    
+    // Apply filters one by one
+    for (const [key, value] of Object.entries(filters)) {
       if (value !== null && value !== undefined && value !== '') {
         if (typeof value === 'string') {
-          query = query.ilike(key, `%${value}%`);
+          finalQuery = finalQuery.ilike(key, `%${value}%`);
         } else {
-          query = query.eq(key, value);
+          finalQuery = finalQuery.eq(key, value);
         }
       }
-    });
+    }
     
-    const { data, error } = await query.order('created_at', { ascending: false });
+    const { data, error } = await finalQuery.order('created_at', { ascending: false });
     
     if (error) throw error;
-    return data;
+    return data || [];
   } catch (error) {
     console.error(`Error filtering ${tableName}:`, error);
     throw error;
