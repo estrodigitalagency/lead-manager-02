@@ -69,15 +69,58 @@ export async function assignLeadsWithExclusions(data: LeadAssignmentData) {
       throw new Error(`Errore nell'aggiornamento dei lead: ${updateError.message}`);
     }
 
-    // Get venditore details for webhook
-    const { data: venditoreDates, error: venditoreError } = await supabase
-      .from('venditori')
-      .select('cognome, email, telefono, sheets_file_id, sheets_tab_name')
-      .eq('nome', venditore)
-      .single();
+    // MIGLIORAMENTO: Cerca venditore per nome completo (nome + cognome)
+    const venditoreParts = venditore.trim().split(' ');
+    const nomeVenditore = venditoreParts[0];
+    const cognomeVenditore = venditoreParts.slice(1).join(' ');
 
-    if (venditoreError) {
+    console.log(`Cercando venditore: nome="${nomeVenditore}", cognome="${cognomeVenditore}"`);
+
+    // Prova prima con nome e cognome separati
+    let venditoreDates = null;
+    let venditoreError = null;
+
+    if (cognomeVenditore) {
+      const { data, error } = await supabase
+        .from('venditori')
+        .select('nome, cognome, email, telefono, sheets_file_id, sheets_tab_name')
+        .eq('nome', nomeVenditore)
+        .eq('cognome', cognomeVenditore)
+        .single();
+      
+      venditoreDates = data;
+      venditoreError = error;
+    }
+
+    // Se non trova con nome/cognome separati, prova con nome completo nel campo nome
+    if (!venditoreDates) {
+      const { data, error } = await supabase
+        .from('venditori')
+        .select('nome, cognome, email, telefono, sheets_file_id, sheets_tab_name')
+        .eq('nome', venditore)
+        .single();
+      
+      venditoreDates = data;
+      venditoreError = error;
+    }
+
+    // Se ancora non trova, prova cercando per nome che contiene il valore
+    if (!venditoreDates) {
+      const { data, error } = await supabase
+        .from('venditori')
+        .select('nome, cognome, email, telefono, sheets_file_id, sheets_tab_name')
+        .ilike('nome', `%${nomeVenditore}%`)
+        .single();
+      
+      venditoreDates = data;
+      venditoreError = error;
+    }
+
+    if (venditoreError || !venditoreDates) {
       console.warn('Could not fetch venditore details:', venditoreError);
+      console.warn('Proceeding without venditore details for webhook');
+    } else {
+      console.log('Venditore trovato:', venditoreDates);
     }
 
     // Get webhook URL
@@ -92,8 +135,8 @@ export async function assignLeadsWithExclusions(data: LeadAssignmentData) {
       
       // Prepare webhook payload with all required data
       const assignmentPayload = {
-        venditore,
-        venditore_cognome: venditoreDates?.cognome || '',
+        venditore: nomeVenditore,
+        venditore_cognome: venditoreDates?.cognome || cognomeVenditore || '',
         venditore_email: venditoreDates?.email || '',
         venditore_telefono: venditoreDates?.telefono || '',
         google_sheets_file_id: venditoreDates?.sheets_file_id || '',
@@ -112,6 +155,14 @@ export async function assignLeadsWithExclusions(data: LeadAssignmentData) {
           assigned_at: new Date().toISOString()
         }))
       };
+
+      console.log('Payload webhook con dati venditore:', {
+        venditore: assignmentPayload.venditore,
+        venditore_cognome: assignmentPayload.venditore_cognome,
+        google_sheets_file_id: assignmentPayload.google_sheets_file_id,
+        google_sheets_tab_name: assignmentPayload.google_sheets_tab_name,
+        leads_count: assignmentPayload.leads_count
+      });
 
       try {
         const { data: webhookResponse, error: webhookCallError } = await supabase.functions.invoke('lead-assign-webhook', {
@@ -152,24 +203,52 @@ export async function assignLeadsWithExclusions(data: LeadAssignmentData) {
       // Don't throw here as the main assignment succeeded
     }
 
-    // Update salesperson's current lead count
-    const { data: currentVenditore, error: venditoreFetchError } = await supabase
-      .from('venditori')
-      .select('lead_attuali')
-      .eq('nome', venditore)
-      .single();
+    // Update salesperson's current lead count - cerca usando la stessa logica
+    let currentVenditore = null;
+    
+    if (cognomeVenditore) {
+      const { data } = await supabase
+        .from('venditori')
+        .select('lead_attuali')
+        .eq('nome', nomeVenditore)
+        .eq('cognome', cognomeVenditore)
+        .single();
+      currentVenditore = data;
+    }
 
-    if (!venditoreFetchError && currentVenditore) {
+    if (!currentVenditore) {
+      const { data } = await supabase
+        .from('venditori')
+        .select('lead_attuali')
+        .eq('nome', venditore)
+        .single();
+      currentVenditore = data;
+    }
+
+    if (!currentVenditore) {
+      const { data } = await supabase
+        .from('venditori')
+        .select('lead_attuali')
+        .ilike('nome', `%${nomeVenditore}%`)
+        .single();
+      currentVenditore = data;
+    }
+
+    if (currentVenditore) {
       const newLeadCount = (currentVenditore.lead_attuali || 0) + actualAssignedCount;
       
-      const { error: venditoreUpdateError } = await supabase
-        .from('venditori')
-        .update({ lead_attuali: newLeadCount })
-        .eq('nome', venditore);
-
-      if (venditoreUpdateError) {
-        console.error('Error updating salesperson lead count:', venditoreUpdateError);
-        // Don't throw here as the main assignment succeeded
+      // Aggiorna usando la stessa logica di ricerca
+      if (cognomeVenditore) {
+        await supabase
+          .from('venditori')
+          .update({ lead_attuali: newLeadCount })
+          .eq('nome', nomeVenditore)
+          .eq('cognome', cognomeVenditore);
+      } else {
+        await supabase
+          .from('venditori')
+          .update({ lead_attuali: newLeadCount })
+          .eq('nome', venditore);
       }
     }
 
