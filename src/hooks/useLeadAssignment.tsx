@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { getAllFonti, getAllCampagne, getUniqueSourcesFromLeads, syncSourcesToDatabase } from "@/services/databaseService";
 import { assignLeadsWithExclusions, LeadAssignmentData } from "@/services/leadAssignmentService";
+import { checkLeadsAssignability } from "@/services/leadAssignabilityService";
 
 export function useLeadAssignment() {
   const [numLead, setNumLead] = useState("");
@@ -13,24 +14,55 @@ export function useLeadAssignment() {
   const [fonti, setFonti] = useState<{id: string; nome: string; descrizione?: string;}[]>([]);
   const [campagne, setCampagne] = useState<{id: string; nome: string; descrizione?: string;}[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isCheckingAssignability, setIsCheckingAssignability] = useState(false);
   const [excludedSources, setExcludedSources] = useState<string[]>([]);
   const [availableLeads, setAvailableLeads] = useState(0);
   const [uniqueSources, setUniqueSources] = useState<string[]>([]);
 
   useEffect(() => {
-    fetchSalespeople();
-    fetchFonti();
-    fetchCampagne();
-    fetchUniqueSources();
+    initializeData();
+  }, []);
+
+  useEffect(() => {
     updateAvailableLeads();
   }, [excludedSources]);
+
+  const initializeData = async () => {
+    try {
+      // Esegui verifica assegnabilità all'inizializzazione
+      setIsCheckingAssignability(true);
+      console.log("Verifica assegnabilità all'apertura...");
+      
+      const assignabilityResult = await checkLeadsAssignability();
+      console.log(`Verifica completata: ${assignabilityResult.updated} lead aggiornati su ${assignabilityResult.totalChecked}`);
+      
+      if (assignabilityResult.updated > 0) {
+        toast.success(`Aggiornati ${assignabilityResult.updated} lead per assegnabilità`);
+      }
+      
+      // Carica tutti i dati in parallelo
+      await Promise.all([
+        fetchSalespeople(),
+        fetchFonti(),
+        fetchCampagne(),
+        fetchUniqueSources()
+      ]);
+      
+    } catch (error) {
+      console.error("Errore nell'inizializzazione:", error);
+      toast.error("Errore nel caricamento iniziale");
+    } finally {
+      setIsCheckingAssignability(false);
+    }
+  };
 
   const fetchSalespeople = async () => {
     try {
       const { data, error } = await supabase
         .from('venditori')
         .select('id, nome, cognome')
-        .eq('stato', 'attivo');
+        .eq('stato', 'attivo')
+        .order('nome');
       
       if (error) throw error;
       setSalespeople(data || []);
@@ -69,13 +101,15 @@ export function useLeadAssignment() {
 
   const updateAvailableLeads = async () => {
     try {
+      // Query ottimizzata per contare lead disponibili
       let query = supabase
         .from('lead_generation')
-        .select('id, fonte', { count: 'exact' })
+        .select('id', { count: 'exact', head: true })
         .eq('assignable', true)
         .is('venditore', null)
         .neq('booked_call', 'SI');
 
+      // Applica esclusioni se presenti
       if (excludedSources.length > 0) {
         excludedSources.forEach(source => {
           query = query.not('fonte', 'like', `%${source}%`);
@@ -90,6 +124,7 @@ export function useLeadAssignment() {
       setAvailableLeads(count || 0);
     } catch (error) {
       console.error("Error fetching available leads:", error);
+      setAvailableLeads(0);
     }
   };
 
@@ -157,6 +192,7 @@ export function useLeadAssignment() {
     fonti,
     campagne,
     isSubmitting,
+    isCheckingAssignability,
     excludedSources,
     availableLeads,
     uniqueSources,

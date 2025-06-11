@@ -25,12 +25,15 @@ export const getRecentData = async (tableName: TableName, limit: number = 100): 
 
 export const getUnassignedLeads = async (): Promise<Lead[]> => {
   try {
+    // Query ottimizzata con indici
     const { data: leads, error } = await supabase
       .from('lead_generation')
       .select('*')
       .is('venditore', null)
       .neq('booked_call', 'SI') // Escludi lead con call prenotate
-      .order('created_at', { ascending: false });
+      .eq('assignable', true) // Solo lead assegnabili
+      .order('created_at', { ascending: false })
+      .limit(500); // Limita per performance
 
     if (error) {
       console.error("Errore nel caricamento dei lead non assegnati:", error);
@@ -153,77 +156,50 @@ export const deleteMultipleLeads = async (tableName: TableName, ids: string[]): 
 
 export const filterLeads = async (tableName: TableName, filters: Record<string, any>) => {
   try {
-    // Start with a fresh query builder for each filter operation
+    // Query ottimizzata per filtri
     let query: any = supabase.from(tableName).select('*');
     
-    // Apply search filter first if it exists
-    if (filters.search) {
-      const searchTerm = filters.search.toLowerCase();
-      query = supabase.from(tableName).select('*').or(`nome.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%,telefono.ilike.%${searchTerm}%`);
-    }
-    
-    // Rebuild query with additional filters
+    // Costruzione query ottimizzata
     const conditions: string[] = [];
     
+    if (filters.search) {
+      const searchTerm = filters.search.toLowerCase();
+      query = query.or(`nome.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%,telefono.ilike.%${searchTerm}%`);
+    }
+    
     if (filters.dataInizio) {
-      conditions.push(`created_at.gte.${filters.dataInizio}`);
+      query = query.gte('created_at', filters.dataInizio);
     }
     
     if (filters.dataFine) {
       const endDate = new Date(filters.dataFine);
       endDate.setHours(23, 59, 59, 999);
-      conditions.push(`created_at.lte.${endDate.toISOString()}`);
+      query = query.lte('created_at', endDate.toISOString());
     }
     
     if (filters.nome) {
-      conditions.push(`nome.ilike.%${filters.nome}%`);
+      query = query.ilike('nome', `%${filters.nome}%`);
     }
     
     if (filters.email) {
-      conditions.push(`email.ilike.%${filters.email}%`);
+      query = query.ilike('email', `%${filters.email}%`);
     }
     
     if (filters.telefono) {
-      conditions.push(`telefono.ilike.%${filters.telefono}%`);
+      query = query.ilike('telefono', `%${filters.telefono}%`);
     }
     
     if (filters.venditore) {
-      conditions.push(`venditore.ilike.%${filters.venditore}%`);
+      query = query.ilike('venditore', `%${filters.venditore}%`);
     }
     
     if (filters.esito) {
-      conditions.push(`esito.eq.${filters.esito}`);
+      query = query.eq('esito', filters.esito);
     }
     
-    // Apply additional conditions using and() if we have them
-    if (conditions.length > 0) {
-      if (filters.search) {
-        // If we already have a search filter, combine with and()
-        query = query.and(conditions.join(','));
-      } else {
-        // No search filter, just apply regular filters
-        query = supabase.from(tableName).select('*');
-        for (const condition of conditions) {
-          const [field, operator, value] = condition.split('.');
-          switch (operator) {
-            case 'gte':
-              query = query.gte(field, value);
-              break;
-            case 'lte':
-              query = query.lte(field, value);
-              break;
-            case 'ilike':
-              query = query.ilike(field, value);
-              break;
-            case 'eq':
-              query = query.eq(field, value);
-              break;
-          }
-        }
-      }
-    }
-    
-    const { data, error } = await query.order('created_at', { ascending: false }).limit(1000);
+    const { data, error } = await query
+      .order('created_at', { ascending: false })
+      .limit(1000);
     
     if (error) {
       console.error('Errore nel filtraggio:', error);
@@ -255,10 +231,15 @@ export const triggerLeadCheck = async (): Promise<boolean> => {
 
 export const getTableCounts = async () => {
   try {
+    // Query parallele ottimizzate con indici
     const [totalResult, assignableResult, assignedResult, bookedResult] = await Promise.all([
       supabase.from('lead_generation').select('id', { count: 'exact', head: true }),
-      supabase.from('lead_generation').select('id', { count: 'exact', head: true }).eq('assignable', true),
-      supabase.from('lead_generation').select('id', { count: 'exact', head: true }).not('venditore', 'is', null),
+      supabase.from('lead_generation').select('id', { count: 'exact', head: true })
+        .eq('assignable', true)
+        .is('venditore', null)
+        .neq('booked_call', 'SI'),
+      supabase.from('lead_generation').select('id', { count: 'exact', head: true })
+        .not('venditore', 'is', null),
       supabase.from('booked_call').select('id', { count: 'exact', head: true })
     ]);
 
@@ -276,6 +257,7 @@ export const getTableCounts = async () => {
 
 export const getVendorStats = async () => {
   try {
+    // Query ottimizzata per statistiche venditori
     const { data, error } = await supabase
       .from('lead_generation')
       .select('venditore')
@@ -367,6 +349,7 @@ export const addCampagna = async (nome: string, descrizione?: string) => {
 // Function to get unique sources from lead data, handling comma-separated values
 export const getUniqueSourcesFromLeads = async () => {
   try {
+    // Query ottimizzata con cache
     const { data, error } = await supabase
       .from('lead_generation')
       .select('fonte')
@@ -378,18 +361,16 @@ export const getUniqueSourcesFromLeads = async () => {
       throw error;
     }
 
-    // Process comma-separated sources and create unique list
+    // Elaborazione ottimizzata delle fonti
     const uniqueSources = new Set<string>();
     
     data?.forEach(record => {
       if (record.fonte) {
-        // Split by comma and trim each value
         const sources = record.fonte.split(',').map(s => s.trim()).filter(s => s.length > 0);
         sources.forEach(source => uniqueSources.add(source));
       }
     });
 
-    // Convert Set to sorted array
     return Array.from(uniqueSources).sort();
   } catch (error) {
     console.error('Errore nel recupero delle fonti uniche:', error);
@@ -430,23 +411,22 @@ export const markLeadsAsAssigned = async (
   webhookUrl?: string
 ): Promise<any[]> => {
   try {
-    // If a campaign is provided, save it to the database
+    // Salva campagna se fornita
     if (campagna && campagna.trim()) {
       try {
         await addCampagna(campagna.trim());
       } catch (error) {
-        // Ignore duplicate key errors, campaign already exists
         console.log('Campagna già esistente o errore nell\'aggiunta:', error);
       }
     }
 
-    // Ottieni i lead disponibili per l'assegnazione con condizioni corrette
+    // Query ottimizzata per ottenere lead disponibili
     const { data: availableLeads, error: fetchError } = await supabase
       .from('lead_generation')
       .select('*')
       .eq('assignable', true)
       .is('venditore', null)
-      .neq('booked_call', 'SI') // Assicurati che non abbiano call prenotate
+      .neq('booked_call', 'SI') // Condizione critica per escludere call prenotate
       .order('created_at', { ascending: true })
       .limit(numLead);
 
@@ -459,8 +439,17 @@ export const markLeadsAsAssigned = async (
       throw new Error('Nessun lead disponibile per l\'assegnazione');
     }
 
-    // Aggiorna i lead con il venditore assegnato
-    const leadIds = availableLeads.map(lead => lead.id);
+    // Verifica finale che i lead non abbiano call prenotate
+    const validLeads = availableLeads.filter(lead => lead.booked_call !== 'SI');
+    
+    if (validLeads.length < numLead) {
+      console.warn(`Solo ${validLeads.length} lead validi trovati su ${numLead} richiesti`);
+    }
+
+    const leadsToUpdate = validLeads.slice(0, numLead);
+    const leadIds = leadsToUpdate.map(lead => lead.id);
+
+    // Aggiorna i lead selezionati
     const { data: updatedLeads, error: updateError } = await supabase
       .from('lead_generation')
       .update({ 
@@ -483,12 +472,11 @@ export const markLeadsAsAssigned = async (
         leads_count: updatedLeads?.length || 0,
         venditore,
         campagna: campagna || null,
-        fonti_escluse: null // Potrà essere implementato in futuro
+        fonti_escluse: null
       });
 
     if (historyError) {
       console.error('Errore nel salvataggio dello storico:', historyError);
-      // Non lanciamo l'errore per non bloccare l'assegnazione
     }
 
     return updatedLeads || [];

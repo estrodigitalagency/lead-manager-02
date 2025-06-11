@@ -3,6 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { ExcludedSources } from "@/components/lead-assignment/ExcludedSources";
 import { AssignmentForm } from "@/components/lead-assignment/AssignmentForm";
 import { useLeadAssignment } from "@/hooks/useLeadAssignment";
+import { Loader2 } from "lucide-react";
 
 const LeadAssignmentWithExclusions = () => {
   const {
@@ -15,6 +16,7 @@ const LeadAssignmentWithExclusions = () => {
     salespeople,
     campagne,
     isSubmitting,
+    isCheckingAssignability,
     excludedSources,
     availableLeads,
     uniqueSources,
@@ -26,9 +28,18 @@ const LeadAssignmentWithExclusions = () => {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-lg sm:text-xl">Assegnazione Lead</CardTitle>
+        <CardTitle className="text-lg sm:text-xl flex items-center gap-2">
+          Assegnazione Lead
+          {isCheckingAssignability && (
+            <Loader2 className="h-4 w-4 animate-spin text-primary" />
+          )}
+        </CardTitle>
         <CardDescription className="text-sm">
-          Assegna lead ai venditori escludendo fonti specifiche. Lead disponibili: {availableLeads}
+          {isCheckingAssignability ? (
+            "Verifica assegnabilità in corso..."
+          ) : (
+            `Assegna lead ai venditori escludendo fonti specifiche. Lead disponibili: ${availableLeads}`
+          )}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4 sm:space-y-6">
@@ -43,7 +54,7 @@ const LeadAssignmentWithExclusions = () => {
             setCampagna={setCampagna}
             salespeople={salespeople}
             campagne={campagne}
-            isSubmitting={isSubmitting}
+            isSubmitting={isSubmitting || isCheckingAssignability}
             availableLeads={availableLeads}
             onAssign={handleAssign}
             showButton={false}
@@ -60,14 +71,14 @@ const LeadAssignmentWithExclusions = () => {
           setCampagna={setCampagna}
           salespeople={salespeople}
           campagne={campagne}
-          isSubmitting={isSubmitting}
+          isSubmitting={isSubmitting || isCheckingAssignability}
           availableLeads={availableLeads}
           onAssign={handleAssign}
           showOnlyCampaign={true}
           showButton={false}
         />
         
-        {/* Excluded Sources - now positioned before the button */}
+        {/* Excluded Sources - positioned before the button */}
         <ExcludedSources 
           uniqueSources={uniqueSources}
           excludedSources={excludedSources}
@@ -75,7 +86,7 @@ const LeadAssignmentWithExclusions = () => {
           onRemoveExcludedSource={removeExcludedSource}
         />
 
-        {/* Assignment Button - now at the bottom */}
+        {/* Assignment Button - at the bottom */}
         <AssignmentForm
           numLead={numLead}
           setNumLead={setNumLead}
@@ -85,7 +96,7 @@ const LeadAssignmentWithExclusions = () => {
           setCampagna={setCampagna}
           salespeople={salespeople}
           campagne={campagne}
-          isSubmitting={isSubmitting}
+          isSubmitting={isSubmitting || isCheckingAssignability}
           availableLeads={availableLeads}
           onAssign={handleAssign}
           showOnlyButton={true}
