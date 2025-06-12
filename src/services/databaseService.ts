@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { Lead } from "@/types/lead";
 import { LeadLavorato } from "@/types/leadLavorato";
@@ -234,7 +233,7 @@ export async function getVendorStats() {
   }
 }
 
-// Legacy function for compatibility
+// Legacy function for compatibility - Updated to use new states
 export async function markLeadsAsAssigned(
   numLead: number, 
   venditore: string, 
@@ -260,13 +259,14 @@ export async function markLeadsAsAssigned(
 
     const leadIds = availableLeads.map(lead => lead.id);
 
-    // Update the leads
+    // Update the leads - use only 'assegnato' state
     const { error: updateError } = await supabase
       .from('lead_generation')
       .update({ 
         venditore,
         campagna: campagna || null,
-        stato: 'assegnato'
+        stato: 'assegnato',
+        assignable: false
       })
       .in('id', leadIds);
 
