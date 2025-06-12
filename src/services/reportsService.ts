@@ -16,6 +16,8 @@ export interface ReportMetrics {
 
 export async function getReportMetrics(filters: ReportFilters): Promise<ReportMetrics> {
   try {
+    console.log('Report filters:', filters);
+    
     const promises = [
       getLeadTotaliGenerati(filters),
       getCallTotaliPrenotate(filters),
@@ -23,6 +25,12 @@ export async function getReportMetrics(filters: ReportFilters): Promise<ReportMe
     ];
 
     const [leadTotaliGenerati, callTotaliPrenotate, leadTotaliLavorati] = await Promise.all(promises);
+
+    console.log('Report metrics results:', {
+      leadTotaliGenerati,
+      callTotaliPrenotate, 
+      leadTotaliLavorati
+    });
 
     return {
       leadTotaliGenerati,
@@ -120,32 +128,44 @@ async function getCallTotaliPrenotate(filters: ReportFilters): Promise<number> {
 }
 
 async function getLeadTotaliLavorati(filters: ReportFilters): Promise<number> {
+  console.log('Calculating lead lavorati with filters:', filters);
+  
   let query = supabase
     .from('lead_generation')
-    .select('id', { count: 'exact', head: true })
+    .select('id, data_assegnazione, venditore, fonte, created_at', { count: 'exact' })
     .not('data_assegnazione', 'is', null);
 
   // Filtro per data di assegnazione con gestione corretta delle date
   if (filters.startDate) {
     const startDateTime = getStartOfDay(filters.startDate);
+    console.log('Filtering by start date:', startDateTime);
     query = query.gte('data_assegnazione', startDateTime);
   }
   if (filters.endDate) {
     const endDateTime = getEndOfDay(filters.endDate);
+    console.log('Filtering by end date:', endDateTime);
     query = query.lte('data_assegnazione', endDateTime);
   }
 
   // Filtro per fonte
   if (filters.fonte) {
+    console.log('Filtering by fonte:', filters.fonte);
     query = query.ilike('fonte', `%${filters.fonte}%`);
   }
 
   // Filtro per venditore
   if (filters.venditore) {
+    console.log('Filtering by venditore:', filters.venditore);
     query = query.eq('venditore', filters.venditore);
   }
 
-  const { count, error } = await query;
+  const { data, count, error } = await query;
+  
+  console.log('Lead lavorati query result:', {
+    count,
+    error,
+    sampleData: data?.slice(0, 3) // Show first 3 records for debugging
+  });
   
   if (error) {
     console.error('Error fetching lead totali lavorati:', error);
