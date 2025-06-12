@@ -46,6 +46,20 @@ const ReportFiltersComponent = ({ filters, onFiltersChange, onApplyFilters }: Re
     onFiltersChange({});
   };
 
+  const handleFonteChange = (value: string) => {
+    onFiltersChange({ 
+      ...filters, 
+      fonte: value === 'all-fonti' ? undefined : value 
+    });
+  };
+
+  const handleVenditoreChange = (value: string) => {
+    onFiltersChange({ 
+      ...filters, 
+      venditore: value === 'all-venditori' ? undefined : value 
+    });
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -103,14 +117,14 @@ const ReportFiltersComponent = ({ filters, onFiltersChange, onApplyFilters }: Re
         <div>
           <Label className="text-sm font-medium mb-2 block">Fonte</Label>
           <Select
-            value={filters.fonte || ''}
-            onValueChange={(value) => onFiltersChange({ ...filters, fonte: value || undefined })}
+            value={filters.fonte || 'all-fonti'}
+            onValueChange={handleFonteChange}
           >
             <SelectTrigger>
               <SelectValue placeholder="Seleziona fonte" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">Tutte le fonti</SelectItem>
+              <SelectItem value="all-fonti">Tutte le fonti</SelectItem>
               {fonti.map((fonte) => (
                 <SelectItem key={fonte} value={fonte}>
                   {fonte}
@@ -124,14 +138,14 @@ const ReportFiltersComponent = ({ filters, onFiltersChange, onApplyFilters }: Re
         <div>
           <Label className="text-sm font-medium mb-2 block">Venditore</Label>
           <Select
-            value={filters.venditore || ''}
-            onValueChange={(value) => onFiltersChange({ ...filters, venditore: value || undefined })}
+            value={filters.venditore || 'all-venditori'}
+            onValueChange={handleVenditoreChange}
           >
             <SelectTrigger>
               <SelectValue placeholder="Seleziona venditore" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">Tutti i venditori</SelectItem>
+              <SelectItem value="all-venditori">Tutti i venditori</SelectItem>
               {venditori.map((venditore) => (
                 <SelectItem key={venditore} value={venditore}>
                   {venditore}
