@@ -1,11 +1,9 @@
 
+
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import PersistentNavigation from "@/components/PersistentNavigation";
-import { HeroSection } from "@/components/HeroSection";
-import { StatsSection } from "@/components/StatsSection";
 import LeadAssignmentVerificationWrapper from "@/components/LeadAssignmentVerificationWrapper";
-import AssignmentHistory from "@/components/AssignmentHistory";
 import { RealTimeStatsSection } from "@/components/RealTimeStatsSection";
 import { getLeadsStats } from "@/services/databaseService";
 
@@ -32,18 +30,13 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-secondary/10">
       <div className="container mx-auto px-4 py-8 space-y-8">
-        <HeroSection />
-        
-        <StatsSection />
-        
         <RealTimeStatsSection />
         
         <LeadAssignmentVerificationWrapper />
-        
-        <AssignmentHistory />
       </div>
     </div>
   );
 };
 
 export default Index;
+
