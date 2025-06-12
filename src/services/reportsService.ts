@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 
 export interface ReportFilters {
@@ -27,7 +28,7 @@ export async function getReportMetrics(filters: ReportFilters): Promise<ReportMe
 
     console.log('Report metrics results:', {
       leadTotaliGenerati,
-      callTotaliPrenotate, 
+      callTotaliPrenotate,
       leadTotaliLavorati
     });
 
@@ -71,12 +72,12 @@ async function getLeadTotaliGenerati(filters: ReportFilters): Promise<number> {
     query = query.lte('created_at', endDateTime);
   }
 
-  // Filtro per fonte
+  // Filtro per fonte - uso contains per gestire fonti multiple separate da virgola
   if (filters.fonte) {
     query = query.ilike('fonte', `%${filters.fonte}%`);
   }
 
-  // Filtro per venditore
+  // Filtro per venditore - match esatto
   if (filters.venditore) {
     query = query.eq('venditore', filters.venditore);
   }
@@ -106,12 +107,12 @@ async function getCallTotaliPrenotate(filters: ReportFilters): Promise<number> {
     query = query.lte('created_at', endDateTime);
   }
 
-  // Filtro per fonte
+  // Filtro per fonte - uso contains per gestire fonti multiple separate da virgola
   if (filters.fonte) {
     query = query.ilike('fonte', `%${filters.fonte}%`);
   }
 
-  // Filtro per venditore
+  // Filtro per venditore - match esatto
   if (filters.venditore) {
     query = query.eq('venditore', filters.venditore);
   }
@@ -132,27 +133,27 @@ async function getLeadTotaliLavorati(filters: ReportFilters): Promise<number> {
   let query = supabase
     .from('lead_generation')
     .select('id', { count: 'exact', head: true })
-    .not('venditore', 'is', null);
+    .not('data_assegnazione', 'is', null);
 
-  // Filtro per data di creazione (non di assegnazione)
+  // Filtro per data di assegnazione con gestione corretta delle date
   if (filters.startDate) {
     const startDateTime = getStartOfDay(filters.startDate);
     console.log('Filtering by start date:', startDateTime);
-    query = query.gte('created_at', startDateTime);
+    query = query.gte('data_assegnazione', startDateTime);
   }
   if (filters.endDate) {
     const endDateTime = getEndOfDay(filters.endDate);
     console.log('Filtering by end date:', endDateTime);
-    query = query.lte('created_at', endDateTime);
+    query = query.lte('data_assegnazione', endDateTime);
   }
 
-  // Filtro per fonte
+  // Filtro per fonte - uso contains per gestire fonti multiple separate da virgola
   if (filters.fonte) {
     console.log('Filtering by fonte:', filters.fonte);
     query = query.ilike('fonte', `%${filters.fonte}%`);
   }
 
-  // Filtro per venditore
+  // Filtro per venditore - match esatto
   if (filters.venditore) {
     console.log('Filtering by venditore:', filters.venditore);
     query = query.eq('venditore', filters.venditore);
