@@ -20,42 +20,56 @@ export const RealTimeStatsSection = () => {
         // Data di 30 giorni fa
         const thirtyDaysAgo = new Date();
         thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+        const thirtyDaysAgoISO = thirtyDaysAgo.toISOString();
+
+        console.log('Fetching stats with 30 days cutoff:', thirtyDaysAgoISO);
 
         // 1. Lead Generati - Ultimi 30 giorni
         const { count: leadGeneratiCount } = await supabase
           .from('lead_generation')
           .select('id', { count: 'exact' })
-          .gte('created_at', thirtyDaysAgo.toISOString());
+          .gte('created_at', thirtyDaysAgoISO);
 
-        // 2. Lead Assegnabili - tutti quelli con assignable = true
+        // 2. Lead Assegnabili - SOLO quelli degli ultimi 30 giorni che sono effettivamente assegnabili
         const { count: leadAssegnabiliCount } = await supabase
           .from('lead_generation')
           .select('id', { count: 'exact' })
-          .eq('assignable', true);
+          .eq('assignable', true)
+          .is('venditore', null)
+          .eq('booked_call', 'NO')
+          .gte('created_at', thirtyDaysAgoISO);
 
         // 3. Call Generate - Ultimi 30 giorni (booked_call)
         const { count: callGenerateCount } = await supabase
           .from('booked_call')
           .select('id', { count: 'exact' })
-          .gte('created_at', thirtyDaysAgo.toISOString());
+          .gte('created_at', thirtyDaysAgoISO);
 
-        // 4. Tempo medio assegnazione - calcolo del tempo medio tra created_at e quando vengono assegnati
+        // 4. Tempo medio assegnazione - SOLO per lead degli ultimi 30 giorni con data_assegnazione
         const { data: assignedLeads } = await supabase
           .from('lead_generation')
-          .select('created_at, updated_at')
-          .not('venditore', 'is', null);
+          .select('created_at, data_assegnazione')
+          .not('data_assegnazione', 'is', null)
+          .gte('created_at', thirtyDaysAgoISO);
 
         let tempoMedio = 0;
         if (assignedLeads && assignedLeads.length > 0) {
           const tempiAssegnazione = assignedLeads.map(lead => {
             const createdAt = new Date(lead.created_at);
-            const assignedAt = new Date(lead.updated_at);
+            const assignedAt = new Date(lead.data_assegnazione!);
             return (assignedAt.getTime() - createdAt.getTime()) / (1000 * 60 * 60); // in ore
           });
           
           const sommaTempi = tempiAssegnazione.reduce((acc, tempo) => acc + tempo, 0);
           tempoMedio = Math.round(sommaTempi / tempiAssegnazione.length);
         }
+
+        console.log('Stats results:', {
+          leadGeneratiCount,
+          leadAssegnabiliCount,
+          callGenerateCount,
+          tempoMedio
+        });
 
         setStats({
           leadGeneratiUltimi30: leadGeneratiCount || 0,
@@ -85,7 +99,7 @@ export const RealTimeStatsSection = () => {
     {
       title: "Lead Assegnabili", 
       value: isLoading ? "..." : stats.leadAssegnabili.toString(),
-      change: "pronti per assegnazione",
+      change: "ultimi 30 giorni - pronti",
       icon: TrendingUp,
       color: "text-green-600"
     },
@@ -99,7 +113,7 @@ export const RealTimeStatsSection = () => {
     {
       title: "Tempo Medio Assegnazione",
       value: isLoading ? "..." : `${stats.tempoMedioAssegnazione}h`,
-      change: "media ore",
+      change: "ultimi 30 giorni",
       icon: Zap,
       color: "text-blue-600"
     }
@@ -113,7 +127,7 @@ export const RealTimeStatsSection = () => {
             <span className="gradient-text">Performance Lead</span>
           </h2>
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-            Dati reali del tuo database aggiornati in tempo reale
+            Dati degli ultimi 30 giorni del tuo database aggiornati in tempo reale
           </p>
         </div>
 

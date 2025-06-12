@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 
 export interface ReportFilters {
@@ -155,15 +154,15 @@ async function getLeadTotaliLavorati(filters: ReportFilters): Promise<number> {
     .select('id', { count: 'exact', head: true })
     .not('data_assegnazione', 'is', null);
 
-  // Filtro per data di assegnazione
+  // IMPORTANTE: Filtro per data di ASSEGNAZIONE, non di creazione
   if (filters.startDate) {
     const startDateTime = getStartOfDay(filters.startDate);
-    console.log('Lead lavorati - filtering by start date:', startDateTime);
+    console.log('Lead lavorati - filtering by data_assegnazione start date:', startDateTime);
     query = query.gte('data_assegnazione', startDateTime);
   }
   if (filters.endDate) {
     const endDateTime = getEndOfDay(filters.endDate);
-    console.log('Lead lavorati - filtering by end date:', endDateTime);
+    console.log('Lead lavorati - filtering by data_assegnazione end date:', endDateTime);
     query = query.lte('data_assegnazione', endDateTime);
   }
 
