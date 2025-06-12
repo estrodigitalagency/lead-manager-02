@@ -1,10 +1,8 @@
-
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { getAllFonti, getAllCampagne, getUniqueSourcesFromLeads, syncSourcesToDatabase } from "@/services/databaseService";
 import { assignLeadsWithExclusions, LeadAssignmentData, getAvailableLeadsCount } from "@/services/leadAssignmentService";
-import { checkLeadsAssignability } from "@/services/leadAssignabilityService";
 
 export function useLeadAssignment() {
   const [numLead, setNumLead] = useState("");
@@ -14,7 +12,6 @@ export function useLeadAssignment() {
   const [fonti, setFonti] = useState<{id: string; nome: string; descrizione?: string;}[]>([]);
   const [campagne, setCampagne] = useState<{id: string; nome: string; descrizione?: string;}[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isCheckingAssignability, setIsCheckingAssignability] = useState(false);
   const [excludedSources, setExcludedSources] = useState<string[]>([]);
   const [includedSources, setIncludedSources] = useState<string[]>([]);
   const [sourceMode, setSourceMode] = useState<'exclude' | 'include'>('exclude');
@@ -31,18 +28,7 @@ export function useLeadAssignment() {
 
   const initializeData = async () => {
     try {
-      // Esegui verifica assegnabilità all'inizializzazione
-      setIsCheckingAssignability(true);
-      console.log("Verifica assegnabilità all'apertura...");
-      
-      const assignabilityResult = await checkLeadsAssignability();
-      console.log(`Verifica completata: ${assignabilityResult.updated} lead aggiornati su ${assignabilityResult.totalChecked}`);
-      
-      if (assignabilityResult.updated > 0) {
-        toast.success(`Aggiornati ${assignabilityResult.updated} lead per assegnabilità`);
-      }
-      
-      // Carica tutti i dati in parallelo
+      // Carica tutti i dati in parallelo senza verifica assegnabilità
       await Promise.all([
         fetchSalespeople(),
         fetchFonti(),
@@ -53,8 +39,6 @@ export function useLeadAssignment() {
     } catch (error) {
       console.error("Errore nell'inizializzazione:", error);
       toast.error("Errore nel caricamento iniziale");
-    } finally {
-      setIsCheckingAssignability(false);
     }
   };
 
@@ -245,7 +229,6 @@ export function useLeadAssignment() {
     fonti,
     campagne,
     isSubmitting,
-    isCheckingAssignability,
     excludedSources,
     includedSources,
     sourceMode,

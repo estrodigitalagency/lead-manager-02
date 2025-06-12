@@ -1,8 +1,12 @@
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { SourceFilter } from "@/components/lead-assignment/SourceFilter";
 import { AssignmentForm } from "@/components/lead-assignment/AssignmentForm";
 import { useLeadAssignment } from "@/hooks/useLeadAssignment";
-import { Loader2 } from "lucide-react";
+import { useAssignabilityVerification } from "@/hooks/useAssignabilityVerification";
+import { Loader2, RefreshCcw, CheckCircle, AlertCircle } from "lucide-react";
+import { useEffect } from "react";
 
 const LeadAssignmentWithExclusions = () => {
   const {
@@ -15,7 +19,6 @@ const LeadAssignmentWithExclusions = () => {
     salespeople,
     campagne,
     isSubmitting,
-    isCheckingAssignability,
     excludedSources,
     includedSources,
     sourceMode,
@@ -26,27 +29,111 @@ const LeadAssignmentWithExclusions = () => {
     addIncludedSource,
     removeIncludedSource,
     toggleSourceMode,
-    handleAssign
+    handleAssign,
+    updateAvailableLeads
   } = useLeadAssignment();
+
+  const {
+    verification,
+    performVerification,
+    resetVerification,
+    isVerifying
+  } = useAssignabilityVerification();
+
+  // Verifica automatica all'avvio
+  useEffect(() => {
+    performVerification().then(() => {
+      // Aggiorna il conteggio dei lead disponibili dopo la verifica
+      updateAvailableLeads();
+    }).catch(console.error);
+  }, []);
+
+  const handleManualVerification = async () => {
+    try {
+      await performVerification();
+      // Aggiorna il conteggio dei lead disponibili dopo la verifica manuale
+      await updateAvailableLeads();
+    } catch (error) {
+      console.error("Errore nella verifica manuale:", error);
+    }
+  };
+
+  const getVerificationStatusIcon = () => {
+    if (isVerifying) {
+      return <Loader2 className="h-4 w-4 animate-spin text-primary" />;
+    }
+    
+    switch (verification.status) {
+      case 'completed':
+        return <CheckCircle className="h-4 w-4 text-green-600" />;
+      case 'error':
+        return <AlertCircle className="h-4 w-4 text-red-600" />;
+      default:
+        return null;
+    }
+  };
+
+  const getVerificationStatusText = () => {
+    if (isVerifying) {
+      return "Verifica assegnabilità in corso...";
+    }
+    
+    switch (verification.status) {
+      case 'completed':
+        return `Ultima verifica: ${verification.updated} lead aggiornati su ${verification.totalChecked}`;
+      case 'error':
+        return "Errore nella verifica - riprova";
+      default:
+        return "Verifica assegnabilità non eseguita";
+    }
+  };
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-lg sm:text-xl flex items-center gap-2">
-          Assegnazione Lead
-          {isCheckingAssignability && (
-            <Loader2 className="h-4 w-4 animate-spin text-primary" />
-          )}
-        </CardTitle>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <CardTitle className="text-lg sm:text-xl">
+              Assegnazione Lead
+            </CardTitle>
+            {getVerificationStatusIcon()}
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleManualVerification}
+            disabled={isVerifying}
+            className="flex items-center gap-2"
+          >
+            <RefreshCcw className={`h-4 w-4 ${isVerifying ? 'animate-spin' : ''}`} />
+            Riverifica
+          </Button>
+        </div>
         <CardDescription className="text-sm">
-          {isCheckingAssignability ? (
-            "Verifica assegnabilità in corso..."
-          ) : (
-            `Assegna lead ai venditori con filtri per fonti. Lead disponibili: ${availableLeads}`
+          {getVerificationStatusText()}
+          {!isVerifying && verification.status === 'completed' && (
+            <span className="block mt-1 text-green-700">
+              Lead disponibili: {availableLeads}
+            </span>
           )}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4 sm:space-y-6">
+        {/* Mostra stato di verifica se in corso */}
+        {isVerifying && (
+          <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+            <div className="flex items-center gap-3">
+              <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
+              <div>
+                <p className="text-blue-800 font-medium">Verifica in corso...</p>
+                <p className="text-blue-600 text-sm">
+                  Controllo completo del database per garantire assegnazioni corrette
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {/* Number of leads and Salesperson selection */}
           <AssignmentForm
@@ -58,7 +145,7 @@ const LeadAssignmentWithExclusions = () => {
             setCampagna={setCampagna}
             salespeople={salespeople}
             campagne={campagne}
-            isSubmitting={isSubmitting || isCheckingAssignability}
+            isSubmitting={isSubmitting || isVerifying}
             availableLeads={availableLeads}
             onAssign={handleAssign}
             showButton={false}
@@ -75,7 +162,7 @@ const LeadAssignmentWithExclusions = () => {
           setCampagna={setCampagna}
           salespeople={salespeople}
           campagne={campagne}
-          isSubmitting={isSubmitting || isCheckingAssignability}
+          isSubmitting={isSubmitting || isVerifying}
           availableLeads={availableLeads}
           onAssign={handleAssign}
           showOnlyCampaign={true}
@@ -105,7 +192,7 @@ const LeadAssignmentWithExclusions = () => {
           setCampagna={setCampagna}
           salespeople={salespeople}
           campagne={campagne}
-          isSubmitting={isSubmitting || isCheckingAssignability}
+          isSubmitting={isSubmitting || isVerifying}
           availableLeads={availableLeads}
           onAssign={handleAssign}
           showOnlyButton={true}

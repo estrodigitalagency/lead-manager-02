@@ -1,9 +1,8 @@
 
-
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import PersistentNavigation from "@/components/PersistentNavigation";
-import LeadAssignmentVerificationWrapper from "@/components/LeadAssignmentVerificationWrapper";
+import LeadAssignmentWithExclusions from "@/components/LeadAssignmentWithExclusions";
 import { RealTimeStatsSection } from "@/components/RealTimeStatsSection";
 import { getLeadsStats } from "@/services/databaseService";
 
@@ -32,11 +31,10 @@ const Index = () => {
       <div className="container mx-auto px-4 py-8 space-y-8">
         <RealTimeStatsSection />
         
-        <LeadAssignmentVerificationWrapper />
+        <LeadAssignmentWithExclusions />
       </div>
     </div>
   );
 };
 
 export default Index;
-
