@@ -1,11 +1,10 @@
-
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { SourceFilter } from "@/components/lead-assignment/SourceFilter";
 import { AssignmentForm } from "@/components/lead-assignment/AssignmentForm";
 import { useLeadAssignment } from "@/hooks/useLeadAssignment";
 import { Loader2 } from "lucide-react";
 
-const LeadAssignmentWithExcl​usions = () => {
+const LeadAssignmentWithExclusions = () => {
   const {
     numLead,
     setNumLead,
