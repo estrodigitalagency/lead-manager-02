@@ -76,16 +76,18 @@ async function getLeadTotaliGenerati(filters: ReportFilters): Promise<number> {
     query = query.lte('created_at', endDateTime);
   }
 
-  // Filtro per fonte - verifica che sia una stringa valida
+  // Filtro per fonte - usa pattern matching con trim degli spazi
   if (filters.fonte && typeof filters.fonte === 'string' && filters.fonte.trim() !== '') {
-    console.log('Lead generati - filtering by fonte:', filters.fonte);
-    query = query.ilike('fonte', `%${filters.fonte.trim()}%`);
+    const cleanFonte = filters.fonte.trim();
+    console.log('Lead generati - filtering by fonte:', cleanFonte);
+    query = query.or(`fonte.ilike.%${cleanFonte}%,fonte.ilike.% ${cleanFonte}%,fonte.ilike.%${cleanFonte} %`);
   }
 
-  // Filtro per venditore - verifica che sia una stringa valida
+  // Filtro per venditore - usa pattern matching con trim degli spazi
   if (filters.venditore && typeof filters.venditore === 'string' && filters.venditore.trim() !== '') {
-    console.log('Lead generati - filtering by venditore:', filters.venditore);
-    query = query.eq('venditore', filters.venditore.trim());
+    const cleanVenditore = filters.venditore.trim();
+    console.log('Lead generati - filtering by venditore:', cleanVenditore);
+    query = query.or(`venditore.eq.${cleanVenditore},venditore.eq. ${cleanVenditore},venditore.eq.${cleanVenditore} `);
   }
 
   const { count, error } = await query;
@@ -119,16 +121,18 @@ async function getCallTotaliPrenotate(filters: ReportFilters): Promise<number> {
     query = query.lte('created_at', endDateTime);
   }
 
-  // Filtro per fonte - verifica che sia una stringa valida
+  // Filtro per fonte - usa pattern matching con trim degli spazi
   if (filters.fonte && typeof filters.fonte === 'string' && filters.fonte.trim() !== '') {
-    console.log('Call prenotate - filtering by fonte:', filters.fonte);
-    query = query.ilike('fonte', `%${filters.fonte.trim()}%`);
+    const cleanFonte = filters.fonte.trim();
+    console.log('Call prenotate - filtering by fonte:', cleanFonte);
+    query = query.or(`fonte.ilike.%${cleanFonte}%,fonte.ilike.% ${cleanFonte}%,fonte.ilike.%${cleanFonte} %`);
   }
 
-  // Filtro per venditore - verifica che sia una stringa valida
+  // Filtro per venditore - usa pattern matching con trim degli spazi
   if (filters.venditore && typeof filters.venditore === 'string' && filters.venditore.trim() !== '') {
-    console.log('Call prenotate - filtering by venditore:', filters.venditore);
-    query = query.eq('venditore', filters.venditore.trim());
+    const cleanVenditore = filters.venditore.trim();
+    console.log('Call prenotate - filtering by venditore:', cleanVenditore);
+    query = query.or(`venditore.eq.${cleanVenditore},venditore.eq. ${cleanVenditore},venditore.eq.${cleanVenditore} `);
   }
 
   const { count, error } = await query;
@@ -163,16 +167,18 @@ async function getLeadTotaliLavorati(filters: ReportFilters): Promise<number> {
     query = query.lte('data_assegnazione', endDateTime);
   }
 
-  // Filtro per fonte - verifica che sia una stringa valida
+  // Filtro per fonte - usa pattern matching con trim degli spazi
   if (filters.fonte && typeof filters.fonte === 'string' && filters.fonte.trim() !== '') {
-    console.log('Lead lavorati - filtering by fonte:', filters.fonte);
-    query = query.ilike('fonte', `%${filters.fonte.trim()}%`);
+    const cleanFonte = filters.fonte.trim();
+    console.log('Lead lavorati - filtering by fonte:', cleanFonte);
+    query = query.or(`fonte.ilike.%${cleanFonte}%,fonte.ilike.% ${cleanFonte}%,fonte.ilike.%${cleanFonte} %`);
   }
 
-  // Filtro per venditore - verifica che sia una stringa valida
+  // Filtro per venditore - usa pattern matching con trim degli spazi
   if (filters.venditore && typeof filters.venditore === 'string' && filters.venditore.trim() !== '') {
-    console.log('Lead lavorati - filtering by venditore:', filters.venditore);
-    query = query.eq('venditore', filters.venditore.trim());
+    const cleanVenditore = filters.venditore.trim();
+    console.log('Lead lavorati - filtering by venditore:', cleanVenditore);
+    query = query.or(`venditore.eq.${cleanVenditore},venditore.eq. ${cleanVenditore},venditore.eq.${cleanVenditore} `);
   }
 
   const { count, error } = await query;
