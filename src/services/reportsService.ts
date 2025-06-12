@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 
 export interface ReportFilters {
@@ -132,19 +131,19 @@ async function getLeadTotaliLavorati(filters: ReportFilters): Promise<number> {
   
   let query = supabase
     .from('lead_generation')
-    .select('id, data_assegnazione, venditore, fonte, created_at', { count: 'exact' })
-    .not('data_assegnazione', 'is', null);
+    .select('id', { count: 'exact', head: true })
+    .not('venditore', 'is', null);
 
-  // Filtro per data di assegnazione con gestione corretta delle date
+  // Filtro per data di creazione (non di assegnazione)
   if (filters.startDate) {
     const startDateTime = getStartOfDay(filters.startDate);
     console.log('Filtering by start date:', startDateTime);
-    query = query.gte('data_assegnazione', startDateTime);
+    query = query.gte('created_at', startDateTime);
   }
   if (filters.endDate) {
     const endDateTime = getEndOfDay(filters.endDate);
     console.log('Filtering by end date:', endDateTime);
-    query = query.lte('data_assegnazione', endDateTime);
+    query = query.lte('created_at', endDateTime);
   }
 
   // Filtro per fonte
@@ -159,12 +158,11 @@ async function getLeadTotaliLavorati(filters: ReportFilters): Promise<number> {
     query = query.eq('venditore', filters.venditore);
   }
 
-  const { data, count, error } = await query;
+  const { count, error } = await query;
   
   console.log('Lead lavorati query result:', {
     count,
-    error,
-    sampleData: data?.slice(0, 3) // Show first 3 records for debugging
+    error
   });
   
   if (error) {
