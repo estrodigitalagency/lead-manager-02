@@ -47,17 +47,31 @@ const ReportFiltersComponent = ({ filters, onFiltersChange, onApplyFilters }: Re
   };
 
   const handleFonteChange = (value: string) => {
-    onFiltersChange({ 
-      ...filters, 
-      fonte: value === 'all-fonti' ? undefined : value 
-    });
+    console.log('Fonte changed to:', value);
+    if (value === 'all-fonti') {
+      const newFilters = { ...filters };
+      delete newFilters.fonte;
+      onFiltersChange(newFilters);
+    } else {
+      onFiltersChange({ 
+        ...filters, 
+        fonte: value 
+      });
+    }
   };
 
   const handleVenditoreChange = (value: string) => {
-    onFiltersChange({ 
-      ...filters, 
-      venditore: value === 'all-venditori' ? undefined : value 
-    });
+    console.log('Venditore changed to:', value);
+    if (value === 'all-venditori') {
+      const newFilters = { ...filters };
+      delete newFilters.venditore;
+      onFiltersChange(newFilters);
+    } else {
+      onFiltersChange({ 
+        ...filters, 
+        venditore: value 
+      });
+    }
   };
 
   return (

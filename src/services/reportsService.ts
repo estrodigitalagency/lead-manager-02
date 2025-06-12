@@ -58,31 +58,39 @@ function getEndOfDay(dateString: string): string {
 }
 
 async function getLeadTotaliGenerati(filters: ReportFilters): Promise<number> {
+  console.log('Getting lead totali generati with filters:', filters);
+  
   let query = supabase
     .from('lead_generation')
     .select('id', { count: 'exact', head: true });
 
-  // Filtro per data di creazione con gestione corretta delle date
+  // Filtro per data di creazione
   if (filters.startDate) {
     const startDateTime = getStartOfDay(filters.startDate);
+    console.log('Lead generati - filtering by start date:', startDateTime);
     query = query.gte('created_at', startDateTime);
   }
   if (filters.endDate) {
     const endDateTime = getEndOfDay(filters.endDate);
+    console.log('Lead generati - filtering by end date:', endDateTime);
     query = query.lte('created_at', endDateTime);
   }
 
-  // Filtro per fonte - uso contains per gestire fonti multiple separate da virgola
-  if (filters.fonte) {
-    query = query.ilike('fonte', `%${filters.fonte}%`);
+  // Filtro per fonte - verifica che sia una stringa valida
+  if (filters.fonte && typeof filters.fonte === 'string' && filters.fonte.trim() !== '') {
+    console.log('Lead generati - filtering by fonte:', filters.fonte);
+    query = query.ilike('fonte', `%${filters.fonte.trim()}%`);
   }
 
-  // Filtro per venditore - match esatto
-  if (filters.venditore) {
-    query = query.eq('venditore', filters.venditore);
+  // Filtro per venditore - verifica che sia una stringa valida
+  if (filters.venditore && typeof filters.venditore === 'string' && filters.venditore.trim() !== '') {
+    console.log('Lead generati - filtering by venditore:', filters.venditore);
+    query = query.eq('venditore', filters.venditore.trim());
   }
 
   const { count, error } = await query;
+  
+  console.log('Lead generati query result:', { count, error });
   
   if (error) {
     console.error('Error fetching lead totali generati:', error);
@@ -93,31 +101,39 @@ async function getLeadTotaliGenerati(filters: ReportFilters): Promise<number> {
 }
 
 async function getCallTotaliPrenotate(filters: ReportFilters): Promise<number> {
+  console.log('Getting call totali prenotate with filters:', filters);
+  
   let query = supabase
     .from('booked_call')
     .select('id', { count: 'exact', head: true });
 
-  // Filtro per data di creazione con gestione corretta delle date
+  // Filtro per data di creazione
   if (filters.startDate) {
     const startDateTime = getStartOfDay(filters.startDate);
+    console.log('Call prenotate - filtering by start date:', startDateTime);
     query = query.gte('created_at', startDateTime);
   }
   if (filters.endDate) {
     const endDateTime = getEndOfDay(filters.endDate);
+    console.log('Call prenotate - filtering by end date:', endDateTime);
     query = query.lte('created_at', endDateTime);
   }
 
-  // Filtro per fonte - uso contains per gestire fonti multiple separate da virgola
-  if (filters.fonte) {
-    query = query.ilike('fonte', `%${filters.fonte}%`);
+  // Filtro per fonte - verifica che sia una stringa valida
+  if (filters.fonte && typeof filters.fonte === 'string' && filters.fonte.trim() !== '') {
+    console.log('Call prenotate - filtering by fonte:', filters.fonte);
+    query = query.ilike('fonte', `%${filters.fonte.trim()}%`);
   }
 
-  // Filtro per venditore - match esatto
-  if (filters.venditore) {
-    query = query.eq('venditore', filters.venditore);
+  // Filtro per venditore - verifica che sia una stringa valida
+  if (filters.venditore && typeof filters.venditore === 'string' && filters.venditore.trim() !== '') {
+    console.log('Call prenotate - filtering by venditore:', filters.venditore);
+    query = query.eq('venditore', filters.venditore.trim());
   }
 
   const { count, error } = await query;
+  
+  console.log('Call prenotate query result:', { count, error });
   
   if (error) {
     console.error('Error fetching call totali prenotate:', error);
@@ -128,43 +144,40 @@ async function getCallTotaliPrenotate(filters: ReportFilters): Promise<number> {
 }
 
 async function getLeadTotaliLavorati(filters: ReportFilters): Promise<number> {
-  console.log('Calculating lead lavorati with filters:', filters);
+  console.log('Getting lead totali lavorati with filters:', filters);
   
   let query = supabase
     .from('lead_generation')
     .select('id', { count: 'exact', head: true })
     .not('data_assegnazione', 'is', null);
 
-  // Filtro per data di assegnazione con gestione corretta delle date
+  // Filtro per data di assegnazione
   if (filters.startDate) {
     const startDateTime = getStartOfDay(filters.startDate);
-    console.log('Filtering by start date:', startDateTime);
+    console.log('Lead lavorati - filtering by start date:', startDateTime);
     query = query.gte('data_assegnazione', startDateTime);
   }
   if (filters.endDate) {
     const endDateTime = getEndOfDay(filters.endDate);
-    console.log('Filtering by end date:', endDateTime);
+    console.log('Lead lavorati - filtering by end date:', endDateTime);
     query = query.lte('data_assegnazione', endDateTime);
   }
 
-  // Filtro per fonte - uso contains per gestire fonti multiple separate da virgola
-  if (filters.fonte) {
-    console.log('Filtering by fonte:', filters.fonte);
-    query = query.ilike('fonte', `%${filters.fonte}%`);
+  // Filtro per fonte - verifica che sia una stringa valida
+  if (filters.fonte && typeof filters.fonte === 'string' && filters.fonte.trim() !== '') {
+    console.log('Lead lavorati - filtering by fonte:', filters.fonte);
+    query = query.ilike('fonte', `%${filters.fonte.trim()}%`);
   }
 
-  // Filtro per venditore - match esatto
-  if (filters.venditore) {
-    console.log('Filtering by venditore:', filters.venditore);
-    query = query.eq('venditore', filters.venditore);
+  // Filtro per venditore - verifica che sia una stringa valida
+  if (filters.venditore && typeof filters.venditore === 'string' && filters.venditore.trim() !== '') {
+    console.log('Lead lavorati - filtering by venditore:', filters.venditore);
+    query = query.eq('venditore', filters.venditore.trim());
   }
 
   const { count, error } = await query;
   
-  console.log('Lead lavorati query result:', {
-    count,
-    error
-  });
+  console.log('Lead lavorati query result:', { count, error });
   
   if (error) {
     console.error('Error fetching lead totali lavorati:', error);
