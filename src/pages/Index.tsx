@@ -1,11 +1,12 @@
+
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import PersistentNavigation from "@/components/PersistentNavigation";
-import HeroSection from "@/components/HeroSection";
-import StatsSection from "@/components/StatsSection";
+import { HeroSection } from "@/components/HeroSection";
+import { StatsSection } from "@/components/StatsSection";
 import LeadAssignmentVerificationWrapper from "@/components/LeadAssignmentVerificationWrapper";
 import AssignmentHistory from "@/components/AssignmentHistory";
-import RealTimeStatsSection from "@/components/RealTimeStatsSection";
+import { RealTimeStatsSection } from "@/components/RealTimeStatsSection";
 import { getLeadsStats } from "@/services/databaseService";
 
 const Index = () => {
@@ -16,13 +17,11 @@ const Index = () => {
     booked: 0
   });
 
-  const { data: statsData, isLoading: statsLoading, error: statsError } = useQuery(
-    ['leadsStats'],
-    getLeadsStats,
-    {
-      refetchInterval: 5000, // Refetch every 5 seconds
-    }
-  );
+  const { data: statsData, isLoading: statsLoading, error: statsError } = useQuery({
+    queryKey: ['leadsStats'],
+    queryFn: getLeadsStats,
+    refetchInterval: 5000, // Refetch every 5 seconds
+  });
 
   useEffect(() => {
     if (statsData) {
