@@ -1,0 +1,222 @@
+
+import { supabase } from "@/integrations/supabase/client";
+
+export interface ReportFilters {
+  startDate?: string;
+  endDate?: string;
+  fonte?: string;
+  venditore?: string;
+}
+
+export interface ReportMetrics {
+  leadTotaliGenerati: number;
+  callTotaliPrenotate: number;
+  leadTotaliLavorati: number;
+}
+
+export async function getReportMetrics(filters: ReportFilters): Promise<ReportMetrics> {
+  try {
+    const promises = [
+      getLeadTotaliGenerati(filters),
+      getCallTotaliPrenotate(filters),
+      getLeadTotaliLavorati(filters)
+    ];
+
+    const [leadTotaliGenerati, callTotaliPrenotate, leadTotaliLavorati] = await Promise.all(promises);
+
+    return {
+      leadTotaliGenerati,
+      callTotaliPrenotate,
+      leadTotaliLavorati
+    };
+  } catch (error) {
+    console.error('Error fetching report metrics:', error);
+    return {
+      leadTotaliGenerati: 0,
+      callTotaliPrenotate: 0,
+      leadTotaliLavorati: 0
+    };
+  }
+}
+
+async function getLeadTotaliGenerati(filters: ReportFilters): Promise<number> {
+  let query = supabase
+    .from('lead_generation')
+    .select('id', { count: 'exact', head: true });
+
+  // Filtro per data di creazione
+  if (filters.startDate) {
+    query = query.gte('created_at', filters.startDate);
+  }
+  if (filters.endDate) {
+    query = query.lte('created_at', filters.endDate);
+  }
+
+  // Filtro per fonte
+  if (filters.fonte) {
+    query = query.ilike('fonte', `%${filters.fonte}%`);
+  }
+
+  // Filtro per venditore
+  if (filters.venditore) {
+    query = query.eq('venditore', filters.venditore);
+  }
+
+  const { count, error } = await query;
+  
+  if (error) {
+    console.error('Error fetching lead totali generati:', error);
+    return 0;
+  }
+
+  return count || 0;
+}
+
+async function getCallTotaliPrenotate(filters: ReportFilters): Promise<number> {
+  let query = supabase
+    .from('booked_call')
+    .select('id', { count: 'exact', head: true });
+
+  // Filtro per data di creazione
+  if (filters.startDate) {
+    query = query.gte('created_at', filters.startDate);
+  }
+  if (filters.endDate) {
+    query = query.lte('created_at', filters.endDate);
+  }
+
+  // Filtro per fonte
+  if (filters.fonte) {
+    query = query.ilike('fonte', `%${filters.fonte}%`);
+  }
+
+  // Filtro per venditore
+  if (filters.venditore) {
+    query = query.eq('venditore', filters.venditore);
+  }
+
+  const { count, error } = await query;
+  
+  if (error) {
+    console.error('Error fetching call totali prenotate:', error);
+    return 0;
+  }
+
+  return count || 0;
+}
+
+async function getLeadTotaliLavorati(filters: ReportFilters): Promise<number> {
+  let query = supabase
+    .from('lead_generation')
+    .select('id', { count: 'exact', head: true })
+    .not('data_assegnazione', 'is', null);
+
+  // Filtro per data di assegnazione
+  if (filters.startDate) {
+    query = query.gte('data_assegnazione', filters.startDate);
+  }
+  if (filters.endDate) {
+    query = query.lte('data_assegnazione', filters.endDate);
+  }
+
+  // Filtro per fonte
+  if (filters.fonte) {
+    query = query.ilike('fonte', `%${filters.fonte}%`);
+  }
+
+  // Filtro per venditore
+  if (filters.venditore) {
+    query = query.eq('venditore', filters.venditore);
+  }
+
+  const { count, error } = await query;
+  
+  if (error) {
+    console.error('Error fetching lead totali lavorati:', error);
+    return 0;
+  }
+
+  return count || 0;
+}
+
+export async function getAvailableFonti(): Promise<string[]> {
+  try {
+    const { data, error } = await supabase
+      .from('lead_generation')
+      .select('fonte')
+      .not('fonte', 'is', null)
+      .not('fonte', 'eq', '');
+
+    if (error) throw error;
+
+    // Estrai e flatta tutte le fonti
+    const allFonti = new Set<string>();
+    data?.forEach(item => {
+      if (item.fonte) {
+        item.fonte.split(',').forEach((fonte: string) => {
+          const trimmedFonte = fonte.trim();
+          if (trimmedFonte) {
+            allFonti.add(trimmedFonte);
+          }
+        });
+      }
+    });
+
+    return Array.from(allFonti).sort();
+  } catch (error) {
+    console.error('Error fetching available fonti:', error);
+    return [];
+  }
+}
+
+export async function getAvailableVenditori(): Promise<string[]> {
+  try {
+    const { data, error } = await supabase
+      .from('lead_generation')
+      .select('venditore')
+      .not('venditore', 'is', null)
+      .not('venditore', 'eq', '');
+
+    if (error) throw error;
+
+    const uniqueVenditori = [...new Set(data?.map(item => item.venditore).filter(Boolean))];
+    return uniqueVenditori.sort();
+  } catch (error) {
+    console.error('Error fetching available venditori:', error);
+    return [];
+  }
+}
+
+// Periodi predefiniti
+export const PRESET_PERIODS = {
+  today: {
+    label: 'Oggi',
+    startDate: new Date().toISOString().split('T')[0],
+    endDate: new Date().toISOString().split('T')[0]
+  },
+  yesterday: {
+    label: 'Ieri',
+    startDate: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    endDate: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+  },
+  last7days: {
+    label: 'Ultimi 7 giorni',
+    startDate: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    endDate: new Date().toISOString().split('T')[0]
+  },
+  last30days: {
+    label: 'Ultimi 30 giorni',
+    startDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    endDate: new Date().toISOString().split('T')[0]
+  },
+  thisMonth: {
+    label: 'Questo mese',
+    startDate: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0],
+    endDate: new Date().toISOString().split('T')[0]
+  },
+  lastMonth: {
+    label: 'Mese scorso',
+    startDate: new Date(new Date().getFullYear(), new Date().getMonth() - 1, 1).toISOString().split('T')[0],
+    endDate: new Date(new Date().getFullYear(), new Date().getMonth(), 0).toISOString().split('T')[0]
+  }
+};

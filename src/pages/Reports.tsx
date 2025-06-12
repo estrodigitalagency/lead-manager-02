@@ -2,233 +2,89 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowLeft, LayoutDashboard, RefreshCcw } from "lucide-react";
-import { PieChart, Pie, BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, Cell } from "recharts";
-import { toast } from "sonner";
-import { getTableCounts, getVendorStats } from "@/services/databaseService";
-import { getAnalyticsData, AnalyticsData } from "@/services/analyticsService";
-
-const COLORS = ['#00bcd4', '#00e5ff', '#4fc3f7', '#29b6f6', '#03a9f4', '#0288d1'];
+import { ArrowLeft, BarChart3 } from "lucide-react";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { ReportFilters, ReportMetrics, getReportMetrics } from "@/services/reportsService";
+import ReportFiltersComponent from "@/components/reports/ReportFilters";
+import ReportMetricsComponent from "@/components/reports/ReportMetrics";
 
 const ReportsPage = () => {
+  const isMobile = useIsMobile();
+  const [filters, setFilters] = useState<ReportFilters>({});
+  const [metrics, setMetrics] = useState<ReportMetrics>({
+    leadTotaliGenerati: 0,
+    callTotaliPrenotate: 0,
+    leadTotaliLavorati: 0
+  });
   const [isLoading, setIsLoading] = useState(true);
-  const [leadStats, setLeadStats] = useState({
-    total: 0,
-    assignable: 0,
-    assigned: 0,
-    booked: 0
-  });
-  const [vendorStats, setVendorStats] = useState<{ name: string; value: number }[]>([]);
-  const [analyticsData, setAnalyticsData] = useState<AnalyticsData>({
-    leadGenerati: 0,
-    conversioneMedia: 0,
-    venditoriAttivi: 0,
-    speedToLead: 0
-  });
 
-  const fetchData = async () => {
+  const loadMetrics = async () => {
     setIsLoading(true);
     try {
-      const [counts, vendors, analytics] = await Promise.all([
-        getTableCounts(),
-        getVendorStats(),
-        getAnalyticsData()
-      ]);
-      
-      setLeadStats(counts);
-      setVendorStats(vendors);
-      setAnalyticsData(analytics);
+      const reportMetrics = await getReportMetrics(filters);
+      setMetrics(reportMetrics);
     } catch (error) {
-      console.error("Error loading report data:", error);
-      toast.error("Errore nel caricamento dei dati per il report");
+      console.error('Error loading report metrics:', error);
     } finally {
       setIsLoading(false);
     }
   };
 
+  // Carica le metriche all'avvio
   useEffect(() => {
-    fetchData();
+    loadMetrics();
   }, []);
 
-  const handleRefresh = () => {
-    fetchData();
+  const handleApplyFilters = () => {
+    loadMetrics();
   };
 
-  // Prepare data for real-time analytics
-  const realTimeData = [
-    { name: 'Lead Generati (30gg)', value: analyticsData.leadGenerati },
-    { name: 'Venditori Attivi', value: analyticsData.venditoriAttivi },
-    { name: 'Conversione %', value: analyticsData.conversioneMedia },
-    { name: 'Speed to Lead (h)', value: analyticsData.speedToLead }
-  ];
-
-  // Prepare data for status pie chart
-  const statusPieData = [
-    { name: 'Assegnati', value: leadStats.assigned },
-    { name: 'Assegnabili non assegnati', value: Math.max(0, leadStats.assignable - leadStats.assigned) },
-    { name: 'Non assegnabili', value: Math.max(0, leadStats.total - leadStats.assignable) }
-  ];
-  
-  // Prepare data for activity bar chart
-  const activityBarData = [
-    { name: 'Totali', value: leadStats.total },
-    { name: 'Assegnabili', value: leadStats.assignable },
-    { name: 'Assegnati', value: leadStats.assigned },
-    { name: 'Prenotati', value: leadStats.booked }
-  ];
-
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="flex justify-between items-center mb-8">
-        <div className="flex items-center gap-4">
+    <div className={`container mx-auto px-4 py-8 ${isMobile ? 'px-2 py-4' : ''}`}>
+      <div className={`flex justify-between items-center mb-8 ${isMobile ? 'flex-col gap-4' : ''}`}>
+        <div className={`flex items-center gap-4 ${isMobile ? 'flex-col text-center' : ''}`}>
           <Link to="/">
-            <Button variant="outline" size="icon" className="border-primary/30 hover:border-primary">
+            <Button variant="outline" size="icon" className="border">
               <ArrowLeft className="h-4 w-4 text-primary" />
             </Button>
           </Link>
-          <h1 className="text-3xl font-bold gradient-text">Report Analytics</h1>
+          <h1 className={`text-3xl font-bold text-primary flex items-center gap-2 ${isMobile ? 'text-2xl' : ''}`}>
+            <BarChart3 className="h-8 w-8" />
+            Report e Analytics
+          </h1>
         </div>
-        <Button 
-          onClick={handleRefresh} 
-          variant="outline" 
-          disabled={isLoading}
-          className="flex items-center gap-2 border-primary/30 hover:border-primary btn-neon"
-        >
-          {isLoading ? (
-            <RefreshCcw className="h-4 w-4 animate-spin" />
-          ) : (
-            <RefreshCcw className="h-4 w-4" />
-          )}
-          Aggiorna dati
-        </Button>
       </div>
-      
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Real-Time Analytics (Ultimi 30 giorni) */}
-        <Card className="glass-card lg:col-span-2">
-          <CardHeader className="border-b border-primary/20">
-            <CardTitle className="flex items-center gap-2 gradient-text">
-              <LayoutDashboard className="h-5 w-5" />
-              Analytics Tempo Reale (Ultimi 30 Giorni)
-            </CardTitle>
-            <CardDescription>Dati reali del tuo business aggiornati in tempo reale</CardDescription>
-          </CardHeader>
-          <CardContent className="pt-6">
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={realTimeData}>
-                <XAxis dataKey="name" stroke="hsl(var(--primary))" />
-                <YAxis stroke="hsl(var(--primary))" />
-                <Tooltip 
-                  contentStyle={{ 
-                    backgroundColor: 'hsl(var(--card))', 
-                    border: '1px solid hsl(var(--primary))',
-                    borderRadius: '8px'
-                  }} 
-                />
-                <Legend />
-                <Bar dataKey="value" fill="hsl(var(--primary))">
-                  {realTimeData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
 
-        {/* Lead Stats Overview */}
-        <Card className="glass-card">
-          <CardHeader className="border-b border-primary/20">
-            <CardTitle className="flex items-center gap-2 gradient-text">
-              <LayoutDashboard className="h-5 w-5" />
-              Statistiche Lead Totali
-            </CardTitle>
-            <CardDescription>Panoramica di tutti i lead nel database</CardDescription>
-          </CardHeader>
-          <CardContent className="pt-6">
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={activityBarData}>
-                <XAxis dataKey="name" stroke="hsl(var(--primary))" />
-                <YAxis stroke="hsl(var(--primary))" />
-                <Tooltip 
-                  contentStyle={{ 
-                    backgroundColor: 'hsl(var(--card))', 
-                    border: '1px solid hsl(var(--primary))',
-                    borderRadius: '8px'
-                  }} 
-                />
-                <Legend />
-                <Bar dataKey="value" fill="hsl(var(--primary))">
-                  {activityBarData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
+      <div className="space-y-6">
+        {/* Filtri */}
+        <ReportFiltersComponent
+          filters={filters}
+          onFiltersChange={setFilters}
+          onApplyFilters={handleApplyFilters}
+        />
 
-        {/* Lead Status Distribution */}
-        <Card className="glass-card">
-          <CardHeader className="border-b border-primary/20">
-            <CardTitle className="gradient-text">Distribuzione Stato Lead</CardTitle>
-            <CardDescription>Percentuale di lead per stato</CardDescription>
-          </CardHeader>
-          <CardContent className="pt-6">
-            <ResponsiveContainer width="100%" height={300}>
-              <PieChart>
-                <Pie
-                  data={statusPieData}
-                  cx="50%"
-                  cy="50%"
-                  labelLine={false}
-                  label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                  outerRadius={100}
-                  fill="hsl(var(--primary))"
-                  dataKey="value"
-                >
-                  {statusPieData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip 
-                  formatter={(value) => [`${value} lead`, '']} 
-                  contentStyle={{ 
-                    backgroundColor: 'hsl(var(--card))', 
-                    border: '1px solid hsl(var(--primary))',
-                    borderRadius: '8px'
-                  }} 
-                />
-              </PieChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
+        {/* Metriche Principali */}
+        <div>
+          <h2 className="text-xl font-semibold mb-4">Metriche Principali</h2>
+          <ReportMetricsComponent metrics={metrics} isLoading={isLoading} />
+        </div>
 
-        {/* Lead Assignment by Vendor */}
-        <Card className="glass-card lg:col-span-2">
-          <CardHeader className="border-b border-primary/20">
-            <CardTitle className="gradient-text">Assegnazione Lead per Venditore</CardTitle>
-            <CardDescription>Numero di lead assegnati a ciascun venditore</CardDescription>
-          </CardHeader>
-          <CardContent className="pt-6">
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={vendorStats}>
-                <XAxis dataKey="name" stroke="hsl(var(--primary))" />
-                <YAxis stroke="hsl(var(--primary))" />
-                <Tooltip 
-                  contentStyle={{ 
-                    backgroundColor: 'hsl(var(--card))', 
-                    border: '1px solid hsl(var(--primary))',
-                    borderRadius: '8px'
-                  }} 
-                />
-                <Legend />
-                <Bar dataKey="value" fill="hsl(var(--primary))" />
-              </BarChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
+        {/* Informazioni sui Filtri Attivi */}
+        {(filters.startDate || filters.endDate || filters.fonte || filters.venditore) && (
+          <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+            <h3 className="font-medium text-blue-800 mb-2">Filtri Attivi:</h3>
+            <div className="text-sm text-blue-600 space-y-1">
+              {filters.startDate && (
+                <div>Data inizio: {new Date(filters.startDate).toLocaleDateString('it-IT')}</div>
+              )}
+              {filters.endDate && (
+                <div>Data fine: {new Date(filters.endDate).toLocaleDateString('it-IT')}</div>
+              )}
+              {filters.fonte && <div>Fonte: {filters.fonte}</div>}
+              {filters.venditore && <div>Venditore: {filters.venditore}</div>}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

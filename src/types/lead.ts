@@ -13,4 +13,5 @@ export interface Lead {
   fonte?: string;
   stato?: string;
   updated_at?: string;
+  data_assegnazione?: string;
 }

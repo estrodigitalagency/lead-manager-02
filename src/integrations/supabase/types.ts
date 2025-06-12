@@ -195,6 +195,7 @@ export type Database = {
           campagna: string | null
           cognome: string | null
           created_at: string | null
+          data_assegnazione: string | null
           email: string | null
           fonte: string | null
           id: string
@@ -210,6 +211,7 @@ export type Database = {
           campagna?: string | null
           cognome?: string | null
           created_at?: string | null
+          data_assegnazione?: string | null
           email?: string | null
           fonte?: string | null
           id?: string
@@ -225,6 +227,7 @@ export type Database = {
           campagna?: string | null
           cognome?: string | null
           created_at?: string | null
+          data_assegnazione?: string | null
           email?: string | null
           fonte?: string | null
           id?: string
