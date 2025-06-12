@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { getLeadStatus } from "@/utils/leadStatus";
@@ -8,14 +7,18 @@ export interface LeadAssignmentData {
   venditore: string;
   campagna?: string;
   excludedSources?: string[];
+  includedSources?: string[];
+  sourceMode?: 'exclude' | 'include';
 }
 
 export async function assignLeadsWithExclusions(data: LeadAssignmentData) {
-  const { numLead, venditore, campagna, excludedSources = [] } = data;
+  const { numLead, venditore, campagna, excludedSources = [], includedSources = [], sourceMode = 'exclude' } = data;
 
   try {
     console.log(`Attempting to assign ${numLead} leads to ${venditore}`);
+    console.log('Source mode:', sourceMode);
     console.log('Excluded sources:', excludedSources);
+    console.log('Included sources:', includedSources);
 
     // Prima recupera le impostazioni per il calcolo dello stato
     const { data: settingsData } = await supabase
@@ -33,11 +36,15 @@ export async function assignLeadsWithExclusions(data: LeadAssignmentData) {
       .is('venditore', null)
       .eq('booked_call', 'NO'); // Solo lead senza call prenotate
 
-    // Apply source exclusions
-    if (excludedSources.length > 0) {
+    // Apply source filtering based on mode
+    if (sourceMode === 'exclude' && excludedSources.length > 0) {
       excludedSources.forEach(source => {
         query = query.not('fonte', 'like', `%${source}%`);
       });
+    } else if (sourceMode === 'include' && includedSources.length > 0) {
+      // For include mode, we need to match any of the included sources
+      const includeFilters = includedSources.map(source => `fonte.like.%${source}%`).join(',');
+      query = query.or(includeFilters);
     }
 
     // Get all candidate leads ordered from oldest to newest
@@ -218,7 +225,7 @@ export async function assignLeadsWithExclusions(data: LeadAssignmentData) {
         venditore,
         leads_count: actualAssignedCount,
         campagna: campagna || null,
-        fonti_escluse: excludedSources.length > 0 ? excludedSources : null
+        fonti_escluse: sourceMode === 'exclude' ? excludedSources.length > 0 ? excludedSources : null : null
       });
 
     if (historyError) {
@@ -284,7 +291,7 @@ export async function assignLeadsWithExclusions(data: LeadAssignmentData) {
   }
 }
 
-export async function getAvailableLeadsCount(excludedSources: string[] = []): Promise<number> {
+export async function getAvailableLeadsCount(excludedSources: string[] = [], includedSources: string[] = [], sourceMode: 'exclude' | 'include' = 'exclude'): Promise<number> {
   try {
     // Prima recupera le impostazioni
     const { data: settingsData } = await supabase
@@ -302,11 +309,14 @@ export async function getAvailableLeadsCount(excludedSources: string[] = []): Pr
       .is('venditore', null)
       .eq('booked_call', 'NO');
 
-    // Apply source exclusions
-    if (excludedSources.length > 0) {
+    // Apply source filtering based on mode
+    if (sourceMode === 'exclude' && excludedSources.length > 0) {
       excludedSources.forEach(source => {
         query = query.not('fonte', 'like', `%${source}%`);
       });
+    } else if (sourceMode === 'include' && includedSources.length > 0) {
+      const includeFilters = includedSources.map(source => `fonte.like.%${source}%`).join(',');
+      query = query.or(includeFilters);
     }
 
     const { data: candidates, error } = await query;

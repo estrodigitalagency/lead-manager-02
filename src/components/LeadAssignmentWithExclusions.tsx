@@ -1,11 +1,11 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ExcludedSources } from "@/components/lead-assignment/ExcludedSources";
+import { SourceFilter } from "@/components/lead-assignment/SourceFilter";
 import { AssignmentForm } from "@/components/lead-assignment/AssignmentForm";
 import { useLeadAssignment } from "@/hooks/useLeadAssignment";
 import { Loader2 } from "lucide-react";
 
-const LeadAssignmentWithExclusions = () => {
+const LeadAssignmentWithExcl​usions = () => {
   const {
     numLead,
     setNumLead,
@@ -18,10 +18,15 @@ const LeadAssignmentWithExclusions = () => {
     isSubmitting,
     isCheckingAssignability,
     excludedSources,
+    includedSources,
+    sourceMode,
     availableLeads,
     uniqueSources,
     addExcludedSource,
     removeExcludedSource,
+    addIncludedSource,
+    removeIncludedSource,
+    toggleSourceMode,
     handleAssign
   } = useLeadAssignment();
 
@@ -38,7 +43,7 @@ const LeadAssignmentWithExclusions = () => {
           {isCheckingAssignability ? (
             "Verifica assegnabilità in corso..."
           ) : (
-            `Assegna lead ai venditori escludendo fonti specifiche. Lead disponibili: ${availableLeads}`
+            `Assegna lead ai venditori con filtri per fonti. Lead disponibili: ${availableLeads}`
           )}
         </CardDescription>
       </CardHeader>
@@ -78,12 +83,17 @@ const LeadAssignmentWithExclusions = () => {
           showButton={false}
         />
         
-        {/* Excluded Sources - positioned before the button */}
-        <ExcludedSources 
+        {/* Source Filter - positioned before the button */}
+        <SourceFilter 
           uniqueSources={uniqueSources}
           excludedSources={excludedSources}
+          includedSources={includedSources}
+          sourceMode={sourceMode}
           onAddExcludedSource={addExcludedSource}
           onRemoveExcludedSource={removeExcludedSource}
+          onAddIncludedSource={addIncludedSource}
+          onRemoveIncludedSource={removeIncludedSource}
+          onToggleSourceMode={toggleSourceMode}
         />
 
         {/* Assignment Button - at the bottom */}

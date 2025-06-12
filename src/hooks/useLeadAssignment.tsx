@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -15,6 +16,8 @@ export function useLeadAssignment() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isCheckingAssignability, setIsCheckingAssignability] = useState(false);
   const [excludedSources, setExcludedSources] = useState<string[]>([]);
+  const [includedSources, setIncludedSources] = useState<string[]>([]);
+  const [sourceMode, setSourceMode] = useState<'exclude' | 'include'>('exclude');
   const [availableLeads, setAvailableLeads] = useState(0);
   const [uniqueSources, setUniqueSources] = useState<string[]>([]);
 
@@ -24,7 +27,7 @@ export function useLeadAssignment() {
 
   useEffect(() => {
     updateAvailableLeads();
-  }, [excludedSources]);
+  }, [excludedSources, includedSources, sourceMode]);
 
   const initializeData = async () => {
     try {
@@ -100,9 +103,9 @@ export function useLeadAssignment() {
 
   const updateAvailableLeads = async () => {
     try {
-      // Usa la funzione ottimizzata del servizio che gestisce correttamente le esclusioni
-      const count = await getAvailableLeadsCount(excludedSources);
-      console.log(`Lead disponibili per assegnazione (escludendo call prenotate): ${count}`);
+      // Usa la funzione ottimizzata del servizio che gestisce correttamente le esclusioni/inclusioni
+      const count = await getAvailableLeadsCount(excludedSources, includedSources, sourceMode);
+      console.log(`Lead disponibili per assegnazione (modalità ${sourceMode}): ${count}`);
       setAvailableLeads(count);
     } catch (error) {
       console.error("Error fetching available leads:", error);
@@ -117,7 +120,7 @@ export function useLeadAssignment() {
       
       // Aggiorna immediatamente il conteggio dei lead disponibili
       try {
-        const count = await getAvailableLeadsCount(newExcludedSources);
+        const count = await getAvailableLeadsCount(newExcludedSources, includedSources, sourceMode);
         console.log(`Lead disponibili dopo esclusione di ${sourceName}: ${count}`);
         setAvailableLeads(count);
       } catch (error) {
@@ -132,11 +135,57 @@ export function useLeadAssignment() {
     
     // Aggiorna immediatamente il conteggio dei lead disponibili
     try {
-      const count = await getAvailableLeadsCount(newExcludedSources);
+      const count = await getAvailableLeadsCount(newExcludedSources, includedSources, sourceMode);
       console.log(`Lead disponibili dopo rimozione esclusione di ${source}: ${count}`);
       setAvailableLeads(count);
     } catch (error) {
       console.error("Error updating available leads after removing exclusion:", error);
+    }
+  };
+
+  const addIncludedSource = async (sourceName: string) => {
+    if (sourceName && !includedSources.includes(sourceName)) {
+      const newIncludedSources = [...includedSources, sourceName];
+      setIncludedSources(newIncludedSources);
+      
+      // Aggiorna immediatamente il conteggio dei lead disponibili
+      try {
+        const count = await getAvailableLeadsCount(excludedSources, newIncludedSources, sourceMode);
+        console.log(`Lead disponibili dopo inclusione di ${sourceName}: ${count}`);
+        setAvailableLeads(count);
+      } catch (error) {
+        console.error("Error updating available leads after inclusion:", error);
+      }
+    }
+  };
+
+  const removeIncludedSource = async (source: string) => {
+    const newIncludedSources = includedSources.filter(s => s !== source);
+    setIncludedSources(newIncludedSources);
+    
+    // Aggiorna immediatamente il conteggio dei lead disponibili
+    try {
+      const count = await getAvailableLeadsCount(excludedSources, newIncludedSources, sourceMode);
+      console.log(`Lead disponibili dopo rimozione inclusione di ${source}: ${count}`);
+      setAvailableLeads(count);
+    } catch (error) {
+      console.error("Error updating available leads after removing inclusion:", error);
+    }
+  };
+
+  const toggleSourceMode = async (newMode: 'exclude' | 'include') => {
+    setSourceMode(newMode);
+    // Reset sources when switching modes
+    setExcludedSources([]);
+    setIncludedSources([]);
+    
+    // Update available leads count
+    try {
+      const count = await getAvailableLeadsCount([], [], newMode);
+      console.log(`Lead disponibili dopo cambio modalità a ${newMode}: ${count}`);
+      setAvailableLeads(count);
+    } catch (error) {
+      console.error("Error updating available leads after mode change:", error);
     }
   };
 
@@ -160,7 +209,9 @@ export function useLeadAssignment() {
         numLead: numLeadInt,
         venditore,
         campagna,
-        excludedSources
+        excludedSources,
+        includedSources,
+        sourceMode
       });
       
       toast.success(`${numLeadInt} lead assegnati con successo a ${venditore}`);
@@ -196,10 +247,15 @@ export function useLeadAssignment() {
     isSubmitting,
     isCheckingAssignability,
     excludedSources,
+    includedSources,
+    sourceMode,
     availableLeads,
     uniqueSources,
     addExcludedSource,
     removeExcludedSource,
+    addIncludedSource,
+    removeIncludedSource,
+    toggleSourceMode,
     handleAssign,
     updateAvailableLeads
   };
