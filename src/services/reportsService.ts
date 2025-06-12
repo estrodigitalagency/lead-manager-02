@@ -39,17 +39,29 @@ export async function getReportMetrics(filters: ReportFilters): Promise<ReportMe
   }
 }
 
+// Helper function to convert date to start of day
+function getStartOfDay(dateString: string): string {
+  return `${dateString}T00:00:00.000Z`;
+}
+
+// Helper function to convert date to end of day
+function getEndOfDay(dateString: string): string {
+  return `${dateString}T23:59:59.999Z`;
+}
+
 async function getLeadTotaliGenerati(filters: ReportFilters): Promise<number> {
   let query = supabase
     .from('lead_generation')
     .select('id', { count: 'exact', head: true });
 
-  // Filtro per data di creazione
+  // Filtro per data di creazione con gestione corretta delle date
   if (filters.startDate) {
-    query = query.gte('created_at', filters.startDate);
+    const startDateTime = getStartOfDay(filters.startDate);
+    query = query.gte('created_at', startDateTime);
   }
   if (filters.endDate) {
-    query = query.lte('created_at', filters.endDate);
+    const endDateTime = getEndOfDay(filters.endDate);
+    query = query.lte('created_at', endDateTime);
   }
 
   // Filtro per fonte
@@ -77,12 +89,14 @@ async function getCallTotaliPrenotate(filters: ReportFilters): Promise<number> {
     .from('booked_call')
     .select('id', { count: 'exact', head: true });
 
-  // Filtro per data di creazione
+  // Filtro per data di creazione con gestione corretta delle date
   if (filters.startDate) {
-    query = query.gte('created_at', filters.startDate);
+    const startDateTime = getStartOfDay(filters.startDate);
+    query = query.gte('created_at', startDateTime);
   }
   if (filters.endDate) {
-    query = query.lte('created_at', filters.endDate);
+    const endDateTime = getEndOfDay(filters.endDate);
+    query = query.lte('created_at', endDateTime);
   }
 
   // Filtro per fonte
@@ -111,12 +125,14 @@ async function getLeadTotaliLavorati(filters: ReportFilters): Promise<number> {
     .select('id', { count: 'exact', head: true })
     .not('data_assegnazione', 'is', null);
 
-  // Filtro per data di assegnazione
+  // Filtro per data di assegnazione con gestione corretta delle date
   if (filters.startDate) {
-    query = query.gte('data_assegnazione', filters.startDate);
+    const startDateTime = getStartOfDay(filters.startDate);
+    query = query.gte('data_assegnazione', startDateTime);
   }
   if (filters.endDate) {
-    query = query.lte('data_assegnazione', filters.endDate);
+    const endDateTime = getEndOfDay(filters.endDate);
+    query = query.lte('data_assegnazione', endDateTime);
   }
 
   // Filtro per fonte
