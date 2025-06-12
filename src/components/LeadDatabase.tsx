@@ -16,12 +16,13 @@ import { Badge } from "@/components/ui/badge";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Card, CardContent } from "@/components/ui/card";
 import FonteDisplay from "./database/FonteDisplay";
-import { getLeadStatus } from "@/utils/leadStatus";
+import { useLeadStatus } from "@/hooks/useLeadStatus";
 
 const LeadDatabase = () => {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(true);
   const isMobile = useIsMobile();
+  const { getStatus } = useLeadStatus();
 
   useEffect(() => {
     const loadLeads = async () => {
@@ -70,7 +71,7 @@ const LeadDatabase = () => {
     return (
       <div className="space-y-3">
         {leads.map((lead) => {
-          const status = getLeadStatus(lead);
+          const status = getStatus(lead);
           
           return (
             <Card key={lead.id} className="border">
@@ -147,7 +148,7 @@ const LeadDatabase = () => {
         </TableHeader>
         <TableBody>
           {leads.map((lead) => {
-            const status = getLeadStatus(lead);
+            const status = getStatus(lead);
             
             return (
               <TableRow key={lead.id} className="hover:bg-muted/30 transition-colors">

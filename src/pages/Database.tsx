@@ -20,6 +20,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Lead } from "@/types/lead";
 import { LeadLavorato } from "@/types/leadLavorato";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useAssignabilityVerification } from "@/hooks/useAssignabilityVerification";
 import DatabaseAddRecordDialog from "@/components/settings/DatabaseAddRecordDialog";
 import DatabaseAddLavoratiDialog from "@/components/settings/DatabaseAddLavoratiDialog";
 import DatabaseImportDialog from "@/components/settings/DatabaseImportDialog";
@@ -56,13 +57,19 @@ const DatabasePage = () => {
   const [isAddRecordDialogOpen, setIsAddRecordDialogOpen] = useState(false);
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
   const [activeTableForDialog, setActiveTableForDialog] = useState<'lead_generation' | 'booked_call' | 'lead_lavorati'>('lead_generation');
-  const [isCheckingLeads, setIsCheckingLeads] = useState(false);
   const [activeFilters, setActiveFilters] = useState<Record<string, any>>({});
   
   // Bulk selection states
   const [selectedLeads, setSelectedLeads] = useState<string[]>([]);
   const [selectedBookings, setSelectedBookings] = useState<string[]>([]);
   const [selectedLavorati, setSelectedLavorati] = useState<string[]>([]);
+
+  // Aggiungi hook per la verifica assegnabilità
+  const {
+    verification,
+    performVerification,
+    isVerifying
+  } = useAssignabilityVerification();
 
   const fetchLeads = async () => {
     setIsLoadingLeads(true);
@@ -106,24 +113,57 @@ const DatabasePage = () => {
     }
   };
 
+  // Verifica automatica all'apertura della pagina
   useEffect(() => {
-    Promise.all([
-      fetchLeads(),
-      fetchBookings(),
-      fetchLeadLavorati()
-    ]);
+    const initializeDatabase = async () => {
+      try {
+        console.log("Avvio verifica assegnabilità all'apertura del database...");
+        await performVerification();
+        console.log("Verifica completata, caricamento dati...");
+      } catch (error) {
+        console.error("Errore durante la verifica iniziale:", error);
+      } finally {
+        // Carica i dati anche se la verifica fallisce
+        Promise.all([
+          fetchLeads(),
+          fetchBookings(),
+          fetchLeadLavorati()
+        ]);
+      }
+    };
+
+    initializeDatabase();
+  }, []);
+
+  // Ricarica dati quando cambiano i filtri
+  useEffect(() => {
+    if (verification.status !== 'initial') {
+      Promise.all([
+        fetchLeads(),
+        fetchBookings(),
+        fetchLeadLavorati()
+      ]);
+    }
   }, [activeFilters]);
 
-  const handleRefresh = () => {
-    Promise.all([
-      fetchLeads(),
-      fetchBookings(),
-      fetchLeadLavorati()
-    ]);
+  const handleRefresh = async () => {
     // Clear selections on refresh
     setSelectedLeads([]);
     setSelectedBookings([]);
     setSelectedLavorati([]);
+    
+    // Esegui prima la verifica, poi ricarica i dati
+    try {
+      await performVerification();
+    } catch (error) {
+      console.error("Errore durante la verifica:", error);
+    }
+    
+    Promise.all([
+      fetchLeads(),
+      fetchBookings(),
+      fetchLeadLavorati()
+    ]);
   };
 
   const handleDeleteClick = (id: string, type: 'lead' | 'booking' | 'lavorato') => {
@@ -177,29 +217,12 @@ const DatabasePage = () => {
   };
 
   const handleManualLeadCheck = async () => {
-    setIsCheckingLeads(true);
     try {
-      const response = await fetch('https://btcwmuyemmkiteqlopce.functions.supabase.co/lead-check', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${supabase.auth.getSession()}`
-        }
-      });
-      
-      const result = await response.json();
-      
-      if (response.ok) {
-        toast.success(`Controllo completato: aggiornati ${result.updated} lead su ${result.checked} controllati`);
-        fetchLeads();
-      } else {
-        throw new Error(result.error || 'Unknown error');
-      }
+      await performVerification();
+      // Ricarica i lead dopo la verifica
+      await fetchLeads();
     } catch (error) {
       console.error("Errore durante il controllo dei lead:", error);
-      toast.error("Errore durante il controllo dei lead");
-    } finally {
-      setIsCheckingLeads(false);
     }
   };
 
@@ -232,10 +255,10 @@ const DatabasePage = () => {
           <Button 
             onClick={handleManualLeadCheck} 
             variant="outline" 
-            disabled={isCheckingLeads}
+            disabled={isVerifying}
             className={`flex items-center gap-2 border ${isMobile ? 'w-full justify-center' : ''}`}
           >
-            {isCheckingLeads ? (
+            {isVerifying ? (
               <RefreshCcw className="h-4 w-4 animate-spin" />
             ) : (
               <CalendarCheck className="h-4 w-4" />
@@ -245,6 +268,7 @@ const DatabasePage = () => {
           <Button 
             onClick={handleRefresh} 
             variant="outline" 
+            disabled={isVerifying}
             className={`flex items-center gap-2 border ${isMobile ? 'w-full justify-center' : ''}`}
           >
             <RefreshCcw className="h-4 w-4" />
@@ -252,6 +276,35 @@ const DatabasePage = () => {
           </Button>
         </div>
       </div>
+
+      {/* Mostra stato verifica se in corso */}
+      {isVerifying && (
+        <div className="bg-blue-50 p-4 rounded-lg border border-blue-200 mb-6">
+          <div className="flex items-center gap-3">
+            <RefreshCcw className="h-5 w-5 animate-spin text-blue-600" />
+            <div>
+              <p className="text-blue-800 font-medium">Verifica assegnabilità in corso...</p>
+              <p className="text-blue-600 text-sm">
+                Controllo completo del database per garantire stati corretti
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Mostra risultato ultima verifica */}
+      {verification.status === 'completed' && !isVerifying && (
+        <div className="bg-green-50 p-4 rounded-lg border border-green-200 mb-6">
+          <p className="text-green-800 text-sm">
+            Ultima verifica: {verification.updated} lead aggiornati su {verification.totalChecked} controllati
+            {verification.lastVerified && (
+              <span className="ml-2 text-green-600">
+                ({new Date(verification.lastVerified).toLocaleTimeString('it-IT')})
+              </span>
+            )}
+          </p>
+        </div>
+      )}
       
       <Tabs defaultValue="leads" className="w-full">
         <TabsList className={`grid w-full grid-cols-3 mb-8 border ${isMobile ? 'text-xs' : ''}`}>
