@@ -152,7 +152,6 @@ const ManualAssignmentDialog = ({
             email: lead.email || '',
             telefono: lead.telefono || '',
             fonte: lead.fonte || '',
-            note: lead.note || '',
             created_at: lead.created_at,
             assigned_at: new Date().toISOString()
           }))
