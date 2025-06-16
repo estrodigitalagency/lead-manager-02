@@ -23,6 +23,10 @@ interface Venditore {
   id: string;
   nome: string;
   cognome: string;
+  email?: string;
+  telefono?: string;
+  sheets_file_id?: string;
+  sheets_tab_name?: string;
 }
 
 interface ManualAssignmentDialogProps {
@@ -54,7 +58,7 @@ const ManualAssignmentDialog = ({
     try {
       const { data, error } = await supabase
         .from('venditori')
-        .select('id, nome, cognome')
+        .select('id, nome, cognome, email, telefono, sheets_file_id, sheets_tab_name')
         .eq('stato', 'attivo')
         .order('nome');
       
@@ -84,6 +88,15 @@ const ManualAssignmentDialog = ({
     try {
       const venditoreName = `${venditoreData.nome} ${venditoreData.cognome}`.trim();
       
+      // Recupera i dati dei lead selezionati prima dell'aggiornamento
+      const { data: leadsData, error: fetchError } = await supabase
+        .from('lead_generation')
+        .select('*')
+        .in('id', selectedLeadIds);
+
+      if (fetchError) throw fetchError;
+
+      // Aggiorna i lead con l'assegnazione
       const { error } = await supabase
         .from('lead_generation')
         .update({
@@ -96,7 +109,95 @@ const ManualAssignmentDialog = ({
 
       if (error) throw error;
 
-      toast.success(`${selectedLeadIds.length} lead assegnati a ${venditoreName}`);
+      // Registra in cronologia
+      const { error: historyError } = await supabase
+        .from('assignment_history')
+        .insert({
+          venditore: venditoreName,
+          leads_count: selectedLeadIds.length,
+          campagna: null,
+          fonti_escluse: null
+        });
+
+      if (historyError) {
+        console.error('Errore nella registrazione cronologia:', historyError);
+        // Non blocchiamo l'operazione per questo errore
+      }
+
+      // Prepara e invia webhook se configurato
+      const { data: webhookData, error: webhookError } = await supabase
+        .from('system_settings')
+        .select('value')
+        .eq('key', 'lead_assign_webhook_url')
+        .single();
+
+      if (!webhookError && webhookData?.value && leadsData) {
+        console.log('Invio webhook per assegnazione manuale...');
+        
+        // Prepara payload webhook completo
+        const assignmentPayload = {
+          venditore: venditoreData.nome,
+          venditore_cognome: venditoreData.cognome || '',
+          venditore_email: venditoreData.email || '',
+          venditore_telefono: venditoreData.telefono || '',
+          google_sheets_file_id: venditoreData.sheets_file_id || '',
+          google_sheets_tab_name: venditoreData.sheets_tab_name || '',
+          campagna: '',
+          leads_count: selectedLeadIds.length,
+          timestamp: new Date().toISOString(),
+          leads: leadsData.map(lead => ({
+            id: lead.id,
+            nome: lead.nome,
+            cognome: lead.cognome || '',
+            email: lead.email || '',
+            telefono: lead.telefono || '',
+            fonte: lead.fonte || '',
+            created_at: lead.created_at,
+            assigned_at: new Date().toISOString()
+          }))
+        };
+
+        try {
+          const { data: webhookResponse, error: webhookCallError } = await supabase.functions.invoke('lead-assign-webhook', {
+            body: {
+              assignmentData: assignmentPayload,
+              webhookUrl: webhookData.value
+            }
+          });
+
+          if (webhookCallError) {
+            console.error('Errore chiamata webhook:', webhookCallError);
+            toast.error('Lead assegnati ma errore nell\'invio del webhook');
+          } else {
+            console.log('Webhook inviato con successo:', webhookResponse);
+            toast.success(`${selectedLeadIds.length} lead assegnati a ${venditoreName} e webhook inviato`);
+          }
+        } catch (webhookError) {
+          console.error('Errore nell\'invio webhook:', webhookError);
+          toast.error('Lead assegnati ma errore nell\'invio del webhook');
+        }
+      } else {
+        console.log('Nessun webhook configurato per assegnazione manuale');
+        toast.success(`${selectedLeadIds.length} lead assegnati a ${venditoreName}`);
+      }
+
+      // Aggiorna conteggio lead attuali del venditore
+      if (venditoreData) {
+        const { data: currentVenditore } = await supabase
+          .from('venditori')
+          .select('lead_attuali')
+          .eq('id', selectedVenditore)
+          .single();
+
+        if (currentVenditore) {
+          const newLeadCount = (currentVenditore.lead_attuali || 0) + selectedLeadIds.length;
+          await supabase
+            .from('venditori')
+            .update({ lead_attuali: newLeadCount })
+            .eq('id', selectedVenditore);
+        }
+      }
+
       onAssignmentComplete();
       onOpenChange(false);
       setSelectedVenditore("");
