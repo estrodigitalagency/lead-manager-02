@@ -152,6 +152,7 @@ const ManualAssignmentDialog = ({
             email: lead.email || '',
             telefono: lead.telefono || '',
             fonte: lead.fonte || '',
+            note: lead.note || '',
             created_at: lead.created_at,
             assigned_at: new Date().toISOString()
           }))
@@ -168,9 +169,12 @@ const ManualAssignmentDialog = ({
           if (webhookCallError) {
             console.error('Errore chiamata webhook:', webhookCallError);
             toast.error('Lead assegnati ma errore nell\'invio del webhook');
-          } else {
+          } else if (webhookResponse && webhookResponse.success) {
             console.log('Webhook inviato con successo:', webhookResponse);
             toast.success(`${selectedLeadIds.length} lead assegnati a ${venditoreName} e webhook inviato`);
+          } else {
+            console.error('Webhook response indica errore:', webhookResponse);
+            toast.error('Lead assegnati ma errore nell\'invio del webhook');
           }
         } catch (webhookError) {
           console.error('Errore nell\'invio webhook:', webhookError);
@@ -211,7 +215,7 @@ const ManualAssignmentDialog = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md max-h-[80vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Assegnazione Manuale Lead</DialogTitle>
           <DialogDescription>
@@ -230,7 +234,7 @@ const ManualAssignmentDialog = ({
               <SelectTrigger>
                 <SelectValue placeholder="Scegli un venditore..." />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="max-h-[200px] overflow-y-auto">
                 {venditori.map((venditore) => (
                   <SelectItem key={venditore.id} value={venditore.id}>
                     {venditore.nome} {venditore.cognome}
