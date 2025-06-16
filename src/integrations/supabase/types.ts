@@ -389,6 +389,33 @@ export type Database = {
         }
         Relationships: []
       }
+      venditori_calendly: {
+        Row: {
+          attivo: boolean
+          calendly_url: string
+          created_at: string
+          id: string
+          nome_venditore: string
+          updated_at: string
+        }
+        Insert: {
+          attivo?: boolean
+          calendly_url: string
+          created_at?: string
+          id?: string
+          nome_venditore: string
+          updated_at?: string
+        }
+        Update: {
+          attivo?: boolean
+          calendly_url?: string
+          created_at?: string
+          id?: string
+          nome_venditore?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

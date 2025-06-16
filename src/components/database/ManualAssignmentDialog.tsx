@@ -1,0 +1,163 @@
+
+import { useState, useEffect } from "react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
+
+interface Venditore {
+  id: string;
+  nome: string;
+  cognome: string;
+}
+
+interface ManualAssignmentDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  selectedLeadIds: string[];
+  onAssignmentComplete: () => void;
+}
+
+const ManualAssignmentDialog = ({
+  open,
+  onOpenChange,
+  selectedLeadIds,
+  onAssignmentComplete
+}: ManualAssignmentDialogProps) => {
+  const [selectedVenditore, setSelectedVenditore] = useState("");
+  const [venditori, setVenditori] = useState<Venditore[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isAssigning, setIsAssigning] = useState(false);
+
+  useEffect(() => {
+    if (open) {
+      fetchVenditori();
+    }
+  }, [open]);
+
+  const fetchVenditori = async () => {
+    setIsLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('venditori')
+        .select('id, nome, cognome')
+        .eq('stato', 'attivo')
+        .order('nome');
+      
+      if (error) throw error;
+      setVenditori(data || []);
+    } catch (error) {
+      console.error("Errore nel caricamento venditori:", error);
+      toast.error("Errore nel caricamento venditori");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleAssign = async () => {
+    if (!selectedVenditore) {
+      toast.error("Seleziona un venditore");
+      return;
+    }
+
+    const venditoreData = venditori.find(v => v.id === selectedVenditore);
+    if (!venditoreData) {
+      toast.error("Venditore non trovato");
+      return;
+    }
+
+    setIsAssigning(true);
+    try {
+      const venditoreName = `${venditoreData.nome} ${venditoreData.cognome}`.trim();
+      
+      const { error } = await supabase
+        .from('lead_generation')
+        .update({
+          venditore: venditoreName,
+          stato: 'assegnato',
+          data_assegnazione: new Date().toISOString(),
+          assignable: false
+        })
+        .in('id', selectedLeadIds);
+
+      if (error) throw error;
+
+      toast.success(`${selectedLeadIds.length} lead assegnati a ${venditoreName}`);
+      onAssignmentComplete();
+      onOpenChange(false);
+      setSelectedVenditore("");
+    } catch (error) {
+      console.error("Errore nell'assegnazione:", error);
+      toast.error("Errore nell'assegnazione dei lead");
+    } finally {
+      setIsAssigning(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Assegnazione Manuale Lead</DialogTitle>
+          <DialogDescription>
+            Assegna {selectedLeadIds.length} lead selezionati a un venditore
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4 py-4">
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Seleziona Venditore</label>
+            <Select 
+              value={selectedVenditore} 
+              onValueChange={setSelectedVenditore}
+              disabled={isLoading}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Scegli un venditore..." />
+              </SelectTrigger>
+              <SelectContent>
+                {venditori.map((venditore) => (
+                  <SelectItem key={venditore.id} value={venditore.id}>
+                    {venditore.nome} {venditore.cognome}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        <DialogFooter className="flex gap-2">
+          <Button 
+            variant="outline" 
+            onClick={() => onOpenChange(false)}
+            disabled={isAssigning}
+          >
+            Annulla
+          </Button>
+          <Button 
+            onClick={handleAssign}
+            disabled={isAssigning || !selectedVenditore}
+          >
+            {isAssigning ? "Assegnazione..." : "Assegna Lead"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+export default ManualAssignmentDialog;

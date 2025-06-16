@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -18,10 +19,11 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Trash2, MoreHorizontal, Users, FileDown } from "lucide-react";
+import { Trash2, MoreHorizontal, Users, FileDown, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 import { deleteMultipleLeads } from "@/services/databaseService";
 import { supabase } from "@/integrations/supabase/client";
+import ManualAssignmentDialog from "./ManualAssignmentDialog";
 
 interface BulkActionsProps {
   selectedItems: string[];
@@ -39,6 +41,7 @@ const BulkActions = ({
   onRefresh 
 }: BulkActionsProps) => {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showManualAssignDialog, setShowManualAssignDialog] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
 
   const handleSelectAll = (checked: boolean) => {
@@ -117,6 +120,15 @@ const BulkActions = ({
     toast.success(`${selectedItems.length} record esportati`);
   };
 
+  const handleManualAssignment = () => {
+    setShowManualAssignDialog(true);
+  };
+
+  const handleAssignmentComplete = () => {
+    onSelectionChange([]);
+    onRefresh();
+  };
+
   const isAllSelected = selectedItems.length === allItems.length && allItems.length > 0;
   const isIndeterminate = selectedItems.length > 0 && selectedItems.length < allItems.length;
 
@@ -150,16 +162,29 @@ const BulkActions = ({
             </Button>
 
             {tableName === 'lead_generation' && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleBulkAssign}
-                disabled={isProcessing}
-                className="flex items-center gap-1"
-              >
-                <Users className="h-4 w-4" />
-                Rendi Assegnabili
-              </Button>
+              <>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleBulkAssign}
+                  disabled={isProcessing}
+                  className="flex items-center gap-1"
+                >
+                  <Users className="h-4 w-4" />
+                  Rendi Assegnabili
+                </Button>
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleManualAssignment}
+                  disabled={isProcessing}
+                  className="flex items-center gap-1"
+                >
+                  <UserPlus className="h-4 w-4" />
+                  Assegna Manualmente
+                </Button>
+              </>
             )}
 
             <DropdownMenu>
@@ -173,6 +198,18 @@ const BulkActions = ({
                   <FileDown className="h-4 w-4 mr-2" />
                   Esporta Selezionati
                 </DropdownMenuItem>
+                {tableName === 'lead_generation' && (
+                  <>
+                    <DropdownMenuItem onClick={handleManualAssignment}>
+                      <UserPlus className="h-4 w-4 mr-2" />
+                      Assegna Manualmente
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={handleBulkAssign}>
+                      <Users className="h-4 w-4 mr-2" />
+                      Rendi Assegnabili
+                    </DropdownMenuItem>
+                  </>
+                )}
                 <DropdownMenuSeparator />
                 <DropdownMenuItem 
                   onClick={() => setShowDeleteDialog(true)}
@@ -208,6 +245,13 @@ const BulkActions = ({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <ManualAssignmentDialog
+        open={showManualAssignDialog}
+        onOpenChange={setShowManualAssignDialog}
+        selectedLeadIds={selectedItems}
+        onAssignmentComplete={handleAssignmentComplete}
+      />
     </>
   );
 };
