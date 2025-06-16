@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -115,17 +114,40 @@ const DatabasePage = () => {
     }
   };
 
-  // Verifica automatica all'apertura della pagina
+  // OTTIMIZZAZIONE: Verifica automatica più efficiente all'apertura
   useEffect(() => {
     const initializeDatabase = async () => {
       try {
-        console.log("🔍 Avvio verifica assegnabilità all'apertura del database...");
-        await performVerification();
-        console.log("✅ Verifica completata, caricamento dati...");
+        console.log("🔍 Avvio verifica assegnabilità rapida...");
+        
+        // PRIMA carica i dati immediatamente per UI reattiva
+        const initialDataLoad = Promise.all([
+          fetchLeads(),
+          fetchBookings(),
+          fetchLeadLavorati()
+        ]);
+
+        // POI esegue la verifica in background
+        const verificationPromise = performVerification();
+        
+        // Attendi il caricamento iniziale, la verifica può finire dopo
+        await initialDataLoad;
+        
+        // Se la verifica finisce dopo, ricarica i dati
+        verificationPromise.then(async () => {
+          console.log("✅ Verifica completata, aggiornamento finale dati...");
+          await Promise.all([
+            fetchLeads(),
+            fetchBookings(),
+            fetchLeadLavorati()
+          ]);
+        }).catch(error => {
+          console.error("❌ Errore durante la verifica:", error);
+        });
+        
       } catch (error) {
-        console.error("❌ Errore durante la verifica iniziale:", error);
-      } finally {
-        // Carica i dati anche se la verifica fallisce
+        console.error("❌ Errore durante l'inizializzazione:", error);
+        // Fallback: carica i dati anche se la verifica fallisce
         Promise.all([
           fetchLeads(),
           fetchBookings(),
@@ -155,19 +177,28 @@ const DatabasePage = () => {
     setSelectedBookings([]);
     setSelectedLavorati([]);
     
-    // Esegui prima la verifica, poi ricarica i dati
+    // OTTIMIZZAZIONE: Refresh più veloce - prima UI poi verifica
     try {
+      // Aggiorna subito i dati per feedback immediato
+      await Promise.all([
+        fetchLeads(),
+        fetchBookings(),
+        fetchLeadLavorati()
+      ]);
+      
+      // Poi esegui verifica e refresh globale in background
       await performVerification();
-      await refreshAllData(); // Trigger global refresh
+      await refreshAllData();
+      
+      // Ricarica finale dopo verifica
+      await Promise.all([
+        fetchLeads(),
+        fetchBookings(),
+        fetchLeadLavorati()
+      ]);
     } catch (error) {
-      console.error("❌ Errore durante la verifica:", error);
+      console.error("❌ Errore durante il refresh:", error);
     }
-    
-    Promise.all([
-      fetchLeads(),
-      fetchBookings(),
-      fetchLeadLavorati()
-    ]);
   };
 
   const handleDeleteClick = (id: string, type: 'lead' | 'booking' | 'lavorato') => {

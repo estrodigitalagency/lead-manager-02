@@ -7,6 +7,7 @@ import { Trash2, Info } from "lucide-react";
 import { Lead } from "@/types/lead";
 import FonteDisplay from "./FonteDisplay";
 import { useLeadStatus } from "@/hooks/useLeadStatus";
+import { useMemo } from "react";
 
 interface LeadTableRowProps {
   lead: Lead;
@@ -27,6 +28,9 @@ const LeadTableRow = ({
 }: LeadTableRowProps) => {
   const { getStatus } = useLeadStatus();
 
+  // OTTIMIZZAZIONE: Memoizza il calcolo dello stato per evitare ricalcoli inutili
+  const status = useMemo(() => getStatus(lead), [lead, getStatus]);
+
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('it-IT', {
       day: '2-digit',
@@ -36,8 +40,6 @@ const LeadTableRow = ({
       minute: '2-digit'
     });
   };
-
-  const status = getStatus(lead);
 
   return (
     <TableRow className="hover:bg-muted/50">
@@ -94,7 +96,11 @@ const LeadTableRow = ({
       
       {visibleColumns.includes('stato') && (
         <TableCell className="text-sm">
-          <Badge variant="outline" className={status.className}>
+          <Badge 
+            variant="outline" 
+            className={status.className}
+            key={`${lead.id}-${lead.assignable}-${lead.booked_call}-${lead.venditore}`}
+          >
             {status.label}
           </Badge>
         </TableCell>

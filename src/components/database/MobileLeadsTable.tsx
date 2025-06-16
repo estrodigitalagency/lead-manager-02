@@ -1,3 +1,4 @@
+
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -6,6 +7,7 @@ import { Trash2, Phone, Mail, Calendar, User, Info } from "lucide-react";
 import { Lead } from "@/types/lead";
 import FonteDisplay from "./FonteDisplay";
 import { useLeadStatus } from "@/hooks/useLeadStatus";
+import { useMemo } from "react";
 
 interface MobileLeadsTableProps {
   leads: Lead[];
@@ -53,7 +55,8 @@ const MobileLeadsTable = ({
   return (
     <div className="space-y-3">
       {leads.map((lead) => {
-        const status = getStatus(lead);
+        // OTTIMIZZAZIONE: Memoizza il calcolo dello stato per ogni lead
+        const status = useMemo(() => getStatus(lead), [lead, getStatus]);
         
         return (
           <Card key={lead.id} className="border">
@@ -72,7 +75,11 @@ const MobileLeadsTable = ({
                       </span>
                     </div>
                     <div className="flex items-center gap-1 mb-1">
-                      <Badge variant="outline" className={`text-xs ${status.className}`}>
+                      <Badge 
+                        variant="outline" 
+                        className={`text-xs ${status.className}`}
+                        key={`${lead.id}-${lead.assignable}-${lead.booked_call}-${lead.venditore}`}
+                      >
                         {status.label}
                       </Badge>
                     </div>

@@ -28,25 +28,32 @@ export function useLeadStatus() {
   }, []);
 
   const getStatus = (lead: Lead) => {
-    // Usa sempre il calcolo dinamico per determinare lo stato reale
+    // PRIORITÀ: Usa sempre il calcolo dinamico per determinare lo stato corretto
     const dynamicStatus = getLeadStatus(lead, daysBeforeAssignable);
     
-    // Se il campo assignable del database non è sincronizzato con il calcolo dinamico,
-    // dai priorità al calcolo dinamico
+    // Log discrepanze per debug ma non bloccare l'UI
     const now = new Date();
     const leadCreatedAt = new Date(lead.created_at);
     const daysSinceCreation = (now.getTime() - leadCreatedAt.getTime()) / (1000 * 60 * 60 * 24);
     
-    // Verifica se il lead dovrebbe essere assegnabile secondo la logica di business
     const shouldBeAssignable = lead.booked_call === 'NO' && 
                               daysSinceCreation >= daysBeforeAssignable && 
                               !lead.venditore;
     
-    // Se c'è una discrepanza tra database e calcolo dinamico, mostra il calcolo dinamico
+    // OTTIMIZZAZIONE: Non fare console.log per ogni lead per migliorare performance
     if (shouldBeAssignable && !lead.assignable) {
-      console.log(`Lead ${lead.id} dovrebbe essere assegnabile ma il database dice di no - usando calcolo dinamico`);
+      // Solo log una volta ogni 10 secondi per evitare spam
+      const lastLogKey = `lead-discrepancy-${lead.id}`;
+      const lastLog = sessionStorage.getItem(lastLogKey);
+      const now = Date.now();
+      
+      if (!lastLog || (now - parseInt(lastLog)) > 10000) {
+        console.log(`Lead ${lead.id} discrepancy: should be assignable but DB says no`);
+        sessionStorage.setItem(lastLogKey, now.toString());
+      }
     }
     
+    // SEMPRE ritorna il calcolo dinamico per UI reattiva
     return dynamicStatus;
   };
 
