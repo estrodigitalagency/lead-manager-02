@@ -5,10 +5,12 @@ import { SourceFilter } from "@/components/lead-assignment/SourceFilter";
 import { AssignmentForm } from "@/components/lead-assignment/AssignmentForm";
 import { useLeadAssignment } from "@/hooks/useLeadAssignment";
 import { useAssignabilityVerification } from "@/hooks/useAssignabilityVerification";
+import { useLeadSync } from "@/contexts/LeadSyncContext";
 import { Loader2, RefreshCcw, CheckCircle, AlertCircle } from "lucide-react";
 import { useEffect } from "react";
 
 const LeadAssignmentWithExclusions = () => {
+  const { stats, isRefreshing } = useLeadSync();
   const {
     numLead,
     setNumLead,
@@ -40,26 +42,30 @@ const LeadAssignmentWithExclusions = () => {
     isVerifying
   } = useAssignabilityVerification();
 
-  // Verifica automatica all'avvio
+  // Verifica automatica all'avvio e aggiorna dati locali quando cambiano gli stats globali
   useEffect(() => {
     performVerification().then(() => {
-      // Aggiorna il conteggio dei lead disponibili dopo la verifica
       updateAvailableLeads();
     }).catch(console.error);
   }, []);
 
+  // Sincronizza i lead disponibili con gli stats globali
+  useEffect(() => {
+    console.log("📊 Syncing available leads with global stats:", stats.assignable);
+    updateAvailableLeads();
+  }, [stats.assignable, updateAvailableLeads]);
+
   const handleManualVerification = async () => {
     try {
       await performVerification();
-      // Aggiorna il conteggio dei lead disponibili dopo la verifica manuale
       await updateAvailableLeads();
     } catch (error) {
-      console.error("Errore nella verifica manuale:", error);
+      console.error("❌ Errore nella verifica manuale:", error);
     }
   };
 
   const getVerificationStatusIcon = () => {
-    if (isVerifying) {
+    if (isVerifying || isRefreshing) {
       return <Loader2 className="h-4 w-4 animate-spin text-primary" />;
     }
     
@@ -78,6 +84,10 @@ const LeadAssignmentWithExclusions = () => {
       return "Verifica assegnabilità in corso...";
     }
     
+    if (isRefreshing) {
+      return "Aggiornamento dati in corso...";
+    }
+    
     switch (verification.status) {
       case 'completed':
         return `Ultima verifica: ${verification.updated} lead aggiornati su ${verification.totalChecked}`;
@@ -87,6 +97,9 @@ const LeadAssignmentWithExclusions = () => {
         return "Verifica assegnabilità non eseguita";
     }
   };
+
+  // Usa gli stats dal context globale come fonte primaria
+  const currentAvailableLeads = stats.assignable || availableLeads;
 
   return (
     <Card>
@@ -102,32 +115,37 @@ const LeadAssignmentWithExclusions = () => {
             variant="outline"
             size="sm"
             onClick={handleManualVerification}
-            disabled={isVerifying}
+            disabled={isVerifying || isRefreshing}
             className="flex items-center gap-2"
           >
-            <RefreshCcw className={`h-4 w-4 ${isVerifying ? 'animate-spin' : ''}`} />
+            <RefreshCcw className={`h-4 w-4 ${(isVerifying || isRefreshing) ? 'animate-spin' : ''}`} />
             Riverifica
           </Button>
         </div>
         <CardDescription className="text-sm">
           {getVerificationStatusText()}
-          {!isVerifying && verification.status === 'completed' && (
+          {!isVerifying && !isRefreshing && verification.status === 'completed' && (
             <span className="block mt-1 text-green-700">
-              Lead disponibili: {availableLeads}
+              Lead disponibili: {currentAvailableLeads}
             </span>
           )}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4 sm:space-y-6">
         {/* Mostra stato di verifica se in corso */}
-        {isVerifying && (
+        {(isVerifying || isRefreshing) && (
           <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
             <div className="flex items-center gap-3">
               <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
               <div>
-                <p className="text-blue-800 font-medium">Verifica in corso...</p>
+                <p className="text-blue-800 font-medium">
+                  {isVerifying ? "Verifica in corso..." : "Aggiornamento dati..."}
+                </p>
                 <p className="text-blue-600 text-sm">
-                  Controllo completo del database per garantire assegnazioni corrette
+                  {isVerifying 
+                    ? "Controllo completo del database per garantire assegnazioni corrette"
+                    : "Sincronizzazione dei dati in tempo reale"
+                  }
                 </p>
               </div>
             </div>
@@ -145,8 +163,8 @@ const LeadAssignmentWithExclusions = () => {
             setCampagna={setCampagna}
             salespeople={salespeople}
             campagne={campagne}
-            isSubmitting={isSubmitting || isVerifying}
-            availableLeads={availableLeads}
+            isSubmitting={isSubmitting || isVerifying || isRefreshing}
+            availableLeads={currentAvailableLeads}
             onAssign={handleAssign}
             showButton={false}
           />
@@ -162,8 +180,8 @@ const LeadAssignmentWithExclusions = () => {
           setCampagna={setCampagna}
           salespeople={salespeople}
           campagne={campagne}
-          isSubmitting={isSubmitting || isVerifying}
-          availableLeads={availableLeads}
+          isSubmitting={isSubmitting || isVerifying || isRefreshing}
+          availableLeads={currentAvailableLeads}
           onAssign={handleAssign}
           showOnlyCampaign={true}
           showButton={false}
@@ -192,8 +210,8 @@ const LeadAssignmentWithExclusions = () => {
           setCampagna={setCampagna}
           salespeople={salespeople}
           campagne={campagne}
-          isSubmitting={isSubmitting || isVerifying}
-          availableLeads={availableLeads}
+          isSubmitting={isSubmitting || isVerifying || isRefreshing}
+          availableLeads={currentAvailableLeads}
           onAssign={handleAssign}
           showOnlyButton={true}
         />

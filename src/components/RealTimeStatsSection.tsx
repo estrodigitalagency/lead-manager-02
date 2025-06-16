@@ -3,18 +3,19 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { TrendingUp, Users, Database, Zap } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { useLeadSync } from '@/contexts/LeadSyncContext';
 
 export const RealTimeStatsSection = () => {
-  const [stats, setStats] = useState({
+  const { stats, isRefreshing } = useLeadSync();
+  const [customStats, setCustomStats] = useState({
     leadGeneratiUltimi30: 0,
-    leadAssegnabili: 0,
     callGenerateUltimi30: 0,
     tempoMedioAssegnazione: 0
   });
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const fetchStats = async () => {
+    const fetchCustomStats = async () => {
       setIsLoading(true);
       try {
         // Data di 30 giorni fa
@@ -22,7 +23,7 @@ export const RealTimeStatsSection = () => {
         thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
         const thirtyDaysAgoISO = thirtyDaysAgo.toISOString();
 
-        console.log('Fetching stats with 30 days cutoff:', thirtyDaysAgoISO);
+        console.log('📊 Fetching custom stats with 30 days cutoff:', thirtyDaysAgoISO);
 
         // 1. Lead Generati - Ultimi 30 giorni
         const { count: leadGeneratiCount } = await supabase
@@ -30,22 +31,13 @@ export const RealTimeStatsSection = () => {
           .select('id', { count: 'exact' })
           .gte('created_at', thirtyDaysAgoISO);
 
-        // 2. Lead Assegnabili - SOLO quelli degli ultimi 30 giorni che sono effettivamente assegnabili
-        const { count: leadAssegnabiliCount } = await supabase
-          .from('lead_generation')
-          .select('id', { count: 'exact' })
-          .eq('assignable', true)
-          .is('venditore', null)
-          .eq('booked_call', 'NO')
-          .gte('created_at', thirtyDaysAgoISO);
-
-        // 3. Call Generate - Ultimi 30 giorni (booked_call)
+        // 2. Call Generate - Ultimi 30 giorni (booked_call)
         const { count: callGenerateCount } = await supabase
           .from('booked_call')
           .select('id', { count: 'exact' })
           .gte('created_at', thirtyDaysAgoISO);
 
-        // 4. Tempo medio assegnazione - SOLO per lead degli ultimi 30 giorni con data_assegnazione
+        // 3. Tempo medio assegnazione - SOLO per lead degli ultimi 30 giorni con data_assegnazione
         const { data: assignedLeads } = await supabase
           .from('lead_generation')
           .select('created_at, data_assegnazione')
@@ -64,55 +56,53 @@ export const RealTimeStatsSection = () => {
           tempoMedio = Math.round(sommaTempi / tempiAssegnazione.length);
         }
 
-        console.log('Stats results:', {
+        console.log('📊 Custom stats results:', {
           leadGeneratiCount,
-          leadAssegnabiliCount,
           callGenerateCount,
           tempoMedio
         });
 
-        setStats({
+        setCustomStats({
           leadGeneratiUltimi30: leadGeneratiCount || 0,
-          leadAssegnabili: leadAssegnabiliCount || 0,
           callGenerateUltimi30: callGenerateCount || 0,
           tempoMedioAssegnazione: tempoMedio
         });
 
       } catch (error) {
-        console.error('Errore nel caricamento delle statistiche:', error);
+        console.error('❌ Errore nel caricamento delle statistiche:', error);
       } finally {
         setIsLoading(false);
       }
     };
 
-    fetchStats();
+    fetchCustomStats();
   }, []);
 
   const statsConfig = [
     {
       title: "Lead Generati",
-      value: isLoading ? "..." : stats.leadGeneratiUltimi30.toString(),
+      value: isLoading ? "..." : customStats.leadGeneratiUltimi30.toString(),
       change: "ultimi 30 giorni",
       icon: Database,
       color: "text-primary"
     },
     {
       title: "Lead Assegnabili", 
-      value: isLoading ? "..." : stats.leadAssegnabili.toString(),
-      change: "ultimi 30 giorni - pronti",
+      value: isRefreshing ? "..." : stats.assignable.toString(),
+      change: "pronti per assegnazione",
       icon: TrendingUp,
       color: "text-green-600"
     },
     {
       title: "Call Generate",
-      value: isLoading ? "..." : stats.callGenerateUltimi30.toString(),
+      value: isLoading ? "..." : customStats.callGenerateUltimi30.toString(),
       change: "ultimi 30 giorni",
       icon: Users,
       color: "text-accent"
     },
     {
       title: "Tempo Medio Assegnazione",
-      value: isLoading ? "..." : `${stats.tempoMedioAssegnazione}h`,
+      value: isLoading ? "..." : `${customStats.tempoMedioAssegnazione}h`,
       change: "ultimi 30 giorni",
       icon: Zap,
       color: "text-blue-600"
@@ -128,6 +118,7 @@ export const RealTimeStatsSection = () => {
           </h2>
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
             Dati degli ultimi 30 giorni del tuo database aggiornati in tempo reale
+            {isRefreshing && <span className="block text-sm text-blue-600 mt-2">🔄 Aggiornamento in corso...</span>}
           </p>
         </div>
 
@@ -155,7 +146,7 @@ export const RealTimeStatsSection = () => {
                   <div 
                     className="h-full bg-gradient-to-r from-primary to-accent rounded-full animate-shimmer"
                     style={{ 
-                      width: isLoading ? '0%' : `${Math.min(100, Math.max(20, (index + 1) * 25))}%`,
+                      width: (isLoading || isRefreshing) ? '0%' : `${Math.min(100, Math.max(20, (index + 1) * 25))}%`,
                       backgroundSize: '200% 100%'
                     }}
                   ></div>

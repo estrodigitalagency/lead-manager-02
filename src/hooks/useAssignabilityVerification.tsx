@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { toast } from "sonner";
 import { checkLeadsAssignability } from "@/services/leadAssignabilityService";
+import { useLeadSync } from "@/contexts/LeadSyncContext";
 
 interface VerificationState {
   status: 'initial' | 'verifying' | 'completed' | 'error';
@@ -12,6 +13,7 @@ interface VerificationState {
 }
 
 export function useAssignabilityVerification() {
+  const { setIsVerifying, refreshAllData } = useLeadSync();
   const [verification, setVerification] = useState<VerificationState>({
     status: 'initial',
     totalChecked: 0,
@@ -20,14 +22,14 @@ export function useAssignabilityVerification() {
   });
 
   const performVerification = async () => {
+    console.log("🔍 Starting assignability verification...");
     setVerification(prev => ({ ...prev, status: 'verifying' }));
+    setIsVerifying(true);
     
     try {
-      console.log("Avvio verifica completa dell'assegnabilità...");
-      
       const result = await checkLeadsAssignability();
       
-      console.log("Verifica completata:", result);
+      console.log("✅ Verification completed:", result);
       
       setVerification({
         status: 'completed',
@@ -36,6 +38,10 @@ export function useAssignabilityVerification() {
         availableLeads: result.availableLeads,
         lastVerified: new Date()
       });
+      
+      // Trigger aggiornamento globale aggiuntivo per sicurezza
+      console.log("🔄 Additional global refresh after verification...");
+      await refreshAllData();
       
       if (result.updated > 0) {
         toast.success(`Verifica completata: aggiornati ${result.updated} lead su ${result.totalChecked} controllati`);
@@ -46,10 +52,12 @@ export function useAssignabilityVerification() {
       return result;
       
     } catch (error) {
-      console.error("Errore durante la verifica:", error);
+      console.error("❌ Errore durante la verifica:", error);
       setVerification(prev => ({ ...prev, status: 'error' }));
       toast.error("Errore durante la verifica dell'assegnabilità");
       throw error;
+    } finally {
+      setIsVerifying(false);
     }
   };
 

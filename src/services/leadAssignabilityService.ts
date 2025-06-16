@@ -7,19 +7,26 @@ export interface AssignabilityCheckResult {
   availableLeads: number;
 }
 
+// Callback globale per notificare l'aggiornamento
+let globalRefreshCallback: (() => Promise<void>) | null = null;
+
+export function setGlobalRefreshCallback(callback: (() => Promise<void>) | null) {
+  globalRefreshCallback = callback;
+}
+
 export async function checkLeadsAssignability(): Promise<AssignabilityCheckResult> {
   try {
-    console.log("Avvio verifica assegnabilità lead...");
+    console.log("🔍 Avvio verifica assegnabilità lead...");
     
     // Chiamata alla funzione edge per verificare l'assegnabilità
     const { data, error } = await supabase.functions.invoke('lead-check');
     
     if (error) {
-      console.error('Errore nella verifica assegnabilità:', error);
+      console.error('❌ Errore nella verifica assegnabilità:', error);
       throw error;
     }
     
-    console.log("Verifica assegnabilità completata:", data);
+    console.log("✅ Verifica assegnabilità completata:", data);
     
     // Conta i lead disponibili dopo la verifica - CRITICO: Solo quelli senza call prenotate
     const { count: availableCount, error: countError } = await supabase
@@ -30,16 +37,24 @@ export async function checkLeadsAssignability(): Promise<AssignabilityCheckResul
       .eq('booked_call', 'NO'); // CRITICO: Solo lead senza call prenotate
     
     if (countError) {
-      console.error('Errore nel conteggio lead disponibili:', countError);
+      console.error('❌ Errore nel conteggio lead disponibili:', countError);
     }
-    
-    return {
+
+    const result = {
       totalChecked: data?.checked || 0,
       updated: data?.updated || 0,
       availableLeads: availableCount || 0
     };
+
+    // Trigger refresh globale IMMEDIATAMENTE dopo la verifica
+    if (globalRefreshCallback) {
+      console.log("🔄 Triggering global data refresh...");
+      await globalRefreshCallback();
+    }
+    
+    return result;
   } catch (error) {
-    console.error('Errore durante la verifica assegnabilità:', error);
+    console.error('❌ Errore durante la verifica assegnabilità:', error);
     throw error;
   }
 }
@@ -65,7 +80,7 @@ export async function getOptimizedLeadCounts() {
       booked: bookedResult.count || 0
     };
   } catch (error) {
-    console.error('Errore nel recupero conteggi ottimizzati:', error);
+    console.error('❌ Errore nel recupero conteggi ottimizzati:', error);
     throw error;
   }
 }

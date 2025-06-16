@@ -1,30 +1,22 @@
 
-import { useEffect, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
 import PersistentNavigation from "@/components/PersistentNavigation";
 import LeadAssignmentWithExclusions from "@/components/LeadAssignmentWithExclusions";
 import { RealTimeStatsSection } from "@/components/RealTimeStatsSection";
-import { getLeadsStats } from "@/services/databaseService";
+import { useLeadSync } from "@/contexts/LeadSyncContext";
+import { setGlobalRefreshCallback } from "@/services/leadAssignabilityService";
+import { useEffect } from "react";
 
 const Index = () => {
-  const [stats, setStats] = useState({
-    total: 0,
-    assignable: 0,
-    assigned: 0,
-    booked: 0
-  });
+  const { refreshAllData } = useLeadSync();
 
-  const { data: statsData, isLoading: statsLoading, error: statsError } = useQuery({
-    queryKey: ['leadsStats'],
-    queryFn: getLeadsStats,
-    refetchInterval: 5000, // Refetch every 5 seconds
-  });
-
+  // Registra il callback globale per il refresh
   useEffect(() => {
-    if (statsData) {
-      setStats(statsData);
-    }
-  }, [statsData]);
+    setGlobalRefreshCallback(refreshAllData);
+    
+    return () => {
+      setGlobalRefreshCallback(null);
+    };
+  }, [refreshAllData]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-secondary/10">

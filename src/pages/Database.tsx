@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -21,6 +22,7 @@ import { Lead } from "@/types/lead";
 import { LeadLavorato } from "@/types/leadLavorato";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useAssignabilityVerification } from "@/hooks/useAssignabilityVerification";
+import { useLeadSync } from "@/contexts/LeadSyncContext";
 import DatabaseAddRecordDialog from "@/components/settings/DatabaseAddRecordDialog";
 import DatabaseAddLavoratiDialog from "@/components/settings/DatabaseAddLavoratiDialog";
 import DatabaseImportDialog from "@/components/settings/DatabaseImportDialog";
@@ -46,6 +48,13 @@ type ValidTableName = "lead_generation" | "booked_call" | "lead_assignments" | "
 
 const DatabasePage = () => {
   const isMobile = useIsMobile();
+  const { refreshAllData, isRefreshing } = useLeadSync();
+  const {
+    verification,
+    performVerification,
+    isVerifying
+  } = useAssignabilityVerification();
+
   const [leads, setLeads] = useState<Lead[]>([]);
   const [bookings, setBookings] = useState<CalendlyBooking[]>([]);
   const [leadLavorati, setLeadLavorati] = useState<LeadLavorato[]>([]);
@@ -63,13 +72,6 @@ const DatabasePage = () => {
   const [selectedLeads, setSelectedLeads] = useState<string[]>([]);
   const [selectedBookings, setSelectedBookings] = useState<string[]>([]);
   const [selectedLavorati, setSelectedLavorati] = useState<string[]>([]);
-
-  // Aggiungi hook per la verifica assegnabilità
-  const {
-    verification,
-    performVerification,
-    isVerifying
-  } = useAssignabilityVerification();
 
   const fetchLeads = async () => {
     setIsLoadingLeads(true);
@@ -117,11 +119,11 @@ const DatabasePage = () => {
   useEffect(() => {
     const initializeDatabase = async () => {
       try {
-        console.log("Avvio verifica assegnabilità all'apertura del database...");
+        console.log("🔍 Avvio verifica assegnabilità all'apertura del database...");
         await performVerification();
-        console.log("Verifica completata, caricamento dati...");
+        console.log("✅ Verifica completata, caricamento dati...");
       } catch (error) {
-        console.error("Errore durante la verifica iniziale:", error);
+        console.error("❌ Errore durante la verifica iniziale:", error);
       } finally {
         // Carica i dati anche se la verifica fallisce
         Promise.all([
@@ -147,6 +149,7 @@ const DatabasePage = () => {
   }, [activeFilters]);
 
   const handleRefresh = async () => {
+    console.log("🔄 Manual refresh requested...");
     // Clear selections on refresh
     setSelectedLeads([]);
     setSelectedBookings([]);
@@ -155,8 +158,9 @@ const DatabasePage = () => {
     // Esegui prima la verifica, poi ricarica i dati
     try {
       await performVerification();
+      await refreshAllData(); // Trigger global refresh
     } catch (error) {
-      console.error("Errore durante la verifica:", error);
+      console.error("❌ Errore durante la verifica:", error);
     }
     
     Promise.all([
@@ -207,6 +211,9 @@ const DatabasePage = () => {
         setLeadLavorati(leadLavorati.filter(lead => lead.id !== id));
         setSelectedLavorati(selectedLavorati.filter(item => item !== id));
       }
+      
+      // Trigger global refresh dopo eliminazione
+      await refreshAllData();
     } catch (error) {
       console.error("Errore durante l'eliminazione:", error);
       toast.error("Errore durante l'eliminazione del record");
@@ -240,6 +247,8 @@ const DatabasePage = () => {
     setActiveFilters(filters);
   };
 
+  const anyLoading = isVerifying || isRefreshing;
+
   return (
     <div className={`container mx-auto px-4 py-8 ${isMobile ? 'px-2 py-4' : ''}`}>
       <div className={`flex justify-between items-center mb-8 ${isMobile ? 'flex-col gap-4' : ''}`}>
@@ -255,10 +264,10 @@ const DatabasePage = () => {
           <Button 
             onClick={handleManualLeadCheck} 
             variant="outline" 
-            disabled={isVerifying}
+            disabled={anyLoading}
             className={`flex items-center gap-2 border ${isMobile ? 'w-full justify-center' : ''}`}
           >
-            {isVerifying ? (
+            {anyLoading ? (
               <RefreshCcw className="h-4 w-4 animate-spin" />
             ) : (
               <CalendarCheck className="h-4 w-4" />
@@ -268,7 +277,7 @@ const DatabasePage = () => {
           <Button 
             onClick={handleRefresh} 
             variant="outline" 
-            disabled={isVerifying}
+            disabled={anyLoading}
             className={`flex items-center gap-2 border ${isMobile ? 'w-full justify-center' : ''}`}
           >
             <RefreshCcw className="h-4 w-4" />
@@ -278,14 +287,19 @@ const DatabasePage = () => {
       </div>
 
       {/* Mostra stato verifica se in corso */}
-      {isVerifying && (
+      {anyLoading && (
         <div className="bg-blue-50 p-4 rounded-lg border border-blue-200 mb-6">
           <div className="flex items-center gap-3">
             <RefreshCcw className="h-5 w-5 animate-spin text-blue-600" />
             <div>
-              <p className="text-blue-800 font-medium">Verifica assegnabilità in corso...</p>
+              <p className="text-blue-800 font-medium">
+                {isVerifying ? "Verifica assegnabilità in corso..." : "Aggiornamento dati in corso..."}
+              </p>
               <p className="text-blue-600 text-sm">
-                Controllo completo del database per garantire stati corretti
+                {isVerifying 
+                  ? "Controllo completo del database per garantire stati corretti"
+                  : "Sincronizzazione globale dei dati"
+                }
               </p>
             </div>
           </div>
@@ -293,7 +307,7 @@ const DatabasePage = () => {
       )}
 
       {/* Mostra risultato ultima verifica */}
-      {verification.status === 'completed' && !isVerifying && (
+      {verification.status === 'completed' && !anyLoading && (
         <div className="bg-green-50 p-4 rounded-lg border border-green-200 mb-6">
           <p className="text-green-800 text-sm">
             Ultima verifica: {verification.updated} lead aggiornati su {verification.totalChecked} controllati
