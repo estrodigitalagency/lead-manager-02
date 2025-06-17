@@ -95,6 +95,48 @@ export type Database = {
           },
         ]
       }
+      booking_clicks: {
+        Row: {
+          calendly_url: string | null
+          clicked_at: string
+          created_at: string
+          email: string
+          id: string
+          ip_address: unknown | null
+          nome: string
+          prefisso_telefono: string
+          telefono: string
+          user_agent: string | null
+          venditore_assegnato: string | null
+        }
+        Insert: {
+          calendly_url?: string | null
+          clicked_at?: string
+          created_at?: string
+          email: string
+          id?: string
+          ip_address?: unknown | null
+          nome: string
+          prefisso_telefono: string
+          telefono: string
+          user_agent?: string | null
+          venditore_assegnato?: string | null
+        }
+        Update: {
+          calendly_url?: string | null
+          clicked_at?: string
+          created_at?: string
+          email?: string
+          id?: string
+          ip_address?: unknown | null
+          nome?: string
+          prefisso_telefono?: string
+          telefono?: string
+          user_agent?: string | null
+          venditore_assegnato?: string | null
+        }
+        Relationships: []
+      }
       database_campagne: {
         Row: {
           attivo: boolean
