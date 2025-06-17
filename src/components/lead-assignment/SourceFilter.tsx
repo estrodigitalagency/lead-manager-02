@@ -60,7 +60,7 @@ export function SourceFilter({
       </div>
 
       {/* Mode Toggle */}
-      <div className="p-4 border-2 border-gray-200 rounded-lg bg-gray-50/50">
+      <div className="p-4 border border-border rounded-lg bg-card/50">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center space-x-3">
             <Switch
@@ -77,9 +77,9 @@ export function SourceFilter({
               <TooltipTrigger asChild>
                 <button 
                   type="button"
-                  className="flex items-center justify-center w-5 h-5 rounded-full bg-blue-100 hover:bg-blue-200 transition-colors"
+                  className="flex items-center justify-center w-5 h-5 rounded-full bg-primary/10 hover:bg-primary/20 transition-colors"
                 >
-                  <Info className="h-3 w-3 text-blue-600" />
+                  <Info className="h-3 w-3 text-primary" />
                 </button>
               </TooltipTrigger>
               <TooltipContent>
@@ -126,13 +126,13 @@ export function SourceFilter({
           {/* Selected Sources */}
           {currentSources.length > 0 && (
             <div className="space-y-2">
-              <Label className="text-sm font-medium text-gray-700">
+              <Label className="text-sm font-medium text-muted-foreground">
                 {sourceMode === 'exclude' 
                   ? `🚫 Fonti Escluse (${currentSources.length})` 
                   : `✅ Fonti Incluse (${currentSources.length})`
                 }
               </Label>
-              <div className="flex flex-wrap gap-2 p-3 bg-white border rounded-lg">
+              <div className="flex flex-wrap gap-2 p-3 bg-muted/30 border border-border rounded-lg">
                 {currentSources.map((source) => (
                   <Badge 
                     key={source} 

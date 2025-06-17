@@ -22,7 +22,7 @@ export const BypassTimeIntervalControl = ({
         <h3 className="text-base font-semibold">Controllo Temporale</h3>
       </div>
       
-      <div className="p-4 rounded-lg border-2 border-gray-200 bg-gray-50/50">
+      <div className="p-4 rounded-lg border border-border bg-card/50">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-3">
             <Switch
@@ -44,9 +44,9 @@ export const BypassTimeIntervalControl = ({
               <TooltipTrigger asChild>
                 <button 
                   type="button"
-                  className="flex items-center justify-center w-5 h-5 rounded-full bg-blue-100 hover:bg-blue-200 transition-colors"
+                  className="flex items-center justify-center w-5 h-5 rounded-full bg-primary/10 hover:bg-primary/20 transition-colors"
                 >
-                  <Info className="h-3 w-3 text-blue-600" />
+                  <Info className="h-3 w-3 text-primary" />
                 </button>
               </TooltipTrigger>
               <TooltipContent>
