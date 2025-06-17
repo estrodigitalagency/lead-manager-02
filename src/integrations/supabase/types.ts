@@ -338,6 +338,39 @@ export type Database = {
         }
         Relationships: []
       }
+      uptime_monitoring: {
+        Row: {
+          created_at: string
+          error_message: string | null
+          id: string
+          response_time_ms: number | null
+          status: string
+          status_code: number | null
+          timestamp: string
+          url: string
+        }
+        Insert: {
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          response_time_ms?: number | null
+          status: string
+          status_code?: number | null
+          timestamp?: string
+          url: string
+        }
+        Update: {
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          response_time_ms?: number | null
+          status?: string
+          status_code?: number | null
+          timestamp?: string
+          url?: string
+        }
+        Relationships: []
+      }
       venditori: {
         Row: {
           cognome: string

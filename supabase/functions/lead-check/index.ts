@@ -98,6 +98,20 @@ serve(async (req) => {
     
     console.log(`Found ${allBookings?.length || 0} bookings in attribution window`)
     
+    // Helper function to check if booking email matches any lead email
+    const checkEmailMatch = (leadEmail: string, bookingEmail: string): boolean => {
+      if (!leadEmail || !bookingEmail) return false
+      
+      // Se l'email del lead contiene virgole, splitta e verifica ogni email
+      if (leadEmail.includes(',')) {
+        const leadEmails = leadEmail.split(',').map(email => email.trim().toLowerCase())
+        return leadEmails.includes(bookingEmail.trim().toLowerCase())
+      }
+      
+      // Altrimenti confronto diretto
+      return leadEmail.trim().toLowerCase() === bookingEmail.trim().toLowerCase()
+    }
+    
     // Process leads in batches
     const batchSize = 100
     let totalUpdatedLeads = 0
@@ -119,8 +133,7 @@ serve(async (req) => {
             const leadCreatedDate = new Date(lead.created_at)
             
             // MATCHING: Email OR telefono devono corrispondere E booking creato dopo lead
-            const emailMatch = lead.email && booking.email && 
-                              lead.email.trim().toLowerCase() === booking.email.trim().toLowerCase()
+            const emailMatch = checkEmailMatch(lead.email, booking.email)
             const phoneMatch = lead.telefono && booking.telefono && 
                               lead.telefono.trim().replace(/\s+/g, '') === booking.telefono.trim().replace(/\s+/g, '')
             
