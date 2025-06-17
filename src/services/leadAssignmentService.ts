@@ -9,16 +9,26 @@ export interface LeadAssignmentData {
   excludedSources?: string[];
   includedSources?: string[];
   sourceMode?: 'exclude' | 'include';
+  bypassTimeInterval?: boolean;
 }
 
 export async function assignLeadsWithExclusions(data: LeadAssignmentData) {
-  const { numLead, venditore, campagna, excludedSources = [], includedSources = [], sourceMode = 'exclude' } = data;
+  const { 
+    numLead, 
+    venditore, 
+    campagna, 
+    excludedSources = [], 
+    includedSources = [], 
+    sourceMode = 'exclude',
+    bypassTimeInterval = false 
+  } = data;
 
   try {
     console.log(`Attempting to assign ${numLead} leads to ${venditore}`);
     console.log('Source mode:', sourceMode);
     console.log('Excluded sources:', excludedSources);
     console.log('Included sources:', includedSources);
+    console.log('Bypass time interval:', bypassTimeInterval);
 
     // Prima recupera le impostazioni per il calcolo dello stato
     const { data: settingsData } = await supabase
@@ -60,16 +70,26 @@ export async function assignLeadsWithExclusions(data: LeadAssignmentData) {
       throw new Error('Nessun lead disponibile per l\'assegnazione');
     }
 
-    // Filtra solo i lead con stato "Assegnabile"
-    const assignableLeads = candidateLeads.filter(lead => {
-      const status = getLeadStatus(lead, daysBeforeAssignable);
-      return status.label === 'Assegnabile';
-    });
+    let assignableLeads;
 
-    console.log(`Found ${assignableLeads.length} assignable leads out of ${candidateLeads.length} candidates`);
+    if (bypassTimeInterval) {
+      // Se bypass è attivo, considera tutti i lead con booked_call = NO e venditore = null
+      assignableLeads = candidateLeads;
+      console.log(`Bypass attivo: considerando tutti i ${candidateLeads.length} lead candidati`);
+    } else {
+      // Comportamento normale: filtra solo i lead con stato "Assegnabile"
+      assignableLeads = candidateLeads.filter(lead => {
+        const status = getLeadStatus(lead, daysBeforeAssignable);
+        return status.label === 'Assegnabile';
+      });
+      console.log(`Found ${assignableLeads.length} assignable leads out of ${candidateLeads.length} candidates`);
+    }
 
     if (assignableLeads.length === 0) {
-      throw new Error('Nessun lead con stato "Assegnabile" disponibile');
+      const message = bypassTimeInterval 
+        ? 'Nessun lead disponibile per l\'assegnazione'
+        : 'Nessun lead con stato "Assegnabile" disponibile';
+      throw new Error(message);
     }
 
     // Take only the requested number of leads
@@ -282,7 +302,7 @@ export async function assignLeadsWithExclusions(data: LeadAssignmentData) {
       }
     }
 
-    console.log(`Successfully assigned ${actualAssignedCount} assignable leads to ${venditore} (from oldest to newest)`);
+    console.log(`Successfully assigned ${actualAssignedCount} leads to ${venditore} (bypass: ${bypassTimeInterval})`);
     return { assignedCount: actualAssignedCount, leads: leadsToAssign };
 
   } catch (error) {
@@ -291,7 +311,12 @@ export async function assignLeadsWithExclusions(data: LeadAssignmentData) {
   }
 }
 
-export async function getAvailableLeadsCount(excludedSources: string[] = [], includedSources: string[] = [], sourceMode: 'exclude' | 'include' = 'exclude'): Promise<number> {
+export async function getAvailableLeadsCount(
+  excludedSources: string[] = [], 
+  includedSources: string[] = [], 
+  sourceMode: 'exclude' | 'include' = 'exclude',
+  bypassTimeInterval: boolean = false
+): Promise<number> {
   try {
     // Prima recupera le impostazioni
     const { data: settingsData } = await supabase
@@ -328,13 +353,18 @@ export async function getAvailableLeadsCount(excludedSources: string[] = [], inc
 
     if (!candidates) return 0;
 
-    // Filtra solo quelli con stato "Assegnabile"
-    const assignableCount = candidates.filter(lead => {
-      const status = getLeadStatus(lead, daysBeforeAssignable);
-      return status.label === 'Assegnabile';
-    }).length;
-    
-    return assignableCount;
+    if (bypassTimeInterval) {
+      // Se bypass è attivo, conta tutti i candidati
+      return candidates.length;
+    } else {
+      // Comportamento normale: filtra solo quelli con stato "Assegnabile"
+      const assignableCount = candidates.filter(lead => {
+        const status = getLeadStatus(lead, daysBeforeAssignable);
+        return status.label === 'Assegnabile';
+      }).length;
+      
+      return assignableCount;
+    }
   } catch (error) {
     console.error('Error in getAvailableLeadsCount:', error);
     return 0;

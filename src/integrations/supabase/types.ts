@@ -98,6 +98,7 @@ export type Database = {
       booking_clicks: {
         Row: {
           calendly_url: string | null
+          call_prenotata: string | null
           clicked_at: string
           created_at: string
           email: string
@@ -106,11 +107,13 @@ export type Database = {
           nome: string
           prefisso_telefono: string
           telefono: string
+          updated_at: string | null
           user_agent: string | null
           venditore_assegnato: string | null
         }
         Insert: {
           calendly_url?: string | null
+          call_prenotata?: string | null
           clicked_at?: string
           created_at?: string
           email: string
@@ -119,11 +122,13 @@ export type Database = {
           nome: string
           prefisso_telefono: string
           telefono: string
+          updated_at?: string | null
           user_agent?: string | null
           venditore_assegnato?: string | null
         }
         Update: {
           calendly_url?: string | null
+          call_prenotata?: string | null
           clicked_at?: string
           created_at?: string
           email?: string
@@ -132,6 +137,7 @@ export type Database = {
           nome?: string
           prefisso_telefono?: string
           telefono?: string
+          updated_at?: string | null
           user_agent?: string | null
           venditore_assegnato?: string | null
         }
