@@ -2,6 +2,13 @@
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
+// Global refresh callback for triggering UI updates
+let globalRefreshCallback: (() => Promise<void>) | null = null;
+
+export function setGlobalRefreshCallback(callback: (() => Promise<void>) | null) {
+  globalRefreshCallback = callback;
+}
+
 export async function makeLeadAssignable(leadId: string) {
   try {
     console.log(`Making lead ${leadId} assignable and removing vendor...`);
@@ -24,6 +31,11 @@ export async function makeLeadAssignable(leadId: string) {
     console.log(`Lead ${leadId} successfully made assignable and vendor removed`);
     toast.success('Lead reso assegnabile e venditore rimosso con successo');
     
+    // Trigger global refresh if callback is available
+    if (globalRefreshCallback) {
+      await globalRefreshCallback();
+    }
+    
     return { success: true };
   } catch (error) {
     console.error('Error in makeLeadAssignable:', error);
@@ -32,7 +44,7 @@ export async function makeLeadAssignable(leadId: string) {
   }
 }
 
-export async function verifyLeadAssignability() {
+export async function checkLeadsAssignability() {
   try {
     console.log("🔍 Starting lead assignability verification...");
     
@@ -58,7 +70,7 @@ export async function verifyLeadAssignability() {
 
     if (!leads) {
       console.log("No leads found for verification");
-      return { updated: 0, totalChecked: 0 };
+      return { updated: 0, totalChecked: 0, availableLeads: 0 };
     }
 
     console.log(`📊 Checking ${leads.length} leads for assignability...`);
@@ -74,7 +86,7 @@ export async function verifyLeadAssignability() {
       const batch = leads.slice(i, i + batchSize);
       console.log(`Processing batch ${Math.floor(i/batchSize) + 1}/${Math.ceil(leads.length/batchSize)}`);
       
-      const updates = batch.map(lead => {
+      for (const lead of batch) {
         const leadDate = new Date(lead.created_at);
         const isOldEnough = leadDate <= cutoffDate;
         const hasBookedCall = lead.booked_call === 'SI';
@@ -87,31 +99,30 @@ export async function verifyLeadAssignability() {
         const shouldBeAssignable = !hasBookedCall && isOldEnough && !hasVendor;
         
         if (lead.assignable !== shouldBeAssignable) {
-          return {
-            id: lead.id,
-            assignable: shouldBeAssignable
-          };
-        }
-        
-        return null;
-      }).filter(Boolean);
+          const { error: updateError } = await supabase
+            .from('lead_generation')
+            .update({ assignable: shouldBeAssignable })
+            .eq('id', lead.id);
 
-      if (updates.length > 0) {
-        console.log(`Updating ${updates.length} leads in this batch`);
-        
-        // Usa upsert per aggiornare in batch
-        const { error: updateError } = await supabase
-          .from('lead_generation')
-          .upsert(updates, { onConflict: 'id' });
-
-        if (updateError) {
-          console.error('❌ Error updating leads batch:', updateError);
-          // Continua con il prossimo batch invece di fallire tutto
-        } else {
-          updatedCount += updates.length;
+          if (updateError) {
+            console.error('❌ Error updating lead:', updateError);
+            // Continua con il prossimo lead invece di fallire tutto
+          } else {
+            updatedCount++;
+          }
         }
       }
     }
+
+    // Conta i lead disponibili
+    const { data: availableLeadsData, error: countError } = await supabase
+      .from('lead_generation')
+      .select('id', { count: 'exact', head: true })
+      .eq('assignable', true)
+      .is('venditore', null)
+      .eq('booked_call', 'NO');
+
+    const availableLeads = availableLeadsData?.length || 0;
 
     console.log(`✅ Verification completed: ${updatedCount} leads updated out of ${leads.length} checked`);
     
@@ -119,10 +130,48 @@ export async function verifyLeadAssignability() {
       toast.success(`Verifica completata: ${updatedCount} lead aggiornati`);
     }
     
-    return { updated: updatedCount, totalChecked: leads.length };
+    // Trigger global refresh if callback is available
+    if (globalRefreshCallback) {
+      await globalRefreshCallback();
+    }
+    
+    return { updated: updatedCount, totalChecked: leads.length, availableLeads };
   } catch (error) {
-    console.error('❌ Error in verifyLeadAssignability:', error);
+    console.error('❌ Error in checkLeadsAssignability:', error);
     toast.error('Errore durante la verifica dell\'assegnabilità');
     throw error;
   }
 }
+
+export async function getOptimizedLeadCounts() {
+  try {
+    const [totalResult, assignableResult, assignedResult, bookedResult] = await Promise.all([
+      supabase.from('lead_generation').select('id', { count: 'exact', head: true }),
+      supabase.from('lead_generation').select('id', { count: 'exact', head: true })
+        .eq('assignable', true)
+        .is('venditore', null)
+        .eq('booked_call', 'NO'),
+      supabase.from('lead_generation').select('id', { count: 'exact', head: true })
+        .not('venditore', 'is', null),
+      supabase.from('booked_call').select('id', { count: 'exact', head: true })
+    ]);
+
+    return {
+      total: totalResult.count || 0,
+      assignable: assignableResult.count || 0,
+      assigned: assignedResult.count || 0,
+      booked: bookedResult.count || 0
+    };
+  } catch (error) {
+    console.error('Error fetching optimized lead counts:', error);
+    return {
+      total: 0,
+      assignable: 0,
+      assigned: 0,
+      booked: 0
+    };
+  }
+}
+
+// Legacy function name for compatibility
+export const verifyLeadAssignability = checkLeadsAssignability;
