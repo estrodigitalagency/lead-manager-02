@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { Lead } from "@/types/lead";
 import { LeadLavorato } from "@/types/leadLavorato";
@@ -275,6 +276,34 @@ export async function markLeadsAsAssigned(
     return availableLeads;
   } catch (error) {
     console.error('Error marking leads as assigned:', error);
+    throw error;
+  }
+}
+
+// Nuova funzione per rendere un lead assegnabile rimuovendo il venditore
+export async function makeLeadAssignable(leadId: string) {
+  try {
+    console.log(`Making lead ${leadId} assignable and removing vendor...`);
+    
+    const { error } = await supabase
+      .from('lead_generation')
+      .update({ 
+        assignable: true,
+        venditore: null, // Rimuove il venditore
+        stato: 'nuovo',  // Reimposta lo stato a nuovo
+        data_assegnazione: null // Rimuove anche la data di assegnazione
+      })
+      .eq('id', leadId);
+
+    if (error) {
+      console.error('Error making lead assignable:', error);
+      throw error;
+    }
+
+    console.log(`Lead ${leadId} successfully made assignable and vendor removed`);
+    return { success: true };
+  } catch (error) {
+    console.error('Error in makeLeadAssignable:', error);
     throw error;
   }
 }
