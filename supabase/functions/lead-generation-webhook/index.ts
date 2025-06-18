@@ -32,7 +32,46 @@ serve(async (req) => {
     // Use provided created_at date or default to now
     const createdAt = payload.created_at ? new Date(payload.created_at).toISOString() : new Date().toISOString();
     
-    // Insert the lead data to the lead_generation table (REMOVED note field)
+    // Get duplicate check interval from environment variable (default 5 minutes)
+    const duplicateCheckMinutes = parseInt(Deno.env.get('DUPLICATE_CHECK_MINUTES') || '5');
+    const duplicateCheckInterval = new Date(Date.now() - duplicateCheckMinutes * 60 * 1000).toISOString();
+    
+    console.log(`Checking for duplicates within the last ${duplicateCheckMinutes} minutes (since ${duplicateCheckInterval})`);
+    
+    // Check for existing leads with same email, phone, or name+surname within the specified time interval
+    const { data: existingLeads, error: checkError } = await supabase
+      .from('lead_generation')
+      .select('*')
+      .gte('created_at', duplicateCheckInterval)
+      .or(`email.eq.${payload.email || 'NULL'},telefono.eq.${payload.telefono || 'NULL'},and(nome.eq.${payload.nome || 'NULL'},cognome.eq.${payload.cognome || 'NULL'})`)
+      .limit(1);
+
+    if (checkError) {
+      console.error('Error checking for duplicates:', checkError);
+    } else if (existingLeads && existingLeads.length > 0) {
+      // Found a duplicate lead
+      const existingLead = existingLeads[0];
+      console.log(`Duplicate lead found! Returning existing lead with ID: ${existingLead.id}`);
+      console.log(`Existing lead: ${existingLead.nome} ${existingLead.cognome} - ${existingLead.email} - ${existingLead.telefono}`);
+      console.log(`New payload would have been: ${payload.nome} ${payload.cognome} - ${payload.email} - ${payload.telefono}`);
+      
+      return new Response(
+        JSON.stringify({ 
+          success: true, 
+          data: [existingLead],
+          duplicate: true,
+          message: 'Lead già esistente, restituito lead esistente'
+        }),
+        { 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 200 
+        }
+      );
+    }
+    
+    console.log('No duplicates found, proceeding with lead insertion');
+    
+    // Insert the lead data to the lead_generation table
     const { data, error } = await supabase
       .from('lead_generation')
       .insert({
@@ -57,8 +96,15 @@ serve(async (req) => {
       })
     }
 
+    console.log('Lead successfully inserted:', data);
+
     return new Response(
-      JSON.stringify({ success: true, data }),
+      JSON.stringify({ 
+        success: true, 
+        data,
+        duplicate: false,
+        message: 'Nuovo lead inserito con successo'
+      }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 200 
