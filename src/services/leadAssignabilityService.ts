@@ -17,9 +17,9 @@ export async function makeLeadAssignable(leadId: string) {
       .from('lead_generation')
       .update({ 
         assignable: true,
-        venditore: null, // Rimuove il venditore
-        stato: 'nuovo',  // Reimposta lo stato a nuovo
-        data_assegnazione: null // Rimuove anche la data di assegnazione
+        venditore: null,
+        stato: 'nuovo',
+        data_assegnazione: null
       })
       .eq('id', leadId);
 
@@ -31,7 +31,6 @@ export async function makeLeadAssignable(leadId: string) {
     console.log(`Lead ${leadId} successfully made assignable and vendor removed`);
     toast.success('Lead reso assegnabile e venditore rimosso con successo');
     
-    // Trigger global refresh if callback is available
     if (globalRefreshCallback) {
       await globalRefreshCallback();
     }
@@ -46,9 +45,9 @@ export async function makeLeadAssignable(leadId: string) {
 
 export async function checkLeadsAssignability() {
   try {
-    console.log("🔍 Starting lead assignability verification...");
+    console.log("🔍 Starting optimized lead assignability verification...");
     
-    // Prima recupera le impostazioni per il calcolo dell'età dei lead
+    // Recupera le impostazioni per il calcolo dell'età dei lead
     const { data: settingsData } = await supabase
       .from('system_settings')
       .select('value')
@@ -58,98 +57,53 @@ export async function checkLeadsAssignability() {
     const daysBeforeAssignable = settingsData?.value ? parseInt(settingsData.value) : 7;
     console.log(`Using ${daysBeforeAssignable} days as threshold for assignability`);
 
-    // Recupera tutti i lead per la verifica
-    const { data: leads, error: fetchError } = await supabase
+    // Calcola la data di cutoff
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - daysBeforeAssignable);
+    const cutoffDateISO = cutoffDate.toISOString();
+
+    console.log(`Cutoff date for assignability: ${cutoffDateISO}`);
+
+    // OPERAZIONE 1: Rendi NON assegnabili tutti i lead con call prenotate
+    console.log("Step 1: Setting leads with booked calls as non-assignable...");
+    const { error: bookedCallError } = await supabase
       .from('lead_generation')
-      .select('id, created_at, booked_call, venditore, assignable')
-      .limit(1000); // Limit to prevent timeout
+      .update({ assignable: false })
+      .eq('booked_call', 'SI');
 
-    if (fetchError) {
-      console.error('❌ Error fetching leads for verification:', fetchError);
-      throw fetchError;
+    if (bookedCallError) {
+      console.error('Error updating booked call leads:', bookedCallError);
     }
 
-    if (!leads || leads.length === 0) {
-      console.log("No leads found for verification");
-      return { updated: 0, totalChecked: 0, availableLeads: 0 };
+    // OPERAZIONE 2: Rendi NON assegnabili tutti i lead con venditore già assegnato
+    console.log("Step 2: Setting leads with assigned vendors as non-assignable...");
+    const { error: assignedError } = await supabase
+      .from('lead_generation')
+      .update({ assignable: false })
+      .not('venditore', 'is', null);
+
+    if (assignedError) {
+      console.error('Error updating assigned leads:', assignedError);
     }
 
-    console.log(`📊 Checking ${leads.length} leads for assignability...`);
+    // OPERAZIONE 3: Rendi assegnabili i lead che soddisfano tutti i criteri
+    console.log("Step 3: Setting eligible leads as assignable...");
+    const { data: updatedLeads, error: assignableError } = await supabase
+      .from('lead_generation')
+      .update({ assignable: true })
+      .eq('booked_call', 'NO')
+      .is('venditore', null)
+      .lte('created_at', cutoffDateISO)
+      .select('id');
 
-    const now = new Date();
-    const cutoffDate = new Date(now.getTime() - (daysBeforeAssignable * 24 * 60 * 60 * 1000));
-    
-    let updatedCount = 0;
-    const batchSize = 20; // Reduced batch size for better performance
-    
-    // Processa i lead in batch per evitare timeout
-    for (let i = 0; i < leads.length; i += batchSize) {
-      const batch = leads.slice(i, i + batchSize);
-      console.log(`Processing batch ${Math.floor(i/batchSize) + 1}/${Math.ceil(leads.length/batchSize)} (${batch.length} leads)`);
-      
-      const updates = [];
-      
-      for (const lead of batch) {
-        const leadDate = new Date(lead.created_at);
-        const isOldEnough = leadDate <= cutoffDate;
-        const hasBookedCall = lead.booked_call === 'SI';
-        const hasVendor = lead.venditore !== null;
-        
-        // Un lead è assegnabile se:
-        // 1. Non ha una call prenotata E
-        // 2. È abbastanza vecchio (oltre la soglia) E  
-        // 3. Non ha già un venditore assegnato
-        const shouldBeAssignable = !hasBookedCall && isOldEnough && !hasVendor;
-        
-        if (lead.assignable !== shouldBeAssignable) {
-          updates.push({
-            id: lead.id,
-            assignable: shouldBeAssignable
-          });
-        }
-      }
-      
-      // Execute batch updates using individual updates to avoid issues
-      if (updates.length > 0) {
-        console.log(`Updating ${updates.length} leads in current batch`);
-        
-        // Process updates in smaller chunks to avoid timeout
-        const updatePromises = updates.map(async (update) => {
-          try {
-            const { error } = await supabase
-              .from('lead_generation')
-              .update({ assignable: update.assignable })
-              .eq('id', update.id);
-            
-            if (error) {
-              console.error(`Error updating lead ${update.id}:`, error);
-              return false;
-            }
-            return true;
-          } catch (error) {
-            console.error(`Exception updating lead ${update.id}:`, error);
-            return false;
-          }
-        });
-        
-        // Wait for all updates in this batch with timeout
-        try {
-          const results = await Promise.allSettled(updatePromises);
-          const successful = results.filter(r => r.status === 'fulfilled' && r.value === true).length;
-          updatedCount += successful;
-          console.log(`Batch completed: ${successful}/${updates.length} updates successful`);
-        } catch (error) {
-          console.error('Error in batch update:', error);
-        }
-      }
-      
-      // Add a small delay between batches to prevent overwhelming the database
-      if (i + batchSize < leads.length) {
-        await new Promise(resolve => setTimeout(resolve, 100));
-      }
+    if (assignableError) {
+      console.error('Error updating assignable leads:', assignableError);
+      throw assignableError;
     }
 
-    // Conta i lead disponibili
+    const updatedCount = updatedLeads?.length || 0;
+
+    // Conta i lead disponibili finali
     const { count: availableLeads } = await supabase
       .from('lead_generation')
       .select('*', { count: 'exact', head: true })
@@ -157,10 +111,13 @@ export async function checkLeadsAssignability() {
       .is('venditore', null)
       .eq('booked_call', 'NO');
 
-    console.log(`✅ Verification completed: ${updatedCount} leads updated out of ${leads.length} checked`);
+    console.log(`✅ Optimized verification completed: ${updatedCount} leads updated`);
+    console.log(`Available leads: ${availableLeads || 0}`);
     
     if (updatedCount > 0) {
       toast.success(`Verifica completata: ${updatedCount} lead aggiornati`);
+    } else {
+      toast.success('Verifica completata: tutti i lead erano già aggiornati');
     }
     
     // Trigger global refresh if callback is available
@@ -168,9 +125,13 @@ export async function checkLeadsAssignability() {
       await globalRefreshCallback();
     }
     
-    return { updated: updatedCount, totalChecked: leads.length, availableLeads: availableLeads || 0 };
+    return { 
+      updated: updatedCount, 
+      totalChecked: updatedCount, // Semplificato per performance
+      availableLeads: availableLeads || 0 
+    };
   } catch (error) {
-    console.error('❌ Error in checkLeadsAssignability:', error);
+    console.error('❌ Error in optimized checkLeadsAssignability:', error);
     toast.error('Errore durante la verifica dell\'assegnabilità');
     throw error;
   }
