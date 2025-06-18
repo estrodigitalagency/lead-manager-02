@@ -8,7 +8,6 @@ export interface LeadAssignmentData {
   campagna?: string;
   excludedSources?: string[];
   includedSources?: string[];
-  sourceMode?: 'exclude' | 'include';
   bypassTimeInterval?: boolean;
 }
 
@@ -19,15 +18,13 @@ export async function assignLeadsWithExclusions(data: LeadAssignmentData) {
     campagna, 
     excludedSources = [], 
     includedSources = [], 
-    sourceMode = 'exclude',
     bypassTimeInterval = false 
   } = data;
 
   try {
     console.log(`Attempting to assign ${numLead} leads to ${venditore}`);
-    console.log('Source mode:', sourceMode);
-    console.log('Excluded sources:', excludedSources);
     console.log('Included sources:', includedSources);
+    console.log('Excluded sources:', excludedSources);
     console.log('Bypass time interval:', bypassTimeInterval);
 
     // Prima recupera le impostazioni per il calcolo dello stato
@@ -46,18 +43,14 @@ export async function assignLeadsWithExclusions(data: LeadAssignmentData) {
       .is('venditore', null)
       .eq('booked_call', 'NO'); // Solo lead senza call prenotate
 
-    // Apply source filtering based on mode
-    if (sourceMode === 'exclude' && excludedSources.length > 0) {
-      excludedSources.forEach(source => {
-        query = query.not('fonte', 'like', `%${source}%`);
-      });
-    } else if (sourceMode === 'include' && includedSources.length > 0) {
-      // For include mode, we need to match any of the included sources
+    // Apply dual source filtering logic
+    // Step 1: If there are included sources, filter to only those
+    if (includedSources.length > 0) {
       const includeFilters = includedSources.map(source => `fonte.like.%${source}%`).join(',');
       query = query.or(includeFilters);
     }
 
-    // Get all candidate leads ordered from oldest to newest
+    // Get candidate leads after inclusion filter
     const { data: candidateLeads, error: fetchError } = await query
       .order('created_at', { ascending: true });
 
@@ -70,25 +63,38 @@ export async function assignLeadsWithExclusions(data: LeadAssignmentData) {
       throw new Error('Nessun lead disponibile per l\'assegnazione');
     }
 
+    // Step 2: Apply exclusion filter to the candidates
+    let filteredLeads = candidateLeads;
+    if (excludedSources.length > 0) {
+      filteredLeads = candidateLeads.filter(lead => {
+        if (!lead.fonte) return true;
+        return !excludedSources.some(excludedSource => 
+          lead.fonte.toLowerCase().includes(excludedSource.toLowerCase())
+        );
+      });
+    }
+
+    console.log(`Found ${filteredLeads.length} leads after include/exclude filtering (from ${candidateLeads.length} initial candidates)`);
+
     let assignableLeads;
 
     if (bypassTimeInterval) {
-      // Se bypass è attivo, considera tutti i lead con booked_call = NO e venditore = null
-      assignableLeads = candidateLeads;
-      console.log(`Bypass attivo: considerando tutti i ${candidateLeads.length} lead candidati`);
+      // Se bypass è attivo, considera tutti i lead filtrati
+      assignableLeads = filteredLeads;
+      console.log(`Bypass attivo: considerando tutti i ${filteredLeads.length} lead filtrati`);
     } else {
       // Comportamento normale: filtra solo i lead con stato "Assegnabile"
-      assignableLeads = candidateLeads.filter(lead => {
+      assignableLeads = filteredLeads.filter(lead => {
         const status = getLeadStatus(lead, daysBeforeAssignable);
         return status.label === 'Assegnabile';
       });
-      console.log(`Found ${assignableLeads.length} assignable leads out of ${candidateLeads.length} candidates`);
+      console.log(`Found ${assignableLeads.length} assignable leads out of ${filteredLeads.length} filtered candidates`);
     }
 
     if (assignableLeads.length === 0) {
       const message = bypassTimeInterval 
-        ? 'Nessun lead disponibile per l\'assegnazione'
-        : 'Nessun lead con stato "Assegnabile" disponibile';
+        ? 'Nessun lead disponibile per l\'assegnazione dopo i filtri'
+        : 'Nessun lead con stato "Assegnabile" disponibile dopo i filtri';
       throw new Error(message);
     }
 
@@ -245,7 +251,7 @@ export async function assignLeadsWithExclusions(data: LeadAssignmentData) {
         venditore,
         leads_count: actualAssignedCount,
         campagna: campagna || null,
-        fonti_escluse: sourceMode === 'exclude' ? excludedSources.length > 0 ? excludedSources : null : null
+        fonti_escluse: bypassTimeInterval ? excludedSources.length > 0 ? excludedSources : null : null
       });
 
     if (historyError) {
@@ -314,7 +320,6 @@ export async function assignLeadsWithExclusions(data: LeadAssignmentData) {
 export async function getAvailableLeadsCount(
   excludedSources: string[] = [], 
   includedSources: string[] = [], 
-  sourceMode: 'exclude' | 'include' = 'exclude',
   bypassTimeInterval: boolean = false
 ): Promise<number> {
   try {
@@ -334,12 +339,9 @@ export async function getAvailableLeadsCount(
       .is('venditore', null)
       .eq('booked_call', 'NO');
 
-    // Apply source filtering based on mode
-    if (sourceMode === 'exclude' && excludedSources.length > 0) {
-      excludedSources.forEach(source => {
-        query = query.not('fonte', 'like', `%${source}%`);
-      });
-    } else if (sourceMode === 'include' && includedSources.length > 0) {
+    // Apply dual source filtering logic
+    // Step 1: If there are included sources, filter to only those
+    if (includedSources.length > 0) {
       const includeFilters = includedSources.map(source => `fonte.like.%${source}%`).join(',');
       query = query.or(includeFilters);
     }
@@ -353,12 +355,23 @@ export async function getAvailableLeadsCount(
 
     if (!candidates) return 0;
 
+    // Step 2: Apply exclusion filter to the candidates
+    let filteredCandidates = candidates;
+    if (excludedSources.length > 0) {
+      filteredCandidates = candidates.filter(lead => {
+        if (!lead.fonte) return true;
+        return !excludedSources.some(excludedSource => 
+          lead.fonte.toLowerCase().includes(excludedSource.toLowerCase())
+        );
+      });
+    }
+
     if (bypassTimeInterval) {
-      // Se bypass è attivo, conta tutti i candidati
-      return candidates.length;
+      // Se bypass è attivo, conta tutti i candidati filtrati
+      return filteredCandidates.length;
     } else {
       // Comportamento normale: filtra solo quelli con stato "Assegnabile"
-      const assignableCount = candidates.filter(lead => {
+      const assignableCount = filteredCandidates.filter(lead => {
         const status = getLeadStatus(lead, daysBeforeAssignable);
         return status.label === 'Assegnabile';
       }).length;

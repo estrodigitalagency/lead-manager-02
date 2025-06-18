@@ -14,7 +14,6 @@ export function useLeadAssignment() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [excludedSources, setExcludedSources] = useState<string[]>([]);
   const [includedSources, setIncludedSources] = useState<string[]>([]);
-  const [sourceMode, setSourceMode] = useState<'exclude' | 'include'>('exclude');
   const [availableLeads, setAvailableLeads] = useState(0);
   const [uniqueSources, setUniqueSources] = useState<string[]>([]);
   const [bypassTimeInterval, setBypassTimeInterval] = useState(false);
@@ -25,7 +24,7 @@ export function useLeadAssignment() {
 
   useEffect(() => {
     updateAvailableLeads();
-  }, [excludedSources, includedSources, sourceMode, bypassTimeInterval]);
+  }, [excludedSources, includedSources, bypassTimeInterval]);
 
   const initializeData = async () => {
     try {
@@ -88,8 +87,8 @@ export function useLeadAssignment() {
 
   const updateAvailableLeads = async () => {
     try {
-      const count = await getAvailableLeadsCount(excludedSources, includedSources, sourceMode, bypassTimeInterval);
-      console.log(`Lead disponibili per assegnazione (modalità ${sourceMode}, bypass: ${bypassTimeInterval}): ${count}`);
+      const count = await getAvailableLeadsCount(excludedSources, includedSources, bypassTimeInterval);
+      console.log(`Lead disponibili per assegnazione (bypass: ${bypassTimeInterval}): ${count}`);
       setAvailableLeads(count);
     } catch (error) {
       console.error("Error fetching available leads:", error);
@@ -103,7 +102,7 @@ export function useLeadAssignment() {
       setExcludedSources(newExcludedSources);
       
       try {
-        const count = await getAvailableLeadsCount(newExcludedSources, includedSources, sourceMode, bypassTimeInterval);
+        const count = await getAvailableLeadsCount(newExcludedSources, includedSources, bypassTimeInterval);
         console.log(`Lead disponibili dopo esclusione di ${sourceName}: ${count}`);
         setAvailableLeads(count);
       } catch (error) {
@@ -117,7 +116,7 @@ export function useLeadAssignment() {
     setExcludedSources(newExcludedSources);
     
     try {
-      const count = await getAvailableLeadsCount(newExcludedSources, includedSources, sourceMode, bypassTimeInterval);
+      const count = await getAvailableLeadsCount(newExcludedSources, includedSources, bypassTimeInterval);
       console.log(`Lead disponibili dopo rimozione esclusione di ${source}: ${count}`);
       setAvailableLeads(count);
     } catch (error) {
@@ -131,7 +130,7 @@ export function useLeadAssignment() {
       setIncludedSources(newIncludedSources);
       
       try {
-        const count = await getAvailableLeadsCount(excludedSources, newIncludedSources, sourceMode, bypassTimeInterval);
+        const count = await getAvailableLeadsCount(excludedSources, newIncludedSources, bypassTimeInterval);
         console.log(`Lead disponibili dopo inclusione di ${sourceName}: ${count}`);
         setAvailableLeads(count);
       } catch (error) {
@@ -145,25 +144,11 @@ export function useLeadAssignment() {
     setIncludedSources(newIncludedSources);
     
     try {
-      const count = await getAvailableLeadsCount(excludedSources, newIncludedSources, sourceMode, bypassTimeInterval);
+      const count = await getAvailableLeadsCount(excludedSources, newIncludedSources, bypassTimeInterval);
       console.log(`Lead disponibili dopo rimozione inclusione di ${source}: ${count}`);
       setAvailableLeads(count);
     } catch (error) {
       console.error("Error updating available leads after removing inclusion:", error);
-    }
-  };
-
-  const toggleSourceMode = async (newMode: 'exclude' | 'include') => {
-    setSourceMode(newMode);
-    setExcludedSources([]);
-    setIncludedSources([]);
-    
-    try {
-      const count = await getAvailableLeadsCount([], [], newMode, bypassTimeInterval);
-      console.log(`Lead disponibili dopo cambio modalità a ${newMode}: ${count}`);
-      setAvailableLeads(count);
-    } catch (error) {
-      console.error("Error updating available leads after mode change:", error);
     }
   };
 
@@ -193,7 +178,6 @@ export function useLeadAssignment() {
         campagna,
         excludedSources,
         includedSources,
-        sourceMode,
         bypassTimeInterval
       });
       
@@ -230,7 +214,6 @@ export function useLeadAssignment() {
     isSubmitting,
     excludedSources,
     includedSources,
-    sourceMode,
     availableLeads,
     uniqueSources,
     bypassTimeInterval,
@@ -238,7 +221,6 @@ export function useLeadAssignment() {
     removeExcludedSource,
     addIncludedSource,
     removeIncludedSource,
-    toggleSourceMode,
     toggleBypassTimeInterval,
     handleAssign,
     updateAvailableLeads
