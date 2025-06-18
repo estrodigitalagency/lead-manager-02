@@ -56,12 +56,12 @@ const PersistentNavigation = () => {
           <Link key={item.to} to={item.to} onClick={onItemClick}>
             <Button 
               variant={item.isActive ? "default" : "ghost"} 
-              className={`flex items-center gap-2 hover:bg-accent hover:text-accent-foreground w-full justify-start ${
-                isMobile ? 'text-base py-3' : ''
+              className={`flex items-center gap-2 hover:bg-accent hover:text-accent-foreground justify-start whitespace-nowrap ${
+                isMobile ? 'w-full text-base py-3 px-4' : 'px-3 py-2'
               }`}
             >
-              <Icon className={`${isMobile ? 'h-5 w-5' : 'h-4 w-4'}`} />
-              {item.label}
+              <Icon className={`${isMobile ? 'h-5 w-5' : 'h-4 w-4'} flex-shrink-0`} />
+              <span className="truncate">{item.label}</span>
             </Button>
           </Link>
         );
@@ -74,12 +74,12 @@ const PersistentNavigation = () => {
       <nav className="bg-background border-b border-border px-4 py-3 shadow-sm fixed top-0 left-0 right-0 z-50">
         <div className="container mx-auto">
           <div className="flex items-center justify-between">
-            <Link to="/">
-              <h1 className="text-lg font-semibold text-primary">Lead Manager</h1>
+            <Link to="/" className="flex-shrink-0">
+              <h1 className="text-lg font-semibold text-primary truncate">Lead Manager</h1>
             </Link>
             <Drawer open={open} onOpenChange={setOpen}>
               <DrawerTrigger asChild>
-                <Button variant="ghost" size="icon">
+                <Button variant="ghost" size="icon" className="flex-shrink-0">
                   <Menu className="h-5 w-5" />
                 </Button>
               </DrawerTrigger>
@@ -100,11 +100,11 @@ const PersistentNavigation = () => {
     <nav className="bg-background border-b border-border px-4 py-3 shadow-sm fixed top-0 left-0 right-0 z-50">
       <div className="container mx-auto">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-6">
-            <Link to="/">
-              <h1 className="text-xl font-bold text-primary">Lead Manager</h1>
+          <div className="flex items-center gap-6 min-w-0 flex-1">
+            <Link to="/" className="flex-shrink-0">
+              <h1 className="text-xl font-bold text-primary whitespace-nowrap">Lead Manager</h1>
             </Link>
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1 overflow-x-auto flex-1 min-w-0">
               <NavItems />
             </div>
           </div>
