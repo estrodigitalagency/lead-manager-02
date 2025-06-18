@@ -12,29 +12,38 @@ export type Database = {
       assignment_history: {
         Row: {
           assigned_at: string
+          bypass_time_interval: boolean | null
           campagna: string | null
           created_at: string
           fonti_escluse: string[] | null
+          fonti_incluse: string[] | null
           id: string
           leads_count: number
+          source_mode: string | null
           venditore: string
         }
         Insert: {
           assigned_at?: string
+          bypass_time_interval?: boolean | null
           campagna?: string | null
           created_at?: string
           fonti_escluse?: string[] | null
+          fonti_incluse?: string[] | null
           id?: string
           leads_count: number
+          source_mode?: string | null
           venditore: string
         }
         Update: {
           assigned_at?: string
+          bypass_time_interval?: boolean | null
           campagna?: string | null
           created_at?: string
           fonti_escluse?: string[] | null
+          fonti_incluse?: string[] | null
           id?: string
           leads_count?: number
+          source_mode?: string | null
           venditore?: string
         }
         Relationships: []

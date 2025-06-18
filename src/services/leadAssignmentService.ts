@@ -46,13 +46,9 @@ export async function assignLeadsWithExclusions(data: LeadAssignmentData) {
       .is('venditore', null)
       .eq('booked_call', 'NO'); // Solo lead senza call prenotate
 
-    // Apply source filtering based on mode
-    if (sourceMode === 'exclude' && excludedSources.length > 0) {
-      excludedSources.forEach(source => {
-        query = query.not('fonte', 'like', `%${source}%`);
-      });
-    } else if (sourceMode === 'include' && includedSources.length > 0) {
-      // For include mode, we need to match any of the included sources
+    // Apply dual source filtering logic
+    if (includedSources.length > 0) {
+      // If we have included sources, only consider those
       const includeFilters = includedSources.map(source => `fonte.like.%${source}%`).join(',');
       query = query.or(includeFilters);
     }
@@ -70,25 +66,36 @@ export async function assignLeadsWithExclusions(data: LeadAssignmentData) {
       throw new Error('Nessun lead disponibile per l\'assegnazione');
     }
 
+    // Apply exclusion filter after inclusion
+    let filteredLeads = candidateLeads;
+    if (excludedSources.length > 0) {
+      filteredLeads = candidateLeads.filter(lead => {
+        if (!lead.fonte) return true;
+        return !excludedSources.some(excludedSource => 
+          lead.fonte!.toLowerCase().includes(excludedSource.toLowerCase())
+        );
+      });
+    }
+
     let assignableLeads;
 
     if (bypassTimeInterval) {
-      // Se bypass è attivo, considera tutti i lead con booked_call = NO e venditore = null
-      assignableLeads = candidateLeads;
-      console.log(`Bypass attivo: considerando tutti i ${candidateLeads.length} lead candidati`);
+      // Se bypass è attivo, considera tutti i lead filtrati
+      assignableLeads = filteredLeads;
+      console.log(`Bypass attivo: considerando tutti i ${filteredLeads.length} lead candidati`);
     } else {
       // Comportamento normale: filtra solo i lead con stato "Assegnabile"
-      assignableLeads = candidateLeads.filter(lead => {
+      assignableLeads = filteredLeads.filter(lead => {
         const status = getLeadStatus(lead, daysBeforeAssignable);
         return status.label === 'Assegnabile';
       });
-      console.log(`Found ${assignableLeads.length} assignable leads out of ${candidateLeads.length} candidates`);
+      console.log(`Found ${assignableLeads.length} assignable leads out of ${filteredLeads.length} candidates`);
     }
 
     if (assignableLeads.length === 0) {
       const message = bypassTimeInterval 
-        ? 'Nessun lead disponibile per l\'assegnazione'
-        : 'Nessun lead con stato "Assegnabile" disponibile';
+        ? 'Nessun lead disponibile per l\'assegnazione con i filtri applicati'
+        : 'Nessun lead con stato "Assegnabile" disponibile con i filtri applicati';
       throw new Error(message);
     }
 
@@ -238,14 +245,17 @@ export async function assignLeadsWithExclusions(data: LeadAssignmentData) {
       toast.success('Lead assegnati (nessun webhook configurato)');
     }
 
-    // Record the assignment in history
+    // Record the assignment in history with new fields
     const { error: historyError } = await supabase
       .from('assignment_history')
       .insert({
         venditore,
         leads_count: actualAssignedCount,
         campagna: campagna || null,
-        fonti_escluse: sourceMode === 'exclude' ? excludedSources.length > 0 ? excludedSources : null : null
+        fonti_escluse: excludedSources.length > 0 ? excludedSources : null,
+        fonti_incluse: includedSources.length > 0 ? includedSources : null,
+        source_mode: sourceMode,
+        bypass_time_interval: bypassTimeInterval
       });
 
     if (historyError) {
@@ -334,12 +344,9 @@ export async function getAvailableLeadsCount(
       .is('venditore', null)
       .eq('booked_call', 'NO');
 
-    // Apply source filtering based on mode
-    if (sourceMode === 'exclude' && excludedSources.length > 0) {
-      excludedSources.forEach(source => {
-        query = query.not('fonte', 'like', `%${source}%`);
-      });
-    } else if (sourceMode === 'include' && includedSources.length > 0) {
+    // Apply dual source filtering logic
+    if (includedSources.length > 0) {
+      // If we have included sources, only consider those
       const includeFilters = includedSources.map(source => `fonte.like.%${source}%`).join(',');
       query = query.or(includeFilters);
     }
@@ -353,12 +360,23 @@ export async function getAvailableLeadsCount(
 
     if (!candidates) return 0;
 
+    // Apply exclusion filter after inclusion
+    let filteredLeads = candidates;
+    if (excludedSources.length > 0) {
+      filteredLeads = candidates.filter(lead => {
+        if (!lead.fonte) return true;
+        return !excludedSources.some(excludedSource => 
+          lead.fonte!.toLowerCase().includes(excludedSource.toLowerCase())
+        );
+      });
+    }
+
     if (bypassTimeInterval) {
-      // Se bypass è attivo, conta tutti i candidati
-      return candidates.length;
+      // Se bypass è attivo, conta tutti i candidati filtrati
+      return filteredLeads.length;
     } else {
       // Comportamento normale: filtra solo quelli con stato "Assegnabile"
-      const assignableCount = candidates.filter(lead => {
+      const assignableCount = filteredLeads.filter(lead => {
         const status = getLeadStatus(lead, daysBeforeAssignable);
         return status.label === 'Assegnabile';
       }).length;

@@ -11,7 +11,7 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2 } from "lucide-react";
+import { Loader2, Clock, Filter } from "lucide-react";
 
 interface AssignmentRecord {
   id: string;
@@ -20,6 +20,9 @@ interface AssignmentRecord {
   venditore: string;
   campagna: string | null;
   fonti_escluse: string[] | null;
+  fonti_incluse: string[] | null;
+  source_mode: string | null;
+  bypass_time_interval: boolean | null;
 }
 
 const AssignmentHistory = () => {
@@ -61,20 +64,6 @@ const AssignmentHistory = () => {
     });
   };
 
-  const formatAssignment = (record: AssignmentRecord) => {
-    let description = `${formatDate(record.assigned_at)} - ${record.leads_count} Lead Assegnati a ${record.venditore}`;
-    
-    if (record.campagna) {
-      description += ` - Campagna ${record.campagna}`;
-    }
-    
-    if (record.fonti_escluse && record.fonti_escluse.length > 0) {
-      description += ` - Fonti Escluse: ${record.fonti_escluse.join(', ')}`;
-    }
-    
-    return description;
-  };
-
   if (loading) {
     return (
       <div className="flex justify-center items-center h-40">
@@ -93,7 +82,7 @@ const AssignmentHistory = () => {
   }
 
   return (
-    <ScrollArea className="h-[400px]">
+    <ScrollArea className="h-[600px]">
       <Table>
         <TableHeader>
           <TableRow>
@@ -101,7 +90,8 @@ const AssignmentHistory = () => {
             <TableHead>Lead</TableHead>
             <TableHead>Venditore</TableHead>
             <TableHead>Campagna</TableHead>
-            <TableHead>Fonti Escluse</TableHead>
+            <TableHead>Controlli</TableHead>
+            <TableHead>Filtri Fonti</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -126,17 +116,57 @@ const AssignmentHistory = () => {
                 )}
               </TableCell>
               <TableCell>
-                {record.fonti_escluse && record.fonti_escluse.length > 0 ? (
-                  <div className="flex flex-wrap gap-1">
-                    {record.fonti_escluse.map((fonte, index) => (
-                      <Badge key={index} variant="destructive" className="text-xs">
-                        {fonte}
-                      </Badge>
-                    ))}
-                  </div>
-                ) : (
-                  '-'
-                )}
+                <div className="flex flex-col gap-1">
+                  {record.bypass_time_interval && (
+                    <Badge variant="outline" className="flex items-center gap-1 text-xs">
+                      <Clock className="h-3 w-3" />
+                      Bypass Temporale
+                    </Badge>
+                  )}
+                </div>
+              </TableCell>
+              <TableCell>
+                <div className="space-y-2">
+                  {/* Fonti Incluse */}
+                  {record.fonti_incluse && record.fonti_incluse.length > 0 && (
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                        <Filter className="h-3 w-3" />
+                        <span>Incluse:</span>
+                      </div>
+                      <div className="flex flex-wrap gap-1">
+                        {record.fonti_incluse.map((fonte, index) => (
+                          <Badge key={index} variant="default" className="text-xs">
+                            {fonte}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Fonti Escluse */}
+                  {record.fonti_escluse && record.fonti_escluse.length > 0 && (
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                        <Filter className="h-3 w-3" />
+                        <span>Escluse:</span>
+                      </div>
+                      <div className="flex flex-wrap gap-1">
+                        {record.fonti_escluse.map((fonte, index) => (
+                          <Badge key={index} variant="destructive" className="text-xs">
+                            {fonte}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Se non ci sono filtri */}
+                  {(!record.fonti_incluse || record.fonti_incluse.length === 0) && 
+                   (!record.fonti_escluse || record.fonti_escluse.length === 0) && (
+                    <span className="text-xs text-muted-foreground">Nessun filtro</span>
+                  )}
+                </div>
               </TableCell>
             </TableRow>
           ))}
