@@ -1,3 +1,4 @@
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { SourceFilter } from "@/components/lead-assignment/SourceFilter";
@@ -23,6 +24,7 @@ const LeadAssignmentWithExclusions = () => {
     isSubmitting,
     excludedSources,
     includedSources,
+    sourceMode,
     availableLeads,
     uniqueSources,
     bypassTimeInterval,
@@ -30,6 +32,7 @@ const LeadAssignmentWithExclusions = () => {
     removeExcludedSource,
     addIncludedSource,
     removeIncludedSource,
+    toggleSourceMode,
     toggleBypassTimeInterval,
     handleAssign,
     updateAvailableLeads
@@ -204,10 +207,12 @@ const LeadAssignmentWithExclusions = () => {
           uniqueSources={uniqueSources}
           excludedSources={excludedSources}
           includedSources={includedSources}
+          sourceMode={sourceMode}
           onAddExcludedSource={addExcludedSource}
           onRemoveExcludedSource={removeExcludedSource}
           onAddIncludedSource={addIncludedSource}
           onRemoveIncludedSource={removeIncludedSource}
+          onToggleSourceMode={toggleSourceMode}
         />
 
         {/* Assignment Button - at the bottom */}

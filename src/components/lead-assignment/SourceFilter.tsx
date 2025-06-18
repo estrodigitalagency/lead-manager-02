@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { X, Filter, Plus, Info } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useIsMobile } from "@/hooks/use-mobile";
 
@@ -11,25 +12,45 @@ interface SourceFilterProps {
   uniqueSources: string[];
   excludedSources: string[];
   includedSources: string[];
+  sourceMode: 'exclude' | 'include';
   onAddExcludedSource: (source: string) => void;
   onRemoveExcludedSource: (source: string) => void;
   onAddIncludedSource: (source: string) => void;
   onRemoveIncludedSource: (source: string) => void;
+  onToggleSourceMode: (mode: 'exclude' | 'include') => void;
 }
 
 export function SourceFilter({ 
   uniqueSources, 
   excludedSources,
   includedSources,
+  sourceMode,
   onAddExcludedSource, 
   onRemoveExcludedSource,
   onAddIncludedSource,
-  onRemoveIncludedSource
+  onRemoveIncludedSource,
+  onToggleSourceMode
 }: SourceFilterProps) {
   const isMobile = useIsMobile();
 
-  const usedSources = [...excludedSources, ...includedSources];
-  const availableSources = uniqueSources.filter(source => !usedSources.includes(source));
+  const currentSources = sourceMode === 'exclude' ? excludedSources : includedSources;
+  const availableSources = uniqueSources.filter(source => !currentSources.includes(source));
+
+  const handleAddSource = (sourceName: string) => {
+    if (sourceMode === 'exclude') {
+      onAddExcludedSource(sourceName);
+    } else {
+      onAddIncludedSource(sourceName);
+    }
+  };
+
+  const handleRemoveSource = (sourceName: string) => {
+    if (sourceMode === 'exclude') {
+      onRemoveExcludedSource(sourceName);
+    } else {
+      onRemoveIncludedSource(sourceName);
+    }
+  };
 
   return (
     <div className="space-y-4">
@@ -38,101 +59,50 @@ export function SourceFilter({
         <h3 className="text-base font-semibold">Filtro per Fonti</h3>
       </div>
 
-      <div className="p-4 border border-border rounded-lg bg-card/50 space-y-6">
-        {/* Sezione Fonti da Includere */}
-        <div className="space-y-3">
-          <div className="flex items-center gap-2">
-            <Label className="text-sm font-medium">✅ Fonti da Includere</Label>
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button 
-                    type="button"
-                    className="flex items-center justify-center w-4 h-4 rounded-full bg-primary/10 hover:bg-primary/20 transition-colors"
-                  >
-                    <Info className="h-3 w-3 text-primary" />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p className="max-w-xs text-sm">
-                    Seleziona le fonti da cui vuoi includere i lead. Se vuoto, considererà tutte le fonti.
-                  </p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
+      {/* Mode Toggle */}
+      <div className="p-4 border border-border rounded-lg bg-card/50">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center space-x-3">
+            <Switch
+              checked={sourceMode === 'include'}
+              onCheckedChange={(checked) => onToggleSourceMode(checked ? 'include' : 'exclude')}
+            />
+            <Label className="text-sm font-medium">
+              {sourceMode === 'exclude' ? '🚫 Escludi Fonti' : '✅ Includi Fonti'}
+            </Label>
           </div>
-
-          <Select onValueChange={onAddIncludedSource}>
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="Aggiungi una fonte da includere..." />
-            </SelectTrigger>
-            <SelectContent className={`${isMobile ? 'max-h-[200px]' : ''} bg-background border border-border`} position="popper">
-              {availableSources.length > 0 ? (
-                availableSources.map((source) => (
-                  <SelectItem 
-                    key={source} 
-                    value={source}
-                    className="hover:bg-accent hover:text-accent-foreground"
-                  >
-                    <span className="truncate">{source}</span>
-                  </SelectItem>
-                ))
-              ) : (
-                <SelectItem disabled value="no-sources">
-                  Nessuna fonte disponibile
-                </SelectItem>
-              )}
-            </SelectContent>
-          </Select>
-
-          {includedSources.length > 0 && (
-            <div className="flex flex-wrap gap-2 p-3 bg-green-50 border border-green-200 rounded-lg">
-              {includedSources.map((source) => (
-                <Badge 
-                  key={source} 
-                  variant="default" 
-                  className="flex items-center gap-1 text-xs max-w-full px-2 py-1 bg-green-100 text-green-800 hover:bg-green-200"
+          
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button 
+                  type="button"
+                  className="flex items-center justify-center w-5 h-5 rounded-full bg-primary/10 hover:bg-primary/20 transition-colors"
                 >
-                  <span className="truncate">{source}</span>
-                  <button
-                    onClick={() => onRemoveIncludedSource(source)}
-                    className="ml-1 hover:bg-white/20 rounded-full p-0.5 flex-shrink-0"
-                    aria-label={`Rimuovi ${source}`}
-                  >
-                    <X className="h-3 w-3" />
-                  </button>
-                </Badge>
-              ))}
-            </div>
-          )}
+                  <Info className="h-3 w-3 text-primary" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p className="max-w-xs text-sm">
+                  {sourceMode === 'exclude' 
+                    ? "Le fonti selezionate verranno escluse dall'assegnazione. Tutti gli altri lead verranno considerati."
+                    : "Verranno assegnati SOLO i lead dalle fonti selezionate. Tutte le altre fonti verranno ignorate."
+                  }
+                </p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         </div>
 
-        {/* Sezione Fonti da Escludere */}
+        {/* Source Selection */}
         <div className="space-y-3">
-          <div className="flex items-center gap-2">
-            <Label className="text-sm font-medium">🚫 Fonti da Escludere</Label>
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button 
-                    type="button"
-                    className="flex items-center justify-center w-4 h-4 rounded-full bg-primary/10 hover:bg-primary/20 transition-colors"
-                  >
-                    <Info className="h-3 w-3 text-primary" />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p className="max-w-xs text-sm">
-                    Seleziona le fonti da escludere dall'assegnazione. Vengono applicate dopo l'inclusione.
-                  </p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          </div>
-
-          <Select onValueChange={onAddExcludedSource}>
+          <Select onValueChange={handleAddSource}>
             <SelectTrigger className="w-full">
-              <SelectValue placeholder="Aggiungi una fonte da escludere..." />
+              <SelectValue placeholder={
+                sourceMode === 'exclude' 
+                  ? "Seleziona una fonte da escludere..." 
+                  : "Seleziona una fonte da includere..."
+              } />
             </SelectTrigger>
             <SelectContent className={`${isMobile ? 'max-h-[200px]' : ''} bg-background border border-border`} position="popper">
               {availableSources.length > 0 ? (
@@ -147,30 +117,39 @@ export function SourceFilter({
                 ))
               ) : (
                 <SelectItem disabled value="no-sources">
-                  Nessuna fonte disponibile
+                  {currentSources.length > 0 ? "Nessuna fonte disponibile" : "Nessuna fonte trovata"}
                 </SelectItem>
               )}
             </SelectContent>
           </Select>
-
-          {excludedSources.length > 0 && (
-            <div className="flex flex-wrap gap-2 p-3 bg-red-50 border border-red-200 rounded-lg">
-              {excludedSources.map((source) => (
-                <Badge 
-                  key={source} 
-                  variant="destructive" 
-                  className="flex items-center gap-1 text-xs max-w-full px-2 py-1"
-                >
-                  <span className="truncate">{source}</span>
-                  <button
-                    onClick={() => onRemoveExcludedSource(source)}
-                    className="ml-1 hover:bg-white/20 rounded-full p-0.5 flex-shrink-0"
-                    aria-label={`Rimuovi ${source}`}
+          
+          {/* Selected Sources */}
+          {currentSources.length > 0 && (
+            <div className="space-y-2">
+              <Label className="text-sm font-medium text-muted-foreground">
+                {sourceMode === 'exclude' 
+                  ? `🚫 Fonti Escluse (${currentSources.length})` 
+                  : `✅ Fonti Incluse (${currentSources.length})`
+                }
+              </Label>
+              <div className="flex flex-wrap gap-2 p-3 bg-muted/30 border border-border rounded-lg">
+                {currentSources.map((source) => (
+                  <Badge 
+                    key={source} 
+                    variant={sourceMode === 'exclude' ? 'destructive' : 'default'} 
+                    className="flex items-center gap-1 text-xs max-w-full px-2 py-1"
                   >
-                    <X className="h-3 w-3" />
-                  </button>
-                </Badge>
-              ))}
+                    <span className="truncate">{source}</span>
+                    <button
+                      onClick={() => handleRemoveSource(source)}
+                      className="ml-1 hover:bg-white/20 rounded-full p-0.5 flex-shrink-0"
+                      aria-label={`Rimuovi ${source}`}
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </Badge>
+                ))}
+              </div>
             </div>
           )}
         </div>
