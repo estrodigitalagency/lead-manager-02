@@ -15,11 +15,7 @@ const Settings = () => {
   const isMobile = useIsMobile();
   
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="flex justify-between items-center mb-8">
-        <h1 className="text-3xl font-bold text-primary">Impostazioni</h1>
-      </div>
-      
+    <div className="container mx-auto px-4 py-8">      
       <Tabs defaultValue="attribution" className="w-full" orientation={isMobile ? "vertical" : "horizontal"}>
         <div className={`${isMobile ? 'flex flex-col space-y-4' : 'block'}`}>
           <TabsList className={`${isMobile ? 'flex flex-col h-auto w-full space-y-1 p-1' : 'grid w-full grid-cols-4'} mb-8 border`}>
