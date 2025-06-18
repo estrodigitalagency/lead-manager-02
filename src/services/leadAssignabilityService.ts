@@ -61,14 +61,15 @@ export async function checkLeadsAssignability() {
     // Recupera tutti i lead per la verifica
     const { data: leads, error: fetchError } = await supabase
       .from('lead_generation')
-      .select('id, created_at, booked_call, venditore, assignable');
+      .select('id, created_at, booked_call, venditore, assignable')
+      .limit(1000); // Limit to prevent timeout
 
     if (fetchError) {
       console.error('❌ Error fetching leads for verification:', fetchError);
       throw fetchError;
     }
 
-    if (!leads) {
+    if (!leads || leads.length === 0) {
       console.log("No leads found for verification");
       return { updated: 0, totalChecked: 0, availableLeads: 0 };
     }
@@ -79,12 +80,14 @@ export async function checkLeadsAssignability() {
     const cutoffDate = new Date(now.getTime() - (daysBeforeAssignable * 24 * 60 * 60 * 1000));
     
     let updatedCount = 0;
-    const batchSize = 50;
+    const batchSize = 20; // Reduced batch size for better performance
     
     // Processa i lead in batch per evitare timeout
     for (let i = 0; i < leads.length; i += batchSize) {
       const batch = leads.slice(i, i + batchSize);
-      console.log(`Processing batch ${Math.floor(i/batchSize) + 1}/${Math.ceil(leads.length/batchSize)}`);
+      console.log(`Processing batch ${Math.floor(i/batchSize) + 1}/${Math.ceil(leads.length/batchSize)} (${batch.length} leads)`);
+      
+      const updates = [];
       
       for (const lead of batch) {
         const leadDate = new Date(lead.created_at);
@@ -99,30 +102,60 @@ export async function checkLeadsAssignability() {
         const shouldBeAssignable = !hasBookedCall && isOldEnough && !hasVendor;
         
         if (lead.assignable !== shouldBeAssignable) {
-          const { error: updateError } = await supabase
-            .from('lead_generation')
-            .update({ assignable: shouldBeAssignable })
-            .eq('id', lead.id);
-
-          if (updateError) {
-            console.error('❌ Error updating lead:', updateError);
-            // Continua con il prossimo lead invece di fallire tutto
-          } else {
-            updatedCount++;
-          }
+          updates.push({
+            id: lead.id,
+            assignable: shouldBeAssignable
+          });
         }
+      }
+      
+      // Execute batch updates using individual updates to avoid issues
+      if (updates.length > 0) {
+        console.log(`Updating ${updates.length} leads in current batch`);
+        
+        // Process updates in smaller chunks to avoid timeout
+        const updatePromises = updates.map(async (update) => {
+          try {
+            const { error } = await supabase
+              .from('lead_generation')
+              .update({ assignable: update.assignable })
+              .eq('id', update.id);
+            
+            if (error) {
+              console.error(`Error updating lead ${update.id}:`, error);
+              return false;
+            }
+            return true;
+          } catch (error) {
+            console.error(`Exception updating lead ${update.id}:`, error);
+            return false;
+          }
+        });
+        
+        // Wait for all updates in this batch with timeout
+        try {
+          const results = await Promise.allSettled(updatePromises);
+          const successful = results.filter(r => r.status === 'fulfilled' && r.value === true).length;
+          updatedCount += successful;
+          console.log(`Batch completed: ${successful}/${updates.length} updates successful`);
+        } catch (error) {
+          console.error('Error in batch update:', error);
+        }
+      }
+      
+      // Add a small delay between batches to prevent overwhelming the database
+      if (i + batchSize < leads.length) {
+        await new Promise(resolve => setTimeout(resolve, 100));
       }
     }
 
     // Conta i lead disponibili
-    const { data: availableLeadsData, error: countError } = await supabase
+    const { count: availableLeads } = await supabase
       .from('lead_generation')
-      .select('id', { count: 'exact', head: true })
+      .select('*', { count: 'exact', head: true })
       .eq('assignable', true)
       .is('venditore', null)
       .eq('booked_call', 'NO');
-
-    const availableLeads = availableLeadsData?.length || 0;
 
     console.log(`✅ Verification completed: ${updatedCount} leads updated out of ${leads.length} checked`);
     
@@ -135,7 +168,7 @@ export async function checkLeadsAssignability() {
       await globalRefreshCallback();
     }
     
-    return { updated: updatedCount, totalChecked: leads.length, availableLeads };
+    return { updated: updatedCount, totalChecked: leads.length, availableLeads: availableLeads || 0 };
   } catch (error) {
     console.error('❌ Error in checkLeadsAssignability:', error);
     toast.error('Errore durante la verifica dell\'assegnabilità');
