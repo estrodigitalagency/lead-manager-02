@@ -36,6 +36,39 @@ interface ManualAssignmentDialogProps {
   onAssignmentComplete: () => void;
 }
 
+// Funzione per determinare se un lead è nuovo basandoti sulle fonti
+function isNewLead(fonte: string | null): boolean {
+  if (!fonte) return false;
+  
+  const fonti = fonte.toLowerCase().split(',').map(f => f.trim());
+  
+  // Fonti base che deve avere un lead nuovo
+  const baseSources = ['aggiunto su sheet', 'optin workshop giugno 2025'];
+  const allowedAdditionalSources = ['ads', 'mail', 'youtube', 'setter'];
+  
+  // Controlla se ha le fonti base
+  const hasBaseSources = baseSources.every(baseSource => 
+    fonti.some(fonte => fonte.includes(baseSource.toLowerCase()))
+  );
+  
+  if (!hasBaseSources) return false;
+  
+  // Controlla se ha solo fonti consentite (base + una delle aggiuntive consentite)
+  const allowedSources = [...baseSources, ...allowedAdditionalSources].map(s => s.toLowerCase());
+  
+  // Verifica che tutte le fonti del lead siano nelle fonti consentite
+  const hasOnlyAllowedSources = fonti.every(fonte => 
+    allowedSources.some(allowed => fonte.includes(allowed))
+  );
+  
+  // Verifica che abbia almeno una fonte aggiuntiva consentita
+  const hasAllowedAdditionalSource = allowedAdditionalSources.some(additionalSource =>
+    fonti.some(fonte => fonte.includes(additionalSource.toLowerCase()))
+  );
+  
+  return hasOnlyAllowedSources && hasAllowedAdditionalSource;
+}
+
 const ManualAssignmentDialog = ({
   open,
   onOpenChange,
@@ -134,7 +167,7 @@ const ManualAssignmentDialog = ({
       if (!webhookError && webhookData?.value && leadsData) {
         console.log('Invio webhook per assegnazione manuale...');
         
-        // Prepara payload webhook completo
+        // Prepara payload webhook completo con classificazione lead nuovi/vecchi
         const assignmentPayload = {
           venditore: venditoreData.nome,
           venditore_cognome: venditoreData.cognome || '',
@@ -153,9 +186,17 @@ const ManualAssignmentDialog = ({
             telefono: lead.telefono || '',
             fonte: lead.fonte || '',
             created_at: lead.created_at,
-            assigned_at: new Date().toISOString()
+            assigned_at: new Date().toISOString(),
+            is_new_lead: isNewLead(lead.fonte) // Classificazione nuovo/vecchio
           }))
         };
+
+        console.log('Webhook payload con classificazione lead:', {
+          venditore: assignmentPayload.venditore,
+          leads_count: assignmentPayload.leads_count,
+          new_leads_count: assignmentPayload.leads.filter(l => l.is_new_lead).length,
+          old_leads_count: assignmentPayload.leads.filter(l => !l.is_new_lead).length
+        });
 
         try {
           const { data: webhookResponse, error: webhookCallError } = await supabase.functions.invoke('lead-assign-webhook', {
