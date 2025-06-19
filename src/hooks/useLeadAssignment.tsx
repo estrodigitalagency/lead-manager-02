@@ -14,6 +14,7 @@ export function useLeadAssignment() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [excludedSources, setExcludedSources] = useState<string[]>([]);
   const [includedSources, setIncludedSources] = useState<string[]>([]);
+  const [excludeFromIncluded, setExcludeFromIncluded] = useState<string[]>([]); // Nuova proprietà
   const [sourceMode, setSourceMode] = useState<'exclude' | 'include'>('exclude');
   const [availableLeads, setAvailableLeads] = useState(0);
   const [uniqueSources, setUniqueSources] = useState<string[]>([]);
@@ -25,7 +26,7 @@ export function useLeadAssignment() {
 
   useEffect(() => {
     updateAvailableLeads();
-  }, [excludedSources, includedSources, sourceMode, bypassTimeInterval]);
+  }, [excludedSources, includedSources, excludeFromIncluded, sourceMode, bypassTimeInterval]);
 
   const initializeData = async () => {
     try {
@@ -88,8 +89,14 @@ export function useLeadAssignment() {
 
   const updateAvailableLeads = async () => {
     try {
-      const count = await getAvailableLeadsCount(excludedSources, includedSources, sourceMode, bypassTimeInterval);
-      console.log(`Lead disponibili per assegnazione (modalità ${sourceMode}, bypass: ${bypassTimeInterval}): ${count}`);
+      const count = await getAvailableLeadsCount(
+        excludedSources, 
+        includedSources, 
+        sourceMode, 
+        bypassTimeInterval,
+        excludeFromIncluded // Passa la nuova proprietà
+      );
+      console.log(`Lead disponibili per assegnazione (modalità ${sourceMode}, bypass: ${bypassTimeInterval}, esclusi da inclusi: ${excludeFromIncluded.length}): ${count}`);
       setAvailableLeads(count);
     } catch (error) {
       console.error("Error fetching available leads:", error);
@@ -153,13 +160,54 @@ export function useLeadAssignment() {
     }
   };
 
+  const addExcludeFromIncluded = async (sourceName: string) => {
+    if (sourceName && !excludeFromIncluded.includes(sourceName)) {
+      const newExcludeFromIncluded = [...excludeFromIncluded, sourceName];
+      setExcludeFromIncluded(newExcludeFromIncluded);
+      
+      try {
+        const count = await getAvailableLeadsCount(
+          excludedSources, 
+          includedSources, 
+          sourceMode, 
+          bypassTimeInterval,
+          newExcludeFromIncluded
+        );
+        console.log(`Lead disponibili dopo esclusione "${sourceName}" da fonti incluse: ${count}`);
+        setAvailableLeads(count);
+      } catch (error) {
+        console.error("Error updating available leads after exclusion from included:", error);
+      }
+    }
+  };
+
+  const removeExcludeFromIncluded = async (source: string) => {
+    const newExcludeFromIncluded = excludeFromIncluded.filter(s => s !== source);
+    setExcludeFromIncluded(newExcludeFromIncluded);
+    
+    try {
+      const count = await getAvailableLeadsCount(
+        excludedSources, 
+        includedSources, 
+        sourceMode, 
+        bypassTimeInterval,
+        newExcludeFromIncluded
+      );
+      console.log(`Lead disponibili dopo rimozione esclusione "${source}" da fonti incluse: ${count}`);
+      setAvailableLeads(count);
+    } catch (error) {
+      console.error("Error updating available leads after removing exclusion from included:", error);
+    }
+  };
+
   const toggleSourceMode = async (newMode: 'exclude' | 'include') => {
     setSourceMode(newMode);
     setExcludedSources([]);
     setIncludedSources([]);
+    setExcludeFromIncluded([]); // Reset anche le esclusioni dalle incluse
     
     try {
-      const count = await getAvailableLeadsCount([], [], newMode, bypassTimeInterval);
+      const count = await getAvailableLeadsCount([], [], newMode, bypassTimeInterval, []);
       console.log(`Lead disponibili dopo cambio modalità a ${newMode}: ${count}`);
       setAvailableLeads(count);
     } catch (error) {
@@ -185,7 +233,7 @@ export function useLeadAssignment() {
 
     setIsSubmitting(true);
     try {
-      console.log(`Tentativo di assegnazione di ${numLeadInt} lead a ${venditore} (bypass: ${bypassTimeInterval})`);
+      console.log(`Tentativo di assegnazione di ${numLeadInt} lead a ${venditore} (bypass: ${bypassTimeInterval}, esclusi da inclusi: ${excludeFromIncluded.length})`);
       
       await assignLeadsWithExclusions({
         numLead: numLeadInt,
@@ -194,7 +242,8 @@ export function useLeadAssignment() {
         excludedSources,
         includedSources,
         sourceMode,
-        bypassTimeInterval
+        bypassTimeInterval,
+        excludeFromIncluded // Passa la nuova proprietà
       });
       
       toast.success(`${numLeadInt} lead assegnati con successo a ${venditore}`);
@@ -230,6 +279,7 @@ export function useLeadAssignment() {
     isSubmitting,
     excludedSources,
     includedSources,
+    excludeFromIncluded, // Nuova proprietà
     sourceMode,
     availableLeads,
     uniqueSources,
@@ -238,6 +288,8 @@ export function useLeadAssignment() {
     removeExcludedSource,
     addIncludedSource,
     removeIncludedSource,
+    addExcludeFromIncluded, // Nuove funzioni
+    removeExcludeFromIncluded,
     toggleSourceMode,
     toggleBypassTimeInterval,
     handleAssign,

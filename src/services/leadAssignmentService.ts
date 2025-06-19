@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { getLeadStatus } from "@/utils/leadStatus";
@@ -10,6 +11,7 @@ export interface LeadAssignmentData {
   includedSources?: string[];
   sourceMode?: 'exclude' | 'include';
   bypassTimeInterval?: boolean;
+  excludeFromIncluded?: string[]; // Nuova proprietà per escludere da fonti incluse
 }
 
 export async function assignLeadsWithExclusions(data: LeadAssignmentData) {
@@ -20,7 +22,8 @@ export async function assignLeadsWithExclusions(data: LeadAssignmentData) {
     excludedSources = [], 
     includedSources = [], 
     sourceMode = 'exclude',
-    bypassTimeInterval = false 
+    bypassTimeInterval = false,
+    excludeFromIncluded = [] // Nuova proprietà
   } = data;
 
   try {
@@ -28,6 +31,7 @@ export async function assignLeadsWithExclusions(data: LeadAssignmentData) {
     console.log('Source mode:', sourceMode);
     console.log('Excluded sources:', excludedSources);
     console.log('Included sources:', includedSources);
+    console.log('Exclude from included:', excludeFromIncluded);
     console.log('Bypass time interval:', bypassTimeInterval);
 
     // Prima recupera le impostazioni per il calcolo dello stato
@@ -75,6 +79,31 @@ export async function assignLeadsWithExclusions(data: LeadAssignmentData) {
           lead.fonte!.toLowerCase().includes(excludedSource.toLowerCase())
         );
       });
+    }
+
+    // NUOVA LOGICA: Applica esclusioni dalle fonti incluse
+    if (excludeFromIncluded.length > 0 && includedSources.length > 0) {
+      console.log(`Applying exclusions from included sources: ${excludeFromIncluded.join(', ')}`);
+      filteredLeads = filteredLeads.filter(lead => {
+        if (!lead.fonte) return true;
+        
+        // Verifica se il lead è stato incluso tramite le fonti incluse
+        const isFromIncludedSource = includedSources.some(includedSource => 
+          lead.fonte!.toLowerCase().includes(includedSource.toLowerCase())
+        );
+        
+        // Se il lead è da una fonte inclusa, verifica che non contenga tag esclusi
+        if (isFromIncludedSource) {
+          const hasExcludedTag = excludeFromIncluded.some(excludedTag => 
+            lead.fonte!.toLowerCase().includes(excludedTag.toLowerCase())
+          );
+          return !hasExcludedTag; // Escludi se ha un tag escluso
+        }
+        
+        return true; // Mantieni se non è da fonte inclusa
+      });
+      
+      console.log(`Leads after applying exclusions from included sources: ${filteredLeads.length}`);
     }
 
     let assignableLeads;
@@ -325,7 +354,8 @@ export async function getAvailableLeadsCount(
   excludedSources: string[] = [], 
   includedSources: string[] = [], 
   sourceMode: 'exclude' | 'include' = 'exclude',
-  bypassTimeInterval: boolean = false
+  bypassTimeInterval: boolean = false,
+  excludeFromIncluded: string[] = [] // Nuova proprietà
 ): Promise<number> {
   try {
     // Prima recupera le impostazioni
@@ -368,6 +398,28 @@ export async function getAvailableLeadsCount(
         return !excludedSources.some(excludedSource => 
           lead.fonte!.toLowerCase().includes(excludedSource.toLowerCase())
         );
+      });
+    }
+
+    // NUOVA LOGICA: Applica esclusioni dalle fonti incluse
+    if (excludeFromIncluded.length > 0 && includedSources.length > 0) {
+      filteredLeads = filteredLeads.filter(lead => {
+        if (!lead.fonte) return true;
+        
+        // Verifica se il lead è stato incluso tramite le fonti incluse
+        const isFromIncludedSource = includedSources.some(includedSource => 
+          lead.fonte!.toLowerCase().includes(includedSource.toLowerCase())
+        );
+        
+        // Se il lead è da una fonte inclusa, verifica che non contenga tag esclusi
+        if (isFromIncludedSource) {
+          const hasExcludedTag = excludeFromIncluded.some(excludedTag => 
+            lead.fonte!.toLowerCase().includes(excludedTag.toLowerCase())
+          );
+          return !hasExcludedTag; // Escludi se ha un tag escluso
+        }
+        
+        return true; // Mantieni se non è da fonte inclusa
       });
     }
 
