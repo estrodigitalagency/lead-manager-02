@@ -27,12 +27,19 @@ const SearchInput = ({ onSearch, placeholder = "Cerca per nome, numero o email..
     }
   };
 
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setSearchTerm(value);
+    // Search in real-time as user types
+    onSearch(value);
+  };
+
   return (
     <div className="flex items-center gap-2 max-w-md">
       <div className="relative flex-1">
         <Input
           value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
+          onChange={handleInputChange}
           onKeyPress={handleKeyPress}
           placeholder={placeholder}
           className="pr-8"

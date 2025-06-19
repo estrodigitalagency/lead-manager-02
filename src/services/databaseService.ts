@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { Lead } from "@/types/lead";
 import { LeadLavorato } from "@/types/leadLavorato";
@@ -46,22 +45,43 @@ export async function filterLeads(tableName: ValidTableName, filters: Record<str
   
   let query = supabase.from(tableName).select('*');
   
-  // Filtri di ricerca base
+  // Filtro di ricerca generale - cerca in nome, email, telefono e cognome
   if (filters.search) {
-    query = query.or(`nome.ilike.%${filters.search}%,email.ilike.%${filters.search}%,telefono.ilike.%${filters.search}%`);
+    const searchTerm = filters.search.trim();
+    console.log('Applying search filter:', searchTerm);
+    
+    // Costruisci condizioni OR per cercare in più campi
+    const searchConditions = [];
+    
+    // Aggiungi condizioni per nome
+    searchConditions.push(`nome.ilike.%${searchTerm}%`);
+    
+    // Aggiungi condizioni per cognome se esiste
+    searchConditions.push(`cognome.ilike.%${searchTerm}%`);
+    
+    // Aggiungi condizioni per email
+    searchConditions.push(`email.ilike.%${searchTerm}%`);
+    
+    // Aggiungi condizioni per telefono
+    searchConditions.push(`telefono.ilike.%${searchTerm}%`);
+    
+    // Unisci tutte le condizioni con OR
+    query = query.or(searchConditions.join(','));
   }
   
-  // Filtri individuali
-  if (filters.nome) {
-    query = query.ilike('nome', `%${filters.nome}%`);
-  }
-  
-  if (filters.email) {
-    query = query.ilike('email', `%${filters.email}%`);
-  }
-  
-  if (filters.telefono) {
-    query = query.ilike('telefono', `%${filters.telefono}%`);
+  // Filtri individuali (solo se non c'è ricerca generale)
+  if (!filters.search) {
+    if (filters.nome) {
+      query = query.ilike('nome', `%${filters.nome}%`);
+    }
+    
+    if (filters.email) {
+      query = query.ilike('email', `%${filters.email}%`);
+    }
+    
+    if (filters.telefono) {
+      query = query.ilike('telefono', `%${filters.telefono}%`);
+    }
   }
   
   if (filters.venditore) {
@@ -118,6 +138,7 @@ export async function filterLeads(tableName: ValidTableName, filters: Record<str
     query = query.lte('created_at', endDate.toISOString());
   }
   
+  // Ordina per data di creazione
   query = query.order('created_at', { ascending: false });
   
   const { data, error } = await query;

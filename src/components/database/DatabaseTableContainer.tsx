@@ -34,18 +34,38 @@ const DatabaseTableContainer = ({
   children
 }: DatabaseTableContainerProps) => {
   const isMobile = useIsMobile();
+  const [currentFilters, setCurrentFilters] = useState<Record<string, any>>({});
 
   const handleSearch = (searchTerm: string) => {
-    if (!searchTerm.trim()) {
-      onApplyFilters({});
-      return;
-    }
-
-    // Applica filtri di ricerca per nome, email e telefono
-    const searchFilters = {
-      search: searchTerm.trim()
+    console.log('Search term:', searchTerm);
+    
+    const newFilters = {
+      ...currentFilters,
+      search: searchTerm || undefined // Remove search if empty
     };
-    onApplyFilters(searchFilters);
+    
+    // Remove undefined values
+    Object.keys(newFilters).forEach(key => {
+      if (newFilters[key] === undefined) {
+        delete newFilters[key];
+      }
+    });
+    
+    setCurrentFilters(newFilters);
+    onApplyFilters(newFilters);
+  };
+
+  const handleAdvancedFilters = (filters: Record<string, any>) => {
+    console.log('Advanced filters:', filters);
+    
+    const newFilters = {
+      ...filters,
+      // Preserve search if it exists
+      ...(currentFilters.search && { search: currentFilters.search })
+    };
+    
+    setCurrentFilters(newFilters);
+    onApplyFilters(newFilters);
   };
 
   return (
@@ -58,7 +78,7 @@ const DatabaseTableContainer = ({
           </div>
           <div className={`flex gap-2 ${isMobile ? 'flex-col w-full' : ''}`}>
             <DatabaseFiltersResponsive 
-              onApplyFilters={onApplyFilters} 
+              onApplyFilters={handleAdvancedFilters} 
               tableName={tableName}
             />
             <SearchInput onSearch={handleSearch} />
