@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CalendarIcon, FilterIcon } from "lucide-react";
-import { ReportFilters, PRESET_PERIODS, getAvailableFonti, getAvailableVenditori } from "@/services/reportsService";
+import { ReportFilters, PRESET_PERIODS, getAvailableVenditori } from "@/services/reportsService";
 import ReportSourceFilters from "./ReportSourceFilters";
 
 interface ReportFiltersProps {
@@ -16,16 +16,11 @@ interface ReportFiltersProps {
 }
 
 const ReportFiltersComponent = ({ filters, onFiltersChange, onApplyFilters }: ReportFiltersProps) => {
-  const [fonti, setFonti] = useState<string[]>([]);
   const [venditori, setVenditori] = useState<string[]>([]);
 
   useEffect(() => {
     const loadOptions = async () => {
-      const [availableFonti, availableVenditori] = await Promise.all([
-        getAvailableFonti(),
-        getAvailableVenditori()
-      ]);
-      setFonti(availableFonti);
+      const availableVenditori = await getAvailableVenditori();
       setVenditori(availableVenditori);
     };
 
@@ -45,20 +40,6 @@ const ReportFiltersComponent = ({ filters, onFiltersChange, onApplyFilters }: Re
 
   const clearFilters = () => {
     onFiltersChange({});
-  };
-
-  const handleFonteChange = (value: string) => {
-    console.log('Fonte changed to:', value);
-    if (value === 'all-fonti') {
-      const newFilters = { ...filters };
-      delete newFilters.fonte;
-      onFiltersChange(newFilters);
-    } else {
-      onFiltersChange({ 
-        ...filters, 
-        fonte: value 
-      });
-    }
   };
 
   const handleVenditoreChange = (value: string) => {
@@ -108,9 +89,6 @@ const ReportFiltersComponent = ({ filters, onFiltersChange, onApplyFilters }: Re
       sourceMode: 'exclude'
     });
   };
-
-  const hasAdvancedSourceFilters = (filters.fontiIncluse && filters.fontiIncluse.length > 0) || 
-                                   (filters.fontiEscluse && filters.fontiEscluse.length > 0);
 
   return (
     <div className="space-y-4">
@@ -166,29 +144,6 @@ const ReportFiltersComponent = ({ filters, onFiltersChange, onApplyFilters }: Re
             </div>
           </div>
 
-          {/* Filtro Fonte Singola (solo se non ci sono filtri avanzati) */}
-          {!hasAdvancedSourceFilters && (
-            <div>
-              <Label className="text-sm font-medium mb-2 block">Fonte</Label>
-              <Select
-                value={filters.fonte || 'all-fonti'}
-                onValueChange={handleFonteChange}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Seleziona fonte" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all-fonti">Tutte le fonti</SelectItem>
-                  {fonti.map((fonte) => (
-                    <SelectItem key={fonte} value={fonte}>
-                      {fonte}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
-
           {/* Filtro Venditore */}
           <div>
             <Label className="text-sm font-medium mb-2 block">Venditore</Label>
@@ -212,7 +167,7 @@ const ReportFiltersComponent = ({ filters, onFiltersChange, onApplyFilters }: Re
         </CardContent>
       </Card>
 
-      {/* Filtri Avanzati per Fonte - SPOSTATI QUI */}
+      {/* Filtri per Fonte */}
       <ReportSourceFilters
         sourceMode={filters.sourceMode || 'exclude'}
         onSourceModeChange={handleSourceModeChange}
@@ -223,7 +178,7 @@ const ReportFiltersComponent = ({ filters, onFiltersChange, onApplyFilters }: Re
         onClearSourceFilters={handleClearSourceFilters}
       />
 
-      {/* Pulsanti - ORA VENGONO DOPO I FILTRI FONTE */}
+      {/* Pulsanti */}
       <Card>
         <CardContent className="pt-6">
           <div className="flex gap-2">
