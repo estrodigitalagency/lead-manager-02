@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { Lead } from "@/types/lead";
 import { LeadLavorato } from "@/types/leadLavorato";
@@ -41,31 +40,94 @@ export async function getUnassignedLeads(): Promise<Lead[]> {
   }
 }
 
-export async function filterLeads(tableName: ValidTableName, filters: Record<string, any>): Promise<any[]> {
-  try {
-    // Simple approach without complex chaining to avoid TypeScript issues
-    let queryBuilder = supabase.from(tableName);
+export async function filterLeads(tableName: string, filters: Record<string, any>) {
+  console.log(`Filtering ${tableName} with filters:`, filters);
+  
+  let query = supabase.from(tableName).select('*');
+  
+  // Filtri di ricerca base
+  if (filters.search) {
+    query = query.or(`nome.ilike.%${filters.search}%,email.ilike.%${filters.search}%,telefono.ilike.%${filters.search}%`);
+  }
+  
+  // Filtri individuali
+  if (filters.nome) {
+    query = query.ilike('nome', `%${filters.nome}%`);
+  }
+  
+  if (filters.email) {
+    query = query.ilike('email', `%${filters.email}%`);
+  }
+  
+  if (filters.telefono) {
+    query = query.ilike('telefono', `%${filters.telefono}%`);
+  }
+  
+  if (filters.venditore) {
+    query = query.ilike('venditore', `%${filters.venditore}%`);
+  }
+  
+  if (filters.campagna) {
+    query = query.ilike('campagna', `%${filters.campagna}%`);
+  }
+  
+  if (filters.esito) {
+    query = query.ilike('esito', `%${filters.esito}%`);
+  }
+  
+  // Filtri per periodo
+  if (filters.dataInizio) {
+    query = query.gte('created_at', `${filters.dataInizio}T00:00:00.000Z`);
+  }
+  
+  if (filters.dataFine) {
+    query = query.lte('created_at', `${filters.dataFine}T23:59:59.999Z`);
+  }
+
+  // Filtri per fonte avanzati
+  if (filters.fontiIncluse && filters.fontiIncluse.length > 0) {
+    console.log('Applying include fonte filter:', filters.fontiIncluse);
+    const conditions = filters.fontiIncluse.map((fonte: string) => `fonte.ilike.%${fonte}%`).join(',');
+    query = query.or(conditions);
+  }
+  
+  if (filters.fontiEscluse && filters.fontiEscluse.length > 0) {
+    console.log('Applying exclude fonte filter:', filters.fontiEscluse);
+    filters.fontiEscluse.forEach((fonte: string) => {
+      query = query.not('fonte', 'ilike', `%${fonte}%`);
+    });
+  }
+  
+  // Filtri con date range personalizzati per compatibilità
+  if (filters.dataFine && filters.dataInizio) {
+    const startDate = new Date(filters.dataInizio);
+    startDate.setHours(0, 0, 0, 0);
+    const endDate = new Date(filters.dataFine);
+    endDate.setHours(23, 59, 59, 999);
     
-    // Build where conditions
-    const conditions: any = {};
-    for (const [key, value] of Object.entries(filters)) {
-      if (value !== null && value !== undefined && value !== '') {
-        conditions[key] = value;
-      }
-    }
-    
-    // Execute query with conditions
-    const { data, error } = await queryBuilder
-      .select('*')
-      .match(conditions)
-      .order('created_at', { ascending: false });
-    
-    if (error) throw error;
-    return data || [];
-  } catch (error) {
+    query = query.gte('created_at', startDate.toISOString())
+                 .lte('created_at', endDate.toISOString());
+  } else if (filters.dataInizio) {
+    const startDate = new Date(filters.dataInizio);
+    startDate.setHours(0, 0, 0, 0);
+    query = query.gte('created_at', startDate.toISOString());
+  } else if (filters.dataFine) {
+    const endDate = new Date(filters.dataFine);
+    endDate.setHours(23, 59, 59, 999);
+    query = query.lte('created_at', endDate.toISOString());
+  }
+  
+  query = query.order('created_at', { ascending: false });
+  
+  const { data, error } = await query;
+  
+  if (error) {
     console.error(`Error filtering ${tableName}:`, error);
     throw error;
   }
+  
+  console.log(`Filtered ${tableName} results:`, data?.length);
+  return data;
 }
 
 export async function bulkDeleteLeads(tableName: ValidTableName, ids: string[]) {

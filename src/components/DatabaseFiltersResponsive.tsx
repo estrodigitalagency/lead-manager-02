@@ -1,13 +1,15 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger, SheetClose } from "@/components/ui/sheet";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Filter, X } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { getAvailableFonti, getAvailableVenditori } from "@/services/reportsService";
 
 interface DatabaseFiltersResponsiveProps {
   onApplyFilters: (filters: Record<string, any>) => void;
@@ -17,7 +19,22 @@ interface DatabaseFiltersResponsiveProps {
 const DatabaseFiltersResponsive = ({ onApplyFilters, tableName }: DatabaseFiltersResponsiveProps) => {
   const [filters, setFilters] = useState<Record<string, any>>({});
   const [isOpen, setIsOpen] = useState(false);
+  const [venditori, setVenditori] = useState<string[]>([]);
+  const [fonti, setFonti] = useState<string[]>([]);
   const isMobile = useIsMobile();
+
+  useEffect(() => {
+    const loadOptions = async () => {
+      const [availableVenditori, availableFonti] = await Promise.all([
+        getAvailableVenditori(),
+        getAvailableFonti()
+      ]);
+      setVenditori(availableVenditori);
+      setFonti(availableFonti);
+    };
+
+    loadOptions();
+  }, []);
 
   const handleFilterChange = (key: string, value: any) => {
     setFilters(prev => ({
@@ -37,9 +54,43 @@ const DatabaseFiltersResponsive = ({ onApplyFilters, tableName }: DatabaseFilter
     setIsOpen(false);
   };
 
+  const handleVenditoreChange = (value: string) => {
+    if (value === 'all-venditori') {
+      const newFilters = { ...filters };
+      delete newFilters.venditore;
+      setFilters(newFilters);
+    } else {
+      handleFilterChange('venditore', value);
+    }
+  };
+
+  const handleSourceModeChange = (mode: 'include' | 'exclude') => {
+    handleFilterChange('sourceMode', mode);
+  };
+
+  const handleAddFonte = (fonte: string, mode: 'include' | 'exclude') => {
+    const key = mode === 'include' ? 'fontiIncluse' : 'fontiEscluse';
+    const currentFonti = filters[key] || [];
+    
+    if (!currentFonti.includes(fonte)) {
+      handleFilterChange(key, [...currentFonti, fonte]);
+    }
+  };
+
+  const handleRemoveFonte = (fonte: string, mode: 'include' | 'exclude') => {
+    const key = mode === 'include' ? 'fontiIncluse' : 'fontiEscluse';
+    const currentFonti = filters[key] || [];
+    handleFilterChange(key, currentFonti.filter((f: string) => f !== fonte));
+  };
+
+  const sourceMode = filters.sourceMode || 'exclude';
+  const fontiIncluse = filters.fontiIncluse || [];
+  const fontiEscluse = filters.fontiEscluse || [];
+
   const FilterContent = () => (
     <div className="space-y-4 p-1">
       <div className="grid grid-cols-1 gap-4">
+        {/* Filtri Base */}
         <div className="space-y-2">
           <Label htmlFor="dataInizio">Data Inizio</Label>
           <Input
@@ -90,18 +141,119 @@ const DatabaseFiltersResponsive = ({ onApplyFilters, tableName }: DatabaseFilter
           />
         </div>
 
-        {tableName === 'lead_generation' && (
+        {/* Venditore */}
+        {(tableName === 'lead_generation' || tableName === 'lead_lavorati') && (
           <div className="space-y-2">
-            <Label htmlFor="venditore">Venditore</Label>
-            <Input
-              id="venditore"
-              placeholder="Cerca per venditore..."
-              value={filters.venditore || ''}
-              onChange={(e) => handleFilterChange('venditore', e.target.value)}
-            />
+            <Label>Venditore</Label>
+            <Select
+              value={filters.venditore || 'all-venditori'}
+              onValueChange={handleVenditoreChange}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Seleziona venditore" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all-venditori">Tutti i venditori</SelectItem>
+                {venditori.map((venditore) => (
+                  <SelectItem key={venditore} value={venditore}>
+                    {venditore}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         )}
 
+        {/* Filtri Fonte */}
+        <div className="space-y-2">
+          <Label className="text-sm font-medium">Filtri per Fonte</Label>
+          
+          {/* Modalità */}
+          <div className="flex gap-2">
+            <Button
+              variant={sourceMode === 'include' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => handleSourceModeChange('include')}
+            >
+              Includi Solo
+            </Button>
+            <Button
+              variant={sourceMode === 'exclude' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => handleSourceModeChange('exclude')}
+            >
+              Escludi
+            </Button>
+          </div>
+
+          {/* Selezione fonte */}
+          <Select onValueChange={(fonte) => handleAddFonte(fonte, sourceMode)}>
+            <SelectTrigger>
+              <SelectValue placeholder={`Fonte da ${sourceMode === 'include' ? 'includere' : 'escludere'}`} />
+            </SelectTrigger>
+            <SelectContent>
+              {fonti
+                .filter(fonte => {
+                  const currentList = sourceMode === 'include' ? fontiIncluse : fontiEscluse;
+                  return !currentList.includes(fonte);
+                })
+                .map((fonte) => (
+                  <SelectItem key={fonte} value={fonte}>
+                    {fonte}
+                  </SelectItem>
+                ))}
+            </SelectContent>
+          </Select>
+
+          {/* Fonti selezionate */}
+          {(fontiIncluse.length > 0 || fontiEscluse.length > 0) && (
+            <div className="space-y-2">
+              {fontiIncluse.length > 0 && (
+                <div>
+                  <Label className="text-xs text-green-600 mb-1 block">Incluse:</Label>
+                  <div className="flex flex-wrap gap-1">
+                    {fontiIncluse.map((fonte: string) => (
+                      <Badge key={fonte} variant="secondary" className="bg-green-100 text-green-800 text-xs">
+                        {fonte}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-3 w-3 p-0 ml-1 hover:bg-transparent"
+                          onClick={() => handleRemoveFonte(fonte, 'include')}
+                        >
+                          <X className="h-2 w-2" />
+                        </Button>
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
+              {fontiEscluse.length > 0 && (
+                <div>
+                  <Label className="text-xs text-red-600 mb-1 block">Escluse:</Label>
+                  <div className="flex flex-wrap gap-1">
+                    {fontiEscluse.map((fonte: string) => (
+                      <Badge key={fonte} variant="secondary" className="bg-red-100 text-red-800 text-xs">
+                        {fonte}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-3 w-3 p-0 ml-1 hover:bg-transparent"
+                          onClick={() => handleRemoveFonte(fonte, 'exclude')}
+                        >
+                          <X className="h-2 w-2" />
+                        </Button>
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Esito per lead lavorati */}
         {tableName === 'lead_lavorati' && (
           <div className="space-y-2">
             <Label htmlFor="esito">Esito</Label>

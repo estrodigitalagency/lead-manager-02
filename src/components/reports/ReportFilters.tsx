@@ -209,9 +209,24 @@ const ReportFiltersComponent = ({ filters, onFiltersChange, onApplyFilters }: Re
               </SelectContent>
             </Select>
           </div>
+        </CardContent>
+      </Card>
 
-          {/* Pulsanti */}
-          <div className="flex gap-2 pt-4">
+      {/* Filtri Avanzati per Fonte - SPOSTATI QUI */}
+      <ReportSourceFilters
+        sourceMode={filters.sourceMode || 'exclude'}
+        onSourceModeChange={handleSourceModeChange}
+        fontiIncluse={filters.fontiIncluse || []}
+        fontiEscluse={filters.fontiEscluse || []}
+        onFontiIncluseChange={handleFontiIncluseChange}
+        onFontiEscluseChange={handleFontiEscluseChange}
+        onClearSourceFilters={handleClearSourceFilters}
+      />
+
+      {/* Pulsanti - ORA VENGONO DOPO I FILTRI FONTE */}
+      <Card>
+        <CardContent className="pt-6">
+          <div className="flex gap-2">
             <Button onClick={onApplyFilters} className="flex-1">
               <CalendarIcon className="h-4 w-4 mr-2" />
               Applica Filtri
@@ -222,17 +237,6 @@ const ReportFiltersComponent = ({ filters, onFiltersChange, onApplyFilters }: Re
           </div>
         </CardContent>
       </Card>
-
-      {/* Filtri Avanzati per Fonte */}
-      <ReportSourceFilters
-        sourceMode={filters.sourceMode || 'exclude'}
-        onSourceModeChange={handleSourceModeChange}
-        fontiIncluse={filters.fontiIncluse || []}
-        fontiEscluse={filters.fontiEscluse || []}
-        onFontiIncluseChange={handleFontiIncluseChange}
-        onFontiEscluseChange={handleFontiEscluseChange}
-        onClearSourceFilters={handleClearSourceFilters}
-      />
     </div>
   );
 };
