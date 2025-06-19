@@ -39,6 +39,15 @@ const ReportsPage = () => {
     loadMetrics();
   };
 
+  const hasActiveFilters = () => {
+    return filters.startDate || 
+           filters.endDate || 
+           filters.fonte || 
+           filters.venditore ||
+           (filters.fontiIncluse && filters.fontiIncluse.length > 0) ||
+           (filters.fontiEscluse && filters.fontiEscluse.length > 0);
+  };
+
   return (
     <div className={`container mx-auto px-4 py-8 ${isMobile ? 'px-2 py-4' : ''}`}>
       <div className={`flex justify-between items-center mb-8 ${isMobile ? 'flex-col gap-4' : ''}`}>
@@ -70,7 +79,7 @@ const ReportsPage = () => {
         </div>
 
         {/* Informazioni sui Filtri Attivi */}
-        {(filters.startDate || filters.endDate || filters.fonte || filters.venditore) && (
+        {hasActiveFilters() && (
           <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
             <h3 className="font-medium text-blue-800 mb-2">Filtri Attivi:</h3>
             <div className="text-sm text-blue-600 space-y-1">
@@ -82,6 +91,12 @@ const ReportsPage = () => {
               )}
               {filters.fonte && <div>Fonte: {filters.fonte}</div>}
               {filters.venditore && <div>Venditore: {filters.venditore}</div>}
+              {filters.fontiIncluse && filters.fontiIncluse.length > 0 && (
+                <div>Fonti incluse: {filters.fontiIncluse.join(', ')}</div>
+              )}
+              {filters.fontiEscluse && filters.fontiEscluse.length > 0 && (
+                <div>Fonti escluse: {filters.fontiEscluse.join(', ')}</div>
+              )}
             </div>
           </div>
         )}

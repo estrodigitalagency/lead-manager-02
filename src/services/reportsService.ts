@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 
 export interface ReportFilters {
@@ -5,6 +6,9 @@ export interface ReportFilters {
   endDate?: string;
   fonte?: string;
   venditore?: string;
+  fontiIncluse?: string[];
+  fontiEscluse?: string[];
+  sourceMode?: 'include' | 'exclude';
 }
 
 export interface ReportMetrics {
@@ -56,6 +60,35 @@ function getEndOfDay(dateString: string): string {
   return `${dateString}T23:59:59.999Z`;
 }
 
+// Helper function to apply fonte filters
+function applyFonteFilters(query: any, filters: ReportFilters) {
+  // Se c'è un filtro fonte specifico, ignorare i filtri di inclusione/esclusione
+  if (filters.fonte && typeof filters.fonte === 'string' && filters.fonte.trim() !== '') {
+    const cleanFonte = filters.fonte.trim();
+    console.log('Applying specific fonte filter:', cleanFonte);
+    return query.or(`fonte.ilike.%${cleanFonte}%,fonte.ilike.% ${cleanFonte}%,fonte.ilike.%${cleanFonte} %`);
+  }
+
+  // Applicare filtri di inclusione/esclusione
+  if (filters.sourceMode === 'include' && filters.fontiIncluse && filters.fontiIncluse.length > 0) {
+    console.log('Applying include filters:', filters.fontiIncluse);
+    const includeConditions = filters.fontiIncluse.map(fonte => 
+      `fonte.ilike.%${fonte}%`
+    ).join(',');
+    return query.or(includeConditions);
+  }
+
+  if (filters.sourceMode === 'exclude' && filters.fontiEscluse && filters.fontiEscluse.length > 0) {
+    console.log('Applying exclude filters:', filters.fontiEscluse);
+    filters.fontiEscluse.forEach(fonte => {
+      query = query.not('fonte', 'ilike', `%${fonte}%`);
+    });
+    return query;
+  }
+
+  return query;
+}
+
 async function getLeadTotaliGenerati(filters: ReportFilters): Promise<number> {
   console.log('Getting lead totali generati with filters:', filters);
   
@@ -75,12 +108,8 @@ async function getLeadTotaliGenerati(filters: ReportFilters): Promise<number> {
     query = query.lte('created_at', endDateTime);
   }
 
-  // Filtro per fonte - usa pattern matching con trim degli spazi
-  if (filters.fonte && typeof filters.fonte === 'string' && filters.fonte.trim() !== '') {
-    const cleanFonte = filters.fonte.trim();
-    console.log('Lead generati - filtering by fonte:', cleanFonte);
-    query = query.or(`fonte.ilike.%${cleanFonte}%,fonte.ilike.% ${cleanFonte}%,fonte.ilike.%${cleanFonte} %`);
-  }
+  // Applicare filtri fonte
+  query = applyFonteFilters(query, filters);
 
   // Filtro per venditore - usa pattern matching con trim degli spazi
   if (filters.venditore && typeof filters.venditore === 'string' && filters.venditore.trim() !== '') {
@@ -120,12 +149,8 @@ async function getCallTotaliPrenotate(filters: ReportFilters): Promise<number> {
     query = query.lte('created_at', endDateTime);
   }
 
-  // Filtro per fonte - usa pattern matching con trim degli spazi
-  if (filters.fonte && typeof filters.fonte === 'string' && filters.fonte.trim() !== '') {
-    const cleanFonte = filters.fonte.trim();
-    console.log('Call prenotate - filtering by fonte:', cleanFonte);
-    query = query.or(`fonte.ilike.%${cleanFonte}%,fonte.ilike.% ${cleanFonte}%,fonte.ilike.%${cleanFonte} %`);
-  }
+  // Applicare filtri fonte
+  query = applyFonteFilters(query, filters);
 
   // Filtro per venditore - usa pattern matching con trim degli spazi
   if (filters.venditore && typeof filters.venditore === 'string' && filters.venditore.trim() !== '') {
@@ -166,12 +191,8 @@ async function getLeadTotaliLavorati(filters: ReportFilters): Promise<number> {
     query = query.lte('data_assegnazione', endDateTime);
   }
 
-  // Filtro per fonte - usa pattern matching con trim degli spazi
-  if (filters.fonte && typeof filters.fonte === 'string' && filters.fonte.trim() !== '') {
-    const cleanFonte = filters.fonte.trim();
-    console.log('Lead lavorati - filtering by fonte:', cleanFonte);
-    query = query.or(`fonte.ilike.%${cleanFonte}%,fonte.ilike.% ${cleanFonte}%,fonte.ilike.%${cleanFonte} %`);
-  }
+  // Applicare filtri fonte
+  query = applyFonteFilters(query, filters);
 
   // Filtro per venditore - usa pattern matching con trim degli spazi
   if (filters.venditore && typeof filters.venditore === 'string' && filters.venditore.trim() !== '') {
