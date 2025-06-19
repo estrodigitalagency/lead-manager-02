@@ -6,6 +6,7 @@ import { X, Filter, Plus, Info, Minus } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 interface SourceFilterProps {
@@ -111,22 +112,33 @@ export function SourceFilter({
                   : "Seleziona una fonte da includere..."
               } />
             </SelectTrigger>
-            <SelectContent className={`${isMobile ? 'max-h-[200px]' : ''} bg-background border border-border`} position="popper">
-              {availableSources.length > 0 ? (
-                availableSources.map((source) => (
-                  <SelectItem 
-                    key={source} 
-                    value={source}
-                    className="hover:bg-accent hover:text-accent-foreground"
-                  >
-                    <span className="truncate">{source}</span>
+            <SelectContent 
+              className="bg-background border border-border z-[100]" 
+              position="popper"
+              sideOffset={4}
+              style={{ 
+                maxHeight: isMobile ? '200px' : '300px',
+                width: 'var(--radix-select-trigger-width)',
+                minWidth: '200px'
+              }}
+            >
+              <ScrollArea className={isMobile ? "h-[180px]" : "h-[280px]"}>
+                {availableSources.length > 0 ? (
+                  availableSources.map((source) => (
+                    <SelectItem 
+                      key={source} 
+                      value={source}
+                      className="hover:bg-accent hover:text-accent-foreground cursor-pointer"
+                    >
+                      <span className="truncate max-w-[250px]">{source}</span>
+                    </SelectItem>
+                  ))
+                ) : (
+                  <SelectItem disabled value="no-sources">
+                    {currentSources.length > 0 ? "Nessuna fonte disponibile" : "Nessuna fonte trovata"}
                   </SelectItem>
-                ))
-              ) : (
-                <SelectItem disabled value="no-sources">
-                  {currentSources.length > 0 ? "Nessuna fonte disponibile" : "Nessuna fonte trovata"}
-                </SelectItem>
-              )}
+                )}
+              </ScrollArea>
             </SelectContent>
           </Select>
           
@@ -139,14 +151,14 @@ export function SourceFilter({
                   : `✅ Fonti Incluse (${currentSources.length})`
                 }
               </Label>
-              <div className="flex flex-wrap gap-2 p-3 bg-muted/30 border border-border rounded-lg">
+              <div className="flex flex-wrap gap-2 p-3 bg-muted/30 border border-border rounded-lg max-h-32 overflow-y-auto">
                 {currentSources.map((source) => (
                   <Badge 
                     key={source} 
                     variant={sourceMode === 'exclude' ? 'destructive' : 'default'} 
                     className="flex items-center gap-1 text-xs max-w-full px-2 py-1"
                   >
-                    <span className="truncate">{source}</span>
+                    <span className="truncate max-w-[150px]">{source}</span>
                     <button
                       onClick={() => handleRemoveSource(source)}
                       className="ml-1 hover:bg-white/20 rounded-full p-0.5 flex-shrink-0"
@@ -195,22 +207,33 @@ export function SourceFilter({
               <SelectTrigger className="w-full">
                 <SelectValue placeholder="Seleziona tag/fonte da escludere dalle incluse..." />
               </SelectTrigger>
-              <SelectContent className={`${isMobile ? 'max-h-[200px]' : ''} bg-background border border-border`} position="popper">
-                {availableForExclusion.length > 0 ? (
-                  availableForExclusion.map((source) => (
-                    <SelectItem 
-                      key={source} 
-                      value={source}
-                      className="hover:bg-accent hover:text-accent-foreground"
-                    >
-                      <span className="truncate">{source}</span>
+              <SelectContent 
+                className="bg-background border border-border z-[200]" 
+                position="popper"
+                sideOffset={4}
+                style={{ 
+                  maxHeight: isMobile ? '200px' : '300px',
+                  width: 'var(--radix-select-trigger-width)',
+                  minWidth: '250px'
+                }}
+              >
+                <ScrollArea className={isMobile ? "h-[180px]" : "h-[280px]"}>
+                  {availableForExclusion.length > 0 ? (
+                    availableForExclusion.map((source) => (
+                      <SelectItem 
+                        key={source} 
+                        value={source}
+                        className="hover:bg-accent hover:text-accent-foreground cursor-pointer"
+                      >
+                        <span className="truncate max-w-[200px]">{source}</span>
+                      </SelectItem>
+                    ))
+                  ) : (
+                    <SelectItem disabled value="no-sources-for-exclusion">
+                      Nessuna fonte disponibile per esclusione
                     </SelectItem>
-                  ))
-                ) : (
-                  <SelectItem disabled value="no-sources-for-exclusion">
-                    Nessuna fonte disponibile per esclusione
-                  </SelectItem>
-                )}
+                  )}
+                </ScrollArea>
               </SelectContent>
             </Select>
 
@@ -220,14 +243,14 @@ export function SourceFilter({
                 <Label className="text-sm font-medium text-orange-700">
                   ➖ Escluse dalle Incluse ({excludeFromIncluded.length})
                 </Label>
-                <div className="flex flex-wrap gap-2 p-3 bg-orange-100/50 border border-orange-200 rounded-lg">
+                <div className="flex flex-wrap gap-2 p-3 bg-orange-100/50 border border-orange-200 rounded-lg max-h-32 overflow-y-auto">
                   {excludeFromIncluded.map((source) => (
                     <Badge 
                       key={source} 
                       variant="outline"
                       className="flex items-center gap-1 text-xs max-w-full px-2 py-1 border-orange-300 text-orange-800 bg-orange-50"
                     >
-                      <span className="truncate">{source}</span>
+                      <span className="truncate max-w-[150px]">{source}</span>
                       <button
                         onClick={() => onRemoveExcludeFromIncluded(source)}
                         className="ml-1 hover:bg-orange-200 rounded-full p-0.5 flex-shrink-0"
