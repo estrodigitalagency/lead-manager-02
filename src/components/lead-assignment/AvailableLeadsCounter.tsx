@@ -49,7 +49,7 @@ export function AvailableLeadsCounter({
   };
 
   return (
-    <div className="p-4 border border-blue-200 rounded-lg bg-blue-50/50">
+    <div className="p-4 border border-blue-200 rounded-lg bg-white">
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           <Users className="h-5 w-5 text-blue-600" />
