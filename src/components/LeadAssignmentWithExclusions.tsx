@@ -1,4 +1,3 @@
-
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { SourceFilter } from "@/components/lead-assignment/SourceFilter";
@@ -30,6 +29,7 @@ const LeadAssignmentWithExclusions = () => {
     availableLeads,
     uniqueSources,
     bypassTimeInterval,
+    isUpdatingCount,
     addExcludedSource,
     removeExcludedSource,
     addIncludedSource,
@@ -109,8 +109,9 @@ const LeadAssignmentWithExclusions = () => {
     }
   };
 
-  // Usa gli stats dal context globale come fonte primaria
-  const currentAvailableLeads = stats.assignable || availableLeads;
+  // Usa gli stats dal context globale come fonte primaria, ma considera anche gli aggiornamenti locali
+  const currentAvailableLeads = availableLeads || stats.assignable || 0;
+  const isCountLoading = isVerifying || isRefreshing || isUpdatingCount;
 
   return (
     <Card>
@@ -158,7 +159,7 @@ const LeadAssignmentWithExclusions = () => {
           </div>
         )}
 
-        {/* NUOVO: Contatore lead disponibili prominente */}
+        {/* CONTATORE LEAD DISPONIBILI con funzione di refresh */}
         <AvailableLeadsCounter
           availableLeads={currentAvailableLeads}
           sourceMode={sourceMode}
@@ -166,7 +167,8 @@ const LeadAssignmentWithExclusions = () => {
           includedSources={includedSources}
           excludeFromIncluded={excludeFromIncluded}
           bypassTimeInterval={bypassTimeInterval}
-          isLoading={isVerifying || isRefreshing}
+          isLoading={isCountLoading}
+          onRefresh={updateAvailableLeads}
         />
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

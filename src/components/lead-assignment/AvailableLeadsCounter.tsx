@@ -1,6 +1,7 @@
 
 import { Badge } from "@/components/ui/badge";
-import { Users, Filter, Clock } from "lucide-react";
+import { Users, Filter, Clock, RefreshCw } from "lucide-react";
+import { useEffect, useState } from "react";
 
 interface AvailableLeadsCounterProps {
   availableLeads: number;
@@ -10,6 +11,7 @@ interface AvailableLeadsCounterProps {
   excludeFromIncluded: string[];
   bypassTimeInterval: boolean;
   isLoading?: boolean;
+  onRefresh?: () => void;
 }
 
 export function AvailableLeadsCounter({
@@ -19,11 +21,32 @@ export function AvailableLeadsCounter({
   includedSources,
   excludeFromIncluded,
   bypassTimeInterval,
-  isLoading = false
+  isLoading = false,
+  onRefresh
 }: AvailableLeadsCounterProps) {
+  const [displayCount, setDisplayCount] = useState(availableLeads);
+  const [isUpdating, setIsUpdating] = useState(false);
+
+  // Update display count immediately when availableLeads changes
+  useEffect(() => {
+    if (!isLoading) {
+      setDisplayCount(availableLeads);
+      setIsUpdating(false);
+    } else {
+      setIsUpdating(true);
+    }
+  }, [availableLeads, isLoading]);
+
   const hasFilters = excludedSources.length > 0 || 
                     includedSources.length > 0 || 
                     excludeFromIncluded.length > 0;
+
+  const handleRefresh = () => {
+    if (onRefresh && !isLoading) {
+      setIsUpdating(true);
+      onRefresh();
+    }
+  };
 
   return (
     <div className="p-4 border border-blue-200 rounded-lg bg-blue-50/50">
@@ -35,8 +58,29 @@ export function AvailableLeadsCounter({
           </h3>
         </div>
         
-        <div className="text-3xl font-bold text-blue-700">
-          {isLoading ? '...' : availableLeads}
+        <div className="flex items-center gap-3">
+          {onRefresh && (
+            <button
+              onClick={handleRefresh}
+              disabled={isLoading || isUpdating}
+              className="p-1 rounded-full hover:bg-blue-100 transition-colors disabled:opacity-50"
+              title="Aggiorna conteggio"
+            >
+              <RefreshCw className={`h-4 w-4 text-blue-600 ${(isLoading || isUpdating) ? 'animate-spin' : ''}`} />
+            </button>
+          )}
+          <div className={`text-3xl font-bold transition-all duration-200 ${
+            isLoading || isUpdating ? 'text-blue-500' : 'text-blue-700'
+          }`}>
+            {isLoading || isUpdating ? (
+              <div className="flex items-center gap-2">
+                <RefreshCw className="h-6 w-6 animate-spin" />
+                <span className="text-lg">Aggiornamento...</span>
+              </div>
+            ) : (
+              <span className="tabular-nums">{displayCount}</span>
+            )}
+          </div>
         </div>
       </div>
 
@@ -86,9 +130,16 @@ export function AvailableLeadsCounter({
       </div>
 
       {/* Messaggio se non ci sono lead disponibili */}
-      {!isLoading && availableLeads === 0 && (
+      {!isLoading && !isUpdating && displayCount === 0 && (
         <div className="mt-3 p-2 bg-yellow-100 border border-yellow-300 rounded text-sm text-yellow-800">
           ⚠️ Nessun lead disponibile con i filtri attuali
+        </div>
+      )}
+
+      {/* Indicatore di aggiornamento in tempo reale */}
+      {(isLoading || isUpdating) && (
+        <div className="mt-3 p-2 bg-blue-100 border border-blue-300 rounded text-sm text-blue-800">
+          🔄 Aggiornamento conteggio in corso...
         </div>
       )}
     </div>

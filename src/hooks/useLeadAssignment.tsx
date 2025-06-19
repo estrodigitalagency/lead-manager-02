@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { getAllFonti, getAllCampagne, getUniqueSourcesFromLeads, syncSourcesToDatabase } from "@/services/databaseService";
@@ -14,19 +14,46 @@ export function useLeadAssignment() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [excludedSources, setExcludedSources] = useState<string[]>([]);
   const [includedSources, setIncludedSources] = useState<string[]>([]);
-  const [excludeFromIncluded, setExcludeFromIncluded] = useState<string[]>([]); // Nuova proprietà
+  const [excludeFromIncluded, setExcludeFromIncluded] = useState<string[]>([]);
   const [sourceMode, setSourceMode] = useState<'exclude' | 'include'>('exclude');
   const [availableLeads, setAvailableLeads] = useState(0);
   const [uniqueSources, setUniqueSources] = useState<string[]>([]);
   const [bypassTimeInterval, setBypassTimeInterval] = useState(false);
+  const [isUpdatingCount, setIsUpdatingCount] = useState(false);
+
+  // Memoized function for updating available leads
+  const updateAvailableLeads = useCallback(async () => {
+    setIsUpdatingCount(true);
+    try {
+      console.log(`🔄 Updating available leads count...`);
+      const count = await getAvailableLeadsCount(
+        excludedSources, 
+        includedSources, 
+        sourceMode, 
+        bypassTimeInterval,
+        excludeFromIncluded
+      );
+      console.log(`✅ Lead disponibili: ${count} (modalità ${sourceMode}, bypass: ${bypassTimeInterval})`);
+      setAvailableLeads(count);
+      return count;
+    } catch (error) {
+      console.error("❌ Error fetching available leads:", error);
+      setAvailableLeads(0);
+      return 0;
+    } finally {
+      setIsUpdatingCount(false);
+    }
+  }, [excludedSources, includedSources, sourceMode, bypassTimeInterval, excludeFromIncluded]);
 
   useEffect(() => {
     initializeData();
   }, []);
 
+  // Immediate update when any filter changes
   useEffect(() => {
+    console.log(`🔄 Filter changed, updating count immediately...`);
     updateAvailableLeads();
-  }, [excludedSources, includedSources, excludeFromIncluded, sourceMode, bypassTimeInterval]);
+  }, [updateAvailableLeads]);
 
   const initializeData = async () => {
     try {
@@ -87,136 +114,54 @@ export function useLeadAssignment() {
     }
   };
 
-  const updateAvailableLeads = async () => {
-    try {
-      const count = await getAvailableLeadsCount(
-        excludedSources, 
-        includedSources, 
-        sourceMode, 
-        bypassTimeInterval,
-        excludeFromIncluded // Passa la nuova proprietà
-      );
-      console.log(`Lead disponibili per assegnazione (modalità ${sourceMode}, bypass: ${bypassTimeInterval}, esclusi da inclusi: ${excludeFromIncluded.length}): ${count}`);
-      setAvailableLeads(count);
-    } catch (error) {
-      console.error("Error fetching available leads:", error);
-      setAvailableLeads(0);
-    }
-  };
-
-  const addExcludedSource = async (sourceName: string) => {
+  const addExcludedSource = (sourceName: string) => {
     if (sourceName && !excludedSources.includes(sourceName)) {
-      const newExcludedSources = [...excludedSources, sourceName];
-      setExcludedSources(newExcludedSources);
-      
-      try {
-        const count = await getAvailableLeadsCount(newExcludedSources, includedSources, sourceMode, bypassTimeInterval);
-        console.log(`Lead disponibili dopo esclusione di ${sourceName}: ${count}`);
-        setAvailableLeads(count);
-      } catch (error) {
-        console.error("Error updating available leads after exclusion:", error);
-      }
+      console.log(`➕ Adding excluded source: ${sourceName}`);
+      setExcludedSources(prev => [...prev, sourceName]);
     }
   };
 
-  const removeExcludedSource = async (source: string) => {
-    const newExcludedSources = excludedSources.filter(s => s !== source);
-    setExcludedSources(newExcludedSources);
-    
-    try {
-      const count = await getAvailableLeadsCount(newExcludedSources, includedSources, sourceMode, bypassTimeInterval);
-      console.log(`Lead disponibili dopo rimozione esclusione di ${source}: ${count}`);
-      setAvailableLeads(count);
-    } catch (error) {
-      console.error("Error updating available leads after removing exclusion:", error);
-    }
+  const removeExcludedSource = (source: string) => {
+    console.log(`➖ Removing excluded source: ${source}`);
+    setExcludedSources(prev => prev.filter(s => s !== source));
   };
 
-  const addIncludedSource = async (sourceName: string) => {
+  const addIncludedSource = (sourceName: string) => {
     if (sourceName && !includedSources.includes(sourceName)) {
-      const newIncludedSources = [...includedSources, sourceName];
-      setIncludedSources(newIncludedSources);
-      
-      try {
-        const count = await getAvailableLeadsCount(excludedSources, newIncludedSources, sourceMode, bypassTimeInterval);
-        console.log(`Lead disponibili dopo inclusione di ${sourceName}: ${count}`);
-        setAvailableLeads(count);
-      } catch (error) {
-        console.error("Error updating available leads after inclusion:", error);
-      }
+      console.log(`➕ Adding included source: ${sourceName}`);
+      setIncludedSources(prev => [...prev, sourceName]);
     }
   };
 
-  const removeIncludedSource = async (source: string) => {
-    const newIncludedSources = includedSources.filter(s => s !== source);
-    setIncludedSources(newIncludedSources);
-    
-    try {
-      const count = await getAvailableLeadsCount(excludedSources, newIncludedSources, sourceMode, bypassTimeInterval);
-      console.log(`Lead disponibili dopo rimozione inclusione di ${source}: ${count}`);
-      setAvailableLeads(count);
-    } catch (error) {
-      console.error("Error updating available leads after removing inclusion:", error);
-    }
+  const removeIncludedSource = (source: string) => {
+    console.log(`➖ Removing included source: ${source}`);
+    setIncludedSources(prev => prev.filter(s => s !== source));
   };
 
-  const addExcludeFromIncluded = async (sourceName: string) => {
+  const addExcludeFromIncluded = (sourceName: string) => {
     if (sourceName && !excludeFromIncluded.includes(sourceName)) {
-      const newExcludeFromIncluded = [...excludeFromIncluded, sourceName];
-      setExcludeFromIncluded(newExcludeFromIncluded);
-      
-      try {
-        const count = await getAvailableLeadsCount(
-          excludedSources, 
-          includedSources, 
-          sourceMode, 
-          bypassTimeInterval,
-          newExcludeFromIncluded
-        );
-        console.log(`Lead disponibili dopo esclusione "${sourceName}" da fonti incluse: ${count}`);
-        setAvailableLeads(count);
-      } catch (error) {
-        console.error("Error updating available leads after exclusion from included:", error);
-      }
+      console.log(`➕ Adding exclude from included: ${sourceName}`);
+      setExcludeFromIncluded(prev => [...prev, sourceName]);
     }
   };
 
-  const removeExcludeFromIncluded = async (source: string) => {
-    const newExcludeFromIncluded = excludeFromIncluded.filter(s => s !== source);
-    setExcludeFromIncluded(newExcludeFromIncluded);
-    
-    try {
-      const count = await getAvailableLeadsCount(
-        excludedSources, 
-        includedSources, 
-        sourceMode, 
-        bypassTimeInterval,
-        newExcludeFromIncluded
-      );
-      console.log(`Lead disponibili dopo rimozione esclusione "${source}" da fonti incluse: ${count}`);
-      setAvailableLeads(count);
-    } catch (error) {
-      console.error("Error updating available leads after removing exclusion from included:", error);
-    }
+  const removeExcludeFromIncluded = (source: string) => {
+    console.log(`➖ Removing exclude from included: ${source}`);
+    setExcludeFromIncluded(prev => prev.filter(s => s !== source));
   };
 
-  const toggleSourceMode = async (newMode: 'exclude' | 'include') => {
+  const toggleSourceMode = (newMode: 'exclude' | 'include') => {
+    console.log(`🔄 Switching source mode to: ${newMode}`);
     setSourceMode(newMode);
     setExcludedSources([]);
     setIncludedSources([]);
-    setExcludeFromIncluded([]); // Reset anche le esclusioni dalle incluse
-    
-    try {
-      const count = await getAvailableLeadsCount([], [], newMode, bypassTimeInterval, []);
-      console.log(`Lead disponibili dopo cambio modalità a ${newMode}: ${count}`);
-      setAvailableLeads(count);
-    } catch (error) {
-      console.error("Error updating available leads after mode change:", error);
-    }
+    setExcludeFromIncluded([]);
   };
 
   const toggleBypassTimeInterval = () => {
-    setBypassTimeInterval(!bypassTimeInterval);
+    const newBypass = !bypassTimeInterval;
+    console.log(`🔄 Toggling bypass time interval to: ${newBypass}`);
+    setBypassTimeInterval(newBypass);
   };
 
   const handleAssign = async () => {
@@ -243,7 +188,7 @@ export function useLeadAssignment() {
         includedSources,
         sourceMode,
         bypassTimeInterval,
-        excludeFromIncluded // Passa la nuova proprietà
+        excludeFromIncluded
       });
       
       toast.success(`${numLeadInt} lead assegnati con successo a ${venditore}`);
@@ -279,16 +224,17 @@ export function useLeadAssignment() {
     isSubmitting,
     excludedSources,
     includedSources,
-    excludeFromIncluded, // Nuova proprietà
+    excludeFromIncluded,
     sourceMode,
     availableLeads,
     uniqueSources,
     bypassTimeInterval,
+    isUpdatingCount,
     addExcludedSource,
     removeExcludedSource,
     addIncludedSource,
     removeIncludedSource,
-    addExcludeFromIncluded, // Nuove funzioni
+    addExcludeFromIncluded,
     removeExcludeFromIncluded,
     toggleSourceMode,
     toggleBypassTimeInterval,
