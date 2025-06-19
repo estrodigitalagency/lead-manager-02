@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { Lead } from "@/types/lead";
 import { LeadLavorato } from "@/types/leadLavorato";
@@ -40,7 +41,7 @@ export async function getUnassignedLeads(): Promise<Lead[]> {
   }
 }
 
-export async function filterLeads(tableName: string, filters: Record<string, any>) {
+export async function filterLeads(tableName: ValidTableName, filters: Record<string, any>) {
   console.log(`Filtering ${tableName} with filters:`, filters);
   
   let query = supabase.from(tableName).select('*');
