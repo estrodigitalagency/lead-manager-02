@@ -1,8 +1,10 @@
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { SourceFilter } from "@/components/lead-assignment/SourceFilter";
 import { AssignmentForm } from "@/components/lead-assignment/AssignmentForm";
 import { BypassTimeIntervalControl } from "@/components/lead-assignment/BypassTimeIntervalControl";
+import { AvailableLeadsCounter } from "@/components/lead-assignment/AvailableLeadsCounter";
 import { useLeadAssignment } from "@/hooks/useLeadAssignment";
 import { useAssignabilityVerification } from "@/hooks/useAssignabilityVerification";
 import { useLeadSync } from "@/contexts/LeadSyncContext";
@@ -23,7 +25,7 @@ const LeadAssignmentWithExclusions = () => {
     isSubmitting,
     excludedSources,
     includedSources,
-    excludeFromIncluded, // Nuova proprietà
+    excludeFromIncluded,
     sourceMode,
     availableLeads,
     uniqueSources,
@@ -32,7 +34,7 @@ const LeadAssignmentWithExclusions = () => {
     removeExcludedSource,
     addIncludedSource,
     removeIncludedSource,
-    addExcludeFromIncluded, // Nuove funzioni
+    addExcludeFromIncluded,
     removeExcludeFromIncluded,
     toggleSourceMode,
     toggleBypassTimeInterval,
@@ -133,12 +135,6 @@ const LeadAssignmentWithExclusions = () => {
         </div>
         <CardDescription className="text-sm">
           {getVerificationStatusText()}
-          {!isVerifying && !isRefreshing && verification.status === 'completed' && (
-            <span className="block mt-1 text-green-700">
-              Lead disponibili: {currentAvailableLeads}
-              {bypassTimeInterval && <span className="text-orange-600 ml-2">(Bypass attivo)</span>}
-            </span>
-          )}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4 sm:space-y-6">
@@ -161,6 +157,17 @@ const LeadAssignmentWithExclusions = () => {
             </div>
           </div>
         )}
+
+        {/* NUOVO: Contatore lead disponibili prominente */}
+        <AvailableLeadsCounter
+          availableLeads={currentAvailableLeads}
+          sourceMode={sourceMode}
+          excludedSources={excludedSources}
+          includedSources={includedSources}
+          excludeFromIncluded={excludeFromIncluded}
+          bypassTimeInterval={bypassTimeInterval}
+          isLoading={isVerifying || isRefreshing}
+        />
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {/* Number of leads and Salesperson selection */}
@@ -209,13 +216,13 @@ const LeadAssignmentWithExclusions = () => {
           uniqueSources={uniqueSources}
           excludedSources={excludedSources}
           includedSources={includedSources}
-          excludeFromIncluded={excludeFromIncluded} // Nuova prop
+          excludeFromIncluded={excludeFromIncluded}
           sourceMode={sourceMode}
           onAddExcludedSource={addExcludedSource}
           onRemoveExcludedSource={removeExcludedSource}
           onAddIncludedSource={addIncludedSource}
           onRemoveIncludedSource={removeIncludedSource}
-          onAddExcludeFromIncluded={addExcludeFromIncluded} // Nuove funzioni
+          onAddExcludeFromIncluded={addExcludeFromIncluded}
           onRemoveExcludeFromIncluded={removeExcludeFromIncluded}
           onToggleSourceMode={toggleSourceMode}
         />
