@@ -21,13 +21,20 @@ export function useAssignabilityVerification() {
     availableLeads: 0
   });
   
-  // Prevent multiple toast notifications with ref - più restrittivo
+  // Sistema più robusto per prevenire duplicati
+  const isVerifyingRef = useRef<boolean>(false);
   const lastToastTime = useRef<number>(0);
-  const isShowingToast = useRef<boolean>(false);
-  const TOAST_COOLDOWN = 5000; // 5 secondi di cooldown tra toast
+  const TOAST_COOLDOWN = 10000; // 10 secondi di cooldown per essere sicuri
 
   const performVerification = async () => {
+    // Controlla se è già in corso una verifica
+    if (isVerifyingRef.current) {
+      console.log("🚫 Verification already in progress, skipping...");
+      return;
+    }
+
     console.log("🔍 Starting assignability verification...");
+    isVerifyingRef.current = true;
     setVerification(prev => ({ ...prev, status: 'verifying' }));
     setIsVerifying(true);
     
@@ -44,14 +51,13 @@ export function useAssignabilityVerification() {
         lastVerified: new Date()
       });
       
-      // Trigger aggiornamento globale aggiuntivo per sicurezza
+      // Trigger aggiornamento globale
       console.log("🔄 Additional global refresh after verification...");
       await refreshAllData();
       
-      // Show toast SOLO UNA VOLTA per verifica con controllo più stringente
+      // Show toast SOLO UNA VOLTA con controllo più stringente
       const now = Date.now();
-      if (!isShowingToast.current && now - lastToastTime.current > TOAST_COOLDOWN) {
-        isShowingToast.current = true;
+      if (now - lastToastTime.current > TOAST_COOLDOWN) {
         lastToastTime.current = now;
         
         if (result.updated > 0) {
@@ -59,11 +65,6 @@ export function useAssignabilityVerification() {
         } else {
           toast.success(`Verifica completata: tutti i ${result.totalChecked} lead erano già aggiornati`);
         }
-        
-        // Reset flag dopo un breve delay
-        setTimeout(() => {
-          isShowingToast.current = false;
-        }, 1000);
       }
       
       return result;
@@ -72,20 +73,16 @@ export function useAssignabilityVerification() {
       console.error("❌ Errore durante la verifica:", error);
       setVerification(prev => ({ ...prev, status: 'error' }));
       
-      // Show error toast solo se non stiamo già mostrando un toast
+      // Show error toast solo se non ne abbiamo mostrato uno di recente
       const now = Date.now();
-      if (!isShowingToast.current && now - lastToastTime.current > TOAST_COOLDOWN) {
-        isShowingToast.current = true;
+      if (now - lastToastTime.current > TOAST_COOLDOWN) {
         lastToastTime.current = now;
         toast.error("Errore durante la verifica dell'assegnabilità");
-        
-        setTimeout(() => {
-          isShowingToast.current = false;
-        }, 1000);
       }
       
       throw error;
     } finally {
+      isVerifyingRef.current = false;
       setIsVerifying(false);
     }
   };
@@ -97,14 +94,14 @@ export function useAssignabilityVerification() {
       updated: 0,
       availableLeads: 0
     });
-    // Reset anche i flag di toast
-    isShowingToast.current = false;
+    // Reset anche i flag
+    isVerifyingRef.current = false;
   };
 
   return {
     verification,
     performVerification,
     resetVerification,
-    isVerifying: verification.status === 'verifying'
+    isVerifying: verification.status === 'verifying' || isVerifyingRef.current
   };
 }

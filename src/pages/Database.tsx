@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -114,9 +114,20 @@ const DatabasePage = () => {
     }
   };
 
+  // Add a ref to prevent multiple initialization calls
+  const isInitializedRef = useRef<boolean>(false);
+
   // OTTIMIZZAZIONE: Verifica automatica più efficiente all'apertura
   useEffect(() => {
     const initializeDatabase = async () => {
+      // Prevent multiple initialization calls
+      if (isInitializedRef.current) {
+        console.log("🚫 Database already initialized, skipping...");
+        return;
+      }
+      
+      isInitializedRef.current = true;
+      
       try {
         console.log("🔍 Avvio verifica assegnabilità rapida...");
         
@@ -157,7 +168,7 @@ const DatabasePage = () => {
     };
 
     initializeDatabase();
-  }, []);
+  }, []); // Empty dependency array to run only once
 
   // Ricarica dati quando cambiano i filtri
   useEffect(() => {
