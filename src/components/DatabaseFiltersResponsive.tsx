@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger, SheetClose } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Filter, X } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -88,63 +88,76 @@ const DatabaseFiltersResponsive = ({ onApplyFilters, tableName }: DatabaseFilter
   const fontiEscluse = filters.fontiEscluse || [];
 
   const FilterContent = () => (
-    <div className="space-y-4 p-1">
-      <div className="grid grid-cols-1 gap-4">
-        {/* Filtri Base */}
-        <div className="space-y-2">
-          <Label htmlFor="dataInizio">Data Inizio</Label>
-          <Input
-            id="dataInizio"
-            type="date"
-            value={filters.dataInizio || ''}
-            onChange={(e) => handleFilterChange('dataInizio', e.target.value)}
-          />
-        </div>
-        
-        <div className="space-y-2">
-          <Label htmlFor="dataFine">Data Fine</Label>
-          <Input
-            id="dataFine"
-            type="date"
-            value={filters.dataFine || ''}
-            onChange={(e) => handleFilterChange('dataFine', e.target.value)}
-          />
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="nome">Nome</Label>
-          <Input
-            id="nome"
-            placeholder="Cerca per nome..."
-            value={filters.nome || ''}
-            onChange={(e) => handleFilterChange('nome', e.target.value)}
-          />
+    <div className="space-y-4 p-2">
+      <div className="space-y-4">
+        {/* Periodo */}
+        <div className="space-y-3">
+          <Label className="text-sm font-medium">Periodo</Label>
+          <div className="space-y-2">
+            <div>
+              <Label htmlFor="dataInizio" className="text-xs">Data Inizio</Label>
+              <Input
+                id="dataInizio"
+                type="date"
+                value={filters.dataInizio || ''}
+                onChange={(e) => handleFilterChange('dataInizio', e.target.value)}
+                className="mt-1"
+              />
+            </div>
+            <div>
+              <Label htmlFor="dataFine" className="text-xs">Data Fine</Label>
+              <Input
+                id="dataFine"
+                type="date"
+                value={filters.dataFine || ''}
+                onChange={(e) => handleFilterChange('dataFine', e.target.value)}
+                className="mt-1"
+              />
+            </div>
+          </div>
         </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="email">Email</Label>
-          <Input
-            id="email"
-            placeholder="Cerca per email..."
-            value={filters.email || ''}
-            onChange={(e) => handleFilterChange('email', e.target.value)}
-          />
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="telefono">Telefono</Label>
-          <Input
-            id="telefono"
-            placeholder="Cerca per telefono..."
-            value={filters.telefono || ''}
-            onChange={(e) => handleFilterChange('telefono', e.target.value)}
-          />
+        {/* Ricerca testo */}
+        <div className="space-y-3">
+          <Label className="text-sm font-medium">Ricerca Testo</Label>
+          <div className="space-y-2">
+            <div>
+              <Label htmlFor="nome" className="text-xs">Nome</Label>
+              <Input
+                id="nome"
+                placeholder="Cerca per nome..."
+                value={filters.nome || ''}
+                onChange={(e) => handleFilterChange('nome', e.target.value)}
+                className="mt-1"
+              />
+            </div>
+            <div>
+              <Label htmlFor="email" className="text-xs">Email</Label>
+              <Input
+                id="email"
+                placeholder="Cerca per email..."
+                value={filters.email || ''}
+                onChange={(e) => handleFilterChange('email', e.target.value)}
+                className="mt-1"
+              />
+            </div>
+            <div>
+              <Label htmlFor="telefono" className="text-xs">Telefono</Label>
+              <Input
+                id="telefono"
+                placeholder="Cerca per telefono..."
+                value={filters.telefono || ''}
+                onChange={(e) => handleFilterChange('telefono', e.target.value)}
+                className="mt-1"
+              />
+            </div>
+          </div>
         </div>
 
         {/* Venditore */}
         {(tableName === 'lead_generation' || tableName === 'lead_lavorati') && (
           <div className="space-y-2">
-            <Label>Venditore</Label>
+            <Label className="text-sm font-medium">Venditore</Label>
             <Select
               value={filters.venditore || 'all-venditori'}
               onValueChange={handleVenditoreChange}
@@ -165,7 +178,7 @@ const DatabaseFiltersResponsive = ({ onApplyFilters, tableName }: DatabaseFilter
         )}
 
         {/* Filtri Fonte */}
-        <div className="space-y-2">
+        <div className="space-y-3">
           <Label className="text-sm font-medium">Filtri per Fonte</Label>
           
           {/* Modalità */}
@@ -174,6 +187,7 @@ const DatabaseFiltersResponsive = ({ onApplyFilters, tableName }: DatabaseFilter
               variant={sourceMode === 'include' ? 'default' : 'outline'}
               size="sm"
               onClick={() => handleSourceModeChange('include')}
+              className="flex-1"
             >
               Includi Solo
             </Button>
@@ -181,6 +195,7 @@ const DatabaseFiltersResponsive = ({ onApplyFilters, tableName }: DatabaseFilter
               variant={sourceMode === 'exclude' ? 'default' : 'outline'}
               size="sm"
               onClick={() => handleSourceModeChange('exclude')}
+              className="flex-1"
             >
               Escludi
             </Button>
@@ -256,7 +271,7 @@ const DatabaseFiltersResponsive = ({ onApplyFilters, tableName }: DatabaseFilter
         {/* Esito per lead lavorati */}
         {tableName === 'lead_lavorati' && (
           <div className="space-y-2">
-            <Label htmlFor="esito">Esito</Label>
+            <Label className="text-sm font-medium">Esito</Label>
             <Select value={filters.esito || ''} onValueChange={(value) => handleFilterChange('esito', value)}>
               <SelectTrigger>
                 <SelectValue placeholder="Seleziona esito" />
@@ -274,7 +289,7 @@ const DatabaseFiltersResponsive = ({ onApplyFilters, tableName }: DatabaseFilter
         )}
       </div>
 
-      <div className="flex gap-2 pt-4">
+      <div className="flex gap-2 pt-4 border-t">
         <Button onClick={applyFilters} className="flex-1">
           Applica Filtri
         </Button>
@@ -295,14 +310,14 @@ const DatabaseFiltersResponsive = ({ onApplyFilters, tableName }: DatabaseFilter
             Filtri
           </Button>
         </SheetTrigger>
-        <SheetContent side="bottom" className="h-[90vh]">
-          <SheetHeader>
+        <SheetContent side="bottom" className="h-[85vh] p-0">
+          <SheetHeader className="p-4 pb-2">
             <SheetTitle>Filtri Database</SheetTitle>
             <SheetDescription>
               Applica filtri per raffinare la ricerca
             </SheetDescription>
           </SheetHeader>
-          <div className="mt-6 overflow-y-auto max-h-[calc(90vh-120px)]">
+          <div className="overflow-y-auto h-[calc(85vh-80px)] px-4 pb-4">
             <FilterContent />
           </div>
         </SheetContent>
@@ -318,14 +333,16 @@ const DatabaseFiltersResponsive = ({ onApplyFilters, tableName }: DatabaseFilter
           Filtri
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-md max-h-[80vh] overflow-y-auto">
-        <DialogHeader>
+      <DialogContent className="max-w-lg max-h-[90vh] p-0">
+        <DialogHeader className="p-6 pb-4">
           <DialogTitle>Filtri Database</DialogTitle>
           <DialogDescription>
             Applica filtri per raffinare la ricerca
           </DialogDescription>
         </DialogHeader>
-        <FilterContent />
+        <div className="overflow-y-auto max-h-[calc(90vh-120px)] px-6 pb-6">
+          <FilterContent />
+        </div>
       </DialogContent>
     </Dialog>
   );

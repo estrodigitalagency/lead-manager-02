@@ -30,8 +30,7 @@ const SearchInput = ({ onSearch, placeholder = "Cerca per nome, numero o email..
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setSearchTerm(value);
-    // Search in real-time as user types
-    onSearch(value);
+    // Solo aggiorna il valore, non fa la ricerca automaticamente
   };
 
   return (
