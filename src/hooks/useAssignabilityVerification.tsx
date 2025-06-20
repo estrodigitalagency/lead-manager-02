@@ -21,9 +21,10 @@ export function useAssignabilityVerification() {
     availableLeads: 0
   });
   
-  // Prevent multiple toast notifications with ref
+  // Prevent multiple toast notifications with ref - più restrittivo
   const lastToastTime = useRef<number>(0);
-  const TOAST_COOLDOWN = 3000; // 3 seconds cooldown between toasts
+  const isShowingToast = useRef<boolean>(false);
+  const TOAST_COOLDOWN = 5000; // 5 secondi di cooldown tra toast
 
   const performVerification = async () => {
     console.log("🔍 Starting assignability verification...");
@@ -47,9 +48,10 @@ export function useAssignabilityVerification() {
       console.log("🔄 Additional global refresh after verification...");
       await refreshAllData();
       
-      // Show toast only if enough time has passed since last toast
+      // Show toast SOLO UNA VOLTA per verifica con controllo più stringente
       const now = Date.now();
-      if (now - lastToastTime.current > TOAST_COOLDOWN) {
+      if (!isShowingToast.current && now - lastToastTime.current > TOAST_COOLDOWN) {
+        isShowingToast.current = true;
         lastToastTime.current = now;
         
         if (result.updated > 0) {
@@ -57,6 +59,11 @@ export function useAssignabilityVerification() {
         } else {
           toast.success(`Verifica completata: tutti i ${result.totalChecked} lead erano già aggiornati`);
         }
+        
+        // Reset flag dopo un breve delay
+        setTimeout(() => {
+          isShowingToast.current = false;
+        }, 1000);
       }
       
       return result;
@@ -65,11 +72,16 @@ export function useAssignabilityVerification() {
       console.error("❌ Errore durante la verifica:", error);
       setVerification(prev => ({ ...prev, status: 'error' }));
       
-      // Show error toast only if enough time has passed
+      // Show error toast solo se non stiamo già mostrando un toast
       const now = Date.now();
-      if (now - lastToastTime.current > TOAST_COOLDOWN) {
+      if (!isShowingToast.current && now - lastToastTime.current > TOAST_COOLDOWN) {
+        isShowingToast.current = true;
         lastToastTime.current = now;
         toast.error("Errore durante la verifica dell'assegnabilità");
+        
+        setTimeout(() => {
+          isShowingToast.current = false;
+        }, 1000);
       }
       
       throw error;
@@ -85,6 +97,8 @@ export function useAssignabilityVerification() {
       updated: 0,
       availableLeads: 0
     });
+    // Reset anche i flag di toast
+    isShowingToast.current = false;
   };
 
   return {

@@ -78,7 +78,7 @@ const MobileLeadsTable = ({
         }, [lead, getStatus]);
         
         return (
-          <Card key={lead.id} className="border bg-white">
+          <Card key={lead.id} className="border bg-card">
             <CardContent className="p-4">
               <div className="flex items-start justify-between mb-3">
                 <div className="flex items-center gap-3 flex-1 min-w-0">
@@ -89,7 +89,7 @@ const MobileLeadsTable = ({
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
                       <User className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                      <span className="font-medium text-sm truncate">
+                      <span className="font-medium text-sm truncate text-foreground">
                         {lead.nome || 'N/A'} {lead.cognome || ''}
                       </span>
                     </div>
