@@ -114,7 +114,11 @@ export async function checkLeadsAssignability() {
     console.log(`✅ Optimized verification completed: ${updatedCount} leads updated`);
     console.log(`Available leads: ${availableLeads || 0}`);
     
-    // RIMUOVO IL TOAST DA QUI - sarà gestito solo dal hook
+    if (updatedCount > 0) {
+      toast.success(`Verifica completata: ${updatedCount} lead aggiornati`);
+    } else {
+      toast.success('Verifica completata: tutti i lead erano già aggiornati');
+    }
     
     // Trigger global refresh if callback is available
     if (globalRefreshCallback) {
@@ -128,7 +132,7 @@ export async function checkLeadsAssignability() {
     };
   } catch (error) {
     console.error('❌ Error in optimized checkLeadsAssignability:', error);
-    // RIMUOVO IL TOAST DI ERRORE DA QUI - sarà gestito solo dal hook
+    toast.error('Errore durante la verifica dell\'assegnabilità');
     throw error;
   }
 }
