@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -172,7 +173,7 @@ const DatabasePage = () => {
 
   // Ricarica dati quando cambiano i filtri
   useEffect(() => {
-    if (verification.status !== 'initial') {
+    if (verification.status !== 'idle') {
       Promise.all([
         fetchLeads(),
         fetchBookings(),
@@ -353,11 +354,6 @@ const DatabasePage = () => {
         <div className="bg-green-50 p-4 rounded-lg border border-green-200 mb-6">
           <p className="text-green-800 text-sm">
             Ultima verifica: {verification.updated} lead aggiornati su {verification.totalChecked} controllati
-            {verification.lastVerified && (
-              <span className="ml-2 text-green-600">
-                ({new Date(verification.lastVerified).toLocaleTimeString('it-IT')})
-              </span>
-            )}
           </p>
         </div>
       )}
