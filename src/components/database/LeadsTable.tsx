@@ -98,38 +98,54 @@ const LeadsTable = ({
     );
   }
 
-  if (isMobile) {
+  // Safe check for leads length
+  if (!leads || leads.length === 0) {
     return (
-      <div className="space-y-4">
-        <MobileLeadsTable
-          leads={paginatedData}
-          selectedItems={selectedItems}
-          onSelectionChange={onSelectionChange}
-          onDelete={onDelete}
-          onShowDetails={handleShowDetails}
-        />
-        <PaginationControls
-          currentPage={currentPage}
-          totalPages={totalPages}
-          totalItems={totalItems}
-          pageSize={pageSize}
-          startIndex={startIndex}
-          endIndex={endIndex}
-          canGoNext={canGoNext}
-          canGoPrevious={canGoPrevious}
-          onPageChange={goToPage}
-          onPageSizeChange={setPageSize}
-          onNextPage={nextPage}
-          onPreviousPage={previousPage}
-        />
+      <div className="text-center py-10 text-muted-foreground">
+        Nessun lead trovato.
       </div>
     );
   }
 
-  if (leads.length === 0) {
+  if (isMobile) {
     return (
-      <div className="text-center py-10 text-muted-foreground">
-        Nessun lead trovato.
+      <div className="space-y-4 w-full">
+        {/* Safe check for paginatedData */}
+        {paginatedData && paginatedData.length > 0 ? (
+          <>
+            <MobileLeadsTable
+              leads={paginatedData}
+              selectedItems={selectedItems}
+              onSelectionChange={onSelectionChange}
+              onDelete={onDelete}
+              onShowDetails={handleShowDetails}
+            />
+            <PaginationControls
+              currentPage={currentPage}
+              totalPages={totalPages}
+              totalItems={totalItems}
+              pageSize={pageSize}
+              startIndex={startIndex}
+              endIndex={endIndex}
+              canGoNext={canGoNext}
+              canGoPrevious={canGoPrevious}
+              onPageChange={goToPage}
+              onPageSizeChange={setPageSize}
+              onNextPage={nextPage}
+              onPreviousPage={previousPage}
+            />
+          </>
+        ) : (
+          <div className="text-center py-10 text-muted-foreground">
+            Nessun lead trovato con i filtri attuali.
+          </div>
+        )}
+        
+        <LeadDetailsDialog
+          lead={selectedLeadForDetails}
+          open={isDetailsDialogOpen}
+          onOpenChange={setIsDetailsDialogOpen}
+        />
       </div>
     );
   }
