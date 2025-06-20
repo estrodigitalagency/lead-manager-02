@@ -1,107 +1,85 @@
 
-import { useState, useRef } from "react";
-import { toast } from "sonner";
+import { useState } from "react";
 import { checkLeadsAssignability } from "@/services/leadAssignabilityService";
-import { useLeadSync } from "@/contexts/LeadSyncContext";
+import { toast } from "sonner";
 
-interface VerificationState {
-  status: 'initial' | 'verifying' | 'completed' | 'error';
-  totalChecked: number;
+interface VerificationResult {
+  status: 'idle' | 'completed' | 'error';
   updated: number;
+  totalChecked: number;
   availableLeads: number;
-  lastVerified?: Date;
 }
 
 export function useAssignabilityVerification() {
-  const { setIsVerifying, refreshAllData } = useLeadSync();
-  const [verification, setVerification] = useState<VerificationState>({
-    status: 'initial',
-    totalChecked: 0,
+  const [verification, setVerification] = useState<VerificationResult>({
+    status: 'idle',
     updated: 0,
+    totalChecked: 0,
     availableLeads: 0
   });
-  
-  // Sistema più robusto per prevenire duplicati
-  const isVerifyingRef = useRef<boolean>(false);
-  const lastToastTime = useRef<number>(0);
-  const TOAST_COOLDOWN = 10000; // 10 secondi di cooldown per essere sicuri
+  const [isVerifying, setIsVerifying] = useState(false);
 
   const performVerification = async () => {
-    // Controlla se è già in corso una verifica
-    if (isVerifyingRef.current) {
-      console.log("🚫 Verification already in progress, skipping...");
-      return;
+    if (isVerifying) {
+      console.log('🔒 Verification already in progress, skipping...');
+      return verification;
     }
 
-    console.log("🔍 Starting assignability verification...");
-    isVerifyingRef.current = true;
-    setVerification(prev => ({ ...prev, status: 'verifying' }));
     setIsVerifying(true);
+    console.log('🔍 Starting assignability verification...');
     
     try {
       const result = await checkLeadsAssignability();
       
-      console.log("✅ Verification completed:", result);
-      
-      setVerification({
-        status: 'completed',
-        totalChecked: result.totalChecked,
+      const newVerification = {
+        status: 'completed' as const,
         updated: result.updated,
-        availableLeads: result.availableLeads,
-        lastVerified: new Date()
-      });
+        totalChecked: result.totalChecked,
+        availableLeads: result.availableLeads
+      };
       
-      // Trigger aggiornamento globale
-      console.log("🔄 Additional global refresh after verification...");
-      await refreshAllData();
+      setVerification(newVerification);
       
-      // Show toast SOLO UNA VOLTA con controllo più stringente
-      const now = Date.now();
-      if (now - lastToastTime.current > TOAST_COOLDOWN) {
-        lastToastTime.current = now;
-        
-        if (result.updated > 0) {
-          toast.success(`Verifica completata: aggiornati ${result.updated} lead su ${result.totalChecked} controllati`);
-        } else {
-          toast.success(`Verifica completata: tutti i ${result.totalChecked} lead erano già aggiornati`);
-        }
+      // Solo un toast di successo qui
+      if (result.updated > 0) {
+        toast.success(`Verifica completata: ${result.updated} lead aggiornati`);
+      } else {
+        toast.success('Verifica completata: tutti i lead erano già aggiornati');
       }
       
-      return result;
-      
+      console.log('✅ Verification completed successfully:', newVerification);
+      return newVerification;
     } catch (error) {
-      console.error("❌ Errore durante la verifica:", error);
-      setVerification(prev => ({ ...prev, status: 'error' }));
+      console.error('❌ Error in verification:', error);
       
-      // Show error toast solo se non ne abbiamo mostrato uno di recente
-      const now = Date.now();
-      if (now - lastToastTime.current > TOAST_COOLDOWN) {
-        lastToastTime.current = now;
-        toast.error("Errore durante la verifica dell'assegnabilità");
-      }
+      const errorVerification = {
+        status: 'error' as const,
+        updated: 0,
+        totalChecked: 0,
+        availableLeads: 0
+      };
       
-      throw error;
+      setVerification(errorVerification);
+      toast.error('Errore durante la verifica dell\'assegnabilità');
+      return errorVerification;
     } finally {
-      isVerifyingRef.current = false;
       setIsVerifying(false);
     }
   };
 
   const resetVerification = () => {
     setVerification({
-      status: 'initial',
-      totalChecked: 0,
+      status: 'idle',
       updated: 0,
+      totalChecked: 0,
       availableLeads: 0
     });
-    // Reset anche i flag
-    isVerifyingRef.current = false;
   };
 
   return {
     verification,
+    isVerifying,
     performVerification,
-    resetVerification,
-    isVerifying: verification.status === 'verifying' || isVerifyingRef.current
+    resetVerification
   };
 }

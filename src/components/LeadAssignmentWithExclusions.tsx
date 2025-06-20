@@ -1,3 +1,4 @@
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { SourceFilter } from "@/components/lead-assignment/SourceFilter";
@@ -5,13 +6,12 @@ import { AssignmentForm } from "@/components/lead-assignment/AssignmentForm";
 import { BypassTimeIntervalControl } from "@/components/lead-assignment/BypassTimeIntervalControl";
 import { AvailableLeadsCounter } from "@/components/lead-assignment/AvailableLeadsCounter";
 import { useLeadAssignment } from "@/hooks/useLeadAssignment";
-import { useAssignabilityVerification } from "@/hooks/useAssignabilityVerification";
 import { useLeadSync } from "@/contexts/LeadSyncContext";
 import { Loader2, RefreshCcw, CheckCircle, AlertCircle } from "lucide-react";
 import { useEffect } from "react";
 
 const LeadAssignmentWithExclusions = () => {
-  const { stats, isRefreshing } = useLeadSync();
+  const { stats, isRefreshing, performVerification, isVerifying } = useLeadSync();
   const {
     numLead,
     setNumLead,
@@ -42,32 +42,19 @@ const LeadAssignmentWithExclusions = () => {
     updateAvailableLeads
   } = useLeadAssignment();
 
-  const {
-    verification,
-    performVerification,
-    resetVerification,
-    isVerifying
-  } = useAssignabilityVerification();
-
-  // Verifica automatica all'avvio e aggiorna dati locali quando cambiano gli stats globali
+  // Sincronizza i lead disponibili con gli stats globali quando cambiano
   useEffect(() => {
-    performVerification().then(() => {
-      updateAvailableLeads();
-    }).catch(console.error);
-  }, []);
-
-  // Sincronizza i lead disponibili con gli stats globali
-  useEffect(() => {
-    console.log("📊 Syncing available leads with global stats:", stats.assignable);
+    console.log("📊 Global stats changed, updating available leads:", stats.assignable);
     updateAvailableLeads();
   }, [stats.assignable, updateAvailableLeads]);
 
   const handleManualVerification = async () => {
     try {
+      console.log("🔄 Manual verification triggered");
       await performVerification();
       await updateAvailableLeads();
     } catch (error) {
-      console.error("❌ Errore nella verifica manuale:", error);
+      console.error("❌ Error in manual verification:", error);
     }
   };
 
@@ -76,14 +63,12 @@ const LeadAssignmentWithExclusions = () => {
       return <Loader2 className="h-4 w-4 animate-spin text-primary" />;
     }
     
-    switch (verification.status) {
-      case 'completed':
-        return <CheckCircle className="h-4 w-4 text-green-600" />;
-      case 'error':
-        return <AlertCircle className="h-4 w-4 text-red-600" />;
-      default:
-        return null;
+    // Mostra successo se abbiamo stats validi
+    if (stats.total > 0) {
+      return <CheckCircle className="h-4 w-4 text-green-600" />;
     }
+    
+    return <AlertCircle className="h-4 w-4 text-orange-600" />;
   };
 
   const getVerificationStatusText = () => {
@@ -95,21 +80,18 @@ const LeadAssignmentWithExclusions = () => {
       return "Aggiornamento dati in corso...";
     }
     
-    switch (verification.status) {
-      case 'completed':
-        const baseText = `Ultima verifica: ${verification.updated} lead aggiornati su ${verification.totalChecked}`;
-        if (bypassTimeInterval) {
-          return `${baseText} (Bypass attivo: include lead recenti)`;
-        }
-        return baseText;
-      case 'error':
-        return "Errore nella verifica - riprova";
-      default:
-        return "Verifica assegnabilità non eseguita";
+    if (stats.total > 0) {
+      const baseText = `Sistema aggiornato - ${stats.total} lead totali, ${stats.assignable} assegnabili`;
+      if (bypassTimeInterval) {
+        return `${baseText} (Bypass attivo: include lead recenti)`;
+      }
+      return baseText;
     }
+    
+    return "In attesa di dati...";
   };
 
-  // Usa gli stats dal context globale come fonte primaria, ma considera anche gli aggiornamenti locali
+  // Usa gli stats dal context globale come fonte primaria
   const currentAvailableLeads = availableLeads || stats.assignable || 0;
   const isCountLoading = isVerifying || isRefreshing || isUpdatingCount;
 

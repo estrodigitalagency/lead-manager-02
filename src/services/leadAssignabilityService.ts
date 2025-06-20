@@ -1,6 +1,5 @@
 
 import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
 
 // Global refresh callback for triggering UI updates
 let globalRefreshCallback: (() => Promise<void>) | null = null;
@@ -29,7 +28,6 @@ export async function makeLeadAssignable(leadId: string) {
     }
 
     console.log(`Lead ${leadId} successfully made assignable and vendor removed`);
-    toast.success('Lead reso assegnabile e venditore rimosso con successo');
     
     if (globalRefreshCallback) {
       await globalRefreshCallback();
@@ -38,7 +36,6 @@ export async function makeLeadAssignable(leadId: string) {
     return { success: true };
   } catch (error) {
     console.error('Error in makeLeadAssignable:', error);
-    toast.error('Errore nel rendere il lead assegnabile');
     throw error;
   }
 }
@@ -114,12 +111,6 @@ export async function checkLeadsAssignability() {
     console.log(`✅ Optimized verification completed: ${updatedCount} leads updated`);
     console.log(`Available leads: ${availableLeads || 0}`);
     
-    if (updatedCount > 0) {
-      toast.success(`Verifica completata: ${updatedCount} lead aggiornati`);
-    } else {
-      toast.success('Verifica completata: tutti i lead erano già aggiornati');
-    }
-    
     // Trigger global refresh if callback is available
     if (globalRefreshCallback) {
       await globalRefreshCallback();
@@ -132,7 +123,6 @@ export async function checkLeadsAssignability() {
     };
   } catch (error) {
     console.error('❌ Error in optimized checkLeadsAssignability:', error);
-    toast.error('Errore durante la verifica dell\'assegnabilità');
     throw error;
   }
 }
