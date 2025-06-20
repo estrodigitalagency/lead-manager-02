@@ -44,29 +44,87 @@ serve(async (req) => {
       .select('*')
       .gte('created_at', duplicateCheckInterval)
       .or(`email.eq.${payload.email || 'NULL'},telefono.eq.${payload.telefono || 'NULL'},and(nome.eq.${payload.nome || 'NULL'},cognome.eq.${payload.cognome || 'NULL'})`)
-      .limit(1);
 
     if (checkError) {
       console.error('Error checking for duplicates:', checkError);
     } else if (existingLeads && existingLeads.length > 0) {
-      // Found a duplicate lead
-      const existingLead = existingLeads[0];
-      console.log(`Duplicate lead found! Returning existing lead with ID: ${existingLead.id}`);
-      console.log(`Existing lead: ${existingLead.nome} ${existingLead.cognome} - ${existingLead.email} - ${existingLead.telefono}`);
-      console.log(`New payload would have been: ${payload.nome} ${payload.cognome} - ${payload.email} - ${payload.telefono}`);
+      // NUOVA LOGICA: Controlla se esiste un lead con la stessa fonte
+      const sameSourceLead = existingLeads.find(lead => lead.fonte === payload.fonte);
       
-      return new Response(
-        JSON.stringify({ 
-          success: true, 
-          data: [existingLead],
-          duplicate: true,
-          message: 'Lead già esistente, restituito lead esistente'
-        }),
-        { 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 200 
+      if (sameSourceLead) {
+        // Found a duplicate lead with the same source - return existing lead
+        console.log(`Duplicate lead with same source found! Returning existing lead with ID: ${sameSourceLead.id}`);
+        console.log(`Existing lead: ${sameSourceLead.nome} ${sameSourceLead.cognome} - ${sameSourceLead.email} - ${sameSourceLead.telefono} - Source: ${sameSourceLead.fonte}`);
+        console.log(`New payload would have been: ${payload.nome} ${payload.cognome} - ${payload.email} - ${payload.telefono} - Source: ${payload.fonte}`);
+        
+        return new Response(
+          JSON.stringify({ 
+            success: true, 
+            data: [sameSourceLead],
+            duplicate: true,
+            message: 'Lead già esistente con la stessa fonte, restituito lead esistente'
+          }),
+          { 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            status: 200 
+          }
+        );
+      } else {
+        // Lead exists but with different source - allow registration with fonte update
+        const existingLead = existingLeads[0];
+        const currentSources = existingLead.fonte ? existingLead.fonte.split(', ') : [];
+        const newSource = payload.fonte;
+        
+        // Add new source if not already present
+        if (newSource && !currentSources.includes(newSource)) {
+          const updatedSources = [...currentSources, newSource].join(', ');
+          
+          // Update existing lead with new source
+          const { data: updatedLead, error: updateError } = await supabase
+            .from('lead_generation')
+            .update({ fonte: updatedSources })
+            .eq('id', existingLead.id)
+            .select()
+            .single();
+          
+          if (updateError) {
+            console.error('Error updating lead with new source:', updateError);
+            // Fallback to creating new lead if update fails
+          } else {
+            console.log(`Updated existing lead with new source. Lead ID: ${existingLead.id}`);
+            console.log(`Updated sources: ${updatedSources}`);
+            
+            return new Response(
+              JSON.stringify({ 
+                success: true, 
+                data: [updatedLead],
+                duplicate: false,
+                updated: true,
+                message: 'Lead esistente aggiornato con nuova fonte'
+              }),
+              { 
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                status: 200 
+              }
+            );
+          }
+        } else {
+          // Source already exists - return existing lead
+          console.log(`Lead exists with source already included. Returning existing lead with ID: ${existingLead.id}`);
+          return new Response(
+            JSON.stringify({ 
+              success: true, 
+              data: [existingLead],
+              duplicate: true,
+              message: 'Lead già esistente con fonte già inclusa'
+            }),
+            { 
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+              status: 200 
+            }
+          );
         }
-      );
+      }
     }
     
     console.log('No duplicates found, proceeding with lead insertion');
@@ -107,7 +165,7 @@ serve(async (req) => {
       }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 200 
+        status: 200
       }
     )
   } catch (error) {
