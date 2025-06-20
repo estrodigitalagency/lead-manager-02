@@ -121,26 +121,6 @@ const LeadAssignmentWithExclusions = () => {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4 sm:space-y-6">
-        {/* Mostra stato di verifica se in corso */}
-        {(isVerifying || isRefreshing) && (
-          <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-            <div className="flex items-center gap-3">
-              <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
-              <div>
-                <p className="text-blue-800 font-medium">
-                  {isVerifying ? "Verifica in corso..." : "Aggiornamento dati..."}
-                </p>
-                <p className="text-blue-600 text-sm">
-                  {isVerifying 
-                    ? "Controllo completo del database per garantire assegnazioni corrette"
-                    : "Sincronizzazione dei dati in tempo reale"
-                  }
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
-
         {/* CONTATORE LEAD DISPONIBILI senza refresh button */}
         <AvailableLeadsCounter
           availableLeads={currentAvailableLeads}
