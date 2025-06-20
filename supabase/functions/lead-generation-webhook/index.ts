@@ -70,64 +70,15 @@ serve(async (req) => {
           }
         );
       } else {
-        // Lead exists but with different source - allow registration with fonte update
+        // Lead exists but with different source - proceed to create new lead
         const existingLead = existingLeads[0];
-        const currentSources = existingLead.fonte ? existingLead.fonte.split(', ') : [];
-        const newSource = payload.fonte;
-        
-        // Add new source if not already present
-        if (newSource && !currentSources.includes(newSource)) {
-          const updatedSources = [...currentSources, newSource].join(', ');
-          
-          // Update existing lead with new source
-          const { data: updatedLead, error: updateError } = await supabase
-            .from('lead_generation')
-            .update({ fonte: updatedSources })
-            .eq('id', existingLead.id)
-            .select()
-            .single();
-          
-          if (updateError) {
-            console.error('Error updating lead with new source:', updateError);
-            // Fallback to creating new lead if update fails
-          } else {
-            console.log(`Updated existing lead with new source. Lead ID: ${existingLead.id}`);
-            console.log(`Updated sources: ${updatedSources}`);
-            
-            return new Response(
-              JSON.stringify({ 
-                success: true, 
-                data: [updatedLead],
-                duplicate: false,
-                updated: true,
-                message: 'Lead esistente aggiornato con nuova fonte'
-              }),
-              { 
-                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-                status: 200 
-              }
-            );
-          }
-        } else {
-          // Source already exists - return existing lead
-          console.log(`Lead exists with source already included. Returning existing lead with ID: ${existingLead.id}`);
-          return new Response(
-            JSON.stringify({ 
-              success: true, 
-              data: [existingLead],
-              duplicate: true,
-              message: 'Lead già esistente con fonte già inclusa'
-            }),
-            { 
-              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-              status: 200 
-            }
-          );
-        }
+        console.log(`Lead exists with different source. Existing: ${existingLead.fonte}, New: ${payload.fonte}`);
+        console.log(`Proceeding to create new lead with different source`);
+        // Continue to lead insertion below
       }
     }
     
-    console.log('No duplicates found, proceeding with lead insertion');
+    console.log('No duplicates found or different source detected, proceeding with lead insertion');
     
     // Insert the lead data to the lead_generation table
     const { data, error } = await supabase
