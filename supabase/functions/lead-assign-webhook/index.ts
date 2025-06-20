@@ -79,27 +79,51 @@ serve(async (req) => {
         body: JSON.stringify(webhookPayload)
       })
       
-      if (!response.ok) {
-        const errorBody = await response.text()
-        console.error('Webhook error response:', errorBody)
-        throw new Error(`Webhook responded with status ${response.status}: ${errorBody}`)
-      }
+      console.log('Webhook response status:', response.status);
+      console.log('Webhook response ok:', response.ok);
       
-      const webhookResponse = await response.json()
-      console.log('Webhook response:', webhookResponse)
-      
-      return new Response(
-        JSON.stringify({ 
-          success: true, 
-          message: 'Lead assignment data sent to webhook successfully',
-          webhookResponse,
-          payload: webhookPayload
-        }),
-        { 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 200 
+      // Make spesso restituisce status 200 o 202 anche quando non c'è JSON
+      if (response.ok) {
+        console.log('Webhook call successful');
+        
+        let responseData = null;
+        try {
+          const responseText = await response.text();
+          console.log('Webhook response text:', responseText);
+          
+          // Prova a parsare come JSON, ma non fallire se non è JSON
+          if (responseText && responseText.trim()) {
+            try {
+              responseData = JSON.parse(responseText);
+            } catch (parseError) {
+              console.log('Response is not JSON, treating as success');
+              responseData = { message: responseText || 'Success' };
+            }
+          } else {
+            responseData = { message: 'Success - empty response' };
+          }
+        } catch (textError) {
+          console.log('Could not read response text, treating as success');
+          responseData = { message: 'Success - no response body' };
         }
-      )
+        
+        return new Response(
+          JSON.stringify({ 
+            success: true, 
+            message: 'Lead assignment data sent to webhook successfully',
+            webhookResponse: responseData,
+            status: response.status
+          }),
+          { 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            status: 200 
+          }
+        )
+      } else {
+        const errorText = await response.text()
+        console.error('Webhook error response:', errorText)
+        throw new Error(`Webhook responded with status ${response.status}: ${errorText}`)
+      }
     } catch (webhookError) {
       console.error('Error sending data to webhook:', webhookError)
       return new Response(

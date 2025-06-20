@@ -258,20 +258,25 @@ export async function assignLeadsWithExclusions(data: LeadAssignmentData) {
           }
         });
 
+        console.log('Webhook response:', webhookResponse);
+        console.log('Webhook error:', webhookCallError);
+
+        // Gestione migliorata della risposta del webhook
         if (webhookCallError) {
           console.error('Webhook call error:', webhookCallError);
-          toast.error('Lead assegnati ma errore nell\'invio del webhook');
+          toast.warning('Lead assegnati correttamente, ma il webhook ha restituito un errore. Verifica su Make se i dati sono stati ricevuti.');
         } else {
-          console.log('Webhook called successfully:', webhookResponse);
-          toast.success('Lead assegnati e webhook inviato con successo');
+          // Considera il webhook come successo se non ci sono errori, anche se la risposta non è JSON
+          console.log('Webhook called successfully');
+          toast.success(`${actualAssignedCount} lead assegnati con successo e dati inviati al webhook`);
         }
       } catch (webhookError) {
         console.error('Error calling webhook:', webhookError);
-        toast.error('Lead assegnati ma errore nell\'invio del webhook');
+        toast.warning('Lead assegnati correttamente, ma errore di connessione al webhook. Verifica su Make se i dati sono stati ricevuti.');
       }
     } else {
       console.warn('No webhook URL configured');
-      toast.success('Lead assegnati (nessun webhook configurato)');
+      toast.success(`${actualAssignedCount} lead assegnati con successo (nessun webhook configurato)`);
     }
 
     // Record the assignment in history with new fields
