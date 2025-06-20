@@ -11,7 +11,6 @@ interface AvailableLeadsCounterProps {
   excludeFromIncluded: string[];
   bypassTimeInterval: boolean;
   isLoading?: boolean;
-  onRefresh?: () => void;
 }
 
 export function AvailableLeadsCounter({
@@ -21,8 +20,7 @@ export function AvailableLeadsCounter({
   includedSources,
   excludeFromIncluded,
   bypassTimeInterval,
-  isLoading = false,
-  onRefresh
+  isLoading = false
 }: AvailableLeadsCounterProps) {
   const [displayCount, setDisplayCount] = useState(availableLeads);
   const [isUpdating, setIsUpdating] = useState(false);
@@ -41,13 +39,6 @@ export function AvailableLeadsCounter({
                     includedSources.length > 0 || 
                     excludeFromIncluded.length > 0;
 
-  const handleRefresh = () => {
-    if (onRefresh && !isLoading) {
-      setIsUpdating(true);
-      onRefresh();
-    }
-  };
-
   return (
     <div className="p-4 border border-blue-200 rounded-lg bg-white">
       <div className="flex items-center justify-between mb-3">
@@ -59,16 +50,6 @@ export function AvailableLeadsCounter({
         </div>
         
         <div className="flex items-center gap-3">
-          {onRefresh && (
-            <button
-              onClick={handleRefresh}
-              disabled={isLoading || isUpdating}
-              className="p-1 rounded-full hover:bg-blue-100 transition-colors disabled:opacity-50"
-              title="Aggiorna conteggio"
-            >
-              <RefreshCw className={`h-4 w-4 text-blue-600 ${(isLoading || isUpdating) ? 'animate-spin' : ''}`} />
-            </button>
-          )}
           <div className={`text-3xl font-bold transition-all duration-200 ${
             isLoading || isUpdating ? 'text-blue-500' : 'text-blue-700'
           }`}>

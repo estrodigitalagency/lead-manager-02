@@ -110,7 +110,7 @@ const LeadAssignmentWithExclusions = () => {
             size="sm"
             onClick={handleManualVerification}
             disabled={isVerifying || isRefreshing}
-            className="flex items-center gap-2"
+            className="flex items-center gap-2 border-primary text-primary hover:bg-primary hover:text-white transition-colors"
           >
             <RefreshCcw className={`h-4 w-4 ${(isVerifying || isRefreshing) ? 'animate-spin' : ''}`} />
             Riverifica
@@ -141,7 +141,7 @@ const LeadAssignmentWithExclusions = () => {
           </div>
         )}
 
-        {/* CONTATORE LEAD DISPONIBILI con funzione di refresh */}
+        {/* CONTATORE LEAD DISPONIBILI senza refresh button */}
         <AvailableLeadsCounter
           availableLeads={currentAvailableLeads}
           sourceMode={sourceMode}
@@ -150,7 +150,6 @@ const LeadAssignmentWithExclusions = () => {
           excludeFromIncluded={excludeFromIncluded}
           bypassTimeInterval={bypassTimeInterval}
           isLoading={isCountLoading}
-          onRefresh={updateAvailableLeads}
         />
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
