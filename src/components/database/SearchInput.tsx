@@ -1,8 +1,9 @@
 
-import { useState } from "react";
+import React, { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Search, X } from "lucide-react";
+import { useDebounce } from "@/hooks/useDebounce";
 
 interface SearchInputProps {
   onSearch: (searchTerm: string) => void;
@@ -11,6 +12,14 @@ interface SearchInputProps {
 
 const SearchInput = ({ onSearch, placeholder = "Cerca per nome, numero o email..." }: SearchInputProps) => {
   const [searchTerm, setSearchTerm] = useState("");
+  
+  // Debounce search term per evitare troppe chiamate
+  const debouncedSearchTerm = useDebounce(searchTerm, 300);
+
+  // Effettua la ricerca quando il termine debounced cambia
+  React.useEffect(() => {
+    onSearch(debouncedSearchTerm);
+  }, [debouncedSearchTerm, onSearch]);
 
   const handleSearch = () => {
     onSearch(searchTerm);
@@ -18,7 +27,7 @@ const SearchInput = ({ onSearch, placeholder = "Cerca per nome, numero o email..
 
   const handleClear = () => {
     setSearchTerm("");
-    onSearch("");
+    // La ricerca vuota sarà triggerata dal debounce
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -30,8 +39,7 @@ const SearchInput = ({ onSearch, placeholder = "Cerca per nome, numero o email..
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setSearchTerm(value);
-    // Search in real-time as user types
-    onSearch(value);
+    // Non chiamiamo più onSearch direttamente - sarà gestito dal debounce
   };
 
   return (
