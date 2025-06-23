@@ -41,13 +41,6 @@ export function useRealTimeLeadCount({
         bypassTimeInterval
       });
 
-      // Verifica se ci sono filtri attivi
-      const hasFilters = excludedSources.length > 0 || 
-                        includedSources.length > 0 || 
-                        excludeFromIncluded.length > 0;
-
-      console.log(`📊 Has active filters: ${hasFilters}`);
-
       const newCount = await getAvailableLeadsCount(
         excludedSources,
         includedSources,

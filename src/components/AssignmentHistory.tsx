@@ -21,7 +21,6 @@ interface AssignmentRecord {
   campagna: string | null;
   fonti_escluse: string[] | null;
   fonti_incluse: string[] | null;
-  exclude_from_included: string[] | null;
   source_mode: string | null;
   bypass_time_interval: boolean | null;
 }
@@ -43,20 +42,7 @@ const AssignmentHistory = () => {
         if (error) {
           console.error("Failed to fetch assignment history:", error);
         } else {
-          // Mappiamo i dati per assicurarci che abbiano tutti i campi richiesti con tipizzazione corretta
-          const mappedData: AssignmentRecord[] = (data || []).map(record => ({
-            id: record.id,
-            assigned_at: record.assigned_at,
-            leads_count: record.leads_count,
-            venditore: record.venditore,
-            campagna: record.campagna,
-            fonti_escluse: record.fonti_escluse,
-            fonti_incluse: record.fonti_incluse,
-            exclude_from_included: record.exclude_from_included || null,
-            source_mode: record.source_mode,
-            bypass_time_interval: record.bypass_time_interval
-          }));
-          setHistory(mappedData);
+          setHistory(data || []);
         }
       } catch (error) {
         console.error("Failed to fetch assignment history:", error);
@@ -174,28 +160,10 @@ const AssignmentHistory = () => {
                       </div>
                     </div>
                   )}
-
-                  {/* Escluse dalle Incluse */}
-                  {record.exclude_from_included && record.exclude_from_included.length > 0 && (
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                        <Filter className="h-3 w-3" />
-                        <span>Escluse dalle Incluse:</span>
-                      </div>
-                      <div className="flex flex-wrap gap-1">
-                        {record.exclude_from_included.map((fonte, index) => (
-                          <Badge key={index} variant="outline" className="text-xs border-orange-300 text-orange-700 bg-orange-50">
-                            {fonte}
-                          </Badge>
-                        ))}
-                      </div>
-                    </div>
-                  )}
                   
                   {/* Se non ci sono filtri */}
                   {(!record.fonti_incluse || record.fonti_incluse.length === 0) && 
-                   (!record.fonti_escluse || record.fonti_escluse.length === 0) &&
-                   (!record.exclude_from_included || record.exclude_from_included.length === 0) && (
+                   (!record.fonti_escluse || record.fonti_escluse.length === 0) && (
                     <span className="text-xs text-muted-foreground">Nessun filtro</span>
                   )}
                 </div>
