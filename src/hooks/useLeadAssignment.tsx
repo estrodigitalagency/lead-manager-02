@@ -1,8 +1,10 @@
+
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { getAllFonti, getAllCampagne, getUniqueSourcesFromLeads, syncSourcesToDatabase } from "@/services/databaseService";
-import { assignLeadsWithExclusions, LeadAssignmentData, getAvailableLeadsCount } from "@/services/leadAssignmentService";
+import { assignLeadsWithExclusions, LeadAssignmentData } from "@/services/leadAssignmentService";
+import { useRealTimeLeadCount } from "./useRealTimeLeadCount";
 
 export function useLeadAssignment() {
   const [numLead, setNumLead] = useState("");
@@ -16,48 +18,31 @@ export function useLeadAssignment() {
   const [includedSources, setIncludedSources] = useState<string[]>([]);
   const [excludeFromIncluded, setExcludeFromIncluded] = useState<string[]>([]);
   const [sourceMode, setSourceMode] = useState<'exclude' | 'include'>('exclude');
-  const [availableLeads, setAvailableLeads] = useState(0);
   const [uniqueSources, setUniqueSources] = useState<string[]>([]);
   const [bypassTimeInterval, setBypassTimeInterval] = useState(false);
-  const [isUpdatingCount, setIsUpdatingCount] = useState(false);
 
-  // Memoized function for updating available leads
-  const updateAvailableLeads = useCallback(async () => {
-    setIsUpdatingCount(true);
-    try {
-      console.log(`🔄 Updating available leads count...`);
-      const count = await getAvailableLeadsCount(
-        excludedSources, 
-        includedSources, 
-        sourceMode, 
-        bypassTimeInterval,
-        excludeFromIncluded
-      );
-      console.log(`✅ Lead disponibili: ${count} (modalità ${sourceMode}, bypass: ${bypassTimeInterval})`);
-      setAvailableLeads(count);
-      return count;
-    } catch (error) {
-      console.error("❌ Error fetching available leads:", error);
-      setAvailableLeads(0);
-      return 0;
-    } finally {
-      setIsUpdatingCount(false);
-    }
-  }, [excludedSources, includedSources, sourceMode, bypassTimeInterval, excludeFromIncluded]);
+  // Usa il nuovo hook per il conteggio in tempo reale
+  const { 
+    count: availableLeads, 
+    isLoading: isUpdatingCount, 
+    refreshCount: updateAvailableLeads 
+  } = useRealTimeLeadCount({
+    excludedSources,
+    includedSources,
+    sourceMode,
+    bypassTimeInterval,
+    excludeFromIncluded
+  });
 
   useEffect(() => {
     initializeData();
   }, []);
 
-  // Immediate update when any filter changes
-  useEffect(() => {
-    console.log(`🔄 Filter changed, updating count immediately...`);
-    updateAvailableLeads();
-  }, [updateAvailableLeads]);
-
   const initializeData = async () => {
     try {
-      // Carica tutti i dati in parallelo senza verifica assegnabilità
+      console.log('🚀 Initializing lead assignment data...');
+      
+      // Carica tutti i dati in parallelo
       await Promise.all([
         fetchSalespeople(),
         fetchFonti(),
@@ -65,8 +50,9 @@ export function useLeadAssignment() {
         fetchUniqueSources()
       ]);
       
+      console.log('✅ Lead assignment data initialized');
     } catch (error) {
-      console.error("Errore nell'inizializzazione:", error);
+      console.error("❌ Error in initialization:", error);
       toast.error("Errore nel caricamento iniziale");
     }
   };
@@ -81,6 +67,7 @@ export function useLeadAssignment() {
       
       if (error) throw error;
       setSalespeople(data || []);
+      console.log(`📊 Loaded ${data?.length || 0} active salespeople`);
     } catch (error) {
       console.error("Error fetching salespeople:", error);
     }
@@ -91,6 +78,7 @@ export function useLeadAssignment() {
       await syncSourcesToDatabase();
       const data = await getAllFonti();
       setFonti(data);
+      console.log(`📊 Loaded ${data.length} fonti`);
     } catch (error) {
       console.error("Error fetching fonti:", error);
     }
@@ -100,6 +88,7 @@ export function useLeadAssignment() {
     try {
       const sources = await getUniqueSourcesFromLeads();
       setUniqueSources(sources);
+      console.log(`📊 Loaded ${sources.length} unique sources from leads`);
     } catch (error) {
       console.error("Error fetching unique sources:", error);
     }
@@ -109,6 +98,7 @@ export function useLeadAssignment() {
     try {
       const data = await getAllCampagne();
       setCampagne(data);
+      console.log(`📊 Loaded ${data.length} campagne`);
     } catch (error) {
       console.error("Error fetching campagne:", error);
     }
@@ -151,7 +141,7 @@ export function useLeadAssignment() {
   };
 
   const toggleSourceMode = (newMode: 'exclude' | 'include') => {
-    console.log(`🔄 Switching source mode to: ${newMode}`);
+    console.log(`🔄 Switching source mode from ${sourceMode} to ${newMode}`);
     setSourceMode(newMode);
     setExcludedSources([]);
     setIncludedSources([]);
@@ -160,7 +150,7 @@ export function useLeadAssignment() {
 
   const toggleBypassTimeInterval = () => {
     const newBypass = !bypassTimeInterval;
-    console.log(`🔄 Toggling bypass time interval to: ${newBypass}`);
+    console.log(`🔄 Toggling bypass time interval from ${bypassTimeInterval} to ${newBypass}`);
     setBypassTimeInterval(newBypass);
   };
 
@@ -178,7 +168,14 @@ export function useLeadAssignment() {
 
     setIsSubmitting(true);
     try {
-      console.log(`Tentativo di assegnazione di ${numLeadInt} lead a ${venditore} (bypass: ${bypassTimeInterval}, esclusi da inclusi: ${excludeFromIncluded.length})`);
+      console.log(`🎯 Starting assignment: ${numLeadInt} leads to ${venditore}`);
+      console.log(`📋 Assignment parameters:`, {
+        sourceMode,
+        excludedSources: excludedSources.length,
+        includedSources: includedSources.length,
+        excludeFromIncluded: excludeFromIncluded.length,
+        bypassTimeInterval
+      });
       
       await assignLeadsWithExclusions({
         numLead: numLeadInt,
@@ -201,10 +198,11 @@ export function useLeadAssignment() {
       // Refresh data
       fetchCampagne();
       updateAvailableLeads();
+      
+      console.log(`✅ Assignment completed successfully`);
     } catch (error) {
-      console.error("Error assigning leads:", error);
+      console.error("❌ Error assigning leads:", error);
       const errorMessage = error instanceof Error ? error.message : "Errore sconosciuto";
-      console.error("Dettaglio errore:", errorMessage);
       toast.error(`Errore nell'assegnazione dei lead: ${errorMessage}`);
     } finally {
       setIsSubmitting(false);

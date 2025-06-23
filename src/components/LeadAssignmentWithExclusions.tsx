@@ -42,9 +42,9 @@ const LeadAssignmentWithExclusions = () => {
     updateAvailableLeads
   } = useLeadAssignment();
 
-  // Sincronizza i lead disponibili con gli stats globali quando cambiano
+  // Refresh del conteggio quando cambiano gli stats globali
   useEffect(() => {
-    console.log("📊 Global stats changed, updating available leads:", stats.assignable);
+    console.log("📊 Global stats changed, triggering count refresh:", stats.assignable);
     updateAvailableLeads();
   }, [stats.assignable, updateAvailableLeads]);
 
@@ -63,7 +63,6 @@ const LeadAssignmentWithExclusions = () => {
       return <Loader2 className="h-4 w-4 animate-spin text-primary" />;
     }
     
-    // Mostra successo se abbiamo stats validi
     if (stats.total > 0) {
       return <CheckCircle className="h-4 w-4 text-green-600" />;
     }
@@ -91,8 +90,7 @@ const LeadAssignmentWithExclusions = () => {
     return "In attesa di dati...";
   };
 
-  // Usa gli stats dal context globale come fonte primaria
-  const currentAvailableLeads = availableLeads || stats.assignable || 0;
+  // Il conteggio corrente dei lead disponibili è gestito dal nuovo hook in tempo reale
   const isCountLoading = isVerifying || isRefreshing || isUpdatingCount;
 
   return (
@@ -121,9 +119,9 @@ const LeadAssignmentWithExclusions = () => {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4 sm:space-y-6">
-        {/* CONTATORE LEAD DISPONIBILI senza refresh button */}
+        {/* CONTATORE LEAD DISPONIBILI con aggiornamento in tempo reale */}
         <AvailableLeadsCounter
-          availableLeads={currentAvailableLeads}
+          availableLeads={availableLeads}
           sourceMode={sourceMode}
           excludedSources={excludedSources}
           includedSources={includedSources}
@@ -144,7 +142,7 @@ const LeadAssignmentWithExclusions = () => {
             salespeople={salespeople}
             campagne={campagne}
             isSubmitting={isSubmitting || isVerifying || isRefreshing}
-            availableLeads={currentAvailableLeads}
+            availableLeads={availableLeads}
             onAssign={handleAssign}
             showButton={false}
           />
@@ -161,7 +159,7 @@ const LeadAssignmentWithExclusions = () => {
           salespeople={salespeople}
           campagne={campagne}
           isSubmitting={isSubmitting || isVerifying || isRefreshing}
-          availableLeads={currentAvailableLeads}
+          availableLeads={availableLeads}
           onAssign={handleAssign}
           showOnlyCampaign={true}
           showButton={false}
@@ -201,7 +199,7 @@ const LeadAssignmentWithExclusions = () => {
           salespeople={salespeople}
           campagne={campagne}
           isSubmitting={isSubmitting || isVerifying || isRefreshing}
-          availableLeads={currentAvailableLeads}
+          availableLeads={availableLeads}
           onAssign={handleAssign}
           showOnlyButton={true}
         />
