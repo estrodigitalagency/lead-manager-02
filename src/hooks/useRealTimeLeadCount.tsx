@@ -68,6 +68,7 @@ export function useRealTimeLeadCount({
 
   // Aggiorna il conteggio ogni volta che cambiano i parametri
   useEffect(() => {
+    console.log(`🔄 Filter parameters changed, updating count...`);
     updateCount();
     
     // Cleanup function per annullare richieste in corso
@@ -80,6 +81,7 @@ export function useRealTimeLeadCount({
 
   // Manual refresh function
   const refreshCount = useCallback(() => {
+    console.log(`🔄 Manual refresh triggered`);
     updateCount();
   }, [updateCount]);
 

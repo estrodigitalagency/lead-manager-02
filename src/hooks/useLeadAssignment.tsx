@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -21,7 +20,7 @@ export function useLeadAssignment() {
   const [uniqueSources, setUniqueSources] = useState<string[]>([]);
   const [bypassTimeInterval, setBypassTimeInterval] = useState(false);
 
-  // Usa il nuovo hook per il conteggio in tempo reale
+  // Usa il nuovo hook per il conteggio in tempo reale con tutti i parametri
   const { 
     count: availableLeads, 
     isLoading: isUpdatingCount, 
