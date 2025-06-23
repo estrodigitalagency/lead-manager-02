@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { Database } from "@/integrations/supabase/types";
 
@@ -137,6 +138,43 @@ export const getAvailableLeadsCount = async (
       bypassTimeInterval
     });
 
+    // Prima verifichiamo il conteggio totale dei lead nel database
+    const { count: totalLeads, error: totalError } = await supabase
+      .from('lead_generation')
+      .select('*', { count: 'exact' });
+
+    if (totalError) {
+      console.error("Error fetching total leads:", totalError);
+    } else {
+      console.log(`📊 Total leads in database: ${totalLeads || 0}`);
+    }
+
+    // Poi verifichiamo quanti sono assignable=true
+    const { count: assignableLeads, error: assignableError } = await supabase
+      .from('lead_generation')
+      .select('*', { count: 'exact' })
+      .eq('assignable', true);
+
+    if (assignableError) {
+      console.error("Error fetching assignable leads:", assignableError);
+    } else {
+      console.log(`📊 Assignable leads: ${assignableLeads || 0}`);
+    }
+
+    // Poi verifichiamo quanti hanno venditore=null
+    const { count: unassignedLeads, error: unassignedError } = await supabase
+      .from('lead_generation')
+      .select('*', { count: 'exact' })
+      .eq('assignable', true)
+      .eq('venditore', null);
+
+    if (unassignedError) {
+      console.error("Error fetching unassigned leads:", unassignedError);
+    } else {
+      console.log(`📊 Unassigned assignable leads: ${unassignedLeads || 0}`);
+    }
+
+    // Ora costruiamo la query finale
     let query = supabase
       .from('lead_generation')
       .select('*', { count: 'exact' })
@@ -144,19 +182,23 @@ export const getAvailableLeadsCount = async (
       .eq('assignable', true);
 
     if (bypassTimeInterval) {
-      console.log("Bypassing time interval for lead count.");
+      console.log("🚀 Bypassing time interval for lead count.");
     } else {
       const sevenDaysAgo = new Date();
       sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+      console.log(`📅 Filtering leads created after: ${sevenDaysAgo.toISOString()}`);
       query = query.gte('created_at', sevenDaysAgo.toISOString());
     }
 
     if (sourceMode === 'exclude' && excludedSources.length > 0) {
+      console.log(`🚫 Excluding sources: ${excludedSources.join(', ')}`);
       query = query.not('fonte', 'in', excludedSources);
     } else if (sourceMode === 'include' && includedSources.length > 0) {
+      console.log(`✅ Including only sources: ${includedSources.join(', ')}`);
       query = query.in('fonte', includedSources);
 
       if (excludeFromIncluded.length > 0) {
+        console.log(`➖ Excluding from included sources: ${excludeFromIncluded.join(', ')}`);
         query = query.not('fonte', 'in', excludeFromIncluded);
       }
     }
@@ -164,14 +206,14 @@ export const getAvailableLeadsCount = async (
     const { count, error } = await query;
 
     if (error) {
-      console.error("Error fetching available leads count:", error);
+      console.error("❌ Error fetching available leads count:", error);
       return 0;
     }
 
-    console.log(`📊 Available leads count result: ${count || 0}`);
+    console.log(`📊 Final available leads count result: ${count || 0}`);
     return count || 0;
   } catch (error) {
-    console.error("Error in getAvailableLeadsCount:", error);
+    console.error("❌ Error in getAvailableLeadsCount:", error);
     return 0;
   }
 };
