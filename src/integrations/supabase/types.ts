@@ -15,6 +15,7 @@ export type Database = {
           bypass_time_interval: boolean | null
           campagna: string | null
           created_at: string
+          exclude_from_included: string[] | null
           fonti_escluse: string[] | null
           fonti_incluse: string[] | null
           id: string
@@ -27,6 +28,7 @@ export type Database = {
           bypass_time_interval?: boolean | null
           campagna?: string | null
           created_at?: string
+          exclude_from_included?: string[] | null
           fonti_escluse?: string[] | null
           fonti_incluse?: string[] | null
           id?: string
@@ -39,6 +41,7 @@ export type Database = {
           bypass_time_interval?: boolean | null
           campagna?: string | null
           created_at?: string
+          exclude_from_included?: string[] | null
           fonti_escluse?: string[] | null
           fonti_incluse?: string[] | null
           id?: string

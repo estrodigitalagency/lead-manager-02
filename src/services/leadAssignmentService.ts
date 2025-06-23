@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { getLeadStatus } from "@/utils/leadStatus";
@@ -11,7 +10,7 @@ export interface LeadAssignmentData {
   includedSources?: string[];
   sourceMode?: 'exclude' | 'include';
   bypassTimeInterval?: boolean;
-  excludeFromIncluded?: string[]; // Nuova proprietà per escludere da fonti incluse
+  excludeFromIncluded?: string[];
 }
 
 export async function assignLeadsWithExclusions(data: LeadAssignmentData) {
@@ -279,7 +278,7 @@ export async function assignLeadsWithExclusions(data: LeadAssignmentData) {
       toast.success(`${actualAssignedCount} lead assegnati con successo (nessun webhook configurato)`);
     }
 
-    // Record the assignment in history with new fields
+    // Record the assignment in history with all fields including the new one
     const { error: historyError } = await supabase
       .from('assignment_history')
       .insert({
@@ -288,6 +287,7 @@ export async function assignLeadsWithExclusions(data: LeadAssignmentData) {
         campagna: campagna || null,
         fonti_escluse: excludedSources.length > 0 ? excludedSources : null,
         fonti_incluse: includedSources.length > 0 ? includedSources : null,
+        exclude_from_included: excludeFromIncluded.length > 0 ? excludeFromIncluded : null,
         source_mode: sourceMode,
         bypass_time_interval: bypassTimeInterval
       });
