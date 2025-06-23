@@ -38,76 +38,47 @@ serve(async (req) => {
     
     console.log(`Checking for duplicates within the last ${duplicateCheckMinutes} minutes (since ${duplicateCheckInterval})`);
     
-    // Check for existing leads with EXACTLY the same nome, cognome, email, telefono AND fonte within the specified time interval
-    let duplicateQuery = supabase
+    // Check for existing leads with same email, phone, or name+surname within the specified time interval
+    const { data: existingLeads, error: checkError } = await supabase
       .from('lead_generation')
       .select('*')
-      .gte('created_at', duplicateCheckInterval);
-
-    // Build the AND conditions for exact match on all fields
-    const conditions = [];
-    
-    if (payload.nome) {
-      conditions.push(`nome.eq.${payload.nome}`);
-    } else {
-      conditions.push('nome.is.null');
-    }
-    
-    if (payload.cognome) {
-      conditions.push(`cognome.eq.${payload.cognome}`);
-    } else {
-      conditions.push('cognome.is.null');
-    }
-    
-    if (payload.email) {
-      conditions.push(`email.eq.${payload.email}`);
-    } else {
-      conditions.push('email.is.null');
-    }
-    
-    if (payload.telefono) {
-      conditions.push(`telefono.eq.${payload.telefono}`);
-    } else {
-      conditions.push('telefono.is.null');
-    }
-    
-    if (payload.fonte) {
-      conditions.push(`fonte.eq.${payload.fonte}`);
-    } else {
-      conditions.push('fonte.is.null');
-    }
-
-    // Apply all conditions with AND logic
-    if (conditions.length > 0) {
-      duplicateQuery = duplicateQuery.and(conditions.join(','));
-    }
-
-    const { data: existingLeads, error: checkError } = await duplicateQuery;
+      .gte('created_at', duplicateCheckInterval)
+      .or(`email.eq.${payload.email || 'NULL'},telefono.eq.${payload.telefono || 'NULL'},and(nome.eq.${payload.nome || 'NULL'},cognome.eq.${payload.cognome || 'NULL'})`)
 
     if (checkError) {
       console.error('Error checking for duplicates:', checkError);
     } else if (existingLeads && existingLeads.length > 0) {
-      // Found an exact duplicate (all fields including fonte are identical)
-      const existingLead = existingLeads[0];
-      console.log(`Exact duplicate found! Returning existing lead with ID: ${existingLead.id}`);
-      console.log(`Existing lead: ${existingLead.nome} ${existingLead.cognome} - ${existingLead.email} - ${existingLead.telefono} - Source: ${existingLead.fonte}`);
-      console.log(`New payload would have been: ${payload.nome} ${payload.cognome} - ${payload.email} - ${payload.telefono} - Source: ${payload.fonte}`);
+      // NUOVA LOGICA: Controlla se esiste un lead con la stessa fonte
+      const sameSourceLead = existingLeads.find(lead => lead.fonte === payload.fonte);
       
-      return new Response(
-        JSON.stringify({ 
-          success: true, 
-          data: [existingLead],
-          duplicate: true,
-          message: 'Lead già esistente con tutti i campi identici, restituito lead esistente'
-        }),
-        { 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 200 
-        }
-      );
+      if (sameSourceLead) {
+        // Found a duplicate lead with the same source - return existing lead
+        console.log(`Duplicate lead with same source found! Returning existing lead with ID: ${sameSourceLead.id}`);
+        console.log(`Existing lead: ${sameSourceLead.nome} ${sameSourceLead.cognome} - ${sameSourceLead.email} - ${sameSourceLead.telefono} - Source: ${sameSourceLead.fonte}`);
+        console.log(`New payload would have been: ${payload.nome} ${payload.cognome} - ${payload.email} - ${payload.telefono} - Source: ${payload.fonte}`);
+        
+        return new Response(
+          JSON.stringify({ 
+            success: true, 
+            data: [sameSourceLead],
+            duplicate: true,
+            message: 'Lead già esistente con la stessa fonte, restituito lead esistente'
+          }),
+          { 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            status: 200 
+          }
+        );
+      } else {
+        // Lead exists but with different source - proceed to create new lead
+        const existingLead = existingLeads[0];
+        console.log(`Lead exists with different source. Existing: ${existingLead.fonte}, New: ${payload.fonte}`);
+        console.log(`Proceeding to create new lead with different source`);
+        // Continue to lead insertion below
+      }
     }
     
-    console.log('No exact duplicates found, proceeding with lead insertion');
+    console.log('No duplicates found or different source detected, proceeding with lead insertion');
     
     // Insert the lead data to the lead_generation table
     const { data, error } = await supabase
