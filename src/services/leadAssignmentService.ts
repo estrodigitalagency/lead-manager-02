@@ -1,5 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
-import { Database } from "@/integrations/supabase/types/supabase";
+import { Database } from "@/integrations/supabase/types";
 
 export interface LeadAssignmentData {
   numLead: number;
@@ -128,36 +128,50 @@ export const getAvailableLeadsCount = async (
   bypassTimeInterval: boolean,
   excludeFromIncluded: string[]
 ): Promise<number> => {
-  let query = supabase
-    .from('lead_generation')
-    .select('*', { count: 'exact' })
-    .eq('venditore', null)
-    .eq('assignable', true);
+  try {
+    console.log(`🔍 Getting available leads count with filters:`, {
+      sourceMode,
+      excludedSources: excludedSources.length,
+      includedSources: includedSources.length,
+      excludeFromIncluded: excludeFromIncluded.length,
+      bypassTimeInterval
+    });
 
-  if (bypassTimeInterval) {
-    console.log("Bypassing time interval for lead count.");
-  } else {
-    const sevenDaysAgo = new Date();
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-    query = query.gte('created_at', sevenDaysAgo.toISOString());
-  }
+    let query = supabase
+      .from('lead_generation')
+      .select('*', { count: 'exact' })
+      .eq('venditore', null)
+      .eq('assignable', true);
 
-  if (sourceMode === 'exclude' && excludedSources.length > 0) {
-    query = query.not('fonte', 'in', excludedSources);
-  } else if (sourceMode === 'include' && includedSources.length > 0) {
-    query = query.in('fonte', includedSources);
-
-    if (excludeFromIncluded.length > 0) {
-      query = query.not('fonte', 'in', excludeFromIncluded);
+    if (bypassTimeInterval) {
+      console.log("Bypassing time interval for lead count.");
+    } else {
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+      query = query.gte('created_at', sevenDaysAgo.toISOString());
     }
-  }
 
-  const { count, error } = await query;
+    if (sourceMode === 'exclude' && excludedSources.length > 0) {
+      query = query.not('fonte', 'in', excludedSources);
+    } else if (sourceMode === 'include' && includedSources.length > 0) {
+      query = query.in('fonte', includedSources);
 
-  if (error) {
-    console.error("Error fetching available leads count:", error);
+      if (excludeFromIncluded.length > 0) {
+        query = query.not('fonte', 'in', excludeFromIncluded);
+      }
+    }
+
+    const { count, error } = await query;
+
+    if (error) {
+      console.error("Error fetching available leads count:", error);
+      return 0;
+    }
+
+    console.log(`📊 Available leads count result: ${count || 0}`);
+    return count || 0;
+  } catch (error) {
+    console.error("Error in getAvailableLeadsCount:", error);
     return 0;
   }
-
-  return count || 0;
 };

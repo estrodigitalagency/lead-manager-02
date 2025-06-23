@@ -43,7 +43,12 @@ const AssignmentHistory = () => {
         if (error) {
           console.error("Failed to fetch assignment history:", error);
         } else {
-          setHistory(data || []);
+          // Mappiamo i dati per assicurarci che abbiano tutti i campi richiesti
+          const mappedData = (data || []).map(record => ({
+            ...record,
+            exclude_from_included: record.exclude_from_included || null
+          }));
+          setHistory(mappedData);
         }
       } catch (error) {
         console.error("Failed to fetch assignment history:", error);
