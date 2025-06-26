@@ -100,7 +100,7 @@ serve(async (req) => {
         campagna,
         notes,
         stato: 'nuovo',
-        assegnato: false,
+        assignable: false,
         booked_call: 'NO'
       })
       .select()
