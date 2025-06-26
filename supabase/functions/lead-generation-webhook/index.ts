@@ -1,132 +1,142 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
-// Set up CORS headers for the function
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
 serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders })
+    return new Response('ok', { headers: corsHeaders })
   }
 
   try {
-    // Create a Supabase client
-    const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? ''
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-    const supabase = createClient(supabaseUrl, supabaseKey)
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    )
 
-    // Parse webhook payload
-    const payload = await req.json()
-    console.log('Received lead generation webhook payload:', payload)
+    const { nome, cognome, email, telefono, fonte, campagna, notes } = await req.json()
+
+    console.log('Received lead data:', { nome, cognome, email, telefono, fonte, campagna, notes })
+
+    // Get duplicate check settings
+    const { data: settings, error: settingsError } = await supabase
+      .from('system_settings')
+      .select('key, value')
+      .in('key', ['duplicate_check_value', 'duplicate_check_unit'])
+
+    if (settingsError) {
+      console.log('Error fetching settings, using defaults:', settingsError)
+    }
+
+    let duplicateCheckMinutes = 5; // Default fallback
     
-    // Determine if booked_call is true, converting any string representation to proper format
-    const isBooked = typeof payload.booked_call === 'string'
-      ? payload.booked_call.toUpperCase() === 'SI' || payload.booked_call === 'true'
-      : !!payload.booked_call
+    if (settings && settings.length > 0) {
+      const valueRow = settings.find(s => s.key === 'duplicate_check_value');
+      const unitRow = settings.find(s => s.key === 'duplicate_check_unit');
+      
+      const value = valueRow ? parseInt(valueRow.value) : 5;
+      const unit = unitRow ? unitRow.value : 'minutes';
+      
+      duplicateCheckMinutes = unit === 'hours' ? value * 60 : value;
+    }
+
+    console.log('Using duplicate check interval:', duplicateCheckMinutes, 'minutes')
+
+    // Check for potential duplicates in the configured time window
+    const cutoffTime = new Date(Date.now() - (duplicateCheckMinutes * 60 * 1000)).toISOString()
     
-    // Use provided created_at date or default to now
-    const createdAt = payload.created_at ? new Date(payload.created_at).toISOString() : new Date().toISOString();
-    
-    // Get duplicate check interval from environment variable (default 5 minutes)
-    const duplicateCheckMinutes = parseInt(Deno.env.get('DUPLICATE_CHECK_MINUTES') || '5');
-    const duplicateCheckInterval = new Date(Date.now() - duplicateCheckMinutes * 60 * 1000).toISOString();
-    
-    console.log(`Checking for duplicates within the last ${duplicateCheckMinutes} minutes (since ${duplicateCheckInterval})`);
-    
-    // Check for existing leads with same email, phone, or name+surname within the specified time interval
-    const { data: existingLeads, error: checkError } = await supabase
+    const { data: existingLeads, error: searchError } = await supabase
       .from('lead_generation')
       .select('*')
-      .gte('created_at', duplicateCheckInterval)
-      .or(`email.eq.${payload.email || 'NULL'},telefono.eq.${payload.telefono || 'NULL'},and(nome.eq.${payload.nome || 'NULL'},cognome.eq.${payload.cognome || 'NULL'})`)
+      .gte('created_at', cutoffTime)
+      .or(`email.eq.${email},telefono.eq.${telefono},and(nome.eq.${nome},cognome.eq.${cognome})`)
 
-    if (checkError) {
-      console.error('Error checking for duplicates:', checkError);
-    } else if (existingLeads && existingLeads.length > 0) {
-      // NUOVA LOGICA: Controlla se esiste un lead con la stessa fonte
-      const sameSourceLead = existingLeads.find(lead => lead.fonte === payload.fonte);
-      
-      if (sameSourceLead) {
-        // Found a duplicate lead with the same source - return existing lead
-        console.log(`Duplicate lead with same source found! Returning existing lead with ID: ${sameSourceLead.id}`);
-        console.log(`Existing lead: ${sameSourceLead.nome} ${sameSourceLead.cognome} - ${sameSourceLead.email} - ${sameSourceLead.telefono} - Source: ${sameSourceLead.fonte}`);
-        console.log(`New payload would have been: ${payload.nome} ${payload.cognome} - ${payload.email} - ${payload.telefono} - Source: ${payload.fonte}`);
-        
-        return new Response(
-          JSON.stringify({ 
-            success: true, 
-            data: [sameSourceLead],
-            duplicate: true,
-            message: 'Lead già esistente con la stessa fonte, restituito lead esistente'
-          }),
-          { 
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-            status: 200 
-          }
-        );
-      } else {
-        // Lead exists but with different source - proceed to create new lead
-        const existingLead = existingLeads[0];
-        console.log(`Lead exists with different source. Existing: ${existingLead.fonte}, New: ${payload.fonte}`);
-        console.log(`Proceeding to create new lead with different source`);
-        // Continue to lead insertion below
-      }
+    if (searchError) {
+      console.error('Error searching for duplicates:', searchError)
+      throw searchError
     }
-    
-    console.log('No duplicates found or different source detected, proceeding with lead insertion');
-    
-    // Insert the lead data to the lead_generation table
-    const { data, error } = await supabase
+
+    console.log('Found potential duplicates:', existingLeads?.length || 0)
+
+    if (existingLeads && existingLeads.length > 0) {
+      for (const lead of existingLeads) {
+        console.log('Checking potential duplicate:', lead)
+        
+        // Check if it's a true duplicate (same source)
+        if (lead.fonte === fonte) {
+          console.log('Found duplicate with same source, returning existing lead')
+          return new Response(
+            JSON.stringify({
+              success: true,
+              duplicate: true,
+              lead: lead,
+              message: `Lead duplicato trovato (stessa fonte: ${fonte})`
+            }),
+            {
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+              status: 200,
+            },
+          )
+        }
+      }
+      
+      // Potential duplicate but different source - insert new lead
+      console.log('Potential duplicate found but different source, creating new lead')
+    }
+
+    // No duplicates found or different source - insert new lead
+    const { data: newLead, error: insertError } = await supabase
       .from('lead_generation')
       .insert({
-        nome: payload.nome || '',
-        cognome: payload.cognome || '',
-        email: payload.email || '',
-        telefono: payload.telefono || '',
-        campagna: payload.campagna || null,
-        fonte: payload.fonte || null,
-        booked_call: isBooked ? 'SI' : 'NO',
-        assignable: isBooked,
-        stato: isBooked ? 'prenotato' : 'nuovo',
-        created_at: createdAt
+        nome,
+        cognome,
+        email,
+        telefono,
+        fonte,
+        campagna,
+        notes,
+        stato: 'nuovo',
+        assegnato: false,
+        booked_call: 'NO'
       })
       .select()
+      .single()
 
-    if (error) {
-      console.error('Error inserting lead data:', error)
-      return new Response(JSON.stringify({ error: error.message }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 400
-      })
+    if (insertError) {
+      console.error('Error inserting lead:', insertError)
+      throw insertError
     }
 
-    console.log('Lead successfully inserted:', data);
+    console.log('Successfully created new lead:', newLead)
 
     return new Response(
-      JSON.stringify({ 
-        success: true, 
-        data,
+      JSON.stringify({
+        success: true,
         duplicate: false,
-        message: 'Nuovo lead inserito con successo'
+        lead: newLead,
+        message: 'Lead inserito con successo'
       }),
-      { 
+      {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 200
-      }
+        status: 200,
+      },
     )
+
   } catch (error) {
-    console.error('Webhook processing error:', error)
+    console.error('Error processing lead:', error)
     return new Response(
-      JSON.stringify({ error: 'Internal Server Error' }),
-      { 
+      JSON.stringify({ 
+        success: false, 
+        error: error.message 
+      }),
+      {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 500
-      }
+        status: 500,
+      },
     )
   }
 })
