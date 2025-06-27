@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { Lead } from "@/types/lead";
 import { LeadLavorato } from "@/types/leadLavorato";
@@ -118,7 +119,7 @@ export async function getPaginatedData<T>(
     console.log(`Paginated ${tableName} results: page ${page}, size ${pageSize}, total ${total}`);
     
     return {
-      data: data || [],
+      data: (data || []) as T[],
       total,
       page,
       pageSize,
