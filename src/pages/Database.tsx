@@ -23,10 +23,11 @@ import { LeadLavorato } from "@/types/leadLavorato";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useAssignabilityVerification } from "@/hooks/useAssignabilityVerification";
 import { useLeadSync } from "@/contexts/LeadSyncContext";
+import { useServerPagination } from "@/hooks/useServerPagination";
 import DatabaseAddRecordDialog from "@/components/settings/DatabaseAddRecordDialog";
 import DatabaseAddLavoratiDialog from "@/components/settings/DatabaseAddLavoratiDialog";
 import DatabaseImportDialog from "@/components/settings/DatabaseImportDialog";
-import { filterLeads, getRecentData } from "@/services/databaseService";
+import { getPaginatedData } from "@/services/databaseService";
 import DatabaseTableContainer from "@/components/database/DatabaseTableContainer";
 import LeadsTable from "@/components/database/LeadsTable";
 import BookingsTable from "@/components/database/BookingsTable";
@@ -55,12 +56,12 @@ const DatabasePage = () => {
     isVerifying
   } = useAssignabilityVerification();
 
-  const [leads, setLeads] = useState<Lead[]>([]);
+  // Stati per dati non paginati (per compatibilità con i componenti esistenti)
   const [bookings, setBookings] = useState<CalendlyBooking[]>([]);
   const [leadLavorati, setLeadLavorati] = useState<LeadLavorato[]>([]);
-  const [isLoadingLeads, setIsLoadingLeads] = useState(true);
   const [isLoadingBookings, setIsLoadingBookings] = useState(true);
   const [isLoadingLeadLavorati, setIsLoadingLeadLavorati] = useState(true);
+  
   const [recordToDelete, setRecordToDelete] = useState<{ id: string, type: 'lead' | 'booking' | 'lavorato' } | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isAddRecordDialogOpen, setIsAddRecordDialogOpen] = useState(false);
@@ -73,27 +74,17 @@ const DatabasePage = () => {
   const [selectedBookings, setSelectedBookings] = useState<string[]>([]);
   const [selectedLavorati, setSelectedLavorati] = useState<string[]>([]);
 
-  const fetchLeads = async () => {
-    setIsLoadingLeads(true);
-    try {
-      const data = Object.keys(activeFilters).length > 0 
-        ? await filterLeads('lead_generation' as ValidTableName, activeFilters)
-        : await getRecentData('lead_generation' as ValidTableName, 1000);
-      setLeads((data || []) as Lead[]);
-    } catch (error) {
-      console.error("Errore nel caricamento dei lead:", error);
-    } finally {
-      setIsLoadingLeads(false);
-    }
-  };
-
+  // Funzioni per caricare bookings e lead lavorati (manteniamo la logica esistente)
   const fetchBookings = async () => {
     setIsLoadingBookings(true);
     try {
-      const data = Object.keys(activeFilters).length > 0 
-        ? await filterLeads('booked_call' as ValidTableName, activeFilters)
-        : await getRecentData('booked_call' as ValidTableName, 1000);
-      setBookings((data || []) as CalendlyBooking[]);
+      const result = await getPaginatedData<CalendlyBooking>(
+        'booked_call',
+        1,
+        1000, // Carica molti record per ora, poi si può paginare anche questi
+        activeFilters
+      );
+      setBookings(result.data);
     } catch (error) {
       console.error("Errore nel caricamento delle prenotazioni:", error);
     } finally {
@@ -104,10 +95,13 @@ const DatabasePage = () => {
   const fetchLeadLavorati = async () => {
     setIsLoadingLeadLavorati(true);
     try {
-      const data = Object.keys(activeFilters).length > 0 
-        ? await filterLeads('lead_lavorati' as ValidTableName, activeFilters)
-        : await getRecentData('lead_lavorati' as ValidTableName, 1000);
-      setLeadLavorati((data || []) as LeadLavorato[]);
+      const result = await getPaginatedData<LeadLavorato>(
+        'lead_lavorati',
+        1,
+        1000, // Carica molti record per ora, poi si può paginare anche questi
+        activeFilters
+      );
+      setLeadLavorati(result.data);
     } catch (error) {
       console.error("Errore nel caricamento dei lead lavorati:", error);
     } finally {
@@ -132,9 +126,8 @@ const DatabasePage = () => {
       try {
         console.log("🔍 Avvio verifica assegnabilità rapida...");
         
-        // PRIMA carica i dati immediatamente per UI reattiva
+        // PRIMA carica i dati immediatamente per UI reattiva (solo per bookings e lead lavorati)
         const initialDataLoad = Promise.all([
-          fetchLeads(),
           fetchBookings(),
           fetchLeadLavorati()
         ]);
@@ -149,7 +142,6 @@ const DatabasePage = () => {
         verificationPromise.then(async () => {
           console.log("✅ Verifica completata, aggiornamento finale dati...");
           await Promise.all([
-            fetchLeads(),
             fetchBookings(),
             fetchLeadLavorati()
           ]);
@@ -161,7 +153,6 @@ const DatabasePage = () => {
         console.error("❌ Errore durante l'inizializzazione:", error);
         // Fallback: carica i dati anche se la verifica fallisce
         Promise.all([
-          fetchLeads(),
           fetchBookings(),
           fetchLeadLavorati()
         ]);
@@ -175,7 +166,6 @@ const DatabasePage = () => {
   useEffect(() => {
     if (verification.status !== 'idle') {
       Promise.all([
-        fetchLeads(),
         fetchBookings(),
         fetchLeadLavorati()
       ]);
@@ -193,7 +183,6 @@ const DatabasePage = () => {
     try {
       // Aggiorna subito i dati per feedback immediato
       await Promise.all([
-        fetchLeads(),
         fetchBookings(),
         fetchLeadLavorati()
       ]);
@@ -204,7 +193,6 @@ const DatabasePage = () => {
       
       // Ricarica finale dopo verifica
       await Promise.all([
-        fetchLeads(),
         fetchBookings(),
         fetchLeadLavorati()
       ]);
@@ -244,16 +232,14 @@ const DatabasePage = () => {
             : "Lead lavorato eliminato con successo"
       );
       
-      if (type === 'lead') {
-        setLeads(leads.filter(lead => lead.id !== id));
-        setSelectedLeads(selectedLeads.filter(item => item !== id));
-      } else if (type === 'booking') {
+      if (type === 'booking') {
         setBookings(bookings.filter(booking => booking.id !== id));
         setSelectedBookings(selectedBookings.filter(item => item !== id));
       } else if (type === 'lavorato') {
         setLeadLavorati(leadLavorati.filter(lead => lead.id !== id));
         setSelectedLavorati(selectedLavorati.filter(item => item !== id));
       }
+      // Per i lead, il refresh avverrà automaticamente tramite il hook useServerPagination
       
       // Trigger global refresh dopo eliminazione
       await refreshAllData();
@@ -269,8 +255,6 @@ const DatabasePage = () => {
   const handleManualLeadCheck = async () => {
     try {
       await performVerification();
-      // Ricarica i lead dopo la verifica
-      await fetchLeads();
     } catch (error) {
       console.error("Errore durante il controllo dei lead:", error);
     }
@@ -376,7 +360,7 @@ const DatabasePage = () => {
             title="Lead Database"
             description="Tutti i lead generati tramite form o webhook"
             tableName="lead_generation"
-            allItems={leads}
+            allItems={[]} // Non più necessario, i lead sono gestiti internamente
             selectedItems={selectedLeads}
             onSelectionChange={setSelectedLeads}
             onApplyFilters={handleApplyFilters}
@@ -385,11 +369,10 @@ const DatabasePage = () => {
             onRefresh={handleRefresh}
           >
             <LeadsTable 
-              leads={leads}
-              isLoading={isLoadingLeads}
               selectedItems={selectedLeads}
               onSelectionChange={setSelectedLeads}
               onDelete={(id) => handleDeleteClick(id, 'lead')}
+              filters={activeFilters}
             />
           </DatabaseTableContainer>
         </TabsContent>

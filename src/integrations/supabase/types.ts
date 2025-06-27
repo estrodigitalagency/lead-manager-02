@@ -109,49 +109,43 @@ export type Database = {
       }
       booking_clicks: {
         Row: {
-          calendly_url: string | null
+          calendly_visualizzato: boolean | null
           call_prenotata: string | null
-          clicked_at: string
           created_at: string
+          data_ingresso: string | null
+          data_uscita: string | null
           email: string
           id: string
-          ip_address: unknown | null
           nome: string
-          prefisso_telefono: string
           telefono: string
-          updated_at: string | null
-          user_agent: string | null
-          venditore_assegnato: string | null
+          ultimo_url_visualizzato: string | null
+          venditore: string | null
         }
         Insert: {
-          calendly_url?: string | null
+          calendly_visualizzato?: boolean | null
           call_prenotata?: string | null
-          clicked_at?: string
           created_at?: string
+          data_ingresso?: string | null
+          data_uscita?: string | null
           email: string
           id?: string
-          ip_address?: unknown | null
           nome: string
-          prefisso_telefono: string
           telefono: string
-          updated_at?: string | null
-          user_agent?: string | null
-          venditore_assegnato?: string | null
+          ultimo_url_visualizzato?: string | null
+          venditore?: string | null
         }
         Update: {
-          calendly_url?: string | null
+          calendly_visualizzato?: boolean | null
           call_prenotata?: string | null
-          clicked_at?: string
           created_at?: string
+          data_ingresso?: string | null
+          data_uscita?: string | null
           email?: string
           id?: string
-          ip_address?: unknown | null
           nome?: string
-          prefisso_telefono?: string
           telefono?: string
-          updated_at?: string | null
-          user_agent?: string | null
-          venditore_assegnato?: string | null
+          ultimo_url_visualizzato?: string | null
+          venditore?: string | null
         }
         Relationships: []
       }

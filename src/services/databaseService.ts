@@ -4,6 +4,132 @@ import { LeadLavorato } from "@/types/leadLavorato";
 
 type ValidTableName = "lead_generation" | "booked_call" | "lead_assignments" | "lead_lavorati" | "system_settings" | "venditori";
 
+// Nuova interfaccia per i risultati paginati
+export interface PaginatedResult<T> {
+  data: T[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}
+
+// Nuova funzione per paginazione server-side
+export async function getPaginatedData<T>(
+  tableName: ValidTableName, 
+  page: number = 1, 
+  pageSize: number = 50,
+  filters?: Record<string, any>
+): Promise<PaginatedResult<T>> {
+  try {
+    let query = supabase.from(tableName).select('*', { count: 'exact' });
+    
+    // Applica filtri se presenti
+    if (filters) {
+      // Filtro di ricerca generale - cerca in nome, email, telefono e cognome
+      if (filters.search) {
+        const searchTerm = filters.search.trim();
+        console.log('Applying search filter:', searchTerm);
+        
+        // Costruisci condizioni OR per cercare in più campi
+        const searchConditions = [];
+        
+        // Aggiungi condizioni per nome
+        searchConditions.push(`nome.ilike.%${searchTerm}%`);
+        
+        // Aggiungi condizioni per cognome se esiste
+        searchConditions.push(`cognome.ilike.%${searchTerm}%`);
+        
+        // Aggiungi condizioni per email
+        searchConditions.push(`email.ilike.%${searchTerm}%`);
+        
+        // Aggiungi condizioni per telefono
+        searchConditions.push(`telefono.ilike.%${searchTerm}%`);
+        
+        // Unisci tutte le condizioni con OR
+        query = query.or(searchConditions.join(','));
+      }
+      
+      // Filtri individuali (solo se non c'è ricerca generale)
+      if (!filters.search) {
+        if (filters.nome) {
+          query = query.ilike('nome', `%${filters.nome}%`);
+        }
+        
+        if (filters.email) {
+          query = query.ilike('email', `%${filters.email}%`);
+        }
+        
+        if (filters.telefono) {
+          query = query.ilike('telefono', `%${filters.telefono}%`);
+        }
+      }
+      
+      if (filters.venditore) {
+        query = query.ilike('venditore', `%${filters.venditore}%`);
+      }
+      
+      if (filters.campagna) {
+        query = query.ilike('campagna', `%${filters.campagna}%`);
+      }
+      
+      if (filters.esito) {
+        query = query.ilike('esito', `%${filters.esito}%`);
+      }
+      
+      // Filtri per periodo
+      if (filters.dataInizio) {
+        query = query.gte('created_at', `${filters.dataInizio}T00:00:00.000Z`);
+      }
+      
+      if (filters.dataFine) {
+        query = query.lte('created_at', `${filters.dataFine}T23:59:59.999Z`);
+      }
+
+      // Filtri per fonte avanzati
+      if (filters.fontiIncluse && filters.fontiIncluse.length > 0) {
+        console.log('Applying include fonte filter:', filters.fontiIncluse);
+        const conditions = filters.fontiIncluse.map((fonte: string) => `fonte.ilike.%${fonte}%`).join(',');
+        query = query.or(conditions);
+      }
+      
+      if (filters.fontiEscluse && filters.fontiEscluse.length > 0) {
+        console.log('Applying exclude fonte filter:', filters.fontiEscluse);
+        filters.fontiEscluse.forEach((fonte: string) => {
+          query = query.not('fonte', 'ilike', `%${fonte}%`);
+        });
+      }
+    }
+    
+    // Ordina per data di creazione
+    query = query.order('created_at', { ascending: false });
+    
+    // Applica paginazione
+    const from = (page - 1) * pageSize;
+    const to = from + pageSize - 1;
+    query = query.range(from, to);
+    
+    const { data, error, count } = await query;
+    
+    if (error) throw error;
+    
+    const total = count || 0;
+    const totalPages = Math.ceil(total / pageSize);
+    
+    console.log(`Paginated ${tableName} results: page ${page}, size ${pageSize}, total ${total}`);
+    
+    return {
+      data: data || [],
+      total,
+      page,
+      pageSize,
+      totalPages
+    };
+  } catch (error) {
+    console.error(`Error fetching paginated data from ${tableName}:`, error);
+    throw error;
+  }
+}
+
 export async function getRecentData(tableName: ValidTableName, limit: number = 100): Promise<any[]> {
   try {
     const { data, error } = await supabase
@@ -62,7 +188,7 @@ export async function filterLeads(tableName: ValidTableName, filters: Record<str
     // Aggiungi condizioni per email
     searchConditions.push(`email.ilike.%${searchTerm}%`);
     
-    // Aggiungi condizioni per telefono
+    // Aggiungi condizioni per telefone
     searchConditions.push(`telefono.ilike.%${searchTerm}%`);
     
     // Unisci tutte le condizioni con OR

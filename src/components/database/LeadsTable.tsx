@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Table,
   TableBody,
@@ -9,8 +9,8 @@ import { Lead } from "@/types/lead";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useTableSorting } from "@/hooks/useTableSorting";
 import { useColumnVisibility, ColumnConfig } from "@/hooks/useColumnVisibility";
+import { useServerPagination } from "@/hooks/useServerPagination";
 import MobileLeadsTable from "./MobileLeadsTable";
-import { usePagination } from "@/hooks/usePagination";
 import PaginationControls from "./PaginationControls";
 import LeadTableHeader from "./LeadTableHeader";
 import LeadTableRow from "./LeadTableRow";
@@ -18,11 +18,10 @@ import LeadTableControls from "./LeadTableControls";
 import LeadDetailsDialog from "./LeadDetailsDialog";
 
 interface LeadsTableProps {
-  leads: Lead[];
-  isLoading: boolean;
   selectedItems: string[];
   onSelectionChange: (selected: string[]) => void;
   onDelete: (id: string) => void;
+  filters?: Record<string, any>;
 }
 
 const initialColumns: ColumnConfig[] = [
@@ -38,24 +37,24 @@ const initialColumns: ColumnConfig[] = [
 ];
 
 const LeadsTable = ({ 
-  leads, 
-  isLoading, 
   selectedItems, 
   onSelectionChange, 
-  onDelete 
+  onDelete,
+  filters = {}
 }: LeadsTableProps) => {
   const isMobile = useIsMobile();
-  const { sortedData, sortConfig, requestSort } = useTableSorting(leads);
   const { columns, visibleColumns, toggleColumn } = useColumnVisibility(initialColumns);
   const [selectedLeadForDetails, setSelectedLeadForDetails] = useState<Lead | null>(null);
   const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false);
   
+  // Usa la paginazione server-side
   const {
+    data: leads,
+    isLoading,
     currentPage,
     pageSize,
     totalPages,
     totalItems,
-    paginatedData,
     goToPage,
     nextPage,
     previousPage,
@@ -63,8 +62,21 @@ const LeadsTable = ({
     canGoNext,
     canGoPrevious,
     startIndex,
-    endIndex
-  } = usePagination({ data: sortedData, initialPageSize: 50 });
+    endIndex,
+    refetch
+  } = useServerPagination<Lead>({ 
+    tableName: 'lead_generation',
+    initialPageSize: 50,
+    filters
+  });
+
+  // Sorting locale sui dati della pagina corrente
+  const { sortedData, sortConfig, requestSort } = useTableSorting(leads);
+
+  // Reset selezioni quando cambiano i filtri
+  useEffect(() => {
+    onSelectionChange([]);
+  }, [JSON.stringify(filters), onSelectionChange]);
 
   const handleItemSelect = (id: string, checked: boolean) => {
     if (checked) {
@@ -76,10 +88,10 @@ const LeadsTable = ({
 
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
-      const currentPageIds = paginatedData.map(lead => lead.id!);
+      const currentPageIds = sortedData.map(lead => lead.id!);
       onSelectionChange([...new Set([...selectedItems, ...currentPageIds])]);
     } else {
-      const currentPageIds = paginatedData.map(lead => lead.id!);
+      const currentPageIds = sortedData.map(lead => lead.id!);
       onSelectionChange(selectedItems.filter(id => !currentPageIds.includes(id)));
     }
   };
@@ -87,6 +99,12 @@ const LeadsTable = ({
   const handleShowDetails = (lead: Lead) => {
     setSelectedLeadForDetails(lead);
     setIsDetailsDialogOpen(true);
+  };
+
+  const handleDelete = async (id: string) => {
+    await onDelete(id);
+    // Ricarica i dati dopo l'eliminazione
+    await refetch();
   };
 
   if (isLoading) {
@@ -98,11 +116,10 @@ const LeadsTable = ({
     );
   }
 
-  // Safe check for leads length
-  if (!leads || leads.length === 0) {
+  if (leads.length === 0 && !isLoading) {
     return (
       <div className="text-center py-10 text-muted-foreground">
-        Nessun lead trovato.
+        {Object.keys(filters).length > 0 ? 'Nessun lead trovato con i filtri attuali.' : 'Nessun lead trovato.'}
       </div>
     );
   }
@@ -110,36 +127,27 @@ const LeadsTable = ({
   if (isMobile) {
     return (
       <div className="space-y-4 w-full">
-        {/* Safe check for paginatedData */}
-        {paginatedData && paginatedData.length > 0 ? (
-          <>
-            <MobileLeadsTable
-              leads={paginatedData}
-              selectedItems={selectedItems}
-              onSelectionChange={onSelectionChange}
-              onDelete={onDelete}
-              onShowDetails={handleShowDetails}
-            />
-            <PaginationControls
-              currentPage={currentPage}
-              totalPages={totalPages}
-              totalItems={totalItems}
-              pageSize={pageSize}
-              startIndex={startIndex}
-              endIndex={endIndex}
-              canGoNext={canGoNext}
-              canGoPrevious={canGoPrevious}
-              onPageChange={goToPage}
-              onPageSizeChange={setPageSize}
-              onNextPage={nextPage}
-              onPreviousPage={previousPage}
-            />
-          </>
-        ) : (
-          <div className="text-center py-10 text-muted-foreground">
-            Nessun lead trovato con i filtri attuali.
-          </div>
-        )}
+        <MobileLeadsTable
+          leads={sortedData}
+          selectedItems={selectedItems}
+          onSelectionChange={onSelectionChange}
+          onDelete={handleDelete}
+          onShowDetails={handleShowDetails}
+        />
+        <PaginationControls
+          currentPage={currentPage}
+          totalPages={totalPages}
+          totalItems={totalItems}
+          pageSize={pageSize}
+          startIndex={startIndex}
+          endIndex={endIndex}
+          canGoNext={canGoNext}
+          canGoPrevious={canGoPrevious}
+          onPageChange={goToPage}
+          onPageSizeChange={setPageSize}
+          onNextPage={nextPage}
+          onPreviousPage={previousPage}
+        />
         
         <LeadDetailsDialog
           lead={selectedLeadForDetails}
@@ -150,7 +158,7 @@ const LeadsTable = ({
     );
   }
 
-  const currentPageIds = paginatedData.map(lead => lead.id!);
+  const currentPageIds = sortedData.map(lead => lead.id!);
   const allCurrentPageSelected = currentPageIds.length > 0 && currentPageIds.every(id => selectedItems.includes(id));
   const visibleColumnKeys = visibleColumns.map(col => col.key);
 
@@ -171,14 +179,14 @@ const LeadsTable = ({
           onSort={requestSort}
         />
         <TableBody>
-          {paginatedData.map((lead) => (
+          {sortedData.map((lead) => (
             <LeadTableRow
               key={lead.id}
               lead={lead}
               isSelected={selectedItems.includes(lead.id!)}
               visibleColumns={visibleColumnKeys}
               onSelect={handleItemSelect}
-              onDelete={onDelete}
+              onDelete={handleDelete}
               onShowDetails={handleShowDetails}
             />
           ))}
