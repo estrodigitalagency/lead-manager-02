@@ -1,3 +1,4 @@
+
 import { ReactNode, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -17,6 +18,8 @@ import { Button } from "@/components/ui/button";
 import { MoreHorizontal, FileDown, Users, UserPlus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { deleteMultipleLeads } from "@/services/databaseService";
+import { supabase } from "@/integrations/supabase/client";
+import ManualAssignmentDialog from "./ManualAssignmentDialog";
 
 interface DatabaseTableContainerProps {
   title: string;
@@ -54,6 +57,8 @@ const DatabaseTableContainer = ({
   const isMobile = useIsMobile();
   const [currentFilters, setCurrentFilters] = useState<Record<string, any>>({});
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isAssigning, setIsAssigning] = useState(false);
+  const [showManualAssignDialog, setShowManualAssignDialog] = useState(false);
 
   const handleSearch = (searchTerm: string) => {
     console.log('Search term:', searchTerm);
@@ -86,9 +91,19 @@ const DatabaseTableContainer = ({
   };
 
   const handleExportCSV = () => {
-    if (selectedItems.length === 0) return;
+    if (selectedItems.length === 0) {
+      toast.error("Nessun elemento selezionato per l'esportazione");
+      return;
+    }
     
     const selectedData = allItems.filter(item => selectedItems.includes(item.id));
+    
+    if (selectedData.length === 0) {
+      toast.error("Nessun dato trovato per l'esportazione");
+      return;
+    }
+
+    // Ottieni le chiavi dal primo elemento, escludendo 'id'
     const headers = Object.keys(selectedData[0]).filter(key => key !== 'id');
     const csvContent = [
       headers.join(','),
@@ -106,6 +121,46 @@ const DatabaseTableContainer = ({
     a.click();
     document.body.removeChild(a);
     window.URL.revokeObjectURL(url);
+    
+    toast.success(`${selectedItems.length} record esportati con successo`);
+  };
+
+  const handleBulkAssign = async () => {
+    if (tableName !== 'lead_generation' || selectedItems.length === 0) {
+      toast.error("Nessun lead selezionato");
+      return;
+    }
+
+    setIsAssigning(true);
+    try {
+      const { error } = await supabase
+        .from('lead_generation')
+        .update({ assignable: true })
+        .in('id', selectedItems);
+
+      if (error) throw error;
+
+      toast.success(`${selectedItems.length} lead resi assegnabili`);
+      onRefresh();
+    } catch (error) {
+      console.error("Errore durante l'aggiornamento:", error);
+      toast.error("Errore durante l'aggiornamento dei lead");
+    } finally {
+      setIsAssigning(false);
+    }
+  };
+
+  const handleManualAssignment = () => {
+    if (selectedItems.length === 0) {
+      toast.error("Nessun elemento selezionato per l'assegnazione");
+      return;
+    }
+    setShowManualAssignDialog(true);
+  };
+
+  const handleAssignmentComplete = () => {
+    onSelectionChange([]);
+    onRefresh();
   };
 
   const handleBulkDelete = async () => {
@@ -171,11 +226,14 @@ const DatabaseTableContainer = ({
                   </DropdownMenuItem>
                   {tableName === 'lead_generation' && (
                     <>
-                      <DropdownMenuItem onClick={() => onBulkAction?.('make_assignable')}>
+                      <DropdownMenuItem 
+                        onClick={handleBulkAssign}
+                        disabled={isAssigning}
+                      >
                         <Users className="h-4 w-4 mr-2" />
-                        Rendi Assegnabili
+                        {isAssigning ? "Aggiornamento..." : "Rendi Assegnabili"}
                       </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => onBulkAction?.('manual_assign')}>
+                      <DropdownMenuItem onClick={handleManualAssignment}>
                         <UserPlus className="h-4 w-4 mr-2" />
                         Assegna Manualmente
                       </DropdownMenuItem>
@@ -185,7 +243,7 @@ const DatabaseTableContainer = ({
                   <DropdownMenuItem 
                     onClick={handleBulkDelete}
                     disabled={isDeleting}
-                    className="text-red-600"
+                    className="text-red-600 focus:text-red-600"
                   >
                     <Trash2 className="h-4 w-4 mr-2" />
                     {isDeleting ? "Eliminazione..." : "Elimina"}
@@ -210,6 +268,13 @@ const DatabaseTableContainer = ({
           {children}
         </div>
       </CardContent>
+
+      <ManualAssignmentDialog
+        open={showManualAssignDialog}
+        onOpenChange={setShowManualAssignDialog}
+        selectedLeadIds={selectedItems}
+        onAssignmentComplete={handleAssignmentComplete}
+      />
     </Card>
   );
 };
