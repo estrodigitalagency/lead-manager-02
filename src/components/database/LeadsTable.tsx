@@ -56,10 +56,6 @@ const LeadsTable = ({
     ? { ...filters, selectedIds: selectedItems }
     : filters;
   
-  console.log('LeadsTable - showOnlySelected:', showOnlySelected);
-  console.log('LeadsTable - selectedItems:', selectedItems);
-  console.log('LeadsTable - effectiveFilters:', effectiveFilters);
-  
   // Usa la paginazione server-side
   const {
     data: leads,
@@ -85,20 +81,6 @@ const LeadsTable = ({
 
   // Sorting locale sui dati della pagina corrente
   const { sortedData, sortConfig, requestSort } = useTableSorting(leads);
-
-  // Reset selezioni quando cambiano i filtri (ma non quando showOnlySelected cambia)
-  useEffect(() => {
-    if (!showOnlySelected) {
-      // Non resettare se stiamo passando da modalità normale a showOnlySelected
-      const filtersWithoutSelectedIds = { ...filters };
-      delete filtersWithoutSelectedIds.selectedIds;
-      
-      // Reset solo se i filtri principali sono cambiati
-      if (Object.keys(filtersWithoutSelectedIds).length > 0) {
-        onSelectionChange([]);
-      }
-    }
-  }, [JSON.stringify(filters), onSelectionChange, showOnlySelected]);
 
   // Esponi i dati al componente padre
   useEffect(() => {
@@ -132,7 +114,6 @@ const LeadsTable = ({
 
   const handleDelete = async (id: string) => {
     await onDelete(id);
-    // Ricarica i dati dopo l'eliminazione
     await refetch();
   };
 

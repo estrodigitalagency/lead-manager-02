@@ -43,7 +43,6 @@ export const useServerPagination = <T extends Record<string, any>>({
   };
 
   const buildQuery = useCallback(() => {
-    // Uso any per evitare problemi di typing con supabase
     let query = (supabase as any).from(tableName).select('*', { count: 'exact' });
 
     // Separa selectedIds dagli altri filtri
@@ -53,12 +52,10 @@ export const useServerPagination = <T extends Record<string, any>>({
     Object.entries(otherFilters).forEach(([key, value]) => {
       if (value !== undefined && value !== null && value !== '') {
         if (typeof value === 'string' && value.startsWith('%') && value.endsWith('%')) {
-          // Handle "contains" filter
           query = query.ilike(key, value);
         } else if (typeof value === 'string' && (value.startsWith('%') || value.endsWith('%'))) {
             query = query.like(key, value);
         } else {
-          // Handle exact match filter
           query = query.eq(key, value);
         }
       }
@@ -78,8 +75,12 @@ export const useServerPagination = <T extends Record<string, any>>({
 
     try {
       let query = buildQuery()
-        .range((currentPage - 1) * pageSize, currentPage * pageSize - 1)
-        .order('created_at', { ascending: false });
+        .range((currentPage - 1) * pageSize, currentPage * pageSize - 1);
+      
+      // Solo se non stiamo filtrando per selectedIds, ordiniamo per created_at
+      if (!filters.selectedIds || !Array.isArray(filters.selectedIds) || filters.selectedIds.length === 0) {
+        query = query.order('created_at', { ascending: false });
+      }
 
       const { data: results, error: queryError, count } = await query;
 
@@ -96,11 +97,17 @@ export const useServerPagination = <T extends Record<string, any>>({
     } finally {
       setIsLoading(false);
     }
-  }, [currentPage, pageSize, buildQuery]);
+  }, [currentPage, pageSize, buildQuery, filters.selectedIds]);
 
+  // Reset della pagina quando cambiano i filtri
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [JSON.stringify(filters)]);
+
+  // Fetch dei dati quando cambiano le dipendenze
   useEffect(() => {
     fetchData();
-  }, [fetchData, currentPage, pageSize, filters]);
+  }, [fetchData]);
 
   const refetch = useCallback(() => {
     fetchData();
