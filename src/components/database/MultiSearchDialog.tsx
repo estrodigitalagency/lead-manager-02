@@ -51,17 +51,36 @@ const MultiSearchDialog = ({
         return;
       }
 
+      console.log('Search terms:', searchTerms);
+      console.log('All items count:', allItems.length);
+      console.log('Sample item:', allItems[0]);
+
       // Cerca i lead che corrispondono ai termini di ricerca
       const matchedItems = allItems.filter(item => {
-        const email = item.email?.toLowerCase() || '';
-        const telefono = item.telefono?.toLowerCase() || '';
+        const email = (item.email || '').toLowerCase().trim();
+        const telefono = (item.telefono || '').toLowerCase().trim();
         
-        return searchTerms.some(term => 
-          email.includes(term) || telefono.includes(term)
-        );
+        // Verifica se qualche termine di ricerca corrisponde esattamente all'email o telefono
+        const emailMatch = searchTerms.some(term => term === email);
+        const phoneMatch = searchTerms.some(term => term === telefono);
+        
+        return emailMatch || phoneMatch;
       });
 
+      console.log('Matched items:', matchedItems);
+
       if (matchedItems.length === 0) {
+        // Mostra dettagliato quale ricerca non ha dato risultati
+        console.log('No matches found. Checking individual terms:');
+        searchTerms.forEach(term => {
+          const termMatches = allItems.filter(item => {
+            const email = (item.email || '').toLowerCase().trim();
+            const telefono = (item.telefono || '').toLowerCase().trim();
+            return term === email || term === telefono;
+          });
+          console.log(`Term "${term}" matches:`, termMatches.length);
+        });
+        
         toast.error(`Nessun lead trovato per i termini di ricerca specificati`);
       } else {
         const selectedIds = matchedItems.map(item => item.id);
@@ -115,7 +134,7 @@ const MultiSearchDialog = ({
           
           <div className="text-sm text-muted-foreground">
             <p>• Separa più termini con virgole</p>
-            <p>• La ricerca non fa distinzione tra maiuscole e minuscole</p>
+            <p>• La ricerca cerca corrispondenze esatte</p>
             <p>• Vengono cercati sia email che numeri di telefono</p>
           </div>
         </div>
