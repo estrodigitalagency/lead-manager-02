@@ -3,13 +3,6 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  DropdownMenuSeparator,
-} from "@/components/ui/dropdown-menu";
-import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -19,7 +12,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Trash2, MoreHorizontal, Users, FileDown, UserPlus } from "lucide-react";
+import { Trash2, Users, FileDown, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 import { deleteMultipleLeads } from "@/services/databaseService";
 import { supabase } from "@/integrations/supabase/client";
@@ -187,39 +180,15 @@ const BulkActions = ({
               </>
             )}
 
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm">
-                  <MoreHorizontal className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={handleExportCSV}>
-                  <FileDown className="h-4 w-4 mr-2" />
-                  Esporta Selezionati
-                </DropdownMenuItem>
-                {tableName === 'lead_generation' && (
-                  <>
-                    <DropdownMenuItem onClick={handleManualAssignment}>
-                      <UserPlus className="h-4 w-4 mr-2" />
-                      Assegna Manualmente
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={handleBulkAssign}>
-                      <Users className="h-4 w-4 mr-2" />
-                      Rendi Assegnabili
-                    </DropdownMenuItem>
-                  </>
-                )}
-                <DropdownMenuSeparator />
-                <DropdownMenuItem 
-                  onClick={() => setShowDeleteDialog(true)}
-                  className="text-red-600"
-                >
-                  <Trash2 className="h-4 w-4 mr-2" />
-                  Elimina Selezionati
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowDeleteDialog(true)}
+              className="flex items-center gap-1 text-red-600 hover:text-red-700"
+            >
+              <Trash2 className="h-4 w-4" />
+              Elimina
+            </Button>
           </div>
         )}
       </div>
