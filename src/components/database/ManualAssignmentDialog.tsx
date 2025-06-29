@@ -217,6 +217,10 @@ const ManualAssignmentDialog = ({
     }
   };
 
+  const handleWebhookToggle = (checked: boolean | "indeterminate") => {
+    setSendWebhook(checked === true);
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md max-h-[80vh] overflow-y-auto">
@@ -252,7 +256,7 @@ const ManualAssignmentDialog = ({
             <Checkbox
               id="send-webhook"
               checked={sendWebhook}
-              onCheckedChange={setSendWebhook}
+              onCheckedChange={handleWebhookToggle}
             />
             <label
               htmlFor="send-webhook"
