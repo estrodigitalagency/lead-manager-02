@@ -14,11 +14,12 @@ import {
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { MoreHorizontal, FileDown, Users, UserPlus, Trash2 } from "lucide-react";
+import { MoreHorizontal, FileDown, Users, UserPlus, Trash2, Search } from "lucide-react";
 import { toast } from "sonner";
 import { deleteMultipleLeads } from "@/services/databaseService";
 import { supabase } from "@/integrations/supabase/client";
 import ManualAssignmentDialog from "./ManualAssignmentDialog";
+import MultiSearchDialog from "./MultiSearchDialog";
 
 interface DatabaseTableContainerProps {
   title: string;
@@ -58,6 +59,7 @@ const DatabaseTableContainer = ({
   const [isDeleting, setIsDeleting] = useState(false);
   const [isAssigning, setIsAssigning] = useState(false);
   const [showManualAssignDialog, setShowManualAssignDialog] = useState(false);
+  const [showMultiSearchDialog, setShowMultiSearchDialog] = useState(false);
 
   const handleSearch = (searchTerm: string) => {
     console.log('Search term:', searchTerm);
@@ -214,6 +216,12 @@ const DatabaseTableContainer = ({
     }
   };
 
+  const handleMultiSearchComplete = (selectedIds: string[]) => {
+    // Aggiungi i nuovi ID selezionati a quelli esistenti, evitando duplicati
+    const newSelection = [...new Set([...selectedItems, ...selectedIds])];
+    onSelectionChange(newSelection);
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -264,6 +272,11 @@ const DatabaseTableContainer = ({
                         <UserPlus className="h-4 w-4 mr-2" />
                         Assegna Manualmente
                       </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onClick={() => setShowMultiSearchDialog(true)}>
+                        <Search className="h-4 w-4 mr-2" />
+                        Ricerca Multipla
+                      </DropdownMenuItem>
                     </>
                   )}
                   <DropdownMenuSeparator />
@@ -301,6 +314,13 @@ const DatabaseTableContainer = ({
         onOpenChange={setShowManualAssignDialog}
         selectedLeadIds={selectedItems}
         onAssignmentComplete={handleAssignmentComplete}
+      />
+
+      <MultiSearchDialog
+        open={showMultiSearchDialog}
+        onOpenChange={setShowMultiSearchDialog}
+        allItems={allItems}
+        onItemsSelected={handleMultiSearchComplete}
       />
     </Card>
   );
