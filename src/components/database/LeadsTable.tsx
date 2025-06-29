@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import {
   Table,
@@ -22,7 +23,7 @@ interface LeadsTableProps {
   onDelete: (id: string) => void;
   filters?: Record<string, any>;
   onDataChange?: (data: any[]) => void;
-  showOnlySelected?: boolean; // Nuovo prop per mostrare solo i selezionati
+  showOnlySelected?: boolean;
 }
 
 const initialColumns: ColumnConfig[] = [
@@ -43,7 +44,7 @@ const LeadsTable = ({
   onDelete,
   filters = {},
   onDataChange,
-  showOnlySelected = false // Default false per comportamento normale
+  showOnlySelected = false
 }: LeadsTableProps) => {
   const isMobile = useIsMobile();
   const { columns, visibleColumns, toggleColumn } = useColumnVisibility(initialColumns);
@@ -54,6 +55,10 @@ const LeadsTable = ({
   const effectiveFilters = showOnlySelected && selectedItems.length > 0 
     ? { ...filters, selectedIds: selectedItems }
     : filters;
+  
+  console.log('LeadsTable - showOnlySelected:', showOnlySelected);
+  console.log('LeadsTable - selectedItems:', selectedItems);
+  console.log('LeadsTable - effectiveFilters:', effectiveFilters);
   
   // Usa la paginazione server-side
   const {
@@ -84,7 +89,14 @@ const LeadsTable = ({
   // Reset selezioni quando cambiano i filtri (ma non quando showOnlySelected cambia)
   useEffect(() => {
     if (!showOnlySelected) {
-      onSelectionChange([]);
+      // Non resettare se stiamo passando da modalità normale a showOnlySelected
+      const filtersWithoutSelectedIds = { ...filters };
+      delete filtersWithoutSelectedIds.selectedIds;
+      
+      // Reset solo se i filtri principali sono cambiati
+      if (Object.keys(filtersWithoutSelectedIds).length > 0) {
+        onSelectionChange([]);
+      }
     }
   }, [JSON.stringify(filters), onSelectionChange, showOnlySelected]);
 

@@ -46,7 +46,11 @@ export const useServerPagination = <T extends Record<string, any>>({
     // Uso any per evitare problemi di typing con supabase
     let query = (supabase as any).from(tableName).select('*', { count: 'exact' });
 
-    Object.entries(filters).forEach(([key, value]) => {
+    // Separa selectedIds dagli altri filtri
+    const { selectedIds, ...otherFilters } = filters;
+
+    // Applica i filtri normali (escluso selectedIds)
+    Object.entries(otherFilters).forEach(([key, value]) => {
       if (value !== undefined && value !== null && value !== '') {
         if (typeof value === 'string' && value.startsWith('%') && value.endsWith('%')) {
           // Handle "contains" filter
@@ -60,9 +64,9 @@ export const useServerPagination = <T extends Record<string, any>>({
       }
     });
 
-    // Filtro per ID selezionati
-    if (filters.selectedIds && Array.isArray(filters.selectedIds) && filters.selectedIds.length > 0) {
-      query = query.in('id', filters.selectedIds);
+    // Applica il filtro per ID selezionati SOLO se presente e valido
+    if (selectedIds && Array.isArray(selectedIds) && selectedIds.length > 0) {
+      query = query.in('id', selectedIds);
     }
 
     return query;
