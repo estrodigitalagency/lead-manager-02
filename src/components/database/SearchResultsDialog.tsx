@@ -70,7 +70,7 @@ const SearchResultsDialog = ({
           </DialogDescription>
         </DialogHeader>
         
-        <div className="flex-1 space-y-4 py-4 min-h-0">
+        <div className="flex-1 space-y-4 py-4 min-h-0 overflow-y-auto">
           <div className="space-y-2 flex-shrink-0">
             <h4 className="text-sm font-medium">Termini di ricerca utilizzati:</h4>
             <div className="flex flex-wrap gap-2">
@@ -81,11 +81,27 @@ const SearchResultsDialog = ({
               ))}
             </div>
           </div>
+
+          {notFoundTerms.length > 0 && (
+            <div className="space-y-2 flex-shrink-0">
+              <h4 className="text-sm font-medium flex items-center gap-2">
+                <AlertCircle className="h-4 w-4 text-orange-500" />
+                Lead non trovati ({notFoundTerms.length}):
+              </h4>
+              <div className="flex flex-wrap gap-2">
+                {notFoundTerms.map((term, index) => (
+                  <Badge key={index} variant="destructive" className="text-xs">
+                    {term}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          )}
           
           {results.length > 0 && (
             <div className="space-y-2 flex-1 min-h-0">
               <h4 className="text-sm font-medium">Lead trovati e che verranno selezionati ({results.length}):</h4>
-              <div className="border rounded-md h-full min-h-[200px]">
+              <div className="border rounded-md" style={{ height: '300px' }}>
                 <ScrollArea className="h-full p-4">
                   <div className="space-y-3 pr-4">
                     {results.map((result, index) => (
@@ -119,22 +135,6 @@ const SearchResultsDialog = ({
                     ))}
                   </div>
                 </ScrollArea>
-              </div>
-            </div>
-          )}
-
-          {notFoundTerms.length > 0 && (
-            <div className="space-y-2 flex-shrink-0">
-              <h4 className="text-sm font-medium flex items-center gap-2">
-                <AlertCircle className="h-4 w-4 text-orange-500" />
-                Lead non trovati ({notFoundTerms.length}):
-              </h4>
-              <div className="flex flex-wrap gap-2">
-                {notFoundTerms.map((term, index) => (
-                  <Badge key={index} variant="destructive" className="text-xs">
-                    {term}
-                  </Badge>
-                ))}
               </div>
             </div>
           )}
