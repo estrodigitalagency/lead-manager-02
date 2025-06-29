@@ -21,6 +21,7 @@ interface LeadsTableProps {
   onSelectionChange: (selected: string[]) => void;
   onDelete: (id: string) => void;
   filters?: Record<string, any>;
+  onDataChange?: (data: any[]) => void; // Nuovo prop per esporre i dati
 }
 
 const initialColumns: ColumnConfig[] = [
@@ -39,7 +40,8 @@ const LeadsTable = ({
   selectedItems, 
   onSelectionChange, 
   onDelete,
-  filters = {}
+  filters = {},
+  onDataChange // Nuovo prop
 }: LeadsTableProps) => {
   const isMobile = useIsMobile();
   const { columns, visibleColumns, toggleColumn } = useColumnVisibility(initialColumns);
@@ -76,6 +78,13 @@ const LeadsTable = ({
   useEffect(() => {
     onSelectionChange([]);
   }, [JSON.stringify(filters), onSelectionChange]);
+
+  // Aggiungi questo useEffect per esporre i dati al parent
+  useEffect(() => {
+    if (onDataChange && data) {
+      onDataChange(data);
+    }
+  }, [data, onDataChange]);
 
   const handleItemSelect = (id: string, checked: boolean) => {
     if (checked) {

@@ -73,6 +73,12 @@ const DatabasePage = () => {
   const [selectedBookings, setSelectedBookings] = useState<string[]>([]);
   const [selectedLavorati, setSelectedLavorati] = useState<string[]>([]);
 
+  // Add a ref to prevent multiple initialization calls
+  const isInitializedRef = useRef<boolean>(false);
+
+  // Aggiungi stato per i dati dei lead
+  const [leadsData, setLeadsData] = useState<Lead[]>([]);
+
   // Funzioni per caricare bookings e lead lavorati (manteniamo la logica esistente)
   const fetchBookings = async () => {
     setIsLoadingBookings(true);
@@ -107,9 +113,6 @@ const DatabasePage = () => {
       setIsLoadingLeadLavorati(false);
     }
   };
-
-  // Add a ref to prevent multiple initialization calls
-  const isInitializedRef = useRef<boolean>(false);
 
   // OTTIMIZZAZIONE: Verifica automatica più efficiente all'apertura
   useEffect(() => {
@@ -280,6 +283,10 @@ const DatabasePage = () => {
     console.log('Bulk action:', action);
   };
 
+  const handleLeadsDataChange = (data: Lead[]) => {
+    setLeadsData(data);
+  };
+
   return (
     <div className={`container mx-auto px-4 py-8 ${isMobile ? 'px-2 py-4' : ''}`}>
       <div className={`flex justify-between items-center mb-8 ${isMobile ? 'flex-col gap-4' : ''}`}>
@@ -364,7 +371,7 @@ const DatabasePage = () => {
             title="Lead Database"
             description="Tutti i lead generati tramite form o webhook"
             tableName="lead_generation"
-            allItems={[]} // Non più necessario, i lead sono gestiti internamente
+            allItems={leadsData} // Usa i dati reali invece di array vuoto
             selectedItems={selectedLeads}
             onSelectionChange={setSelectedLeads}
             onApplyFilters={handleApplyFilters}
@@ -378,6 +385,7 @@ const DatabasePage = () => {
               onSelectionChange={setSelectedLeads}
               onDelete={(id) => handleDeleteClick(id, 'lead')}
               filters={activeFilters}
+              onDataChange={handleLeadsDataChange} // Passa la callback
             />
           </DatabaseTableContainer>
         </TabsContent>
