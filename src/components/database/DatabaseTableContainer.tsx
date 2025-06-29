@@ -1,4 +1,3 @@
-
 import { ReactNode, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -91,38 +90,66 @@ const DatabaseTableContainer = ({
   };
 
   const handleExportCSV = () => {
+    console.log('Export CSV triggered');
+    console.log('Selected items:', selectedItems);
+    console.log('All items length:', allItems.length);
+    
     if (selectedItems.length === 0) {
+      console.log('No items selected');
       toast.error("Nessun elemento selezionato per l'esportazione");
       return;
     }
     
     const selectedData = allItems.filter(item => selectedItems.includes(item.id));
+    console.log('Selected data:', selectedData);
     
     if (selectedData.length === 0) {
+      console.log('No matching data found');
       toast.error("Nessun dato trovato per l'esportazione");
       return;
     }
 
-    // Ottieni le chiavi dal primo elemento, escludendo 'id'
-    const headers = Object.keys(selectedData[0]).filter(key => key !== 'id');
-    const csvContent = [
-      headers.join(','),
-      ...selectedData.map(item => 
-        headers.map(header => `"${item[header] || ''}"`).join(',')
-      )
-    ].join('\n');
+    try {
+      // Ottieni le chiavi dal primo elemento, escludendo 'id'
+      const headers = Object.keys(selectedData[0]).filter(key => key !== 'id');
+      console.log('Headers:', headers);
+      
+      const csvContent = [
+        headers.join(','),
+        ...selectedData.map(item => 
+          headers.map(header => {
+            let value = item[header];
+            // Handle null/undefined values
+            if (value === null || value === undefined) {
+              value = '';
+            }
+            // Escape quotes and wrap in quotes
+            value = String(value).replace(/"/g, '""');
+            return `"${value}"`;
+          }).join(',')
+        )
+      ].join('\n');
 
-    const blob = new Blob([csvContent], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${tableName}_export_${new Date().toISOString().split('T')[0]}.csv`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    window.URL.revokeObjectURL(url);
-    
-    toast.success(`${selectedItems.length} record esportati con successo`);
+      console.log('CSV content generated, length:', csvContent.length);
+
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${tableName}_export_${new Date().toISOString().split('T')[0]}.csv`;
+      console.log('Download filename:', a.download);
+      
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+      
+      console.log('CSV export completed successfully');
+      toast.success(`${selectedItems.length} record esportati con successo`);
+    } catch (error) {
+      console.error('Error during CSV export:', error);
+      toast.error("Errore durante l'esportazione del CSV");
+    }
   };
 
   const handleBulkAssign = async () => {
