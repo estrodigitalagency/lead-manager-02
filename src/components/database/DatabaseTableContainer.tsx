@@ -1,3 +1,4 @@
+
 import { ReactNode, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -277,6 +278,15 @@ const DatabaseTableContainer = ({
                       </>
                     )}
                     <DropdownMenuSeparator />
+                    {tableName === 'lead_generation' && (
+                      <>
+                        <DropdownMenuItem onClick={() => setShowMultiSearchDialog(true)}>
+                          <Search className="h-4 w-4 mr-2" />
+                          Ricerca Multipla
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                      </>
+                    )}
                     <DropdownMenuItem 
                       onClick={handleBulkDelete}
                       disabled={isDeleting}
@@ -285,19 +295,22 @@ const DatabaseTableContainer = ({
                       <Trash2 className="h-4 w-4 mr-2" />
                       {isDeleting ? "Eliminazione..." : "Elimina"}
                     </DropdownMenuItem>
-                    <DropdownMenuSeparator />
                   </>
                 ) : (
-                  <DropdownMenuItem disabled className="text-muted-foreground">
-                    Seleziona elementi per azioni multiple
-                  </DropdownMenuItem>
-                )}
-                
-                {tableName === 'lead_generation' && (
-                  <DropdownMenuItem onClick={() => setShowMultiSearchDialog(true)}>
-                    <Search className="h-4 w-4 mr-2" />
-                    Ricerca Multipla
-                  </DropdownMenuItem>
+                  <>
+                    <DropdownMenuItem disabled className="text-muted-foreground">
+                      Seleziona elementi per azioni multiple
+                    </DropdownMenuItem>
+                    {tableName === 'lead_generation' && (
+                      <>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={() => setShowMultiSearchDialog(true)}>
+                          <Search className="h-4 w-4 mr-2" />
+                          Ricerca Multipla
+                        </DropdownMenuItem>
+                      </>
+                    )}
+                  </>
                 )}
               </DropdownMenuContent>
             </DropdownMenu>
