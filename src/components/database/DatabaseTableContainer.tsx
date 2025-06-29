@@ -1,5 +1,4 @@
-
-import React, { ReactNode, useState } from "react";
+import { ReactNode, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useIsMobile } from "@/hooks/use-mobile";
 import DatabaseFiltersResponsive from "@/components/DatabaseFiltersResponsive";
@@ -61,7 +60,6 @@ const DatabaseTableContainer = ({
   const [isAssigning, setIsAssigning] = useState(false);
   const [showManualAssignDialog, setShowManualAssignDialog] = useState(false);
   const [showMultiSearchDialog, setShowMultiSearchDialog] = useState(false);
-  const [showOnlySelected, setShowOnlySelected] = useState(false);
 
   const handleSearch = (searchTerm: string) => {
     console.log('Search term:', searchTerm);
@@ -222,18 +220,6 @@ const DatabaseTableContainer = ({
     // Aggiungi i nuovi ID selezionati a quelli esistenti, evitando duplicati
     const newSelection = [...new Set([...selectedItems, ...selectedIds])];
     onSelectionChange(newSelection);
-    
-    // Attiva la modalità "mostra solo selezionati"
-    setShowOnlySelected(true);
-  };
-
-  const handleClearSelection = () => {
-    onSelectionChange([]);
-    setShowOnlySelected(false);
-  };
-
-  const handleShowAll = () => {
-    setShowOnlySelected(false);
   };
 
   return (
@@ -317,26 +303,6 @@ const DatabaseTableContainer = ({
             </DropdownMenu>
           </div>
         </div>
-
-        {/* Barra di controllo per mostra solo selezionati */}
-        {showOnlySelected && selectedItems.length > 0 && (
-          <div className="flex items-center justify-between bg-blue-50 p-3 rounded-lg border border-blue-200 mt-4">
-            <div className="flex items-center gap-2">
-              <Users className="h-4 w-4 text-blue-600" />
-              <span className="text-blue-800 font-medium">
-                Visualizzazione filtrata: {selectedItems.length} lead selezionati
-              </span>
-            </div>
-            <div className="flex gap-2">
-              <Button variant="outline" size="sm" onClick={handleShowAll}>
-                Mostra Tutti
-              </Button>
-              <Button variant="outline" size="sm" onClick={handleClearSelection}>
-                Cancella Selezione
-              </Button>
-            </div>
-          </div>
-        )}
       </CardHeader>
       
       <BulkActions
@@ -349,13 +315,7 @@ const DatabaseTableContainer = ({
       
       <CardContent className={isMobile ? 'p-2 overflow-x-auto' : 'overflow-x-auto'}>
         <div className="min-w-full">
-          {/* Passa showOnlySelected al componente figlio se è LeadsTable */}
-          {tableName === 'lead_generation' 
-            ? React.cloneElement(children as React.ReactElement, { 
-                showOnlySelected 
-              })
-            : children
-          }
+          {children}
         </div>
       </CardContent>
 

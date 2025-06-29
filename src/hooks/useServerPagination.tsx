@@ -1,116 +1,106 @@
 
-import { useState, useEffect, useCallback } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { useState, useEffect, useCallback } from "react";
+import { getPaginatedData, PaginatedResult } from "@/services/databaseService";
+
+type ValidTableName = "lead_generation" | "booked_call" | "lead_lavorati";
 
 interface UseServerPaginationProps<T> {
-  tableName: string;
+  tableName: ValidTableName;
   initialPageSize?: number;
   filters?: Record<string, any>;
 }
 
-export const useServerPagination = <T extends Record<string, any>>({
+interface UseServerPaginationReturn<T> {
+  data: T[];
+  isLoading: boolean;
+  error: string | null;
+  currentPage: number;
+  pageSize: number;
+  totalPages: number;
+  totalItems: number;
+  goToPage: (page: number) => void;
+  nextPage: () => void;
+  previousPage: () => void;
+  setPageSize: (size: number) => void;
+  canGoNext: boolean;
+  canGoPrevious: boolean;
+  startIndex: number;
+  endIndex: number;
+  refetch: () => Promise<void>;
+}
+
+export const useServerPagination = <T,>({ 
   tableName,
-  initialPageSize = 10,
+  initialPageSize = 50,
   filters = {}
-}: UseServerPaginationProps<T>) => {
+}: UseServerPaginationProps<T>): UseServerPaginationReturn<T> => {
   const [data, setData] = useState<T[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(initialPageSize);
-  const [totalPages, setTotalPages] = useState(1);
+  const [totalPages, setTotalPages] = useState(0);
   const [totalItems, setTotalItems] = useState(0);
-  const [error, setError] = useState<Error | null>(null);
-
-  const canGoNext = currentPage < totalPages;
-  const canGoPrevious = currentPage > 1;
-  const startIndex = (currentPage - 1) * pageSize + 1;
-  const endIndex = Math.min(currentPage * pageSize, totalItems);
-
-  const goToPage = (page: number) => {
-    setCurrentPage(page);
-  };
-
-  const nextPage = () => {
-    if (canGoNext) {
-      setCurrentPage(currentPage + 1);
-    }
-  };
-
-  const previousPage = () => {
-    if (canGoPrevious) {
-      setCurrentPage(currentPage - 1);
-    }
-  };
-
-  const buildQuery = useCallback(() => {
-    let query = (supabase as any).from(tableName).select('*', { count: 'exact' });
-
-    // Separa selectedIds dagli altri filtri
-    const { selectedIds, ...otherFilters } = filters;
-
-    // Applica i filtri normali (escluso selectedIds)
-    Object.entries(otherFilters).forEach(([key, value]) => {
-      if (value !== undefined && value !== null && value !== '') {
-        if (typeof value === 'string' && value.startsWith('%') && value.endsWith('%')) {
-          query = query.ilike(key, value);
-        } else if (typeof value === 'string' && (value.startsWith('%') || value.endsWith('%'))) {
-            query = query.like(key, value);
-        } else {
-          query = query.eq(key, value);
-        }
-      }
-    });
-
-    // Applica il filtro per ID selezionati SOLO se presente e valido
-    if (selectedIds && Array.isArray(selectedIds) && selectedIds.length > 0) {
-      query = query.in('id', selectedIds);
-    }
-
-    return query;
-  }, [tableName, filters]);
 
   const fetchData = useCallback(async () => {
     setIsLoading(true);
     setError(null);
-
+    
     try {
-      let query = buildQuery()
-        .range((currentPage - 1) * pageSize, currentPage * pageSize - 1);
+      const result: PaginatedResult<T> = await getPaginatedData<T>(
+        tableName,
+        currentPage,
+        pageSize,
+        filters
+      );
       
-      // Solo se non stiamo filtrando per selectedIds, ordiniamo per created_at
-      if (!filters.selectedIds || !Array.isArray(filters.selectedIds) || filters.selectedIds.length === 0) {
-        query = query.order('created_at', { ascending: false });
-      }
-
-      const { data: results, error: queryError, count } = await query;
-
-      if (queryError) {
-        throw queryError;
-      }
-
-      setData((results || []) as T[]);
-      setTotalItems(count || 0);
-      setTotalPages(Math.ceil((count || 0) / pageSize));
-    } catch (e: any) {
-      setError(e);
-      console.error("Errore durante il caricamento dei dati:", e);
+      setData(result.data);
+      setTotalPages(result.totalPages);
+      setTotalItems(result.total);
+    } catch (err) {
+      console.error(`Error fetching paginated data for ${tableName}:`, err);
+      setError(err instanceof Error ? err.message : 'Errore nel caricamento dati');
+      setData([]);
     } finally {
       setIsLoading(false);
     }
-  }, [currentPage, pageSize, buildQuery, filters.selectedIds]);
+  }, [tableName, currentPage, pageSize, JSON.stringify(filters)]);
 
-  // Reset della pagina quando cambiano i filtri
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [JSON.stringify(filters)]);
-
-  // Fetch dei dati quando cambiano le dipendenze
   useEffect(() => {
     fetchData();
   }, [fetchData]);
 
-  const refetch = useCallback(() => {
-    fetchData();
+  const goToPage = useCallback((page: number) => {
+    if (page >= 1 && page <= totalPages) {
+      setCurrentPage(page);
+    }
+  }, [totalPages]);
+
+  const nextPage = useCallback(() => {
+    if (currentPage < totalPages) {
+      setCurrentPage(currentPage + 1);
+    }
+  }, [currentPage, totalPages]);
+
+  const previousPage = useCallback(() => {
+    if (currentPage > 1) {
+      setCurrentPage(currentPage - 1);
+    }
+  }, [currentPage]);
+
+  const handleSetPageSize = useCallback((size: number) => {
+    setPageSize(size);
+    setCurrentPage(1); // Reset alla prima pagina quando cambia la dimensione
+  }, []);
+
+  const canGoNext = currentPage < totalPages;
+  const canGoPrevious = currentPage > 1;
+
+  const startIndex = totalItems > 0 ? (currentPage - 1) * pageSize + 1 : 0;
+  const endIndex = Math.min(currentPage * pageSize, totalItems);
+
+  const refetch = useCallback(async () => {
+    await fetchData();
   }, [fetchData]);
 
   return {
@@ -124,7 +114,7 @@ export const useServerPagination = <T extends Record<string, any>>({
     goToPage,
     nextPage,
     previousPage,
-    setPageSize,
+    setPageSize: handleSetPageSize,
     canGoNext,
     canGoPrevious,
     startIndex,

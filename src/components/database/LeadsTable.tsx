@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import {
   Table,
@@ -22,8 +21,7 @@ interface LeadsTableProps {
   onSelectionChange: (selected: string[]) => void;
   onDelete: (id: string) => void;
   filters?: Record<string, any>;
-  onDataChange?: (data: any[]) => void;
-  showOnlySelected?: boolean;
+  onDataChange?: (data: any[]) => void; // Nuovo prop per esporre i dati
 }
 
 const initialColumns: ColumnConfig[] = [
@@ -43,18 +41,12 @@ const LeadsTable = ({
   onSelectionChange, 
   onDelete,
   filters = {},
-  onDataChange,
-  showOnlySelected = false
+  onDataChange // Nuovo prop
 }: LeadsTableProps) => {
   const isMobile = useIsMobile();
   const { columns, visibleColumns, toggleColumn } = useColumnVisibility(initialColumns);
   const [selectedLeadForDetails, setSelectedLeadForDetails] = useState<Lead | null>(null);
   const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false);
-  
-  // Modifica i filtri per includere solo i lead selezionati se necessario
-  const effectiveFilters = showOnlySelected && selectedItems.length > 0 
-    ? { ...filters, selectedIds: selectedItems }
-    : filters;
   
   // Usa la paginazione server-side
   const {
@@ -76,13 +68,18 @@ const LeadsTable = ({
   } = useServerPagination<Lead>({ 
     tableName: 'lead_generation',
     initialPageSize: 50,
-    filters: effectiveFilters
+    filters
   });
 
   // Sorting locale sui dati della pagina corrente
   const { sortedData, sortConfig, requestSort } = useTableSorting(leads);
 
-  // Esponi i dati al componente padre
+  // Reset selezioni quando cambiano i filtri
+  useEffect(() => {
+    onSelectionChange([]);
+  }, [JSON.stringify(filters), onSelectionChange]);
+
+  // Correggi qui: usa 'leads' invece di 'data'
   useEffect(() => {
     if (onDataChange && leads) {
       onDataChange(leads);
@@ -114,6 +111,7 @@ const LeadsTable = ({
 
   const handleDelete = async (id: string) => {
     await onDelete(id);
+    // Ricarica i dati dopo l'eliminazione
     await refetch();
   };
 
@@ -129,12 +127,7 @@ const LeadsTable = ({
   if (leads.length === 0 && !isLoading) {
     return (
       <div className="text-center py-10 text-muted-foreground">
-        {showOnlySelected 
-          ? 'Nessun lead selezionato da visualizzare.'
-          : Object.keys(filters).length > 0 
-            ? 'Nessun lead trovato con i filtri attuali.' 
-            : 'Nessun lead trovato.'
-        }
+        {Object.keys(filters).length > 0 ? 'Nessun lead trovato con i filtri attuali.' : 'Nessun lead trovato.'}
       </div>
     );
   }
