@@ -255,7 +255,7 @@ const DatabaseTableContainer = ({
                   <MoreHorizontal className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="bg-white border shadow-lg z-50">
+              <DropdownMenuContent align="end" className="z-50">
                 {selectedItems.length > 0 ? (
                   <>
                     <DropdownMenuItem onClick={handleExportCSV}>
