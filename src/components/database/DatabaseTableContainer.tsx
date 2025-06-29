@@ -1,3 +1,4 @@
+
 import { ReactNode, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -247,50 +248,60 @@ const DatabaseTableContainer = ({
             
             <SearchInput onSearch={handleSearch} />
             
-            {selectedItems.length > 0 && (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm">
-                    <MoreHorizontal className="h-4 w-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={handleExportCSV}>
-                    <FileDown className="h-4 w-4 mr-2" />
-                    Esporta CSV
+            {/* Menu dropdown sempre visibile */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm">
+                  <MoreHorizontal className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="bg-white border shadow-lg z-50">
+                {selectedItems.length > 0 ? (
+                  <>
+                    <DropdownMenuItem onClick={handleExportCSV}>
+                      <FileDown className="h-4 w-4 mr-2" />
+                      Esporta CSV ({selectedItems.length} selezionati)
+                    </DropdownMenuItem>
+                    {tableName === 'lead_generation' && (
+                      <>
+                        <DropdownMenuItem 
+                          onClick={handleBulkAssign}
+                          disabled={isAssigning}
+                        >
+                          <Users className="h-4 w-4 mr-2" />
+                          {isAssigning ? "Aggiornamento..." : "Rendi Assegnabili"}
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={handleManualAssignment}>
+                          <UserPlus className="h-4 w-4 mr-2" />
+                          Assegna Manualmente
+                        </DropdownMenuItem>
+                      </>
+                    )}
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem 
+                      onClick={handleBulkDelete}
+                      disabled={isDeleting}
+                      className="text-red-600 focus:text-red-600"
+                    >
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      {isDeleting ? "Eliminazione..." : "Elimina"}
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                  </>
+                ) : (
+                  <DropdownMenuItem disabled className="text-muted-foreground">
+                    Seleziona elementi per azioni multiple
                   </DropdownMenuItem>
-                  {tableName === 'lead_generation' && (
-                    <>
-                      <DropdownMenuItem 
-                        onClick={handleBulkAssign}
-                        disabled={isAssigning}
-                      >
-                        <Users className="h-4 w-4 mr-2" />
-                        {isAssigning ? "Aggiornamento..." : "Rendi Assegnabili"}
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={handleManualAssignment}>
-                        <UserPlus className="h-4 w-4 mr-2" />
-                        Assegna Manualmente
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem onClick={() => setShowMultiSearchDialog(true)}>
-                        <Search className="h-4 w-4 mr-2" />
-                        Ricerca Multipla
-                      </DropdownMenuItem>
-                    </>
-                  )}
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem 
-                    onClick={handleBulkDelete}
-                    disabled={isDeleting}
-                    className="text-red-600 focus:text-red-600"
-                  >
-                    <Trash2 className="h-4 w-4 mr-2" />
-                    {isDeleting ? "Eliminazione..." : "Elimina"}
+                )}
+                
+                {tableName === 'lead_generation' && (
+                  <DropdownMenuItem onClick={() => setShowMultiSearchDialog(true)}>
+                    <Search className="h-4 w-4 mr-2" />
+                    Ricerca Multipla
                   </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            )}
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
       </CardHeader>
