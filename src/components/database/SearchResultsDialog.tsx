@@ -36,13 +36,17 @@ const SearchResultsDialog = ({
   onConfirm
 }: SearchResultsDialogProps) => {
   const handleConfirm = () => {
+    console.log('SearchResultsDialog - Confirming with results:', results);
     onConfirm();
+  };
+
+  const handleCancel = () => {
     onOpenChange(false);
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px]">
+      <DialogContent className="sm:max-w-[700px] max-h-[80vh]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <CheckCircle2 className="h-5 w-5 text-green-600" />
@@ -66,12 +70,12 @@ const SearchResultsDialog = ({
           </div>
           
           <div className="space-y-2">
-            <h4 className="text-sm font-medium">Lead trovati e selezionati:</h4>
-            <ScrollArea className="max-h-[300px] w-full rounded-md border p-4">
+            <h4 className="text-sm font-medium">Lead trovati e che verranno selezionati ({results.length}):</h4>
+            <ScrollArea className="max-h-[400px] w-full rounded-md border p-4">
               <div className="space-y-3">
-                {results.map((result) => (
+                {results.map((result, index) => (
                   <div
-                    key={result.id}
+                    key={`${result.id}-${index}`}
                     className="flex items-start space-x-3 rounded-lg border p-3 bg-muted/30"
                   >
                     <User className="h-4 w-4 mt-1 text-muted-foreground" />
@@ -104,8 +108,8 @@ const SearchResultsDialog = ({
         </div>
 
         <DialogFooter className="flex gap-2">
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Chiudi senza selezionare
+          <Button variant="outline" onClick={handleCancel}>
+            Annulla
           </Button>
           <Button onClick={handleConfirm}>
             Conferma selezione ({results.length} lead)

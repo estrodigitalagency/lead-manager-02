@@ -65,15 +65,15 @@ const MultiSearchDialog = ({
       setSearchTerms(terms);
       console.log('Search terms:', terms);
 
+      // Costruisci le condizioni OR per email e telefono
+      const emailConditions = terms.map(term => `email.eq.${term}`).join(',');
+      const phoneConditions = terms.map(term => `telefono.eq.${term}`).join(',');
+      
       // Cerca direttamente nel database tutti i lead che corrispondono ai termini
       const { data: matchedItems, error } = await supabase
         .from('lead_generation')
         .select('id, email, telefono, nome, cognome')
-        .or(
-          terms.map(term => 
-            `email.eq.${term},telefono.eq.${term}`
-          ).join(',')
-        );
+        .or(`${emailConditions},${phoneConditions}`);
 
       if (error) {
         console.error('Database search error:', error);
@@ -86,7 +86,13 @@ const MultiSearchDialog = ({
         toast.error(`Nessun lead trovato per i termini di ricerca specificati`);
         setSearchResults([]);
       } else {
-        setSearchResults(matchedItems);
+        // Rimuovi duplicati basati sull'ID
+        const uniqueResults = matchedItems.filter((item, index, self) => 
+          index === self.findIndex((t) => t.id === item.id)
+        );
+        
+        console.log('Unique results:', uniqueResults);
+        setSearchResults(uniqueResults);
         setShowResults(true);
       }
     } catch (error) {
@@ -99,6 +105,7 @@ const MultiSearchDialog = ({
 
   const handleConfirmSelection = () => {
     const selectedIds = searchResults.map(item => item.id);
+    console.log('Confirming selection with IDs:', selectedIds);
     onItemsSelected(selectedIds);
     toast.success(`${searchResults.length} lead selezionati automaticamente`);
     
@@ -106,6 +113,7 @@ const MultiSearchDialog = ({
     setSearchText("");
     setSearchResults([]);
     setSearchTerms([]);
+    setShowResults(false);
     onOpenChange(false);
   };
 
@@ -113,12 +121,17 @@ const MultiSearchDialog = ({
     setSearchText("");
     setSearchResults([]);
     setSearchTerms([]);
+    setShowResults(false);
     onOpenChange(false);
+  };
+
+  const handleResultsDialogClose = () => {
+    setShowResults(false);
   };
 
   return (
     <>
-      <Dialog open={open} onOpenChange={onOpenChange}>
+      <Dialog open={open && !showResults} onOpenChange={onOpenChange}>
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -168,7 +181,7 @@ const MultiSearchDialog = ({
 
       <SearchResultsDialog
         open={showResults}
-        onOpenChange={setShowResults}
+        onOpenChange={handleResultsDialogClose}
         results={searchResults}
         searchTerms={searchTerms}
         onConfirm={handleConfirmSelection}
