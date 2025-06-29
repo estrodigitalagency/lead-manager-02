@@ -79,12 +79,12 @@ const LeadsTable = ({
     onSelectionChange([]);
   }, [JSON.stringify(filters), onSelectionChange]);
 
-  // Aggiungi questo useEffect per esporre i dati al parent
+  // Correggi qui: usa 'leads' invece di 'data'
   useEffect(() => {
-    if (onDataChange && data) {
-      onDataChange(data);
+    if (onDataChange && leads) {
+      onDataChange(leads);
     }
-  }, [data, onDataChange]);
+  }, [leads, onDataChange]);
 
   const handleItemSelect = (id: string, checked: boolean) => {
     if (checked) {
