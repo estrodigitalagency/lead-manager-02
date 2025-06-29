@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -42,7 +43,8 @@ export const useServerPagination = <T extends Record<string, any>>({
   };
 
   const buildQuery = useCallback(() => {
-    let query = supabase.from(tableName).select('*', { count: 'exact' });
+    // Uso any per evitare problemi di typing con supabase
+    let query = (supabase as any).from(tableName).select('*', { count: 'exact' });
 
     Object.entries(filters).forEach(([key, value]) => {
       if (value !== undefined && value !== null && value !== '') {
@@ -58,7 +60,7 @@ export const useServerPagination = <T extends Record<string, any>>({
       }
     });
 
-    // Nuovo filtro per ID selezionati
+    // Filtro per ID selezionati
     if (filters.selectedIds && Array.isArray(filters.selectedIds) && filters.selectedIds.length > 0) {
       query = query.in('id', filters.selectedIds);
     }
@@ -73,7 +75,7 @@ export const useServerPagination = <T extends Record<string, any>>({
     try {
       let query = buildQuery()
         .range((currentPage - 1) * pageSize, currentPage * pageSize - 1)
-        .order('data', { ascending: false });
+        .order('created_at', { ascending: false });
 
       const { data: results, error: queryError, count } = await query;
 
@@ -81,7 +83,7 @@ export const useServerPagination = <T extends Record<string, any>>({
         throw queryError;
       }
 
-      setData(results || []);
+      setData((results || []) as T[]);
       setTotalItems(count || 0);
       setTotalPages(Math.ceil((count || 0) / pageSize));
     } catch (e: any) {

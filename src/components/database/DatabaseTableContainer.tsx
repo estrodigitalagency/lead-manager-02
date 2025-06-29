@@ -1,4 +1,5 @@
-import { ReactNode, useState } from "react";
+
+import React, { ReactNode, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useIsMobile } from "@/hooks/use-mobile";
 import DatabaseFiltersResponsive from "@/components/DatabaseFiltersResponsive";
