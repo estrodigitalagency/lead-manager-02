@@ -109,42 +109,33 @@ export type Database = {
       }
       booking_clicks: {
         Row: {
-          calendly_visualizzato: boolean | null
           call_prenotata: string | null
           created_at: string
           data_ingresso: string | null
-          data_uscita: string | null
           email: string
           id: string
           nome: string
           telefono: string
-          ultimo_url_visualizzato: string | null
           venditore: string | null
         }
         Insert: {
-          calendly_visualizzato?: boolean | null
           call_prenotata?: string | null
           created_at?: string
           data_ingresso?: string | null
-          data_uscita?: string | null
           email: string
           id?: string
           nome: string
           telefono: string
-          ultimo_url_visualizzato?: string | null
           venditore?: string | null
         }
         Update: {
-          calendly_visualizzato?: boolean | null
           call_prenotata?: string | null
           created_at?: string
           data_ingresso?: string | null
-          data_uscita?: string | null
           email?: string
           id?: string
           nome?: string
           telefono?: string
-          ultimo_url_visualizzato?: string | null
           venditore?: string | null
         }
         Relationships: []

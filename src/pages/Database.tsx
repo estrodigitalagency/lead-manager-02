@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -276,6 +275,11 @@ const DatabasePage = () => {
 
   const anyLoading = isVerifying || isRefreshing;
 
+  const handleBulkAction = (action: string) => {
+    // Implementa le azioni bulk qui se necessario
+    console.log('Bulk action:', action);
+  };
+
   return (
     <div className={`container mx-auto px-4 py-8 ${isMobile ? 'px-2 py-4' : ''}`}>
       <div className={`flex justify-between items-center mb-8 ${isMobile ? 'flex-col gap-4' : ''}`}>
@@ -367,6 +371,7 @@ const DatabasePage = () => {
             onAddRecord={() => openAddDialog('lead_generation')}
             onImport={() => openImportDialog('lead_generation')}
             onRefresh={handleRefresh}
+            onBulkAction={handleBulkAction}
           >
             <LeadsTable 
               selectedItems={selectedLeads}
@@ -389,6 +394,7 @@ const DatabasePage = () => {
             onAddRecord={() => openAddDialog('booked_call')}
             onImport={() => openImportDialog('booked_call')}
             onRefresh={handleRefresh}
+            onBulkAction={handleBulkAction}
           >
             <BookingsTable 
               bookings={bookings}
@@ -412,6 +418,7 @@ const DatabasePage = () => {
             onAddRecord={() => openAddDialog('lead_lavorati')}
             onImport={() => openImportDialog('lead_lavorati')}
             onRefresh={handleRefresh}
+            onBulkAction={handleBulkAction}
           >
             <LeadLavoratiTable 
               leadLavorati={leadLavorati}

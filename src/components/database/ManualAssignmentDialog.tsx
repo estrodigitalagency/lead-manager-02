@@ -16,6 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -46,6 +47,7 @@ const ManualAssignmentDialog = ({
   const [venditori, setVenditori] = useState<Venditore[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isAssigning, setIsAssigning] = useState(false);
+  const [sendWebhook, setSendWebhook] = useState(false);
 
   useEffect(() => {
     if (open) {
@@ -121,66 +123,68 @@ const ManualAssignmentDialog = ({
 
       if (historyError) {
         console.error('Errore nella registrazione cronologia:', historyError);
-        // Non blocchiamo l'operazione per questo errore
       }
 
-      // Prepara e invia webhook se configurato
-      const { data: webhookData, error: webhookError } = await supabase
-        .from('system_settings')
-        .select('value')
-        .eq('key', 'lead_assign_webhook_url')
-        .single();
+      // Invia webhook solo se l'opzione è abilitata
+      if (sendWebhook) {
+        const { data: webhookData, error: webhookError } = await supabase
+          .from('system_settings')
+          .select('value')
+          .eq('key', 'lead_assign_webhook_url')
+          .single();
 
-      if (!webhookError && webhookData?.value && leadsData) {
-        console.log('Invio webhook per assegnazione manuale...');
-        
-        // Prepara payload webhook completo
-        const assignmentPayload = {
-          venditore: venditoreData.nome,
-          venditore_cognome: venditoreData.cognome || '',
-          venditore_email: venditoreData.email || '',
-          venditore_telefono: venditoreData.telefono || '',
-          google_sheets_file_id: venditoreData.sheets_file_id || '',
-          google_sheets_tab_name: venditoreData.sheets_tab_name || '',
-          campagna: '',
-          leads_count: selectedLeadIds.length,
-          timestamp: new Date().toISOString(),
-          leads: leadsData.map(lead => ({
-            id: lead.id,
-            nome: lead.nome,
-            cognome: lead.cognome || '',
-            email: lead.email || '',
-            telefono: lead.telefono || '',
-            fonte: lead.fonte || '',
-            created_at: lead.created_at,
-            assigned_at: new Date().toISOString()
-          }))
-        };
+        if (!webhookError && webhookData?.value && leadsData) {
+          console.log('Invio webhook per assegnazione manuale...');
+          
+          const assignmentPayload = {
+            venditore: venditoreData.nome,
+            venditore_cognome: venditoreData.cognome || '',
+            venditore_email: venditoreData.email || '',
+            venditore_telefono: venditoreData.telefono || '',
+            google_sheets_file_id: venditoreData.sheets_file_id || '',
+            google_sheets_tab_name: venditoreData.sheets_tab_name || '',
+            campagna: '',
+            leads_count: selectedLeadIds.length,
+            timestamp: new Date().toISOString(),
+            leads: leadsData.map(lead => ({
+              id: lead.id,
+              nome: lead.nome,
+              cognome: lead.cognome || '',
+              email: lead.email || '',
+              telefono: lead.telefono || '',
+              fonte: lead.fonte || '',
+              created_at: lead.created_at,
+              assigned_at: new Date().toISOString()
+            }))
+          };
 
-        try {
-          const { data: webhookResponse, error: webhookCallError } = await supabase.functions.invoke('lead-assign-webhook', {
-            body: {
-              assignmentData: assignmentPayload,
-              webhookUrl: webhookData.value
+          try {
+            const { data: webhookResponse, error: webhookCallError } = await supabase.functions.invoke('lead-assign-webhook', {
+              body: {
+                assignmentData: assignmentPayload,
+                webhookUrl: webhookData.value
+              }
+            });
+
+            if (webhookCallError) {
+              console.error('Errore chiamata webhook:', webhookCallError);
+              toast.error('Lead assegnati ma errore nell\'invio del webhook');
+            } else if (webhookResponse && webhookResponse.success) {
+              console.log('Webhook inviato con successo:', webhookResponse);
+              toast.success(`${selectedLeadIds.length} lead assegnati a ${venditoreName} e webhook inviato`);
+            } else {
+              console.error('Webhook response indica errore:', webhookResponse);
+              toast.error('Lead assegnati ma errore nell\'invio del webhook');
             }
-          });
-
-          if (webhookCallError) {
-            console.error('Errore chiamata webhook:', webhookCallError);
-            toast.error('Lead assegnati ma errore nell\'invio del webhook');
-          } else if (webhookResponse && webhookResponse.success) {
-            console.log('Webhook inviato con successo:', webhookResponse);
-            toast.success(`${selectedLeadIds.length} lead assegnati a ${venditoreName} e webhook inviato`);
-          } else {
-            console.error('Webhook response indica errore:', webhookResponse);
+          } catch (webhookError) {
+            console.error('Errore nell\'invio webhook:', webhookError);
             toast.error('Lead assegnati ma errore nell\'invio del webhook');
           }
-        } catch (webhookError) {
-          console.error('Errore nell\'invio webhook:', webhookError);
-          toast.error('Lead assegnati ma errore nell\'invio del webhook');
+        } else {
+          console.log('Webhook non configurato o non abilitato');
+          toast.success(`${selectedLeadIds.length} lead assegnati a ${venditoreName}`);
         }
       } else {
-        console.log('Nessun webhook configurato per assegnazione manuale');
         toast.success(`${selectedLeadIds.length} lead assegnati a ${venditoreName}`);
       }
 
@@ -204,6 +208,7 @@ const ManualAssignmentDialog = ({
       onAssignmentComplete();
       onOpenChange(false);
       setSelectedVenditore("");
+      setSendWebhook(false);
     } catch (error) {
       console.error("Errore nell'assegnazione:", error);
       toast.error("Errore nell'assegnazione dei lead");
@@ -241,6 +246,20 @@ const ManualAssignmentDialog = ({
                 ))}
               </SelectContent>
             </Select>
+          </div>
+
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="send-webhook"
+              checked={sendWebhook}
+              onCheckedChange={setSendWebhook}
+            />
+            <label
+              htmlFor="send-webhook"
+              className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+            >
+              Invia dati anche via webhook
+            </label>
           </div>
         </div>
 
