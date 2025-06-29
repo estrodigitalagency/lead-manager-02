@@ -1,7 +1,13 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -12,7 +18,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Trash2, Users, FileDown, UserPlus } from "lucide-react";
+import { Trash2, MoreHorizontal, Users, FileDown, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 import { deleteMultipleLeads } from "@/services/databaseService";
 import { supabase } from "@/integrations/supabase/client";
@@ -144,51 +150,39 @@ const BulkActions = ({
 
         {selectedItems.length > 0 && (
           <div className="flex items-center gap-2 ml-auto">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleExportCSV}
-              className="flex items-center gap-1"
-            >
-              <FileDown className="h-4 w-4" />
-              Esporta CSV
-            </Button>
-
-            {tableName === 'lead_generation' && (
-              <>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleBulkAssign}
-                  disabled={isProcessing}
-                  className="flex items-center gap-1"
-                >
-                  <Users className="h-4 w-4" />
-                  Rendi Assegnabili
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm">
+                  <MoreHorizontal className="h-4 w-4" />
                 </Button>
-
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleManualAssignment}
-                  disabled={isProcessing}
-                  className="flex items-center gap-1"
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={handleExportCSV}>
+                  <FileDown className="h-4 w-4 mr-2" />
+                  Esporta CSV
+                </DropdownMenuItem>
+                {tableName === 'lead_generation' && (
+                  <>
+                    <DropdownMenuItem onClick={handleBulkAssign} disabled={isProcessing}>
+                      <Users className="h-4 w-4 mr-2" />
+                      Rendi Assegnabili
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={handleManualAssignment} disabled={isProcessing}>
+                      <UserPlus className="h-4 w-4 mr-2" />
+                      Assegna Manualmente
+                    </DropdownMenuItem>
+                  </>
+                )}
+                <DropdownMenuSeparator />
+                <DropdownMenuItem 
+                  onClick={() => setShowDeleteDialog(true)}
+                  className="text-red-600"
                 >
-                  <UserPlus className="h-4 w-4" />
-                  Assegna Manualmente
-                </Button>
-              </>
-            )}
-
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowDeleteDialog(true)}
-              className="flex items-center gap-1 text-red-600 hover:text-red-700"
-            >
-              <Trash2 className="h-4 w-4" />
-              Elimina
-            </Button>
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Elimina
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         )}
       </div>
