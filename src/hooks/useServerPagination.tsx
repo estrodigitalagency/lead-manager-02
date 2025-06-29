@@ -1,106 +1,103 @@
-
-import { useState, useEffect, useCallback } from "react";
-import { getPaginatedData, PaginatedResult } from "@/services/databaseService";
-
-type ValidTableName = "lead_generation" | "booked_call" | "lead_lavorati";
+import { useState, useEffect, useCallback } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 
 interface UseServerPaginationProps<T> {
-  tableName: ValidTableName;
+  tableName: string;
   initialPageSize?: number;
   filters?: Record<string, any>;
 }
 
-interface UseServerPaginationReturn<T> {
-  data: T[];
-  isLoading: boolean;
-  error: string | null;
-  currentPage: number;
-  pageSize: number;
-  totalPages: number;
-  totalItems: number;
-  goToPage: (page: number) => void;
-  nextPage: () => void;
-  previousPage: () => void;
-  setPageSize: (size: number) => void;
-  canGoNext: boolean;
-  canGoPrevious: boolean;
-  startIndex: number;
-  endIndex: number;
-  refetch: () => Promise<void>;
-}
-
-export const useServerPagination = <T,>({ 
+export const useServerPagination = <T extends Record<string, any>>({
   tableName,
-  initialPageSize = 50,
+  initialPageSize = 10,
   filters = {}
-}: UseServerPaginationProps<T>): UseServerPaginationReturn<T> => {
+}: UseServerPaginationProps<T>) => {
   const [data, setData] = useState<T[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(initialPageSize);
-  const [totalPages, setTotalPages] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
+  const [error, setError] = useState<Error | null>(null);
+
+  const canGoNext = currentPage < totalPages;
+  const canGoPrevious = currentPage > 1;
+  const startIndex = (currentPage - 1) * pageSize + 1;
+  const endIndex = Math.min(currentPage * pageSize, totalItems);
+
+  const goToPage = (page: number) => {
+    setCurrentPage(page);
+  };
+
+  const nextPage = () => {
+    if (canGoNext) {
+      setCurrentPage(currentPage + 1);
+    }
+  };
+
+  const previousPage = () => {
+    if (canGoPrevious) {
+      setCurrentPage(currentPage - 1);
+    }
+  };
+
+  const buildQuery = useCallback(() => {
+    let query = supabase.from(tableName).select('*', { count: 'exact' });
+
+    Object.entries(filters).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== '') {
+        if (typeof value === 'string' && value.startsWith('%') && value.endsWith('%')) {
+          // Handle "contains" filter
+          query = query.ilike(key, value);
+        } else if (typeof value === 'string' && (value.startsWith('%') || value.endsWith('%'))) {
+            query = query.like(key, value);
+        } else {
+          // Handle exact match filter
+          query = query.eq(key, value);
+        }
+      }
+    });
+
+    // Nuovo filtro per ID selezionati
+    if (filters.selectedIds && Array.isArray(filters.selectedIds) && filters.selectedIds.length > 0) {
+      query = query.in('id', filters.selectedIds);
+    }
+
+    return query;
+  }, [tableName, filters]);
 
   const fetchData = useCallback(async () => {
     setIsLoading(true);
     setError(null);
-    
+
     try {
-      const result: PaginatedResult<T> = await getPaginatedData<T>(
-        tableName,
-        currentPage,
-        pageSize,
-        filters
-      );
-      
-      setData(result.data);
-      setTotalPages(result.totalPages);
-      setTotalItems(result.total);
-    } catch (err) {
-      console.error(`Error fetching paginated data for ${tableName}:`, err);
-      setError(err instanceof Error ? err.message : 'Errore nel caricamento dati');
-      setData([]);
+      let query = buildQuery()
+        .range((currentPage - 1) * pageSize, currentPage * pageSize - 1)
+        .order('data', { ascending: false });
+
+      const { data: results, error: queryError, count } = await query;
+
+      if (queryError) {
+        throw queryError;
+      }
+
+      setData(results || []);
+      setTotalItems(count || 0);
+      setTotalPages(Math.ceil((count || 0) / pageSize));
+    } catch (e: any) {
+      setError(e);
+      console.error("Errore durante il caricamento dei dati:", e);
     } finally {
       setIsLoading(false);
     }
-  }, [tableName, currentPage, pageSize, JSON.stringify(filters)]);
+  }, [currentPage, pageSize, buildQuery]);
 
   useEffect(() => {
     fetchData();
-  }, [fetchData]);
+  }, [fetchData, currentPage, pageSize, filters]);
 
-  const goToPage = useCallback((page: number) => {
-    if (page >= 1 && page <= totalPages) {
-      setCurrentPage(page);
-    }
-  }, [totalPages]);
-
-  const nextPage = useCallback(() => {
-    if (currentPage < totalPages) {
-      setCurrentPage(currentPage + 1);
-    }
-  }, [currentPage, totalPages]);
-
-  const previousPage = useCallback(() => {
-    if (currentPage > 1) {
-      setCurrentPage(currentPage - 1);
-    }
-  }, [currentPage]);
-
-  const handleSetPageSize = useCallback((size: number) => {
-    setPageSize(size);
-    setCurrentPage(1); // Reset alla prima pagina quando cambia la dimensione
-  }, []);
-
-  const canGoNext = currentPage < totalPages;
-  const canGoPrevious = currentPage > 1;
-
-  const startIndex = totalItems > 0 ? (currentPage - 1) * pageSize + 1 : 0;
-  const endIndex = Math.min(currentPage * pageSize, totalItems);
-
-  const refetch = useCallback(async () => {
-    await fetchData();
+  const refetch = useCallback(() => {
+    fetchData();
   }, [fetchData]);
 
   return {
@@ -114,7 +111,7 @@ export const useServerPagination = <T,>({
     goToPage,
     nextPage,
     previousPage,
-    setPageSize: handleSetPageSize,
+    setPageSize,
     canGoNext,
     canGoPrevious,
     startIndex,
