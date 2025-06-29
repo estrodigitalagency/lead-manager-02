@@ -2,13 +2,6 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  DropdownMenuSeparator,
-} from "@/components/ui/dropdown-menu";
-import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -18,7 +11,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Trash2, MoreHorizontal, Users, FileDown, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 import { deleteMultipleLeads } from "@/services/databaseService";
 import { supabase } from "@/integrations/supabase/client";
@@ -147,44 +139,6 @@ const BulkActions = ({
             }
           </span>
         </div>
-
-        {selectedItems.length > 0 && (
-          <div className="flex items-center gap-2 ml-auto">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm">
-                  <MoreHorizontal className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={handleExportCSV}>
-                  <FileDown className="h-4 w-4 mr-2" />
-                  Esporta CSV
-                </DropdownMenuItem>
-                {tableName === 'lead_generation' && (
-                  <>
-                    <DropdownMenuItem onClick={handleBulkAssign} disabled={isProcessing}>
-                      <Users className="h-4 w-4 mr-2" />
-                      Rendi Assegnabili
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={handleManualAssignment} disabled={isProcessing}>
-                      <UserPlus className="h-4 w-4 mr-2" />
-                      Assegna Manualmente
-                    </DropdownMenuItem>
-                  </>
-                )}
-                <DropdownMenuSeparator />
-                <DropdownMenuItem 
-                  onClick={() => setShowDeleteDialog(true)}
-                  className="text-red-600"
-                >
-                  <Trash2 className="h-4 w-4 mr-2" />
-                  Elimina
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        )}
       </div>
 
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>

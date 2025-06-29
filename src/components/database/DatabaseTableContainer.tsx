@@ -1,4 +1,3 @@
-
 import { ReactNode, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -15,7 +14,9 @@ import {
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { MoreHorizontal, FileDown, Users, UserPlus } from "lucide-react";
+import { MoreHorizontal, FileDown, Users, UserPlus, Trash2 } from "lucide-react";
+import { toast } from "sonner";
+import { deleteMultipleLeads } from "@/services/databaseService";
 
 interface DatabaseTableContainerProps {
   title: string;
@@ -52,6 +53,7 @@ const DatabaseTableContainer = ({
 }: DatabaseTableContainerProps) => {
   const isMobile = useIsMobile();
   const [currentFilters, setCurrentFilters] = useState<Record<string, any>>({});
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const handleSearch = (searchTerm: string) => {
     console.log('Search term:', searchTerm);
@@ -106,6 +108,30 @@ const DatabaseTableContainer = ({
     window.URL.revokeObjectURL(url);
   };
 
+  const handleBulkDelete = async () => {
+    if (!selectedItems || selectedItems.length === 0) {
+      toast.error("Nessun elemento selezionato per l'eliminazione");
+      return;
+    }
+
+    if (!confirm(`Sei sicuro di voler eliminare ${selectedItems.length} record selezionati? Questa azione non può essere annullata.`)) {
+      return;
+    }
+
+    setIsDeleting(true);
+    try {
+      await deleteMultipleLeads(tableName, selectedItems);
+      toast.success(`${selectedItems.length} record eliminati con successo`);
+      onSelectionChange([]);
+      onRefresh();
+    } catch (error) {
+      console.error("Errore durante l'eliminazione:", error);
+      toast.error(`Errore durante l'eliminazione: ${error instanceof Error ? error.message : 'Errore sconosciuto'}`);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -155,6 +181,15 @@ const DatabaseTableContainer = ({
                       </DropdownMenuItem>
                     </>
                   )}
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem 
+                    onClick={handleBulkDelete}
+                    disabled={isDeleting}
+                    className="text-red-600"
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    {isDeleting ? "Eliminazione..." : "Elimina"}
+                  </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             )}
