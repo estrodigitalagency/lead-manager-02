@@ -13,24 +13,23 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Search } from "lucide-react";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 interface MultiSearchDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  allItems: any[];
   onItemsSelected: (selectedIds: string[]) => void;
 }
 
 const MultiSearchDialog = ({
   open,
   onOpenChange,
-  allItems,
   onItemsSelected
 }: MultiSearchDialogProps) => {
   const [searchText, setSearchText] = useState("");
   const [isSearching, setIsSearching] = useState(false);
 
-  const handleSearch = () => {
+  const handleSearch = async () => {
     if (!searchText.trim()) {
       toast.error("Inserisci almeno un'email o numero di telefono");
       return;
@@ -52,34 +51,34 @@ const MultiSearchDialog = ({
       }
 
       console.log('Search terms:', searchTerms);
-      console.log('All items count:', allItems.length);
-      console.log('Sample item:', allItems[0]);
 
-      // Cerca i lead che corrispondono ai termini di ricerca
-      const matchedItems = allItems.filter(item => {
-        const email = (item.email || '').toLowerCase().trim();
-        const telefono = (item.telefono || '').toLowerCase().trim();
-        
-        // Verifica se qualche termine di ricerca corrisponde esattamente all'email o telefono
-        const emailMatch = searchTerms.some(term => term === email);
-        const phoneMatch = searchTerms.some(term => term === telefono);
-        
-        return emailMatch || phoneMatch;
-      });
+      // Cerca direttamente nel database tutti i lead che corrispondono ai termini
+      const { data: matchedItems, error } = await supabase
+        .from('lead_generation')
+        .select('id, email, telefono, nome, cognome')
+        .or(
+          searchTerms.map(term => 
+            `email.eq.${term},telefono.eq.${term}`
+          ).join(',')
+        );
 
-      console.log('Matched items:', matchedItems);
+      if (error) {
+        console.error('Database search error:', error);
+        throw error;
+      }
 
-      if (matchedItems.length === 0) {
+      console.log('Matched items from database:', matchedItems);
+
+      if (!matchedItems || matchedItems.length === 0) {
         // Mostra dettagliato quale ricerca non ha dato risultati
-        console.log('No matches found. Checking individual terms:');
-        searchTerms.forEach(term => {
-          const termMatches = allItems.filter(item => {
-            const email = (item.email || '').toLowerCase().trim();
-            const telefono = (item.telefono || '').toLowerCase().trim();
-            return term === email || term === telefono;
-          });
-          console.log(`Term "${term}" matches:`, termMatches.length);
-        });
+        console.log('No matches found in database. Checking individual terms:');
+        for (const term of searchTerms) {
+          const { data: termMatches } = await supabase
+            .from('lead_generation')
+            .select('id, email, telefono')
+            .or(`email.eq.${term},telefono.eq.${term}`);
+          console.log(`Term "${term}" matches:`, termMatches?.length || 0);
+        }
         
         toast.error(`Nessun lead trovato per i termini di ricerca specificati`);
       } else {

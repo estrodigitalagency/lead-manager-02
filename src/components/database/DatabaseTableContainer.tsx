@@ -1,4 +1,3 @@
-
 import { ReactNode, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -330,7 +329,6 @@ const DatabaseTableContainer = ({
       <MultiSearchDialog
         open={showMultiSearchDialog}
         onOpenChange={setShowMultiSearchDialog}
-        allItems={allItems}
         onItemsSelected={handleMultiSearchComplete}
       />
     </Card>
