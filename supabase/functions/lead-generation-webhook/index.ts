@@ -18,9 +18,9 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
 
-    const { nome, cognome, email, telefono, fonte, campagna, notes } = await req.json()
+    const { nome, cognome, email, telefono, fonte, campagna, notes, lead_score } = await req.json()
 
-    console.log('Received lead data:', { nome, cognome, email, telefono, fonte, campagna, notes })
+    console.log('Received lead data:', { nome, cognome, email, telefono, fonte, campagna, notes, lead_score })
 
     // Get duplicate check settings
     const { data: settings, error: settingsError } = await supabase
@@ -99,6 +99,7 @@ serve(async (req) => {
         fonte,
         campagna,
         notes,
+        lead_score,
         stato: 'nuovo',
         assignable: false,
         booked_call: 'NO'
