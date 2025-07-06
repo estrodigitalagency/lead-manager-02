@@ -31,6 +31,7 @@ export default function WebhookTestSection() {
           email: "giovanni.bianchi@example.com",
           telefono: "+39 321 654 9870",
           fonte: "Facebook Ads",
+          lead_score: 92,
           created_at: new Date().toISOString(),
           assigned_at: new Date().toISOString()
         },
@@ -41,6 +42,7 @@ export default function WebhookTestSection() {
           email: "maria.verdi@example.com",
           telefono: "+39 987 654 3210",
           fonte: "Google Ads",
+          lead_score: 78,
           created_at: new Date().toISOString(),
           assigned_at: new Date().toISOString()
         }

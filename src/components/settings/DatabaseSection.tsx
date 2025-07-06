@@ -41,6 +41,7 @@ export default function DatabaseSection() {
     telefono: "+39 123 456 7890",
     campagna: "Google Ads",
     fonte: "google, facebook",
+    lead_score: 85,
     booked_call: "NO",
     note: "Interessato al prodotto X"
   };
@@ -68,6 +69,7 @@ export default function DatabaseSection() {
         { name: "telefono", type: "text", nullable: false, default: "-" },
         { name: "campagna", type: "text", nullable: true, default: "-" },
         { name: "fonte", type: "text", nullable: true, default: "-" },
+        { name: "lead_score", type: "integer", nullable: true, default: "null" },
         { name: "created_at", type: "timestamp with time zone", nullable: false, default: "now()" },
         { name: "assignable", type: "boolean", nullable: true, default: "false" },
         { name: "venditore", type: "text", nullable: true, default: "-" },
@@ -82,6 +84,7 @@ export default function DatabaseSection() {
         { name: "telefono", required: true, description: "Numero di telefono" },
         { name: "campagna", required: false, description: "Nome della campagna pubblicitaria" },
         { name: "fonte", required: false, description: "Fonti del lead separate da virgola (es: google, facebook)" },
+        { name: "lead_score", required: false, description: "Punteggio qualità del lead (numero da 0 a 100)" },
         { name: "booked_call", required: false, description: "\"SI\" o \"NO\" se ha prenotato una chiamata" },
         { name: "note", required: false, description: "Note aggiuntive sul lead" }
       ]
