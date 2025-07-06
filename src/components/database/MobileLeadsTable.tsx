@@ -152,6 +152,12 @@ const MobileLeadsTable = ({
                   </div>
                 )}
 
+                {lead.lead_score && (
+                  <div className="text-xs text-muted-foreground mt-2">
+                    Lead Score: {lead.lead_score}
+                  </div>
+                )}
+
                 {lead.venditore && (
                   <div className="text-xs text-muted-foreground mt-2">
                     Venditore: {lead.venditore}

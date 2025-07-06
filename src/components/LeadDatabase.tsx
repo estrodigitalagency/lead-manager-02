@@ -115,6 +115,11 @@ const LeadDatabase = () => {
                         <FonteDisplay fonte={lead.fonte} />
                       </div>
                     )}
+                    {lead.lead_score && (
+                      <div className="text-xs text-muted-foreground">
+                        Lead Score: {lead.lead_score}
+                      </div>
+                    )}
                     {lead.venditore && (
                       <div className="text-xs text-muted-foreground">
                         Venditore: {lead.venditore}
@@ -141,6 +146,7 @@ const LeadDatabase = () => {
             <TableHead className="table-header-cell">Email</TableHead>
             <TableHead className="table-header-cell">Telefono</TableHead>
             <TableHead className="table-header-cell">Fonte</TableHead>
+            <TableHead className="table-header-cell">Lead Score</TableHead>
             <TableHead className="table-header-cell">Call Prenotate</TableHead>
             <TableHead className="table-header-cell">Stato</TableHead>
             <TableHead className="table-header-cell">Venditore</TableHead>
@@ -159,6 +165,9 @@ const LeadDatabase = () => {
                 <TableCell className="table-body-cell">{lead.telefono}</TableCell>
                 <TableCell className="table-body-cell">
                   <FonteDisplay fonte={lead.fonte} />
+                </TableCell>
+                <TableCell className="table-body-cell">
+                  {lead.lead_score || '-'}
                 </TableCell>
                 <TableCell className="table-body-cell">
                   <Badge variant="outline" className={lead.booked_call === "SI" ? "bg-green-100 text-green-800 border-green-200" : "bg-gray-100 text-gray-800 border-gray-200"}>

@@ -83,6 +83,16 @@ const LeadTableHeader = ({
         {isColumnVisible('fonte') && (
           <TableHead className="table-header-cell">Fonte</TableHead>
         )}
+        {isColumnVisible('lead_score') && (
+          <SortableTableHead
+            sortKey="lead_score"
+            sortConfig={sortConfig}
+            onSort={onSort}
+            className="table-header-cell"
+          >
+            Lead Score
+          </SortableTableHead>
+        )}
         {isColumnVisible('booked_call') && (
           <SortableTableHead
             sortKey="booked_call"

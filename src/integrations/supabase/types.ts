@@ -140,6 +140,36 @@ export type Database = {
         }
         Relationships: []
       }
+      conferma_webinar_giugno25: {
+        Row: {
+          cognome: string | null
+          created_at: string
+          email: string
+          fonte: string | null
+          id: string
+          nome: string
+          telefono: string | null
+        }
+        Insert: {
+          cognome?: string | null
+          created_at?: string
+          email: string
+          fonte?: string | null
+          id?: string
+          nome: string
+          telefono?: string | null
+        }
+        Update: {
+          cognome?: string | null
+          created_at?: string
+          email?: string
+          fonte?: string | null
+          id?: string
+          nome?: string
+          telefono?: string | null
+        }
+        Relationships: []
+      }
       database_campagne: {
         Row: {
           attivo: boolean
@@ -244,6 +274,7 @@ export type Database = {
           email: string | null
           fonte: string | null
           id: string
+          lead_score: number | null
           nome: string
           stato: string | null
           telefono: string | null
@@ -260,6 +291,7 @@ export type Database = {
           email?: string | null
           fonte?: string | null
           id?: string
+          lead_score?: number | null
           nome: string
           stato?: string | null
           telefono?: string | null
@@ -276,6 +308,7 @@ export type Database = {
           email?: string | null
           fonte?: string | null
           id?: string
+          lead_score?: number | null
           nome?: string
           stato?: string | null
           telefono?: string | null

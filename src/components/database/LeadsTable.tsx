@@ -31,6 +31,7 @@ const initialColumns: ColumnConfig[] = [
   { key: 'email', label: 'Email', visible: true },
   { key: 'telefono', label: 'Telefono', visible: true },
   { key: 'fonte', label: 'Fonte', visible: true },
+  { key: 'lead_score', label: 'Lead Score', visible: true },
   { key: 'booked_call', label: 'Call Prenotate', visible: true },
   { key: 'stato', label: 'Stato', visible: true },
   { key: 'venditore', label: 'Venditore', visible: true },

@@ -85,6 +85,12 @@ const LeadTableRow = ({
           <FonteDisplay fonte={lead.fonte} />
         </TableCell>
       )}
+      
+      {visibleColumns.includes('lead_score') && (
+        <TableCell className="text-sm">
+          {lead.lead_score || '-'}
+        </TableCell>
+      )}
 
       {visibleColumns.includes('booked_call') && (
         <TableCell className="text-sm">
