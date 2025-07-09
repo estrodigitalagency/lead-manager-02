@@ -150,7 +150,7 @@ export async function getRecentData(tableName: ValidTableName, limit: number = 1
 export async function getUnassignedLeads(): Promise<Lead[]> {
   try {
     // QUERY CRITICA: Escludere SEMPRE lead con call prenotate (booked_call = 'SI')
-    const { data, error } = await supabase
+  const { data, error } = await supabase
       .from('lead_generation')
       .select('*')
       .eq('assignable', true)
@@ -160,7 +160,14 @@ export async function getUnassignedLeads(): Promise<Lead[]> {
       .limit(500);
     
     if (error) throw error;
-    return data || [];
+    
+    // Convert lead_score from string to number if needed
+    const convertedData = (data || []).map(lead => ({
+      ...lead,
+      lead_score: lead.lead_score ? (typeof lead.lead_score === 'string' ? parseInt(lead.lead_score) : lead.lead_score) : undefined
+    }));
+    
+    return convertedData;
   } catch (error) {
     console.error("Error fetching unassigned leads:", error);
     throw error;

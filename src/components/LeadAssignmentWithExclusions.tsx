@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { SourceFilter } from "@/components/lead-assignment/SourceFilter";
 import { AssignmentForm } from "@/components/lead-assignment/AssignmentForm";
 import { BypassTimeIntervalControl } from "@/components/lead-assignment/BypassTimeIntervalControl";
+import { LeadScoreHotFilter } from "@/components/lead-assignment/LeadScoreHotFilter";
 import { AvailableLeadsCounter } from "@/components/lead-assignment/AvailableLeadsCounter";
 import { useLeadAssignment } from "@/hooks/useLeadAssignment";
 import { useLeadSync } from "@/contexts/LeadSyncContext";
@@ -29,6 +30,7 @@ const LeadAssignmentWithExclusions = () => {
     availableLeads,
     uniqueSources,
     bypassTimeInterval,
+    onlyHotLeads,
     isUpdatingCount,
     addExcludedSource,
     removeExcludedSource,
@@ -38,6 +40,7 @@ const LeadAssignmentWithExclusions = () => {
     removeExcludeFromIncluded,
     toggleSourceMode,
     toggleBypassTimeInterval,
+    toggleOnlyHotLeads,
     handleAssign,
     updateAvailableLeads
   } = useLeadAssignment();
@@ -169,6 +172,13 @@ const LeadAssignmentWithExclusions = () => {
         <BypassTimeIntervalControl
           bypassTimeInterval={bypassTimeInterval}
           onToggleBypass={toggleBypassTimeInterval}
+          disabled={isSubmitting || isVerifying || isRefreshing}
+        />
+
+        {/* Lead Score Hot Filter */}
+        <LeadScoreHotFilter
+          onlyHotLeads={onlyHotLeads}
+          onToggleHotLeads={toggleOnlyHotLeads}
           disabled={isSubmitting || isVerifying || isRefreshing}
         />
         

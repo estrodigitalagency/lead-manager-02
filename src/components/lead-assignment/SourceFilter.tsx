@@ -176,10 +176,10 @@ export function SourceFilter({
 
       {/* Esclusioni dalle Fonti Incluse - Solo quando si usa modalità "include" */}
       {sourceMode === 'include' && includedSources.length > 0 && (
-        <div className="p-4 border border-orange-200 rounded-lg bg-white">
+        <div className="p-4 border border-border rounded-lg bg-card/50">
           <div className="flex items-center gap-2 mb-3">
-            <Minus className="h-4 w-4 text-orange-600" />
-            <Label className="text-sm font-medium text-orange-800">
+            <Minus className="h-4 w-4 text-destructive" />
+            <Label className="text-sm font-medium">
               Escludi dalle Fonti Incluse
             </Label>
             <TooltipProvider>
@@ -187,9 +187,9 @@ export function SourceFilter({
                 <TooltipTrigger asChild>
                   <button 
                     type="button"
-                    className="flex items-center justify-center w-4 h-4 rounded-full bg-orange-200 hover:bg-orange-300 transition-colors"
+                    className="flex items-center justify-center w-4 h-4 rounded-full bg-primary/10 hover:bg-primary/20 transition-colors"
                   >
-                    <Info className="h-3 w-3 text-orange-700" />
+                    <Info className="h-3 w-3 text-primary" />
                   </button>
                 </TooltipTrigger>
                 <TooltipContent>
@@ -240,20 +240,20 @@ export function SourceFilter({
             {/* Excluded from Included Sources */}
             {excludeFromIncluded.length > 0 && (
               <div className="space-y-2">
-                <Label className="text-sm font-medium text-orange-700">
+                <Label className="text-sm font-medium text-muted-foreground">
                   ➖ Escluse dalle Incluse ({excludeFromIncluded.length})
                 </Label>
-                <div className="flex flex-wrap gap-2 p-3 bg-orange-100/50 border border-orange-200 rounded-lg max-h-32 overflow-y-auto">
+                <div className="flex flex-wrap gap-2 p-3 bg-muted/30 border border-border rounded-lg max-h-32 overflow-y-auto">
                   {excludeFromIncluded.map((source) => (
                     <Badge 
                       key={source} 
-                      variant="outline"
-                      className="flex items-center gap-1 text-xs max-w-full px-2 py-1 border-orange-300 text-orange-800 bg-orange-50"
+                      variant="destructive"
+                      className="flex items-center gap-1 text-xs max-w-full px-2 py-1"
                     >
                       <span className="truncate max-w-[150px]">{source}</span>
                       <button
                         onClick={() => onRemoveExcludeFromIncluded(source)}
-                        className="ml-1 hover:bg-orange-200 rounded-full p-0.5 flex-shrink-0"
+                        className="ml-1 hover:bg-white/20 rounded-full p-0.5 flex-shrink-0"
                         aria-label={`Rimuovi esclusione ${source}`}
                       >
                         <X className="h-3 w-3" />
@@ -265,7 +265,7 @@ export function SourceFilter({
             )}
           </div>
 
-          <div className="mt-3 p-2 bg-orange-100 rounded text-xs text-orange-800">
+          <div className="mt-3 p-2 bg-muted rounded text-xs text-muted-foreground">
             <strong>Esempio:</strong> Se includi "Workshop2025" ma escludi "Sales", 
             verranno assegnati solo i lead con "Workshop2025" che NON contengono "Sales".
           </div>

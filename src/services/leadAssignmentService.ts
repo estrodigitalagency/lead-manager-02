@@ -11,6 +11,7 @@ export interface LeadAssignmentData {
   sourceMode?: 'exclude' | 'include';
   bypassTimeInterval?: boolean;
   excludeFromIncluded?: string[];
+  onlyHotLeads?: boolean;
 }
 
 export async function assignLeadsWithExclusions(data: LeadAssignmentData) {
@@ -22,7 +23,8 @@ export async function assignLeadsWithExclusions(data: LeadAssignmentData) {
     includedSources = [], 
     sourceMode = 'exclude',
     bypassTimeInterval = false,
-    excludeFromIncluded = [] // Nuova proprietà
+    excludeFromIncluded = [], // Nuova proprietà
+    onlyHotLeads = false
   } = data;
 
   try {
@@ -32,6 +34,7 @@ export async function assignLeadsWithExclusions(data: LeadAssignmentData) {
     console.log('Included sources:', includedSources);
     console.log('Exclude from included:', excludeFromIncluded);
     console.log('Bypass time interval:', bypassTimeInterval);
+    console.log('Only hot leads:', onlyHotLeads);
 
     // Prima recupera le impostazioni per il calcolo dello stato
     const { data: settingsData } = await supabase
@@ -45,9 +48,14 @@ export async function assignLeadsWithExclusions(data: LeadAssignmentData) {
     // QUERY CRITICA: Recupera tutti i lead candidati con tutti i campi necessari per il tipo Lead
     let query = supabase
       .from('lead_generation')
-      .select('id, nome, cognome, email, telefono, fonte, created_at, booked_call, venditore')
+      .select('id, nome, cognome, email, telefono, fonte, lead_score, created_at, booked_call, venditore')
       .is('venditore', null)
       .eq('booked_call', 'NO'); // Solo lead senza call prenotate
+      
+    // Filtro per Lead Score = "Hot" se richiesto
+    if (onlyHotLeads) {
+      query = query.eq('lead_score', 'Hot');
+    }
 
     // Apply dual source filtering logic
     if (includedSources.length > 0) {
@@ -69,10 +77,16 @@ export async function assignLeadsWithExclusions(data: LeadAssignmentData) {
       throw new Error('Nessun lead disponibile per l\'assegnazione');
     }
 
+    // Convert lead_score from string to number if needed for type compatibility
+    const convertedLeads = candidateLeads.map(lead => ({
+      ...lead,
+      lead_score: lead.lead_score ? (typeof lead.lead_score === 'string' ? parseInt(lead.lead_score) : lead.lead_score) : undefined
+    }));
+
     // Apply exclusion filter after inclusion
-    let filteredLeads = candidateLeads;
+    let filteredLeads = convertedLeads;
     if (excludedSources.length > 0) {
-      filteredLeads = candidateLeads.filter(lead => {
+      filteredLeads = convertedLeads.filter(lead => {
         if (!lead.fonte) return true;
         return !excludedSources.some(excludedSource => 
           lead.fonte!.toLowerCase().includes(excludedSource.toLowerCase())
@@ -360,7 +374,8 @@ export async function getAvailableLeadsCount(
   includedSources: string[] = [], 
   sourceMode: 'exclude' | 'include' = 'exclude',
   bypassTimeInterval: boolean = false,
-  excludeFromIncluded: string[] = [] // Nuova proprietà
+  excludeFromIncluded: string[] = [], // Nuova proprietà
+  onlyHotLeads: boolean = false
 ): Promise<number> {
   try {
     // Prima recupera le impostazioni
@@ -375,9 +390,14 @@ export async function getAvailableLeadsCount(
     // Recupera tutti i candidati con tutti i campi necessari
     let query = supabase
       .from('lead_generation')
-      .select('id, nome, cognome, email, telefono, fonte, created_at, booked_call, venditore')
+      .select('id, nome, cognome, email, telefono, fonte, lead_score, created_at, booked_call, venditore')
       .is('venditore', null)
       .eq('booked_call', 'NO');
+      
+    // Filtro per Lead Score = "Hot" se richiesto
+    if (onlyHotLeads) {
+      query = query.eq('lead_score', 'Hot');
+    }
 
     // Apply dual source filtering logic
     if (includedSources.length > 0) {
@@ -395,10 +415,16 @@ export async function getAvailableLeadsCount(
 
     if (!candidates) return 0;
 
+    // Convert lead_score from string to number if needed for type compatibility
+    const convertedCandidates = candidates.map(lead => ({
+      ...lead,
+      lead_score: lead.lead_score ? (typeof lead.lead_score === 'string' ? parseInt(lead.lead_score) : lead.lead_score) : undefined
+    }));
+
     // Apply exclusion filter after inclusion
-    let filteredLeads = candidates;
+    let filteredLeads = convertedCandidates;
     if (excludedSources.length > 0) {
-      filteredLeads = candidates.filter(lead => {
+      filteredLeads = convertedCandidates.filter(lead => {
         if (!lead.fonte) return true;
         return !excludedSources.some(excludedSource => 
           lead.fonte!.toLowerCase().includes(excludedSource.toLowerCase())

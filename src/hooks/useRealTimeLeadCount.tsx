@@ -8,6 +8,7 @@ interface UseRealTimeLeadCountProps {
   sourceMode: 'exclude' | 'include';
   bypassTimeInterval: boolean;
   excludeFromIncluded: string[];
+  onlyHotLeads?: boolean;
 }
 
 export function useRealTimeLeadCount({
@@ -15,7 +16,8 @@ export function useRealTimeLeadCount({
   includedSources,
   sourceMode,
   bypassTimeInterval,
-  excludeFromIncluded
+  excludeFromIncluded,
+  onlyHotLeads = false
 }: UseRealTimeLeadCountProps) {
   const [count, setCount] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
@@ -38,7 +40,8 @@ export function useRealTimeLeadCount({
         excludedSources: excludedSources.length,
         includedSources: includedSources.length,
         excludeFromIncluded: excludeFromIncluded.length,
-        bypassTimeInterval
+        bypassTimeInterval,
+        onlyHotLeads
       });
 
       const newCount = await getAvailableLeadsCount(
@@ -46,7 +49,8 @@ export function useRealTimeLeadCount({
         includedSources,
         sourceMode,
         bypassTimeInterval,
-        excludeFromIncluded
+        excludeFromIncluded,
+        onlyHotLeads
       );
 
       // Verifica che la richiesta non sia stata annullata
@@ -64,7 +68,7 @@ export function useRealTimeLeadCount({
         setIsLoading(false);
       }
     }
-  }, [excludedSources, includedSources, sourceMode, bypassTimeInterval, excludeFromIncluded]);
+  }, [excludedSources, includedSources, sourceMode, bypassTimeInterval, excludeFromIncluded, onlyHotLeads]);
 
   // Aggiorna il conteggio ogni volta che cambiano i parametri
   useEffect(() => {

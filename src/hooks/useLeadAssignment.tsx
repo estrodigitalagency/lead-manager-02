@@ -19,6 +19,7 @@ export function useLeadAssignment() {
   const [sourceMode, setSourceMode] = useState<'exclude' | 'include'>('exclude');
   const [uniqueSources, setUniqueSources] = useState<string[]>([]);
   const [bypassTimeInterval, setBypassTimeInterval] = useState(false);
+  const [onlyHotLeads, setOnlyHotLeads] = useState(false);
 
   // Usa il nuovo hook per il conteggio in tempo reale con tutti i parametri
   const { 
@@ -30,7 +31,8 @@ export function useLeadAssignment() {
     includedSources,
     sourceMode,
     bypassTimeInterval,
-    excludeFromIncluded
+    excludeFromIncluded,
+    onlyHotLeads
   });
 
   useEffect(() => {
@@ -153,6 +155,12 @@ export function useLeadAssignment() {
     setBypassTimeInterval(newBypass);
   };
 
+  const toggleOnlyHotLeads = () => {
+    const newOnlyHot = !onlyHotLeads;
+    console.log(`🔄 Toggling only hot leads from ${onlyHotLeads} to ${newOnlyHot}`);
+    setOnlyHotLeads(newOnlyHot);
+  };
+
   const handleAssign = async () => {
     const numLeadInt = parseInt(numLead) || 0;
     if (!venditore || numLeadInt <= 0) {
@@ -179,12 +187,13 @@ export function useLeadAssignment() {
       await assignLeadsWithExclusions({
         numLead: numLeadInt,
         venditore,
-        campagna,
-        excludedSources,
-        includedSources,
-        sourceMode,
-        bypassTimeInterval,
-        excludeFromIncluded
+      campagna,
+      excludedSources,
+      includedSources,
+      sourceMode,
+      bypassTimeInterval,
+      excludeFromIncluded,
+      onlyHotLeads
       });
       
       toast.success(`${numLeadInt} lead assegnati con successo a ${venditore}`);
@@ -226,6 +235,7 @@ export function useLeadAssignment() {
     availableLeads,
     uniqueSources,
     bypassTimeInterval,
+    onlyHotLeads,
     isUpdatingCount,
     addExcludedSource,
     removeExcludedSource,
@@ -235,6 +245,7 @@ export function useLeadAssignment() {
     removeExcludeFromIncluded,
     toggleSourceMode,
     toggleBypassTimeInterval,
+    toggleOnlyHotLeads,
     handleAssign,
     updateAvailableLeads
   };
