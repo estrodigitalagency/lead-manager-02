@@ -7,6 +7,10 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { CalendarIcon, Filter, X } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { format } from "date-fns";
+import { it } from "date-fns/locale";
 import { getAvailableFonti, getAvailableVenditori } from "@/services/reportsService";
 
 interface DatabaseAdvancedFiltersProps {
@@ -18,6 +22,7 @@ const DatabaseAdvancedFilters = ({ onApplyFilters, tableName }: DatabaseAdvanced
   const [filters, setFilters] = useState<Record<string, any>>({});
   const [venditori, setVenditori] = useState<string[]>([]);
   const [fonti, setFonti] = useState<string[]>([]);
+  const [calendarView, setCalendarView] = useState<"from" | "to" | null>(null);
 
   useEffect(() => {
     const loadOptions = async () => {
@@ -118,22 +123,52 @@ const DatabaseAdvancedFilters = ({ onApplyFilters, tableName }: DatabaseAdvanced
           <Label className="text-sm font-medium mb-2 block">Periodo</Label>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <Label htmlFor="dataInizio">Data Inizio</Label>
-              <Input
-                id="dataInizio"
-                type="date"
-                value={filters.dataInizio || ''}
-                onChange={(e) => handleFilterChange('dataInizio', e.target.value)}
-              />
+              <Label>Data Inizio</Label>
+              <Popover open={calendarView === "from"} onOpenChange={() => 
+                setCalendarView(calendarView === "from" ? null : "from")
+              }>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className="w-full justify-start text-left font-normal">
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {filters.dataInizio ? format(new Date(filters.dataInizio), "dd/MM/yyyy", { locale: it }) : "Da data"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0">
+                  <Calendar
+                    mode="single"
+                    selected={filters.dataInizio ? new Date(filters.dataInizio) : undefined}
+                    onSelect={(date) => {
+                      handleFilterChange("dataInizio", date ? date.toISOString().split('T')[0] : null);
+                      setCalendarView(null);
+                    }}
+                    className="p-3 pointer-events-auto"
+                  />
+                </PopoverContent>
+              </Popover>
             </div>
             <div>
-              <Label htmlFor="dataFine">Data Fine</Label>
-              <Input
-                id="dataFine"
-                type="date"
-                value={filters.dataFine || ''}
-                onChange={(e) => handleFilterChange('dataFine', e.target.value)}
-              />
+              <Label>Data Fine</Label>
+              <Popover open={calendarView === "to"} onOpenChange={() => 
+                setCalendarView(calendarView === "to" ? null : "to")
+              }>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className="w-full justify-start text-left font-normal">
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {filters.dataFine ? format(new Date(filters.dataFine), "dd/MM/yyyy", { locale: it }) : "A data"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0">
+                  <Calendar
+                    mode="single"
+                    selected={filters.dataFine ? new Date(filters.dataFine) : undefined}
+                    onSelect={(date) => {
+                      handleFilterChange("dataFine", date ? date.toISOString().split('T')[0] : null);
+                      setCalendarView(null);
+                    }}
+                    className="p-3 pointer-events-auto"
+                  />
+                </PopoverContent>
+              </Popover>
             </div>
           </div>
         </div>
