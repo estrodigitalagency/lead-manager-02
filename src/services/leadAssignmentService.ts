@@ -408,10 +408,16 @@ export async function getAvailableLeadsCount(
       query = query.eq('lead_score', 'Hot');
     }
 
-    // Apply source filtering logic SOLO se ci sono fonti incluse specificate
-    if (sourceMode === 'include' && includedSources.length > 0) {
-      const includeFilters = includedSources.map(source => `fonte.like.%${source}%`).join(',');
-      query = query.or(includeFilters);
+    // Apply source filtering logic SOLO se ci sono fonti incluse specificate E siamo in modalità include
+    if (sourceMode === 'include') {
+      if (includedSources.length > 0) {
+        const includeFilters = includedSources.map(source => `fonte.like.%${source}%`).join(',');
+        query = query.or(includeFilters);
+      } else {
+        // Se siamo in modalità include ma non ci sono fonti specificate, non restituire nulla
+        // Questo comportamento preserva la logica che quando selezioni "include" devi specificare le fonti
+        query = query.eq('fonte', 'NON_EXISTENT_SOURCE_TO_RETURN_EMPTY');
+      }
     }
 
     const { data: candidates, error } = await query;
