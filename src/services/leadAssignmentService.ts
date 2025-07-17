@@ -475,14 +475,10 @@ export async function getAvailableLeadsCount(
       console.log(`Bypass active: returning ${filteredLeads.length} leads`);
       return filteredLeads.length;
     } else {
-      // Comportamento normale: filtra solo quelli con stato "Assegnabile"
-      const assignableCount = filteredLeads.filter(lead => {
-        const status = getLeadStatus(lead, daysBeforeAssignable);
-        return status.label === 'Assegnabile';
-      }).length;
-      
-      console.log(`Normal mode: ${assignableCount} assignable leads out of ${filteredLeads.length}`);
-      return assignableCount;
+      // Comportamento normale: conta tutti i lead che soddisfano i criteri base
+      // (venditore = null, booked_call = 'NO') indipendentemente dalla data di creazione
+      console.log(`Normal mode: returning ${filteredLeads.length} assignable leads`);
+      return filteredLeads.length;
     }
   } catch (error) {
     console.error('Error in getAvailableLeadsCount:', error);
