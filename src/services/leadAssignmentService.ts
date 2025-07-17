@@ -23,7 +23,7 @@ export async function assignLeadsWithExclusions(data: LeadAssignmentData) {
     includedSources = [], 
     sourceMode = 'exclude',
     bypassTimeInterval = false,
-    excludeFromIncluded = [], // Nuova proprietà
+    excludeFromIncluded = [], 
     onlyHotLeads = false
   } = data;
 
@@ -57,8 +57,8 @@ export async function assignLeadsWithExclusions(data: LeadAssignmentData) {
       query = query.eq('lead_score', 'Hot');
     }
 
-    // Apply dual source filtering logic
-    if (includedSources.length > 0) {
+    // Apply source filtering logic ONLY if sources are specified
+    if (sourceMode === 'include' && includedSources.length > 0) {
       // If we have included sources, only consider those
       const includeFilters = includedSources.map(source => `fonte.like.%${source}%`).join(',');
       query = query.or(includeFilters);
@@ -83,18 +83,22 @@ export async function assignLeadsWithExclusions(data: LeadAssignmentData) {
       lead_score: lead.lead_score ? (typeof lead.lead_score === 'string' ? parseInt(lead.lead_score) : lead.lead_score) : undefined
     }));
 
-    // Apply exclusion filter after inclusion
+    // Apply exclusion filter ONLY if exclusions are specified
     let filteredLeads = convertedLeads;
-    if (excludedSources.length > 0) {
+    if (sourceMode === 'exclude' && excludedSources.length > 0) {
       filteredLeads = convertedLeads.filter(lead => {
         if (!lead.fonte) return true;
         return !excludedSources.some(excludedSource => 
           lead.fonte!.toLowerCase().includes(excludedSource.toLowerCase())
         );
       });
+    } else if (sourceMode === 'include' && includedSources.length > 0) {
+      // Se modalità include ma nessuna fonte inclusa specificata, non filtrare
+      // Se fonti incluse specificate, sono già state filtrate nella query
+      filteredLeads = convertedLeads;
     }
 
-    // NUOVA LOGICA: Applica esclusioni dalle fonti incluse
+    // NUOVA LOGICA: Applica esclusioni dalle fonti incluse SOLO se specificate
     if (excludeFromIncluded.length > 0 && includedSources.length > 0) {
       console.log(`Applying exclusions from included sources: ${excludeFromIncluded.join(', ')}`);
       filteredLeads = filteredLeads.filter(lead => {
@@ -374,7 +378,7 @@ export async function getAvailableLeadsCount(
   includedSources: string[] = [], 
   sourceMode: 'exclude' | 'include' = 'exclude',
   bypassTimeInterval: boolean = false,
-  excludeFromIncluded: string[] = [], // Nuova proprietà
+  excludeFromIncluded: string[] = [], 
   onlyHotLeads: boolean = false
 ): Promise<number> {
   try {
@@ -399,8 +403,8 @@ export async function getAvailableLeadsCount(
       query = query.eq('lead_score', 'Hot');
     }
 
-    // Apply dual source filtering logic
-    if (includedSources.length > 0) {
+    // Apply source filtering logic ONLY if sources are specified
+    if (sourceMode === 'include' && includedSources.length > 0) {
       // If we have included sources, only consider those
       const includeFilters = includedSources.map(source => `fonte.like.%${source}%`).join(',');
       query = query.or(includeFilters);
@@ -421,9 +425,9 @@ export async function getAvailableLeadsCount(
       lead_score: lead.lead_score ? (typeof lead.lead_score === 'string' ? parseInt(lead.lead_score) : lead.lead_score) : undefined
     }));
 
-    // Apply exclusion filter after inclusion
+    // Apply exclusion filter ONLY if exclusions are specified
     let filteredLeads = convertedCandidates;
-    if (excludedSources.length > 0) {
+    if (sourceMode === 'exclude' && excludedSources.length > 0) {
       filteredLeads = convertedCandidates.filter(lead => {
         if (!lead.fonte) return true;
         return !excludedSources.some(excludedSource => 
@@ -432,7 +436,7 @@ export async function getAvailableLeadsCount(
       });
     }
 
-    // NUOVA LOGICA: Applica esclusioni dalle fonti incluse
+    // NUOVA LOGICA: Applica esclusioni dalle fonti incluse SOLO se specificate
     if (excludeFromIncluded.length > 0 && includedSources.length > 0) {
       filteredLeads = filteredLeads.filter(lead => {
         if (!lead.fonte) return true;
