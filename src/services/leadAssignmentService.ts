@@ -45,21 +45,20 @@ export async function assignLeadsWithExclusions(data: LeadAssignmentData) {
 
     const daysBeforeAssignable = settingsData?.value ? parseInt(settingsData.value) : 7;
 
-    // QUERY CRITICA: Recupera tutti i lead candidati con tutti i campi necessari per il tipo Lead
+    // QUERY BASE: Recupera tutti i lead candidati
     let query = supabase
       .from('lead_generation')
       .select('id, nome, cognome, email, telefono, fonte, lead_score, created_at, booked_call, venditore')
       .is('venditore', null)
-      .eq('booked_call', 'NO'); // Solo lead senza call prenotate
+      .eq('booked_call', 'NO');
       
-    // Filtro per Lead Score = "Hot" se richiesto
+    // IMPORTANTE: Filtro per Lead Score = "Hot" SOLO se richiesto esplicitamente
     if (onlyHotLeads) {
       query = query.eq('lead_score', 'Hot');
     }
 
-    // Apply source filtering logic ONLY if sources are specified
+    // Apply source filtering logic SOLO se ci sono fonti specificate
     if (sourceMode === 'include' && includedSources.length > 0) {
-      // If we have included sources, only consider those
       const includeFilters = includedSources.map(source => `fonte.like.%${source}%`).join(',');
       query = query.or(includeFilters);
     }
@@ -77,13 +76,15 @@ export async function assignLeadsWithExclusions(data: LeadAssignmentData) {
       throw new Error('Nessun lead disponibile per l\'assegnazione');
     }
 
+    console.log(`Found ${candidateLeads.length} candidate leads before filtering`);
+
     // Convert lead_score from string to number if needed for type compatibility
     const convertedLeads = candidateLeads.map(lead => ({
       ...lead,
       lead_score: lead.lead_score ? (typeof lead.lead_score === 'string' ? parseInt(lead.lead_score) : lead.lead_score) : undefined
     }));
 
-    // Apply exclusion filter ONLY if exclusions are specified
+    // Apply exclusion filter SOLO se ci sono esclusioni specificate
     let filteredLeads = convertedLeads;
     if (sourceMode === 'exclude' && excludedSources.length > 0) {
       filteredLeads = convertedLeads.filter(lead => {
@@ -92,32 +93,27 @@ export async function assignLeadsWithExclusions(data: LeadAssignmentData) {
           lead.fonte!.toLowerCase().includes(excludedSource.toLowerCase())
         );
       });
-    } else if (sourceMode === 'include' && includedSources.length > 0) {
-      // Se modalità include ma nessuna fonte inclusa specificata, non filtrare
-      // Se fonti incluse specificate, sono già state filtrate nella query
-      filteredLeads = convertedLeads;
+      console.log(`After exclusion filter: ${filteredLeads.length} leads`);
     }
 
-    // NUOVA LOGICA: Applica esclusioni dalle fonti incluse SOLO se specificate
+    // Apply exclusions from included sources SOLO se specificate
     if (excludeFromIncluded.length > 0 && includedSources.length > 0) {
       console.log(`Applying exclusions from included sources: ${excludeFromIncluded.join(', ')}`);
       filteredLeads = filteredLeads.filter(lead => {
         if (!lead.fonte) return true;
         
-        // Verifica se il lead è stato incluso tramite le fonti incluse
         const isFromIncludedSource = includedSources.some(includedSource => 
           lead.fonte!.toLowerCase().includes(includedSource.toLowerCase())
         );
         
-        // Se il lead è da una fonte inclusa, verifica che non contenga tag esclusi
         if (isFromIncludedSource) {
           const hasExcludedTag = excludeFromIncluded.some(excludedTag => 
             lead.fonte!.toLowerCase().includes(excludedTag.toLowerCase())
           );
-          return !hasExcludedTag; // Escludi se ha un tag escluso
+          return !hasExcludedTag;
         }
         
-        return true; // Mantieni se non è da fonte inclusa
+        return true;
       });
       
       console.log(`Leads after applying exclusions from included sources: ${filteredLeads.length}`);
@@ -382,6 +378,15 @@ export async function getAvailableLeadsCount(
   onlyHotLeads: boolean = false
 ): Promise<number> {
   try {
+    console.log('getAvailableLeadsCount called with:', {
+      excludedSources: excludedSources.length,
+      includedSources: includedSources.length,
+      sourceMode,
+      bypassTimeInterval,
+      excludeFromIncluded: excludeFromIncluded.length,
+      onlyHotLeads
+    });
+
     // Prima recupera le impostazioni
     const { data: settingsData } = await supabase
       .from('system_settings')
@@ -391,21 +396,20 @@ export async function getAvailableLeadsCount(
 
     const daysBeforeAssignable = settingsData?.value ? parseInt(settingsData.value) : 7;
 
-    // Recupera tutti i candidati con tutti i campi necessari
+    // QUERY BASE: Recupera tutti i candidati
     let query = supabase
       .from('lead_generation')
       .select('id, nome, cognome, email, telefono, fonte, lead_score, created_at, booked_call, venditore')
       .is('venditore', null)
       .eq('booked_call', 'NO');
       
-    // Filtro per Lead Score = "Hot" se richiesto
+    // IMPORTANTE: Filtro per Lead Score = "Hot" SOLO se richiesto esplicitamente
     if (onlyHotLeads) {
       query = query.eq('lead_score', 'Hot');
     }
 
-    // Apply source filtering logic ONLY if sources are specified
+    // Apply source filtering logic SOLO se ci sono fonti incluse specificate
     if (sourceMode === 'include' && includedSources.length > 0) {
-      // If we have included sources, only consider those
       const includeFilters = includedSources.map(source => `fonte.like.%${source}%`).join(',');
       query = query.or(includeFilters);
     }
@@ -419,13 +423,15 @@ export async function getAvailableLeadsCount(
 
     if (!candidates) return 0;
 
+    console.log(`Found ${candidates.length} candidates before filtering`);
+
     // Convert lead_score from string to number if needed for type compatibility
     const convertedCandidates = candidates.map(lead => ({
       ...lead,
       lead_score: lead.lead_score ? (typeof lead.lead_score === 'string' ? parseInt(lead.lead_score) : lead.lead_score) : undefined
     }));
 
-    // Apply exclusion filter ONLY if exclusions are specified
+    // Apply exclusion filter SOLO se ci sono esclusioni specificate
     let filteredLeads = convertedCandidates;
     if (sourceMode === 'exclude' && excludedSources.length > 0) {
       filteredLeads = convertedCandidates.filter(lead => {
@@ -434,32 +440,33 @@ export async function getAvailableLeadsCount(
           lead.fonte!.toLowerCase().includes(excludedSource.toLowerCase())
         );
       });
+      console.log(`After exclusion filter: ${filteredLeads.length} leads`);
     }
 
-    // NUOVA LOGICA: Applica esclusioni dalle fonti incluse SOLO se specificate
+    // Apply exclusions from included sources SOLO se specificate
     if (excludeFromIncluded.length > 0 && includedSources.length > 0) {
       filteredLeads = filteredLeads.filter(lead => {
         if (!lead.fonte) return true;
         
-        // Verifica se il lead è stato incluso tramite le fonti incluse
         const isFromIncludedSource = includedSources.some(includedSource => 
           lead.fonte!.toLowerCase().includes(includedSource.toLowerCase())
         );
         
-        // Se il lead è da una fonte inclusa, verifica che non contenga tag esclusi
         if (isFromIncludedSource) {
           const hasExcludedTag = excludeFromIncluded.some(excludedTag => 
             lead.fonte!.toLowerCase().includes(excludedTag.toLowerCase())
           );
-          return !hasExcludedTag; // Escludi se ha un tag escluso
+          return !hasExcludedTag;
         }
         
-        return true; // Mantieni se non è da fonte inclusa
+        return true;
       });
+      console.log(`After exclusions from included: ${filteredLeads.length} leads`);
     }
 
     if (bypassTimeInterval) {
       // Se bypass è attivo, conta tutti i candidati filtrati
+      console.log(`Bypass active: returning ${filteredLeads.length} leads`);
       return filteredLeads.length;
     } else {
       // Comportamento normale: filtra solo quelli con stato "Assegnabile"
@@ -468,6 +475,7 @@ export async function getAvailableLeadsCount(
         return status.label === 'Assegnabile';
       }).length;
       
+      console.log(`Normal mode: ${assignableCount} assignable leads out of ${filteredLeads.length}`);
       return assignableCount;
     }
   } catch (error) {
