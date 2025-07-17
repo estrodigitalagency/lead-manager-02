@@ -90,7 +90,6 @@ export async function checkLeadsAssignability() {
       .update({ assignable: true })
       .eq('booked_call', 'NO')
       .is('venditore', null)
-      .lte('created_at', cutoffDateISO)
       .select('id');
 
     if (assignableError) {
