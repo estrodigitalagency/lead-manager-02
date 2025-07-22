@@ -113,8 +113,8 @@ const AssignedLeadsDialog = ({ open, onOpenChange, assignmentRecord }: AssignedL
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-6xl max-h-[80vh] z-[100] bg-background border">
-        <DialogHeader>
+      <DialogContent className="max-w-6xl h-[80vh] z-[100] bg-background border flex flex-col overflow-hidden">
+        <DialogHeader className="flex-shrink-0">
           <DialogTitle>
             Lead Assegnati - {assignmentRecord?.venditore}
             {assignmentRecord && (
@@ -125,67 +125,69 @@ const AssignedLeadsDialog = ({ open, onOpenChange, assignmentRecord }: AssignedL
           </DialogTitle>
         </DialogHeader>
         
-        {loading ? (
-          <div className="flex justify-center items-center h-40">
-            <Loader2 className="h-6 w-6 animate-spin mr-2" />
-            <span>Caricamento lead...</span>
-          </div>
-        ) : (
-          <ScrollArea className="h-[500px]">
-            {leads.length === 0 ? (
-              <div className="text-center py-10 text-muted-foreground">
-                Nessun lead trovato per questa assegnazione.
-              </div>
-            ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Nome</TableHead>
-                    <TableHead>Email</TableHead>
-                    <TableHead>Telefono</TableHead>
-                    <TableHead>Fonte</TableHead>
-                    <TableHead>Campagna</TableHead>
-                    <TableHead>Lead Score</TableHead>
-                    <TableHead>Data Assegnazione</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {leads.map((lead) => (
-                    <TableRow key={lead.id}>
-                      <TableCell className="font-medium">
-                        {lead.nome} {lead.cognome}
-                      </TableCell>
-                      <TableCell>{lead.email}</TableCell>
-                      <TableCell>{lead.telefono}</TableCell>
-                      <TableCell>
-                        {lead.fonte && (
-                          <Badge variant="outline">{lead.fonte}</Badge>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        {lead.campagna && (
-                          <Badge variant="secondary">{lead.campagna}</Badge>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        {lead.lead_score && (
-                          <Badge variant={lead.lead_score === 'HOT' ? 'destructive' : 'default'}>
-                            {lead.lead_score}
-                          </Badge>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-sm">
-                        {lead.data_assegnazione && formatDate(lead.data_assegnazione)}
-                      </TableCell>
+        <div className="flex-1 overflow-hidden">
+          {loading ? (
+            <div className="flex justify-center items-center h-40">
+              <Loader2 className="h-6 w-6 animate-spin mr-2" />
+              <span>Caricamento lead...</span>
+            </div>
+          ) : (
+            <div className="h-full overflow-auto">
+              {leads.length === 0 ? (
+                <div className="text-center py-10 text-muted-foreground">
+                  Nessun lead trovato per questa assegnazione.
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Nome</TableHead>
+                      <TableHead>Email</TableHead>
+                      <TableHead>Telefono</TableHead>
+                      <TableHead>Fonte</TableHead>
+                      <TableHead>Campagna</TableHead>
+                      <TableHead>Lead Score</TableHead>
+                      <TableHead>Data Assegnazione</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            )}
-          </ScrollArea>
-        )}
+                  </TableHeader>
+                  <TableBody>
+                    {leads.map((lead) => (
+                      <TableRow key={lead.id}>
+                        <TableCell className="font-medium">
+                          {lead.nome} {lead.cognome}
+                        </TableCell>
+                        <TableCell>{lead.email}</TableCell>
+                        <TableCell>{lead.telefono}</TableCell>
+                        <TableCell>
+                          {lead.fonte && (
+                            <Badge variant="outline">{lead.fonte}</Badge>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {lead.campagna && (
+                            <Badge variant="secondary">{lead.campagna}</Badge>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {lead.lead_score && (
+                            <Badge variant={lead.lead_score === 'HOT' ? 'destructive' : 'default'}>
+                              {lead.lead_score}
+                            </Badge>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-sm">
+                          {lead.data_assegnazione && formatDate(lead.data_assegnazione)}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </div>
+          )}
+        </div>
         
-        <div className="flex justify-between items-center pt-4 border-t">
+        <div className="flex justify-between items-center pt-4 border-t flex-shrink-0">
           <span className="text-sm text-muted-foreground">
             {leads.length} lead trovati
           </span>
