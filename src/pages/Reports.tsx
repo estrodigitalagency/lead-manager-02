@@ -49,7 +49,7 @@ const ReportsPage = () => {
   };
 
   return (
-    <div className={`container mx-auto px-4 py-8 pt-16 ${isMobile ? 'px-2 py-4' : ''}`}>
+    <div className={`container mx-auto px-4 py-8 pt-20 ${isMobile ? 'px-2 py-4' : ''}`}>
       <div className="space-y-6">
         {/* Filtri */}
         <ReportFiltersComponent
