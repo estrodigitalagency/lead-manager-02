@@ -113,7 +113,7 @@ const AssignedLeadsDialog = ({ open, onOpenChange, assignmentRecord }: AssignedL
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-6xl max-h-[80vh]">
+      <DialogContent className="max-w-6xl max-h-[80vh] z-[100] bg-background border">
         <DialogHeader>
           <DialogTitle>
             Lead Assegnati - {assignmentRecord?.venditore}
