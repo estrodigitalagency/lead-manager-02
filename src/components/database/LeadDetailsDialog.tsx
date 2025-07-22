@@ -218,7 +218,7 @@ const LeadDetailsDialog = ({ lead, open, onOpenChange }: LeadDetailsDialogProps)
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
                             <Calendar className="h-3 w-3 text-muted-foreground" />
-                            <span className="text-xs font-medium">
+                            <span className="text-xs">
                               Creato il: {formatDate(historyItem.created_at)}
                             </span>
                             {isCurrentLead && (
@@ -232,17 +232,17 @@ const LeadDetailsDialog = ({ lead, open, onOpenChange }: LeadDetailsDialogProps)
                         {/* Nome del lead */}
                         <div className="flex items-center gap-2">
                           <User className="h-3 w-3 text-muted-foreground" />
-                          <span className="text-sm font-medium">
-                            {historyItem.nome} {historyItem.cognome || ''}
+                          <span className="text-xs">
+                            {historyItem.nome} {historyItem.cognome || ""}
                           </span>
                         </div>
                         
-                        {/* Informazioni di assegnazione - sotto al nome */}
+                        {/* Informazioni di assegnazione */}
                         {historyItem.venditore && (
-                          <div className="flex items-center gap-2 pl-5">
+                          <div className="flex items-center gap-2">
                             <Users className="h-3 w-3 text-muted-foreground" />
                             <span className="text-xs">
-                              <strong>Assegnato a:</strong> {historyItem.venditore}
+                              Assegnato a: {historyItem.venditore}
                               {historyItem.data_assegnazione && (
                                 <span className="text-muted-foreground ml-2">
                                   ({formatDate(historyItem.data_assegnazione)})
@@ -254,15 +254,17 @@ const LeadDetailsDialog = ({ lead, open, onOpenChange }: LeadDetailsDialogProps)
                         
                         {/* Fonti */}
                         {historiFonti.length > 0 && (
-                          <div className="flex items-center gap-2 pl-5">
+                          <div className="flex items-center gap-2">
                             <Tag className="h-3 w-3 text-muted-foreground" />
-                            <div className="flex flex-wrap gap-1">
-                              <span className="text-xs mr-2">Fonti:</span>
-                              {historiFonti.map((fonte, fonteIndex) => (
-                                <Badge key={fonteIndex} variant="outline" className="text-xs">
-                                  {fonte}
-                                </Badge>
-                              ))}
+                            <div className="flex items-center gap-1">
+                              <span className="text-xs">Fonti:</span>
+                              <div className="flex flex-wrap gap-1">
+                                {historiFonti.map((fonte, fonteIndex) => (
+                                  <Badge key={fonteIndex} variant="outline" className="text-xs">
+                                    {fonte}
+                                  </Badge>
+                                ))}
+                              </div>
                             </div>
                           </div>
                         )}
