@@ -23,12 +23,6 @@ const PersistentNavigation = () => {
       isActive: location.pathname === "/"
     },
     {
-      to: "/history",
-      icon: History,
-      label: "Cronologia",
-      isActive: location.pathname === "/history"
-    },
-    {
       to: "/database",
       icon: Database,
       label: "Database",
@@ -39,6 +33,12 @@ const PersistentNavigation = () => {
       icon: BarChart3,
       label: "Report",
       isActive: location.pathname === "/reports"
+    },
+    {
+      to: "/history",
+      icon: History,
+      label: "Cronologia",
+      isActive: location.pathname === "/history"
     },
     {
       to: "/settings",

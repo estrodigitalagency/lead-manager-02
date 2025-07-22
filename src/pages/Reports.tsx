@@ -49,21 +49,7 @@ const ReportsPage = () => {
   };
 
   return (
-    <div className={`container mx-auto px-4 py-8 ${isMobile ? 'px-2 py-4' : ''}`}>
-      <div className={`flex justify-between items-center mb-8 ${isMobile ? 'flex-col gap-4' : ''}`}>
-        <div className={`flex items-center gap-4 ${isMobile ? 'flex-col text-center' : ''}`}>
-          <Link to="/">
-            <Button variant="outline" size="icon" className="border">
-              <ArrowLeft className="h-4 w-4 text-primary" />
-            </Button>
-          </Link>
-          <h1 className={`text-3xl font-bold text-primary flex items-center gap-2 ${isMobile ? 'text-2xl' : ''}`}>
-            <BarChart3 className="h-8 w-8" />
-            Report e Analytics
-          </h1>
-        </div>
-      </div>
-
+    <div className={`container mx-auto px-4 py-8 pt-16 ${isMobile ? 'px-2 py-4' : ''}`}>
       <div className="space-y-6">
         {/* Filtri */}
         <ReportFiltersComponent

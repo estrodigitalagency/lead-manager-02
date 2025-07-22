@@ -4,11 +4,7 @@ import AssignmentHistory from "@/components/AssignmentHistory";
 
 const History = () => {
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="flex justify-between items-center mb-8">
-        <h1 className="text-3xl font-bold text-primary">Cronologia Assegnazioni</h1>
-      </div>
-      
+    <div className="container mx-auto px-4 py-8 pt-16">
       <Card className="border">
         <CardHeader>
           <CardTitle>Storico Assegnazioni Lead</CardTitle>
