@@ -11,7 +11,9 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, Clock, Filter } from "lucide-react";
+import { Loader2, Clock, Filter, Info } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import AssignedLeadsDialog from "@/components/database/AssignedLeadsDialog";
 
 interface AssignmentRecord {
   id: string;
@@ -29,6 +31,8 @@ interface AssignmentRecord {
 const AssignmentHistory = () => {
   const [history, setHistory] = useState<AssignmentRecord[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedAssignment, setSelectedAssignment] = useState<AssignmentRecord | null>(null);
+  const [leadsDialogOpen, setLeadsDialogOpen] = useState(false);
 
   useEffect(() => {
     const loadHistory = async () => {
@@ -83,115 +87,137 @@ const AssignmentHistory = () => {
   }
 
   return (
-    <ScrollArea className="h-[600px]">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Data e Ora</TableHead>
-            <TableHead>Lead</TableHead>
-            <TableHead>Venditore</TableHead>
-            <TableHead>Campagna</TableHead>
-            <TableHead>Controlli</TableHead>
-            <TableHead>Filtri Fonti</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {history.map((record) => (
-            <TableRow key={record.id}>
-              <TableCell className="text-sm">
-                {formatDate(record.assigned_at)}
-              </TableCell>
-              <TableCell>
-                <Badge variant="outline">
-                  {record.leads_count} Lead
-                </Badge>
-              </TableCell>
-              <TableCell className="font-medium">
-                {record.venditore}
-              </TableCell>
-              <TableCell>
-                {record.campagna ? (
-                  <Badge variant="secondary">{record.campagna}</Badge>
-                ) : (
-                  '-'
-                )}
-              </TableCell>
-              <TableCell>
-                <div className="flex flex-col gap-1">
-                  {record.bypass_time_interval && (
-                    <Badge variant="outline" className="flex items-center gap-1 text-xs">
-                      <Clock className="h-3 w-3" />
-                      Bypass Temporale
-                    </Badge>
-                  )}
-                </div>
-              </TableCell>
-              <TableCell>
-                <div className="space-y-2">
-                  {/* Fonti Incluse */}
-                  {record.fonti_incluse && record.fonti_incluse.length > 0 && (
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                        <Filter className="h-3 w-3" />
-                        <span>Incluse:</span>
-                      </div>
-                      <div className="flex flex-wrap gap-1">
-                        {record.fonti_incluse.map((fonte, index) => (
-                          <Badge key={index} variant="default" className="text-xs">
-                            {fonte}
-                          </Badge>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                  
-                  {/* Fonti Escluse */}
-                  {record.fonti_escluse && record.fonti_escluse.length > 0 && (
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                        <Filter className="h-3 w-3" />
-                        <span>Escluse:</span>
-                      </div>
-                      <div className="flex flex-wrap gap-1">
-                        {record.fonti_escluse.map((fonte, index) => (
-                          <Badge key={index} variant="destructive" className="text-xs">
-                            {fonte}
-                          </Badge>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Fonti Escluse dalle Incluse */}
-                  {record.exclude_from_included && record.exclude_from_included.length > 0 && (
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                        <Filter className="h-3 w-3" />
-                        <span>Escluse dalle Incluse:</span>
-                      </div>
-                      <div className="flex flex-wrap gap-1">
-                        {record.exclude_from_included.map((fonte, index) => (
-                          <Badge key={index} variant="outline" className="text-xs border-orange-500 text-orange-600">
-                            {fonte}
-                          </Badge>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                  
-                  {/* Se non ci sono filtri */}
-                  {(!record.fonti_incluse || record.fonti_incluse.length === 0) && 
-                   (!record.fonti_escluse || record.fonti_escluse.length === 0) &&
-                   (!record.exclude_from_included || record.exclude_from_included.length === 0) && (
-                    <span className="text-xs text-muted-foreground">Nessun filtro</span>
-                  )}
-                </div>
-              </TableCell>
+    <>
+      <ScrollArea className="h-[600px]">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Data e Ora</TableHead>
+              <TableHead>Lead</TableHead>
+              <TableHead>Venditore</TableHead>
+              <TableHead>Campagna</TableHead>
+              <TableHead>Controlli</TableHead>
+              <TableHead>Filtri Fonti</TableHead>
+              <TableHead>Dettagli</TableHead>
             </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </ScrollArea>
+          </TableHeader>
+          <TableBody>
+            {history.map((record) => (
+              <TableRow key={record.id}>
+                <TableCell className="text-sm">
+                  {formatDate(record.assigned_at)}
+                </TableCell>
+                <TableCell>
+                  <Badge variant="outline">
+                    {record.leads_count} Lead
+                  </Badge>
+                </TableCell>
+                <TableCell className="font-medium">
+                  {record.venditore}
+                </TableCell>
+                <TableCell>
+                  {record.campagna ? (
+                    <Badge variant="secondary">{record.campagna}</Badge>
+                  ) : (
+                    '-'
+                  )}
+                </TableCell>
+                <TableCell>
+                  <div className="flex flex-col gap-1">
+                    {record.bypass_time_interval && (
+                      <Badge variant="outline" className="flex items-center gap-1 text-xs">
+                        <Clock className="h-3 w-3" />
+                        Bypass Temporale
+                      </Badge>
+                    )}
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <div className="space-y-2">
+                    {/* Fonti Incluse */}
+                    {record.fonti_incluse && record.fonti_incluse.length > 0 && (
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                          <Filter className="h-3 w-3" />
+                          <span>Incluse:</span>
+                        </div>
+                        <div className="flex flex-wrap gap-1">
+                          {record.fonti_incluse.map((fonte, index) => (
+                            <Badge key={index} variant="default" className="text-xs">
+                              {fonte}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    
+                    {/* Fonti Escluse */}
+                    {record.fonti_escluse && record.fonti_escluse.length > 0 && (
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                          <Filter className="h-3 w-3" />
+                          <span>Escluse:</span>
+                        </div>
+                        <div className="flex flex-wrap gap-1">
+                          {record.fonti_escluse.map((fonte, index) => (
+                            <Badge key={index} variant="destructive" className="text-xs">
+                              {fonte}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Fonti Escluse dalle Incluse */}
+                    {record.exclude_from_included && record.exclude_from_included.length > 0 && (
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                          <Filter className="h-3 w-3" />
+                          <span>Escluse dalle Incluse:</span>
+                        </div>
+                        <div className="flex flex-wrap gap-1">
+                          {record.exclude_from_included.map((fonte, index) => (
+                            <Badge key={index} variant="outline" className="text-xs border-orange-500 text-orange-600">
+                              {fonte}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    
+                    {/* Se non ci sono filtri */}
+                    {(!record.fonti_incluse || record.fonti_incluse.length === 0) && 
+                     (!record.fonti_escluse || record.fonti_escluse.length === 0) &&
+                     (!record.exclude_from_included || record.exclude_from_included.length === 0) && (
+                      <span className="text-xs text-muted-foreground">Nessun filtro</span>
+                    )}
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setSelectedAssignment(record);
+                      setLeadsDialogOpen(true);
+                    }}
+                    className="h-8 w-8 p-0"
+                  >
+                    <Info className="h-4 w-4" />
+                  </Button>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </ScrollArea>
+      
+      <AssignedLeadsDialog
+        open={leadsDialogOpen}
+        onOpenChange={setLeadsDialogOpen}
+        assignmentRecord={selectedAssignment}
+      />
+    </>
   );
 };
 
