@@ -53,7 +53,7 @@ serve(async (req) => {
       .from('lead_generation')
       .select('*')
       .gte('created_at', cutoffTime)
-      .or(`email.eq.${email},telefono.eq.${telefono},and(nome.eq.${nome},cognome.eq.${cognome})`)
+      .or(`email.eq."${email}",telefono.eq."${telefono}",and(nome.eq."${nome}",cognome.eq."${cognome}")`)
 
     if (searchError) {
       console.error('Error searching for duplicates:', searchError)
