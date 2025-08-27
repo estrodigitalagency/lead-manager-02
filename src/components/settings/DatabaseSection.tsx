@@ -42,6 +42,8 @@ export default function DatabaseSection() {
     campagna: "Google Ads",
     fonte: "google, facebook",
     lead_score: 85,
+    venditore: "Giovanni Bianchi",
+    stato: "assegnato",
     booked_call: "NO",
     note: "Interessato al prodotto X"
   };
@@ -85,6 +87,8 @@ export default function DatabaseSection() {
         { name: "campagna", required: false, description: "Nome della campagna pubblicitaria" },
         { name: "fonte", required: false, description: "Fonti del lead separate da virgola (es: google, facebook)" },
         { name: "lead_score", required: false, description: "Punteggio qualità del lead (numero da 0 a 100)" },
+        { name: "venditore", required: false, description: "Nome del venditore assegnato (se già assegnato)" },
+        { name: "stato", required: false, description: "Stato del lead (es: nuovo, assegnato, lavorato)" },
         { name: "booked_call", required: false, description: "\"SI\" o \"NO\" se ha prenotato una chiamata" },
         { name: "note", required: false, description: "Note aggiuntive sul lead" }
       ]
