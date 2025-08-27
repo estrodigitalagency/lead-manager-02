@@ -18,9 +18,9 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
 
-    const { nome, cognome, email, telefono, fonte, campagna, notes, lead_score } = await req.json()
+    const { nome, cognome, email, telefono, fonte, campagna, notes, lead_score, venditore, stato } = await req.json()
 
-    console.log('Received lead data:', { nome, cognome, email, telefono, fonte, campagna, notes, lead_score })
+    console.log('Received lead data:', { nome, cognome, email, telefono, fonte, campagna, notes, lead_score, venditore, stato })
 
     // Get duplicate check settings
     const { data: settings, error: settingsError } = await supabase
@@ -89,6 +89,12 @@ serve(async (req) => {
     }
 
     // No duplicates found or different source - insert new lead
+    // Determine assignable status and data_assegnazione based on provided data
+    const isAssigned = venditore && venditore.trim() !== '';
+    const finalStato = stato || 'nuovo';
+    const finalAssignable = isAssigned ? true : false;
+    const dataAssegnazione = isAssigned ? new Date().toISOString() : null;
+    
     const { data: newLead, error: insertError } = await supabase
       .from('lead_generation')
       .insert({
@@ -100,9 +106,11 @@ serve(async (req) => {
         campagna,
         notes,
         lead_score,
-        stato: 'nuovo',
-        assignable: false,
-        booked_call: 'NO'
+        venditore: venditore || null,
+        stato: finalStato,
+        assignable: finalAssignable,
+        booked_call: 'NO',
+        data_assegnazione: dataAssegnazione
       })
       .select()
       .single()
