@@ -1,29 +1,43 @@
 
-import Index from "./pages/Index";
-import Database from "./pages/Database";
-import History from "./pages/History";
-import Reports from "./pages/Reports";
-import Settings from "./pages/Settings";
+import { HomeIcon, Database, History, Settings, BarChart3 } from "lucide-react";
+import { type LucideIcon } from "lucide-react";
 
-export const navItems = [
+export interface NavItem {
+  title: string;
+  to: string;
+  icon: LucideIcon;
+  variant?: "default" | "ghost";
+}
+
+export const navItems: NavItem[] = [
   {
+    title: "Dashboard",
     to: "/",
-    page: <Index />,
+    icon: HomeIcon,
   },
   {
+    title: "Database",
     to: "/database",
-    page: <Database />,
+    icon: Database,
   },
   {
+    title: "Reports",
+    to: "/reports",
+    icon: BarChart3,
+  },
+  {
+    title: "History",
     to: "/history",
-    page: <History />,
+    icon: History,
   },
   {
-    to: "/reports", 
-    page: <Reports />,
-  },
-  {
+    title: "Settings",
     to: "/settings",
-    page: <Settings />,
+    icon: Settings,
   },
+  {
+    title: "Login",
+    to: "/auth",
+    icon: HomeIcon,
+  }
 ];
