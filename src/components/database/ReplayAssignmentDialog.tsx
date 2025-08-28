@@ -82,7 +82,7 @@ const ReplayAssignmentDialog = ({
       const assignmentData: LeadAssignmentData = {
         numLead: assignmentRecord.leads_count,
         venditore: selectedVenditore,
-        campagna: selectedCampagna || undefined,
+        campagna: selectedCampagna && selectedCampagna !== "none" ? selectedCampagna : undefined,
         excludedSources: assignmentRecord.fonti_escluse || undefined,
         includedSources: assignmentRecord.fonti_incluse || undefined,
         sourceMode: (assignmentRecord.source_mode as 'exclude' | 'include') || 'exclude',
@@ -162,7 +162,7 @@ const ReplayAssignmentDialog = ({
                     <SelectValue placeholder="Seleziona una campagna" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Nessuna campagna</SelectItem>
+                    <SelectItem value="none">Nessuna campagna</SelectItem>
                     {campaigns.map((campaign) => (
                       <SelectItem key={campaign.id} value={campaign.nome}>
                         {campaign.nome}
