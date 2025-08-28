@@ -11,9 +11,10 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, Clock, Filter, Info } from "lucide-react";
+import { Loader2, Clock, Filter, Info, Play } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import AssignedLeadsDialog from "@/components/database/AssignedLeadsDialog";
+import ReplayAssignmentDialog from "@/components/database/ReplayAssignmentDialog";
 
 interface AssignmentRecord {
   id: string;
@@ -33,6 +34,7 @@ const AssignmentHistory = () => {
   const [loading, setLoading] = useState(true);
   const [selectedAssignment, setSelectedAssignment] = useState<AssignmentRecord | null>(null);
   const [leadsDialogOpen, setLeadsDialogOpen] = useState(false);
+  const [replayDialogOpen, setReplayDialogOpen] = useState(false);
 
   useEffect(() => {
     const loadHistory = async () => {
@@ -98,7 +100,7 @@ const AssignmentHistory = () => {
               <TableHead>Campagna</TableHead>
               <TableHead>Controlli</TableHead>
               <TableHead>Filtri Fonti</TableHead>
-              <TableHead>Dettagli</TableHead>
+              <TableHead>Azioni</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -194,17 +196,32 @@ const AssignmentHistory = () => {
                   </div>
                 </TableCell>
                 <TableCell>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => {
-                      setSelectedAssignment(record);
-                      setLeadsDialogOpen(true);
-                    }}
-                    className="h-8 w-8 p-0"
-                  >
-                    <Info className="h-4 w-4" />
-                  </Button>
+                  <div className="flex gap-1">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setSelectedAssignment(record);
+                        setLeadsDialogOpen(true);
+                      }}
+                      className="h-8 w-8 p-0"
+                      title="Visualizza dettagli"
+                    >
+                      <Info className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setSelectedAssignment(record);
+                        setReplayDialogOpen(true);
+                      }}
+                      className="h-8 w-8 p-0"
+                      title="Replay assegnazione"
+                    >
+                      <Play className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </TableCell>
               </TableRow>
             ))}
@@ -216,6 +233,36 @@ const AssignmentHistory = () => {
         open={leadsDialogOpen}
         onOpenChange={setLeadsDialogOpen}
         assignmentRecord={selectedAssignment}
+      />
+      
+      <ReplayAssignmentDialog
+        open={replayDialogOpen}
+        onOpenChange={setReplayDialogOpen}
+        assignmentRecord={selectedAssignment}
+        onSuccess={() => {
+          // Reload history after successful replay
+          setLoading(true);
+          const loadHistory = async () => {
+            try {
+              const { data, error } = await supabase
+                .from('assignment_history')
+                .select('*')
+                .order('assigned_at', { ascending: false })
+                .limit(100);
+
+              if (error) {
+                console.error("Failed to fetch assignment history:", error);
+              } else {
+                setHistory(data || []);
+              }
+            } catch (error) {
+              console.error("Failed to fetch assignment history:", error);
+            } finally {
+              setLoading(false);
+            }
+          };
+          loadHistory();
+        }}
       />
     </>
   );
