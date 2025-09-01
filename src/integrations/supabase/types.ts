@@ -123,6 +123,7 @@ export type Database = {
           nome: string
           telefono: string
           venditore: string | null
+          webhook_sent: string | null
         }
         Insert: {
           call_prenotata?: string | null
@@ -134,6 +135,7 @@ export type Database = {
           nome: string
           telefono: string
           venditore?: string | null
+          webhook_sent?: string | null
         }
         Update: {
           call_prenotata?: string | null
@@ -145,6 +147,7 @@ export type Database = {
           nome?: string
           telefono?: string
           venditore?: string | null
+          webhook_sent?: string | null
         }
         Relationships: []
       }
@@ -255,24 +258,36 @@ export type Database = {
           attivo: boolean
           created_at: string
           descrizione: string | null
+          exclude_from_included: string[] | null
+          fonti_escluse: string[] | null
+          fonti_incluse: string[] | null
           id: string
           nome: string
+          source_mode: string | null
           updated_at: string
         }
         Insert: {
           attivo?: boolean
           created_at?: string
           descrizione?: string | null
+          exclude_from_included?: string[] | null
+          fonti_escluse?: string[] | null
+          fonti_incluse?: string[] | null
           id?: string
           nome: string
+          source_mode?: string | null
           updated_at?: string
         }
         Update: {
           attivo?: boolean
           created_at?: string
           descrizione?: string | null
+          exclude_from_included?: string[] | null
+          fonti_escluse?: string[] | null
+          fonti_incluse?: string[] | null
           id?: string
           nome?: string
+          source_mode?: string | null
           updated_at?: string
         }
         Relationships: []

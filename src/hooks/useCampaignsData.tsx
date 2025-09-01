@@ -9,13 +9,17 @@ export interface Campaign {
   attivo: boolean;
   created_at: string;
   updated_at: string;
+  fonti_incluse?: string[];
+  fonti_escluse?: string[];
+  source_mode?: 'exclude' | 'include';
+  exclude_from_included?: string[];
 }
 
 export const useCampaignsData = () => {
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  const fetchCampaigns = async () => {
+  const fetchCampagne = async () => {
     try {
       const { data, error } = await supabase
         .from('database_campagne')
@@ -23,7 +27,10 @@ export const useCampaignsData = () => {
         .order('nome', { ascending: true });
 
       if (error) throw error;
-      setCampaigns(data || []);
+      setCampaigns(data?.map(campaign => ({
+        ...campaign,
+        source_mode: campaign.source_mode as 'exclude' | 'include' | undefined
+      })) || []);
     } catch (error) {
       console.error('Error fetching campaigns:', error);
       toast.error('Errore nel caricamento delle campagne');
@@ -32,7 +39,14 @@ export const useCampaignsData = () => {
     }
   };
 
-  const addCampaign = async (campaignData: { nome: string; descrizione?: string }) => {
+  const addCampaign = async (campaignData: { 
+    nome: string; 
+    descrizione?: string;
+    fonti_incluse?: string[];
+    fonti_escluse?: string[];
+    source_mode?: 'exclude' | 'include';
+    exclude_from_included?: string[];
+  }) => {
     try {
       const { error } = await supabase
         .from('database_campagne')
@@ -41,7 +55,7 @@ export const useCampaignsData = () => {
       if (error) throw error;
       
       toast.success('Campagna aggiunta con successo');
-      await fetchCampaigns();
+      await fetchCampagne();
     } catch (error) {
       console.error('Error adding campaign:', error);
       toast.error('Errore nell\'aggiunta della campagna');
@@ -58,7 +72,7 @@ export const useCampaignsData = () => {
       if (error) throw error;
       
       toast.success('Campagna aggiornata con successo');
-      await fetchCampaigns();
+      await fetchCampagne();
     } catch (error) {
       console.error('Error updating campaign:', error);
       toast.error('Errore nell\'aggiornamento della campagna');
@@ -75,7 +89,7 @@ export const useCampaignsData = () => {
       if (error) throw error;
       
       toast.success('Campagna eliminata con successo');
-      await fetchCampaigns();
+      await fetchCampagne();
     } catch (error) {
       console.error('Error deleting campaign:', error);
       toast.error('Errore nell\'eliminazione della campagna');
@@ -83,13 +97,13 @@ export const useCampaignsData = () => {
   };
 
   useEffect(() => {
-    fetchCampaigns();
+    fetchCampagne();
   }, []);
 
   return {
     campaigns,
     isLoading,
-    refetch: fetchCampaigns,
+    refetch: fetchCampagne,
     addCampaign,
     updateCampaign,
     deleteCampaign

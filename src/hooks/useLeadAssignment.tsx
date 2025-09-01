@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { getAllFonti, getAllCampagne, getUniqueSourcesFromLeads, syncSourcesToDatabase } from "@/services/databaseService";
 import { assignLeadsWithExclusions, LeadAssignmentData } from "@/services/leadAssignmentService";
+import { Campaign } from '@/hooks/useCampaignsData';
 import { useRealTimeLeadCount } from "./useRealTimeLeadCount";
 
 export function useLeadAssignment() {
@@ -11,7 +12,7 @@ export function useLeadAssignment() {
   const [campagna, setCampagna] = useState("");
   const [salespeople, setSalespeople] = useState<{id: string; nome: string; cognome: string;}[]>([]);
   const [fonti, setFonti] = useState<{id: string; nome: string; descrizione?: string;}[]>([]);
-  const [campagne, setCampagne] = useState<{id: string; nome: string; descrizione?: string;}[]>([]);
+  const [campagne, setCampagne] = useState<Campaign[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [excludedSources, setExcludedSources] = useState<string[]>([]);
   const [includedSources, setIncludedSources] = useState<string[]>([]);
@@ -97,12 +98,55 @@ export function useLeadAssignment() {
 
   const fetchCampagne = async () => {
     try {
-      const data = await getAllCampagne();
-      setCampagne(data);
-      console.log(`📊 Loaded ${data.length} campagne`);
+      const { data, error } = await supabase
+        .from('database_campagne')
+        .select('*')
+        .order('nome', { ascending: true });
+
+      if (error) throw error;
+      const campaignsData = data?.map(campaign => ({
+        ...campaign,
+        source_mode: campaign.source_mode as 'exclude' | 'include' | undefined
+      })) || [];
+      
+      setCampagne(campaignsData);
+      console.log(`📊 Loaded ${campaignsData.length} campagne`);
     } catch (error) {
       console.error("Error fetching campagne:", error);
     }
+  };
+
+  // Apply campaign source settings when campaign changes
+  const applyCampaignSources = (selectedCampagna: string) => {
+    if (!selectedCampagna) return;
+    
+    const campaign = campagne.find(c => c.nome === selectedCampagna);
+    if (!campaign) return;
+
+    console.log(`🎯 Applying sources from campaign: ${campaign.nome}`);
+    
+    // Apply source mode
+    if (campaign.source_mode) {
+      setSourceMode(campaign.source_mode);
+    }
+    
+    // Apply source filters
+    if (campaign.source_mode === 'exclude' && campaign.fonti_escluse) {
+      setExcludedSources(campaign.fonti_escluse);
+      setIncludedSources([]);
+      setExcludeFromIncluded([]);
+    } else if (campaign.source_mode === 'include' && campaign.fonti_incluse) {
+      setIncludedSources(campaign.fonti_incluse);
+      setExcludedSources([]);
+      setExcludeFromIncluded(campaign.exclude_from_included || []);
+    }
+    
+    console.log(`✅ Applied campaign sources:`, {
+      sourceMode: campaign.source_mode,
+      excludedSources: campaign.fonti_escluse,
+      includedSources: campaign.fonti_incluse,
+      excludeFromIncluded: campaign.exclude_from_included
+    });
   };
 
   const addExcludedSource = (sourceName: string) => {
@@ -223,7 +267,10 @@ export function useLeadAssignment() {
     venditore,
     setVenditore,
     campagna,
-    setCampagna,
+    setCampagna: (campagna: string) => {
+      setCampagna(campagna);
+      applyCampaignSources(campagna);
+    },
     salespeople,
     fonti,
     campagne,

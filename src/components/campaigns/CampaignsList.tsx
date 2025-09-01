@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -8,6 +8,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Switch } from '@/components/ui/switch';
 import { Pencil, Trash2 } from 'lucide-react';
 import { Campaign } from '@/hooks/useCampaignsData';
+import { getUniqueSourcesFromLeads } from '@/services/databaseService';
+import CampaignSourcesConfig from './CampaignSourcesConfig';
 
 interface CampaignsListProps {
   campaigns: Campaign[];
@@ -20,11 +22,33 @@ const CampaignsList = ({ campaigns, onUpdate, onDelete }: CampaignsListProps) =>
   const [editNome, setEditNome] = useState('');
   const [editDescrizione, setEditDescrizione] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [uniqueSources, setUniqueSources] = useState<string[]>([]);
+  const [editExcludedSources, setEditExcludedSources] = useState<string[]>([]);
+  const [editIncludedSources, setEditIncludedSources] = useState<string[]>([]);
+  const [editExcludeFromIncluded, setEditExcludeFromIncluded] = useState<string[]>([]);
+  const [editSourceMode, setEditSourceMode] = useState<'exclude' | 'include'>('exclude');
+
+  useEffect(() => {
+    loadUniqueSources();
+  }, []);
+
+  const loadUniqueSources = async () => {
+    try {
+      const sources = await getUniqueSourcesFromLeads();
+      setUniqueSources(sources);
+    } catch (error) {
+      console.error('Error loading sources:', error);
+    }
+  };
 
   const handleEdit = (campaign: Campaign) => {
     setEditingCampaign(campaign);
     setEditNome(campaign.nome);
     setEditDescrizione(campaign.descrizione || '');
+    setEditExcludedSources(campaign.fonti_escluse || []);
+    setEditIncludedSources(campaign.fonti_incluse || []);
+    setEditExcludeFromIncluded(campaign.exclude_from_included || []);
+    setEditSourceMode(campaign.source_mode || 'exclude');
   };
 
   const handleUpdate = async () => {
@@ -34,12 +58,47 @@ const CampaignsList = ({ campaigns, onUpdate, onDelete }: CampaignsListProps) =>
     try {
       await onUpdate(editingCampaign.id, {
         nome: editNome.trim(),
-        descrizione: editDescrizione.trim() || undefined
+        descrizione: editDescrizione.trim() || undefined,
+        fonti_incluse: editIncludedSources.length > 0 ? editIncludedSources : [],
+        fonti_escluse: editExcludedSources.length > 0 ? editExcludedSources : [],
+        source_mode: editSourceMode,
+        exclude_from_included: editExcludeFromIncluded.length > 0 ? editExcludeFromIncluded : []
       });
       setEditingCampaign(null);
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const addEditExcludedSource = (source: string) => {
+    setEditExcludedSources(prev => [...prev, source]);
+  };
+
+  const removeEditExcludedSource = (source: string) => {
+    setEditExcludedSources(prev => prev.filter(s => s !== source));
+  };
+
+  const addEditIncludedSource = (source: string) => {
+    setEditIncludedSources(prev => [...prev, source]);
+  };
+
+  const removeEditIncludedSource = (source: string) => {
+    setEditIncludedSources(prev => prev.filter(s => s !== source));
+  };
+
+  const addEditExcludeFromIncluded = (source: string) => {
+    setEditExcludeFromIncluded(prev => [...prev, source]);
+  };
+
+  const removeEditExcludeFromIncluded = (source: string) => {
+    setEditExcludeFromIncluded(prev => prev.filter(s => s !== source));
+  };
+
+  const toggleEditSourceMode = (mode: 'exclude' | 'include') => {
+    setEditSourceMode(mode);
+    setEditExcludedSources([]);
+    setEditIncludedSources([]);
+    setEditExcludeFromIncluded([]);
   };
 
   const handleToggleActive = async (campaign: Campaign) => {
@@ -81,6 +140,26 @@ const CampaignsList = ({ campaigns, onUpdate, onDelete }: CampaignsListProps) =>
                   
                   {campaign.descrizione && (
                     <p className="text-sm text-muted-foreground mb-3">{campaign.descrizione}</p>
+                  )}
+
+                  {/* Show configured sources */}
+                  {((campaign.fonti_escluse && campaign.fonti_escluse.length > 0) || 
+                    (campaign.fonti_incluse && campaign.fonti_incluse.length > 0)) && (
+                    <div className="mb-3">
+                      <p className="text-xs text-muted-foreground mb-1">Fonti configurate:</p>
+                      <div className="flex flex-wrap gap-1">
+                        {campaign.source_mode === 'exclude' && campaign.fonti_escluse?.map((fonte) => (
+                          <Badge key={fonte} variant="secondary" className="text-xs">
+                            Esclusa: {fonte}
+                          </Badge>
+                        ))}
+                        {campaign.source_mode === 'include' && campaign.fonti_incluse?.map((fonte) => (
+                          <Badge key={fonte} variant="default" className="text-xs">
+                            Inclusa: {fonte}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
                   )}
 
                   <div className="flex items-center gap-4">
@@ -127,6 +206,22 @@ const CampaignsList = ({ campaigns, onUpdate, onDelete }: CampaignsListProps) =>
                             rows={3}
                           />
                         </div>
+                        
+                        <CampaignSourcesConfig
+                          uniqueSources={uniqueSources}
+                          excludedSources={editExcludedSources}
+                          includedSources={editIncludedSources}
+                          excludeFromIncluded={editExcludeFromIncluded}
+                          sourceMode={editSourceMode}
+                          onAddExcludedSource={addEditExcludedSource}
+                          onRemoveExcludedSource={removeEditExcludedSource}
+                          onAddIncludedSource={addEditIncludedSource}
+                          onRemoveIncludedSource={removeEditIncludedSource}
+                          onAddExcludeFromIncluded={addEditExcludeFromIncluded}
+                          onRemoveExcludeFromIncluded={removeEditExcludeFromIncluded}
+                          onToggleSourceMode={toggleEditSourceMode}
+                        />
+                        
                         <Button
                           onClick={handleUpdate}
                           disabled={isSubmitting || !editNome.trim()}
