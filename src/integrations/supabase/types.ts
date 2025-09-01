@@ -256,6 +256,7 @@ export type Database = {
       database_campagne: {
         Row: {
           attivo: boolean
+          bypass_time_interval: boolean | null
           created_at: string
           descrizione: string | null
           exclude_from_included: string[] | null
@@ -268,6 +269,7 @@ export type Database = {
         }
         Insert: {
           attivo?: boolean
+          bypass_time_interval?: boolean | null
           created_at?: string
           descrizione?: string | null
           exclude_from_included?: string[] | null
@@ -280,6 +282,7 @@ export type Database = {
         }
         Update: {
           attivo?: boolean
+          bypass_time_interval?: boolean | null
           created_at?: string
           descrizione?: string | null
           exclude_from_included?: string[] | null

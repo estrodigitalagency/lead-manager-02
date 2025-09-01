@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Plus } from 'lucide-react';
 import { getUniqueSourcesFromLeads } from '@/services/databaseService';
 import CampaignSourcesConfig from './CampaignSourcesConfig';
+import CampaignBypassConfig from './CampaignBypassConfig';
 
 interface AddCampaignFormProps {
   onSubmit: (data: { 
@@ -16,6 +17,7 @@ interface AddCampaignFormProps {
     fonti_escluse?: string[];
     source_mode?: 'exclude' | 'include';
     exclude_from_included?: string[];
+    bypass_time_interval?: boolean;
   }) => Promise<void>;
 }
 
@@ -28,6 +30,7 @@ const AddCampaignForm = ({ onSubmit }: AddCampaignFormProps) => {
   const [includedSources, setIncludedSources] = useState<string[]>([]);
   const [excludeFromIncluded, setExcludeFromIncluded] = useState<string[]>([]);
   const [sourceMode, setSourceMode] = useState<'exclude' | 'include'>('exclude');
+  const [bypassTimeInterval, setBypassTimeInterval] = useState(false);
 
   useEffect(() => {
     loadUniqueSources();
@@ -53,14 +56,14 @@ const AddCampaignForm = ({ onSubmit }: AddCampaignFormProps) => {
         fonti_incluse: includedSources.length > 0 ? includedSources : undefined,
         fonti_escluse: excludedSources.length > 0 ? excludedSources : undefined,
         source_mode: sourceMode,
-        exclude_from_included: excludeFromIncluded.length > 0 ? excludeFromIncluded : undefined
+        bypass_time_interval: bypassTimeInterval
       });
       setNome('');
       setDescrizione('');
       setExcludedSources([]);
       setIncludedSources([]);
       setExcludeFromIncluded([]);
-      setSourceMode('exclude');
+      setBypassTimeInterval(false);
     } finally {
       setIsSubmitting(false);
     }
@@ -137,8 +140,12 @@ const AddCampaignForm = ({ onSubmit }: AddCampaignFormProps) => {
             onRemoveExcludeFromIncluded={removeExcludeFromIncluded}
             onToggleSourceMode={toggleSourceMode}
           />
+          <CampaignBypassConfig
+            bypassTimeInterval={bypassTimeInterval}
+            onToggleBypass={setBypassTimeInterval}
+          />
           
-          <Button 
+          <Button
             onClick={handleSubmit} 
             disabled={isSubmitting || !nome.trim()}
             className="w-full"

@@ -13,6 +13,7 @@ export interface Campaign {
   fonti_escluse?: string[];
   source_mode?: 'exclude' | 'include';
   exclude_from_included?: string[];
+  bypass_time_interval?: boolean;
 }
 
 export const useCampaignsData = () => {
@@ -46,6 +47,7 @@ export const useCampaignsData = () => {
     fonti_escluse?: string[];
     source_mode?: 'exclude' | 'include';
     exclude_from_included?: string[];
+    bypass_time_interval?: boolean;
   }) => {
     try {
       const { error } = await supabase

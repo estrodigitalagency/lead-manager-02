@@ -10,6 +10,7 @@ import { Pencil, Trash2 } from 'lucide-react';
 import { Campaign } from '@/hooks/useCampaignsData';
 import { getUniqueSourcesFromLeads } from '@/services/databaseService';
 import CampaignSourcesConfig from './CampaignSourcesConfig';
+import CampaignBypassConfig from './CampaignBypassConfig';
 
 interface CampaignsListProps {
   campaigns: Campaign[];
@@ -27,6 +28,7 @@ const CampaignsList = ({ campaigns, onUpdate, onDelete }: CampaignsListProps) =>
   const [editIncludedSources, setEditIncludedSources] = useState<string[]>([]);
   const [editExcludeFromIncluded, setEditExcludeFromIncluded] = useState<string[]>([]);
   const [editSourceMode, setEditSourceMode] = useState<'exclude' | 'include'>('exclude');
+  const [editBypassTimeInterval, setEditBypassTimeInterval] = useState(false);
 
   useEffect(() => {
     loadUniqueSources();
@@ -49,6 +51,7 @@ const CampaignsList = ({ campaigns, onUpdate, onDelete }: CampaignsListProps) =>
     setEditIncludedSources(campaign.fonti_incluse || []);
     setEditExcludeFromIncluded(campaign.exclude_from_included || []);
     setEditSourceMode(campaign.source_mode || 'exclude');
+    setEditBypassTimeInterval(campaign.bypass_time_interval || false);
   };
 
   const handleUpdate = async () => {
@@ -62,7 +65,8 @@ const CampaignsList = ({ campaigns, onUpdate, onDelete }: CampaignsListProps) =>
         fonti_incluse: editIncludedSources.length > 0 ? editIncludedSources : [],
         fonti_escluse: editExcludedSources.length > 0 ? editExcludedSources : [],
         source_mode: editSourceMode,
-        exclude_from_included: editExcludeFromIncluded.length > 0 ? editExcludeFromIncluded : []
+        exclude_from_included: editExcludeFromIncluded.length > 0 ? editExcludeFromIncluded : [],
+        bypass_time_interval: editBypassTimeInterval
       });
       setEditingCampaign(null);
     } finally {
@@ -144,9 +148,10 @@ const CampaignsList = ({ campaigns, onUpdate, onDelete }: CampaignsListProps) =>
 
                   {/* Show configured sources */}
                   {((campaign.fonti_escluse && campaign.fonti_escluse.length > 0) || 
-                    (campaign.fonti_incluse && campaign.fonti_incluse.length > 0)) && (
+                    (campaign.fonti_incluse && campaign.fonti_incluse.length > 0) ||
+                    campaign.bypass_time_interval) && (
                     <div className="mb-3">
-                      <p className="text-xs text-muted-foreground mb-1">Fonti configurate:</p>
+                      <p className="text-xs text-muted-foreground mb-1">Configurazioni:</p>
                       <div className="flex flex-wrap gap-1">
                         {campaign.source_mode === 'exclude' && campaign.fonti_escluse?.map((fonte) => (
                           <Badge key={fonte} variant="secondary" className="text-xs">
@@ -158,6 +163,11 @@ const CampaignsList = ({ campaigns, onUpdate, onDelete }: CampaignsListProps) =>
                             Inclusa: {fonte}
                           </Badge>
                         ))}
+                        {campaign.bypass_time_interval && (
+                          <Badge variant="outline" className="text-xs">
+                            Bypass Temporale
+                          </Badge>
+                        )}
                       </div>
                     </div>
                   )}
@@ -220,6 +230,11 @@ const CampaignsList = ({ campaigns, onUpdate, onDelete }: CampaignsListProps) =>
                           onAddExcludeFromIncluded={addEditExcludeFromIncluded}
                           onRemoveExcludeFromIncluded={removeEditExcludeFromIncluded}
                           onToggleSourceMode={toggleEditSourceMode}
+                        />
+                        
+                        <CampaignBypassConfig
+                          bypassTimeInterval={editBypassTimeInterval}
+                          onToggleBypass={setEditBypassTimeInterval}
                         />
                         
                         <Button

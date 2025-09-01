@@ -130,6 +130,11 @@ export function useLeadAssignment() {
       setSourceMode(campaign.source_mode);
     }
     
+    // Apply bypass time interval
+    if (campaign.bypass_time_interval !== undefined) {
+      setBypassTimeInterval(campaign.bypass_time_interval);
+    }
+    
     // Apply source filters
     if (campaign.source_mode === 'exclude' && campaign.fonti_escluse) {
       setExcludedSources(campaign.fonti_escluse);
@@ -141,11 +146,12 @@ export function useLeadAssignment() {
       setExcludeFromIncluded(campaign.exclude_from_included || []);
     }
     
-    console.log(`✅ Applied campaign sources:`, {
+    console.log(`✅ Applied campaign settings:`, {
       sourceMode: campaign.source_mode,
       excludedSources: campaign.fonti_escluse,
       includedSources: campaign.fonti_incluse,
-      excludeFromIncluded: campaign.exclude_from_included
+      excludeFromIncluded: campaign.exclude_from_included,
+      bypassTimeInterval: campaign.bypass_time_interval
     });
   };
 
