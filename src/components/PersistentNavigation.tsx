@@ -1,7 +1,7 @@
 
 import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Users, Database, BarChart3, Settings, Menu, History } from "lucide-react";
+import { Users, Database, BarChart3, Settings, Menu, History, UserPlus } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import {
   Drawer,
@@ -27,6 +27,12 @@ const PersistentNavigation = () => {
       icon: Database,
       label: "Database",
       isActive: location.pathname === "/database"
+    },
+    {
+      to: "/lead-assignment",
+      icon: UserPlus,
+      label: "Assegna Lead",
+      isActive: location.pathname === "/lead-assignment"
     },
     {
       to: "/reports",

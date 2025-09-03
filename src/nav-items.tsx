@@ -4,6 +4,7 @@ import Database from "./pages/Database";
 import History from "./pages/History";
 import Reports from "./pages/Reports";
 import Settings from "./pages/Settings";
+import LeadAssignment from "./pages/LeadAssignment";
 
 export const navItems = [
   {
@@ -13,6 +14,10 @@ export const navItems = [
   {
     to: "/database",
     page: <Database />,
+  },
+  {
+    to: "/lead-assignment",
+    page: <LeadAssignment />,
   },
   {
     to: "/history",
