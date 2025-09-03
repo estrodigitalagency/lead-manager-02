@@ -143,7 +143,7 @@ const ManualAssignmentDialog = ({
         .insert({
           venditore: venditoreName,
           leads_count: selectedLeadIds.length,
-          campagna: selectedCampaign || null,
+          campagna: (selectedCampaign && selectedCampaign !== 'none') ? selectedCampaign : null,
           fonti_escluse: null
         });
 
@@ -169,7 +169,7 @@ const ManualAssignmentDialog = ({
             venditore_telefono: venditoreData.telefono || '',
             google_sheets_file_id: venditoreData.sheets_file_id || '',
             google_sheets_tab_name: venditoreData.sheets_tab_name || '',
-            campagna: selectedCampaign || '',
+            campagna: (selectedCampaign && selectedCampaign !== 'none') ? selectedCampaign : '',
             leads_count: selectedLeadIds.length,
             timestamp: new Date().toISOString(),
             leads: leadsData.map(lead => ({
@@ -290,7 +290,7 @@ const ManualAssignmentDialog = ({
                 <SelectValue placeholder="Scegli una campagna..." />
               </SelectTrigger>
               <SelectContent className="max-h-[200px] overflow-y-auto">
-                <SelectItem value="">Nessuna campagna</SelectItem>
+                <SelectItem value="none">Nessuna campagna</SelectItem>
                 {campaigns.map((campaign) => (
                   <SelectItem key={campaign.id} value={campaign.nome}>
                     {campaign.nome}
