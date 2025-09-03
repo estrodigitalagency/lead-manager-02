@@ -10,6 +10,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { CheckCircle } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useSalespeopleData } from "@/hooks/useSalespeopleData";
@@ -18,6 +20,11 @@ const LeadAssignment = () => {
   const [email, setEmail] = useState("");
   const [selectedVenditore, setSelectedVenditore] = useState("");
   const [isAssigning, setIsAssigning] = useState(false);
+  const [assignmentSuccess, setAssignmentSuccess] = useState<{
+    leadName: string;
+    venditoreName: string;
+    leadSource: string;
+  } | null>(null);
   
   const { venditori, isLoading } = useSalespeopleData();
 
@@ -42,17 +49,25 @@ const LeadAssignment = () => {
     try {
       const venditoreName = `${venditoreData.nome} ${venditoreData.cognome}`.trim();
       
-      // Trova il lead tramite email
-      const { data: leadData, error: fetchError } = await supabase
+      // Verifica se esistono lead con questa email
+      const { data: leads, error: fetchError } = await supabase
         .from('lead_generation')
         .select('*')
         .eq('email', email.trim())
-        .single();
+        .order('created_at', { ascending: false });
 
-      if (fetchError || !leadData) {
-        toast.error("Lead non trovato con questa email");
+      if (fetchError) {
+        toast.error("Errore durante la ricerca del lead");
         return;
       }
+
+      if (!leads || leads.length === 0) {
+        toast.error("Nessun lead trovato con questa email");
+        return;
+      }
+
+      // Prendi l'ultimo lead generato con questa email
+      const leadData = leads[0];
 
       // Aggiorna il lead con l'assegnazione
       const { error: updateError } = await supabase
@@ -129,16 +144,23 @@ const LeadAssignment = () => {
             toast.success(`Lead assegnato a ${venditoreName} e webhook inviato`);
           } else {
             console.error('Webhook response indica errore:', webhookResponse);
-            toast.error('Lead assegnato ma errore nell\'invio del webhook');
+            toast.success(`Lead assegnato a ${venditoreName} ma errore webhook`);
           }
         } catch (webhookError) {
           console.error('Errore nell\'invio webhook:', webhookError);
-          toast.error('Lead assegnato ma errore nell\'invio del webhook');
+          toast.success(`Lead assegnato a ${venditoreName} ma errore webhook`);
         }
       } else {
         console.log('Webhook non configurato');
         toast.success(`Lead assegnato a ${venditoreName}`);
       }
+
+      // Mostra messaggio di successo con dettagli
+      setAssignmentSuccess({
+        leadName: `${leadData.nome} ${leadData.cognome || ''}`.trim(),
+        venditoreName: venditoreName,
+        leadSource: leadData.fonte || 'Non specificata'
+      });
 
       // Aggiorna conteggio lead attuali del venditore
       const { data: currentVenditore } = await supabase
@@ -158,6 +180,11 @@ const LeadAssignment = () => {
       // Reset form
       setEmail("");
       setSelectedVenditore("");
+      
+      // Hide success message after 5 seconds
+      setTimeout(() => {
+        setAssignmentSuccess(null);
+      }, 5000);
     } catch (error) {
       console.error("Errore nell'assegnazione:", error);
       toast.error("Errore nell'assegnazione del lead");
@@ -167,14 +194,29 @@ const LeadAssignment = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-muted p-4">
-      <div className="w-full max-w-md">
-        <Card className="shadow-xl border-0 bg-card/80 backdrop-blur">
-          <CardHeader className="text-center space-y-2">
-            <CardTitle className="text-2xl font-bold">Assegnazione Lead</CardTitle>
-            <p className="text-muted-foreground text-sm">Inserisci l'email per assegnare il lead</p>
-          </CardHeader>
-          <CardContent className="space-y-6">
+    <div className="min-h-screen bg-gradient-to-br from-background to-muted p-4">
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="w-full max-w-md space-y-6">
+          {assignmentSuccess && (
+            <Alert className="bg-green-50 border-green-200 animate-in slide-in-from-top duration-300">
+              <CheckCircle className="h-4 w-4 text-green-600" />
+              <AlertDescription className="text-green-800">
+                <div className="space-y-1">
+                  <p className="font-semibold">✅ Lead assegnato con successo!</p>
+                  <p><strong>Lead:</strong> {assignmentSuccess.leadName}</p>
+                  <p><strong>Assegnato a:</strong> {assignmentSuccess.venditoreName}</p>
+                  <p><strong>Fonte:</strong> {assignmentSuccess.leadSource}</p>
+                </div>
+              </AlertDescription>
+            </Alert>
+          )}
+
+          <Card className="shadow-xl border-0 bg-card/95 backdrop-blur-sm">
+            <CardHeader className="text-center space-y-2">
+              <CardTitle className="text-2xl font-bold">Assegnazione Lead</CardTitle>
+              <p className="text-muted-foreground text-sm">Inserisci l'email per assegnare il lead</p>
+            </CardHeader>
+            <CardContent className="space-y-6">
             <div className="space-y-2">
               <Label htmlFor="email">Email del Lead</Label>
               <Input
@@ -207,15 +249,16 @@ const LeadAssignment = () => {
               </Select>
             </div>
 
-            <Button 
-              onClick={handleAssignment}
-              disabled={isAssigning || !email.trim() || !selectedVenditore}
-              className="w-full"
-            >
-              {isAssigning ? "Assegnazione..." : "Assegna Lead"}
-            </Button>
-          </CardContent>
-        </Card>
+              <Button 
+                onClick={handleAssignment}
+                disabled={isAssigning || !email.trim() || !selectedVenditore}
+                className="w-full"
+              >
+                {isAssigning ? "Assegnazione..." : "Assegna Lead"}
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </div>
   );
