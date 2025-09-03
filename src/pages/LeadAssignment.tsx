@@ -167,13 +167,14 @@ const LeadAssignment = () => {
   };
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="max-w-md mx-auto">
-        <Card>
-          <CardHeader>
-            <CardTitle>Assegnazione Lead tramite Email</CardTitle>
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-muted p-4">
+      <div className="w-full max-w-md">
+        <Card className="shadow-xl border-0 bg-card/80 backdrop-blur">
+          <CardHeader className="text-center space-y-2">
+            <CardTitle className="text-2xl font-bold">Assegnazione Lead</CardTitle>
+            <p className="text-muted-foreground text-sm">Inserisci l'email per assegnare il lead</p>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-6">
             <div className="space-y-2">
               <Label htmlFor="email">Email del Lead</Label>
               <Input
