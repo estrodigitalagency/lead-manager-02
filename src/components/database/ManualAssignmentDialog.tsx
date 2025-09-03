@@ -20,6 +20,13 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 
+interface Campaign {
+  id: string;
+  nome: string;
+  descrizione?: string;
+  attivo: boolean;
+}
+
 interface Venditore {
   id: string;
   nome: string;
@@ -44,7 +51,9 @@ const ManualAssignmentDialog = ({
   onAssignmentComplete
 }: ManualAssignmentDialogProps) => {
   const [selectedVenditore, setSelectedVenditore] = useState("");
+  const [selectedCampaign, setSelectedCampaign] = useState("");
   const [venditori, setVenditori] = useState<Venditore[]>([]);
+  const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isAssigning, setIsAssigning] = useState(false);
   const [sendWebhook, setSendWebhook] = useState(false);
@@ -52,6 +61,7 @@ const ManualAssignmentDialog = ({
   useEffect(() => {
     if (open) {
       fetchVenditori();
+      fetchCampaigns();
     }
   }, [open]);
 
@@ -71,6 +81,22 @@ const ManualAssignmentDialog = ({
       toast.error("Errore nel caricamento venditori");
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const fetchCampaigns = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('database_campagne')
+        .select('id, nome, descrizione, attivo')
+        .eq('attivo', true)
+        .order('nome');
+      
+      if (error) throw error;
+      setCampaigns(data || []);
+    } catch (error) {
+      console.error("Errore nel caricamento campagne:", error);
+      toast.error("Errore nel caricamento campagne");
     }
   };
 
@@ -117,7 +143,7 @@ const ManualAssignmentDialog = ({
         .insert({
           venditore: venditoreName,
           leads_count: selectedLeadIds.length,
-          campagna: null,
+          campagna: selectedCampaign || null,
           fonti_escluse: null
         });
 
@@ -143,7 +169,7 @@ const ManualAssignmentDialog = ({
             venditore_telefono: venditoreData.telefono || '',
             google_sheets_file_id: venditoreData.sheets_file_id || '',
             google_sheets_tab_name: venditoreData.sheets_tab_name || '',
-            campagna: '',
+            campagna: selectedCampaign || '',
             leads_count: selectedLeadIds.length,
             timestamp: new Date().toISOString(),
             leads: leadsData.map(lead => ({
@@ -208,6 +234,7 @@ const ManualAssignmentDialog = ({
       onAssignmentComplete();
       onOpenChange(false);
       setSelectedVenditore("");
+      setSelectedCampaign("");
       setSendWebhook(false);
     } catch (error) {
       console.error("Errore nell'assegnazione:", error);
@@ -246,6 +273,27 @@ const ManualAssignmentDialog = ({
                 {venditori.map((venditore) => (
                   <SelectItem key={venditore.id} value={venditore.id}>
                     {venditore.nome} {venditore.cognome}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Campagna (opzionale)</label>
+            <Select 
+              value={selectedCampaign} 
+              onValueChange={setSelectedCampaign}
+              disabled={isLoading}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Scegli una campagna..." />
+              </SelectTrigger>
+              <SelectContent className="max-h-[200px] overflow-y-auto">
+                <SelectItem value="">Nessuna campagna</SelectItem>
+                {campaigns.map((campaign) => (
+                  <SelectItem key={campaign.id} value={campaign.nome}>
+                    {campaign.nome}
                   </SelectItem>
                 ))}
               </SelectContent>
