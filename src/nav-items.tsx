@@ -16,10 +16,6 @@ export const navItems = [
     page: <Database />,
   },
   {
-    to: "/lead-assignment",
-    page: <LeadAssignment />,
-  },
-  {
     to: "/history",
     page: <History />,
   },
@@ -30,5 +26,13 @@ export const navItems = [
   {
     to: "/settings",
     page: <Settings />,
+  },
+];
+
+// Standalone routes not in navigation
+export const standaloneRoutes = [
+  {
+    to: "/lead-assignment",
+    page: <LeadAssignment />,
   },
 ];

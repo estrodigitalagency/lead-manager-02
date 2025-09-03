@@ -29,12 +29,6 @@ const PersistentNavigation = () => {
       isActive: location.pathname === "/database"
     },
     {
-      to: "/lead-assignment",
-      icon: UserPlus,
-      label: "Assegna Lead",
-      isActive: location.pathname === "/lead-assignment"
-    },
-    {
       to: "/reports",
       icon: BarChart3,
       label: "Report",
