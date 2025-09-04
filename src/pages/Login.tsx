@@ -35,13 +35,13 @@ const Login = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 flex items-center justify-center p-4">
-      <Card className="w-full max-w-md bg-white/95 backdrop-blur-sm shadow-2xl">
+      <Card className="w-full max-w-md bg-white border border-slate-200 shadow-2xl relative z-10">
         <CardHeader className="text-center space-y-2">
-          <div className="mx-auto w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center">
-            <Lock className="h-6 w-6 text-primary" />
+          <div className="mx-auto w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+            <Lock className="h-6 w-6 text-blue-600" />
           </div>
-          <CardTitle className="text-2xl font-bold">Lead Manager</CardTitle>
-          <CardDescription>
+          <CardTitle className="text-2xl font-bold text-slate-900">Lead Manager</CardTitle>
+          <CardDescription className="text-slate-600">
             Inserisci la password per accedere al sistema
           </CardDescription>
         </CardHeader>
