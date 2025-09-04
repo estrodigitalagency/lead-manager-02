@@ -165,12 +165,17 @@ const DatabaseTableContainer = ({
     try {
       const { error } = await supabase
         .from('lead_generation')
-        .update({ assignable: true })
+        .update({ 
+          assignable: true,
+          venditore: null,      // Rimuove il venditore
+          stato: 'nuovo',       // Reimposta lo stato a nuovo
+          data_assegnazione: null // Rimuove la data di assegnazione
+        })
         .in('id', selectedItems);
 
       if (error) throw error;
 
-      toast.success(`${selectedItems.length} lead resi assegnabili`);
+      toast.success(`${selectedItems.length} lead resi assegnabili e venditori rimossi`);
       onRefresh();
     } catch (error) {
       console.error("Errore durante l'aggiornamento:", error);
