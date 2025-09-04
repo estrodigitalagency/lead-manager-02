@@ -1,8 +1,9 @@
 
 import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Users, Database, BarChart3, Settings, Menu, History, UserPlus } from "lucide-react";
+import { Users, Database, BarChart3, Settings, Menu, History, LogOut } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useAuth } from "@/contexts/AuthContext";
 import {
   Drawer,
   DrawerContent,
@@ -14,6 +15,7 @@ const PersistentNavigation = () => {
   const location = useLocation();
   const isMobile = useIsMobile();
   const [open, setOpen] = useState(false);
+  const { logout } = useAuth();
   
   const navigationItems = [
     {
@@ -86,7 +88,18 @@ const PersistentNavigation = () => {
               <DrawerContent className="bg-background max-h-[80vh]">
                 <div className="p-6 space-y-3 overflow-y-auto">
                   <h2 className="text-xl font-semibold mb-6 text-center">Menu</h2>
-                  <NavItems onItemClick={() => setOpen(false)} />
+                   <NavItems onItemClick={() => setOpen(false)} />
+                   <Button 
+                     variant="ghost" 
+                     onClick={() => {
+                       logout();
+                       setOpen(false);
+                     }}
+                     className="w-full text-base py-3 px-4 flex items-center gap-2 justify-start text-destructive hover:bg-destructive/10 hover:text-destructive"
+                   >
+                     <LogOut className="h-5 w-5 flex-shrink-0" />
+                     <span className="truncate">Esci</span>
+                   </Button>
                 </div>
               </DrawerContent>
             </Drawer>
@@ -107,6 +120,16 @@ const PersistentNavigation = () => {
             <div className="flex items-center gap-1 overflow-x-auto flex-1 min-w-0">
               <NavItems />
             </div>
+          </div>
+          <div className="flex-shrink-0">
+            <Button 
+              variant="ghost" 
+              onClick={logout}
+              className="flex items-center gap-2 text-destructive hover:bg-destructive/10 hover:text-destructive"
+            >
+              <LogOut className="h-4 w-4" />
+              <span className="hidden sm:inline">Esci</span>
+            </Button>
           </div>
         </div>
       </div>

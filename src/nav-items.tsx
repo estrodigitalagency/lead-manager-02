@@ -5,6 +5,7 @@ import History from "./pages/History";
 import Reports from "./pages/Reports";
 import Settings from "./pages/Settings";
 import LeadAssignment from "./pages/LeadAssignment";
+import Login from "./pages/Login";
 
 export const navItems = [
   {
@@ -34,5 +35,13 @@ export const standaloneRoutes = [
   {
     to: "/lead-assignment",
     page: <LeadAssignment />,
+  },
+];
+
+// Public routes that don't require authentication
+export const publicRoutes = [
+  {
+    to: "/login",
+    page: <Login />,
   },
 ];

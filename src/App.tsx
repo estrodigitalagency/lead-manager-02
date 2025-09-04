@@ -3,19 +3,37 @@ import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
-import { navItems, standaloneRoutes } from "./nav-items";
+import { navItems, standaloneRoutes, publicRoutes } from "./nav-items";
 import { LeadSyncProvider } from "@/contexts/LeadSyncContext";
+import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import PersistentNavigation from "@/components/PersistentNavigation";
 
 const queryClient = new QueryClient();
 
+const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
+  const { isAuthenticated } = useAuth();
+  const location = useLocation();
+  
+  // Check if current route is public
+  const isPublicRoute = publicRoutes.some(route => route.to === location.pathname);
+  
+  if (!isAuthenticated && !isPublicRoute) {
+    // Redirect to login if not authenticated and not on public route
+    window.location.href = '/login';
+    return null;
+  }
+  
+  return <>{children}</>;
+};
+
 const AppContent = () => {
   const location = useLocation();
   const isStandalonePage = standaloneRoutes.some(route => route.to === location.pathname);
+  const isPublicPage = publicRoutes.some(route => route.to === location.pathname);
 
   return (
-    <>
-      {!isStandalonePage && <PersistentNavigation />}
+    <ProtectedRoute>
+      {!isStandalonePage && !isPublicPage && <PersistentNavigation />}
       <Routes>
         {navItems.map(({ to, page }) => (
           <Route key={to} path={to} element={page} />
@@ -23,21 +41,26 @@ const AppContent = () => {
         {standaloneRoutes.map(({ to, page }) => (
           <Route key={to} path={to} element={page} />
         ))}
+        {publicRoutes.map(({ to, page }) => (
+          <Route key={to} path={to} element={page} />
+        ))}
       </Routes>
-    </>
+    </ProtectedRoute>
   );
 };
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <LeadSyncProvider>
-      <TooltipProvider>
-        <Toaster />
-        <BrowserRouter>
-          <AppContent />
-        </BrowserRouter>
-      </TooltipProvider>
-    </LeadSyncProvider>
+    <AuthProvider>
+      <LeadSyncProvider>
+        <TooltipProvider>
+          <Toaster />
+          <BrowserRouter>
+            <AppContent />
+          </BrowserRouter>
+        </TooltipProvider>
+      </LeadSyncProvider>
+    </AuthProvider>
   </QueryClientProvider>
 );
 
