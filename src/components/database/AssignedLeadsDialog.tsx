@@ -30,6 +30,7 @@ interface AssignedLeadsDialogProps {
     fonti_escluse?: string[] | null;
     fonti_incluse?: string[] | null;
     exclude_from_included?: string[] | null;
+    source_mode?: string | null;
     leads_count: number;
   } | null;
 }
@@ -49,10 +50,10 @@ const AssignedLeadsDialog = ({ open, onOpenChange, assignmentRecord }: AssignedL
 
     setLoading(true);
     try {
-      // Create a time window around the assignment time (±5 minutes)
+      // Expanded time window: ±30 minutes around assignment time
       const assignedTime = new Date(assignmentRecord.assigned_at);
-      const startTime = new Date(assignedTime.getTime() - 5 * 60 * 1000);
-      const endTime = new Date(assignedTime.getTime() + 5 * 60 * 1000);
+      const startTime = new Date(assignedTime.getTime() - 30 * 60 * 1000);
+      const endTime = new Date(assignedTime.getTime() + 30 * 60 * 1000);
 
       let query = supabase
         .from('lead_generation')
@@ -70,32 +71,105 @@ const AssignedLeadsDialog = ({ open, onOpenChange, assignmentRecord }: AssignedL
 
       if (error) {
         console.error('Error loading assigned leads:', error);
+        setLeads([]);
       } else {
-        // Apply source filters if present
+        // Apply flexible source filtering
         let filteredData = data || [];
         
-        if (assignmentRecord.fonti_incluse && assignmentRecord.fonti_incluse.length > 0) {
-          filteredData = filteredData.filter(lead => 
-            assignmentRecord.fonti_incluse!.includes(lead.fonte || '')
-          );
-          
-          // Apply exclude_from_included if present
-          if (assignmentRecord.exclude_from_included && assignmentRecord.exclude_from_included.length > 0) {
-            filteredData = filteredData.filter(lead => 
-              !assignmentRecord.exclude_from_included!.includes(lead.fonte || '')
+        if (assignmentRecord.source_mode === 'include' && assignmentRecord.fonti_incluse?.length) {
+          // For include mode, only show leads from included sources with flexible matching
+          const includedSources = assignmentRecord.fonti_incluse;
+          filteredData = filteredData.filter(lead => {
+            if (!lead.fonte) return false;
+            
+            // Split fonte by comma, trim whitespace, and check for matches
+            const leadSources = lead.fonte.split(',').map(s => s.trim().toLowerCase());
+            return includedSources.some(includedSource => 
+              leadSources.some(leadSource => 
+                leadSource.includes(includedSource.toLowerCase()) || 
+                includedSource.toLowerCase().includes(leadSource)
+              )
             );
+          });
+          
+          // Apply exclusions from included sources if specified
+          if (assignmentRecord.exclude_from_included?.length) {
+            const excludeFromIncluded = assignmentRecord.exclude_from_included;
+            filteredData = filteredData.filter(lead => {
+              if (!lead.fonte) return true;
+              
+              const leadSources = lead.fonte.split(',').map(s => s.trim().toLowerCase());
+              return !excludeFromIncluded.some(excludedSource =>
+                leadSources.some(leadSource =>
+                  leadSource.includes(excludedSource.toLowerCase()) ||
+                  excludedSource.toLowerCase().includes(leadSource)
+                )
+              );
+            });
           }
-        } else if (assignmentRecord.fonti_escluse && assignmentRecord.fonti_escluse.length > 0) {
-          // Exclude mode
-          filteredData = filteredData.filter(lead => 
-            !assignmentRecord.fonti_escluse!.includes(lead.fonte || '')
-          );
+        } else if (assignmentRecord.source_mode === 'exclude' && assignmentRecord.fonti_escluse?.length) {
+          // For exclude mode, exclude specified sources with flexible matching
+          const excludedSources = assignmentRecord.fonti_escluse;
+          filteredData = filteredData.filter(lead => {
+            if (!lead.fonte) return true;
+            
+            const leadSources = lead.fonte.split(',').map(s => s.trim().toLowerCase());
+            return !excludedSources.some(excludedSource =>
+              leadSources.some(leadSource =>
+                leadSource.includes(excludedSource.toLowerCase()) ||
+                excludedSource.toLowerCase().includes(leadSource)
+              )
+            );
+          });
+        } else if (assignmentRecord.fonti_incluse?.length) {
+          // Legacy handling for old records without source_mode
+          filteredData = filteredData.filter(lead => {
+            if (!lead.fonte) return false;
+            
+            const leadSources = lead.fonte.split(',').map(s => s.trim().toLowerCase());
+            return assignmentRecord.fonti_incluse!.some(includedSource => 
+              leadSources.some(leadSource => 
+                leadSource.includes(includedSource.toLowerCase()) || 
+                includedSource.toLowerCase().includes(leadSource)
+              )
+            );
+          });
+          
+          if (assignmentRecord.exclude_from_included?.length) {
+            const excludeFromIncluded = assignmentRecord.exclude_from_included;
+            filteredData = filteredData.filter(lead => {
+              if (!lead.fonte) return true;
+              
+              const leadSources = lead.fonte.split(',').map(s => s.trim().toLowerCase());
+              return !excludeFromIncluded.some(excludedSource =>
+                leadSources.some(leadSource =>
+                  leadSource.includes(excludedSource.toLowerCase()) ||
+                  excludedSource.toLowerCase().includes(leadSource)
+                )
+              );
+            });
+          }
+        } else if (assignmentRecord.fonti_escluse?.length) {
+          // Legacy handling for old records without source_mode
+          const excludedSources = assignmentRecord.fonti_escluse;
+          filteredData = filteredData.filter(lead => {
+            if (!lead.fonte) return true;
+            
+            const leadSources = lead.fonte.split(',').map(s => s.trim().toLowerCase());
+            return !excludedSources.some(excludedSource =>
+              leadSources.some(leadSource =>
+                leadSource.includes(excludedSource.toLowerCase()) ||
+                excludedSource.toLowerCase().includes(leadSource)
+              )
+            );
+          });
         }
 
         setLeads(filteredData);
       }
     } catch (error) {
       console.error('Error loading assigned leads:', error);
+      setLeads([]);
     } finally {
       setLoading(false);
     }
