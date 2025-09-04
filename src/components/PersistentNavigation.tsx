@@ -15,7 +15,7 @@ const PersistentNavigation = () => {
   const location = useLocation();
   const isMobile = useIsMobile();
   const [open, setOpen] = useState(false);
-  const { logout } = useAuth();
+  const { signOut } = useAuth();
   
   const navigationItems = [
     {
@@ -92,7 +92,7 @@ const PersistentNavigation = () => {
                    <Button 
                      variant="ghost" 
                      onClick={() => {
-                       logout();
+                       signOut();
                        setOpen(false);
                      }}
                      className="w-full text-base py-3 px-4 flex items-center gap-2 justify-start text-destructive hover:bg-destructive/10 hover:text-destructive"
@@ -124,7 +124,7 @@ const PersistentNavigation = () => {
           <div className="flex-shrink-0">
             <Button 
               variant="ghost" 
-              onClick={logout}
+              onClick={signOut}
               className="flex items-center gap-2 text-destructive hover:bg-destructive/10 hover:text-destructive"
             >
               <LogOut className="h-4 w-4" />
