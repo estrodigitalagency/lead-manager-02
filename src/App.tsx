@@ -14,11 +14,12 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { isAuthenticated } = useAuth();
   const location = useLocation();
   
-  // Check if current route is public
+  // Check if current route is public or standalone (both should be unprotected)
   const isPublicRoute = publicRoutes.some(route => route.to === location.pathname);
+  const isStandaloneRoute = standaloneRoutes.some(route => route.to === location.pathname);
   
-  if (!isAuthenticated && !isPublicRoute) {
-    // Redirect to login if not authenticated and not on public route
+  if (!isAuthenticated && !isPublicRoute && !isStandaloneRoute) {
+    // Redirect to login if not authenticated and not on public/standalone route
     window.location.href = '/login';
     return null;
   }
