@@ -50,10 +50,12 @@ const AssignedLeadsDialog = ({ open, onOpenChange, assignmentRecord }: AssignedL
 
     setLoading(true);
     try {
-      // Expanded time window: ±30 minutes around assignment time
+      // Use a narrower time window: ±2 minutes around assignment time to be more precise
       const assignedTime = new Date(assignmentRecord.assigned_at);
-      const startTime = new Date(assignedTime.getTime() - 30 * 60 * 1000);
-      const endTime = new Date(assignedTime.getTime() + 30 * 60 * 1000);
+      const startTime = new Date(assignedTime.getTime() - 2 * 60 * 1000);
+      const endTime = new Date(assignedTime.getTime() + 2 * 60 * 1000);
+
+      console.log(`Searching for leads assigned to ${assignmentRecord.venditore} between ${startTime.toISOString()} and ${endTime.toISOString()}`);
 
       let query = supabase
         .from('lead_generation')
@@ -65,6 +67,7 @@ const AssignedLeadsDialog = ({ open, onOpenChange, assignmentRecord }: AssignedL
       // Apply campaign filter if present
       if (assignmentRecord.campagna) {
         query = query.eq('campagna', assignmentRecord.campagna);
+        console.log(`Filtering by campaign: ${assignmentRecord.campagna}`);
       }
 
       const { data, error } = await query.order('data_assegnazione', { ascending: false });
@@ -73,10 +76,14 @@ const AssignedLeadsDialog = ({ open, onOpenChange, assignmentRecord }: AssignedL
         console.error('Error loading assigned leads:', error);
         setLeads([]);
       } else {
-        // Apply flexible source filtering
+        console.log(`Found ${data?.length || 0} potential leads before source filtering`);
+        
+        // Apply precise source filtering based on assignment record
         let filteredData = data || [];
         
         if (assignmentRecord.source_mode === 'include' && assignmentRecord.fonti_incluse?.length) {
+          console.log(`Applying include mode with sources: ${assignmentRecord.fonti_incluse.join(', ')}`);
+          
           // For include mode, only show leads from included sources with flexible matching
           const includedSources = assignmentRecord.fonti_incluse;
           filteredData = filteredData.filter(lead => {
@@ -84,87 +91,118 @@ const AssignedLeadsDialog = ({ open, onOpenChange, assignmentRecord }: AssignedL
             
             // Split fonte by comma, trim whitespace, and check for matches
             const leadSources = lead.fonte.split(',').map(s => s.trim().toLowerCase());
-            return includedSources.some(includedSource => 
+            const isIncluded = includedSources.some(includedSource => 
               leadSources.some(leadSource => 
                 leadSource.includes(includedSource.toLowerCase()) || 
                 includedSource.toLowerCase().includes(leadSource)
               )
             );
+            
+            console.log(`Lead ${lead.nome} (fonte: ${lead.fonte}) - included: ${isIncluded}`);
+            return isIncluded;
           });
           
           // Apply exclusions from included sources if specified
           if (assignmentRecord.exclude_from_included?.length) {
+            console.log(`Applying exclusions from included: ${assignmentRecord.exclude_from_included.join(', ')}`);
             const excludeFromIncluded = assignmentRecord.exclude_from_included;
             filteredData = filteredData.filter(lead => {
               if (!lead.fonte) return true;
               
               const leadSources = lead.fonte.split(',').map(s => s.trim().toLowerCase());
-              return !excludeFromIncluded.some(excludedSource =>
+              const isExcluded = excludeFromIncluded.some(excludedSource =>
                 leadSources.some(leadSource =>
                   leadSource.includes(excludedSource.toLowerCase()) ||
                   excludedSource.toLowerCase().includes(leadSource)
                 )
               );
+              
+              console.log(`Lead ${lead.nome} (fonte: ${lead.fonte}) - excluded from included: ${isExcluded}`);
+              return !isExcluded;
             });
           }
         } else if (assignmentRecord.source_mode === 'exclude' && assignmentRecord.fonti_escluse?.length) {
+          console.log(`Applying exclude mode with sources: ${assignmentRecord.fonti_escluse.join(', ')}`);
+          
           // For exclude mode, exclude specified sources with flexible matching
           const excludedSources = assignmentRecord.fonti_escluse;
           filteredData = filteredData.filter(lead => {
             if (!lead.fonte) return true;
             
             const leadSources = lead.fonte.split(',').map(s => s.trim().toLowerCase());
-            return !excludedSources.some(excludedSource =>
+            const isExcluded = excludedSources.some(excludedSource =>
               leadSources.some(leadSource =>
                 leadSource.includes(excludedSource.toLowerCase()) ||
                 excludedSource.toLowerCase().includes(leadSource)
               )
             );
+            
+            console.log(`Lead ${lead.nome} (fonte: ${lead.fonte}) - excluded: ${isExcluded}`);
+            return !isExcluded;
           });
         } else if (assignmentRecord.fonti_incluse?.length) {
           // Legacy handling for old records without source_mode
+          console.log(`Applying legacy include mode with sources: ${assignmentRecord.fonti_incluse.join(', ')}`);
+          
           filteredData = filteredData.filter(lead => {
             if (!lead.fonte) return false;
             
             const leadSources = lead.fonte.split(',').map(s => s.trim().toLowerCase());
-            return assignmentRecord.fonti_incluse!.some(includedSource => 
+            const isIncluded = assignmentRecord.fonti_incluse!.some(includedSource => 
               leadSources.some(leadSource => 
                 leadSource.includes(includedSource.toLowerCase()) || 
                 includedSource.toLowerCase().includes(leadSource)
               )
             );
+            
+            console.log(`Lead ${lead.nome} (fonte: ${lead.fonte}) - legacy included: ${isIncluded}`);
+            return isIncluded;
           });
           
           if (assignmentRecord.exclude_from_included?.length) {
+            console.log(`Applying legacy exclusions from included: ${assignmentRecord.exclude_from_included.join(', ')}`);
             const excludeFromIncluded = assignmentRecord.exclude_from_included;
             filteredData = filteredData.filter(lead => {
               if (!lead.fonte) return true;
               
               const leadSources = lead.fonte.split(',').map(s => s.trim().toLowerCase());
-              return !excludeFromIncluded.some(excludedSource =>
+              const isExcluded = excludeFromIncluded.some(excludedSource =>
                 leadSources.some(leadSource =>
                   leadSource.includes(excludedSource.toLowerCase()) ||
                   excludedSource.toLowerCase().includes(leadSource)
                 )
               );
+              
+              console.log(`Lead ${lead.nome} (fonte: ${lead.fonte}) - legacy excluded from included: ${isExcluded}`);
+              return !isExcluded;
             });
           }
         } else if (assignmentRecord.fonti_escluse?.length) {
           // Legacy handling for old records without source_mode
+          console.log(`Applying legacy exclude mode with sources: ${assignmentRecord.fonti_escluse.join(', ')}`);
+          
           const excludedSources = assignmentRecord.fonti_escluse;
           filteredData = filteredData.filter(lead => {
             if (!lead.fonte) return true;
             
             const leadSources = lead.fonte.split(',').map(s => s.trim().toLowerCase());
-            return !excludedSources.some(excludedSource =>
+            const isExcluded = excludedSources.some(excludedSource =>
               leadSources.some(leadSource =>
                 leadSource.includes(excludedSource.toLowerCase()) ||
                 excludedSource.toLowerCase().includes(leadSource)
               )
             );
+            
+            console.log(`Lead ${lead.nome} (fonte: ${lead.fonte}) - legacy excluded: ${isExcluded}`);
+            return !isExcluded;
           });
+        } else {
+          console.log('No source filtering applied - showing all leads in time window');
         }
 
+        console.log(`Final filtered results: ${filteredData.length} leads`);
+        console.log('Expected count from assignment record:', assignmentRecord.leads_count);
+        
         setLeads(filteredData);
       }
     } catch (error) {
