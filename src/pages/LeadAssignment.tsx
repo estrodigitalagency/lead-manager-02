@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -15,9 +14,23 @@ import { CheckCircle } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useSalespeopleData } from "@/hooks/useSalespeopleData";
+import { LeadSearchComponent } from "@/components/lead-assignment/LeadSearchComponent";
+
+interface Lead {
+  id: string;
+  nome: string;
+  cognome?: string;
+  email?: string;
+  telefono?: string;
+  fonte?: string;
+  lead_score?: string;
+  created_at: string;
+  venditore?: string;
+  stato?: string;
+}
 
 const LeadAssignment = () => {
-  const [email, setEmail] = useState("");
+  const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [selectedVenditore, setSelectedVenditore] = useState("");
   const [isAssigning, setIsAssigning] = useState(false);
   const [assignmentSuccess, setAssignmentSuccess] = useState<{
@@ -28,14 +41,24 @@ const LeadAssignment = () => {
   
   const { venditori, isLoading } = useSalespeopleData();
 
+  const handleLeadFound = (lead: Lead) => {
+    setSelectedLead(lead);
+    setAssignmentSuccess(null); // Reset success message when new lead is selected
+  };
+
   const handleAssignment = async () => {
-    if (!email.trim()) {
-      toast.error("Inserisci l'email del lead");
+    if (!selectedLead) {
+      toast.error("Prima cerca e seleziona un lead");
       return;
     }
 
     if (!selectedVenditore) {
       toast.error("Seleziona un venditore");
+      return;
+    }
+
+    if (selectedLead.venditore) {
+      toast.error("Questo lead è già assegnato a " + selectedLead.venditore);
       return;
     }
 
@@ -49,26 +72,6 @@ const LeadAssignment = () => {
     try {
       const venditoreName = `${venditoreData.nome} ${venditoreData.cognome}`.trim();
       
-      // Verifica se esistono lead con questa email
-      const { data: leads, error: fetchError } = await supabase
-        .from('lead_generation')
-        .select('*')
-        .eq('email', email.trim())
-        .order('created_at', { ascending: false });
-
-      if (fetchError) {
-        toast.error("Errore durante la ricerca del lead");
-        return;
-      }
-
-      if (!leads || leads.length === 0) {
-        toast.error("Nessun lead trovato con questa email");
-        return;
-      }
-
-      // Prendi l'ultimo lead generato con questa email
-      const leadData = leads[0];
-
       // Aggiorna il lead con l'assegnazione
       const { error: updateError } = await supabase
         .from('lead_generation')
@@ -78,7 +81,7 @@ const LeadAssignment = () => {
           data_assegnazione: new Date().toISOString(),
           assignable: false
         })
-        .eq('id', leadData.id);
+        .eq('id', selectedLead.id);
 
       if (updateError) throw updateError;
 
@@ -104,7 +107,7 @@ const LeadAssignment = () => {
         .single();
 
       if (!webhookError && webhookData?.value) {
-        console.log('Invio webhook per assegnazione tramite email...');
+        console.log('Invio webhook per assegnazione tramite ricerca...');
         
         const assignmentPayload = {
           venditore: venditoreData.nome,
@@ -113,17 +116,17 @@ const LeadAssignment = () => {
           venditore_telefono: venditoreData.telefono || '',
           google_sheets_file_id: venditoreData.sheets_file_id || '',
           google_sheets_tab_name: venditoreData.sheets_tab_name || '',
-          campagna: '',
+          campagna: null,
           leads_count: 1,
           timestamp: new Date().toISOString(),
           leads: [{
-            id: leadData.id,
-            nome: leadData.nome,
-            cognome: leadData.cognome || '',
-            email: leadData.email || '',
-            telefono: leadData.telefono || '',
-            fonte: leadData.fonte || '',
-            created_at: leadData.created_at,
+            id: selectedLead.id,
+            nome: selectedLead.nome,
+            cognome: selectedLead.cognome || '',
+            email: selectedLead.email || '',
+            telefono: selectedLead.telefono || '',
+            fonte: selectedLead.fonte || '',
+            created_at: selectedLead.created_at,
             assigned_at: new Date().toISOString()
           }]
         };
@@ -157,9 +160,9 @@ const LeadAssignment = () => {
 
       // Mostra messaggio di successo con dettagli
       setAssignmentSuccess({
-        leadName: `${leadData.nome} ${leadData.cognome || ''}`.trim(),
+        leadName: `${selectedLead.nome} ${selectedLead.cognome || ''}`.trim(),
         venditoreName: venditoreName,
-        leadSource: leadData.fonte || 'Non specificata'
+        leadSource: selectedLead.fonte || 'Non specificata'
       });
 
       // Aggiorna conteggio lead attuali del venditore
@@ -178,7 +181,7 @@ const LeadAssignment = () => {
       }
 
       // Reset form
-      setEmail("");
+      setSelectedLead(null);
       setSelectedVenditore("");
       
       // Hide success message after 5 seconds
@@ -214,44 +217,35 @@ const LeadAssignment = () => {
           <Card className="shadow-xl border-0 bg-card/95 backdrop-blur-sm">
             <CardHeader className="text-center space-y-2">
               <CardTitle className="text-2xl font-bold">Assegnazione Lead</CardTitle>
-              <p className="text-muted-foreground text-sm">Inserisci l'email per assegnare il lead</p>
+              <p className="text-muted-foreground text-sm">Cerca un lead specifico e assegnalo a un venditore</p>
             </CardHeader>
             <CardContent className="space-y-6">
-            <div className="space-y-2">
-              <Label htmlFor="email">Email del Lead</Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="Inserisci l'email del lead..."
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                disabled={isAssigning}
-              />
-            </div>
+              {/* Componente di ricerca lead */}
+              <LeadSearchComponent onLeadFound={handleLeadFound} />
 
-            <div className="space-y-2">
-              <Label>Seleziona Venditore</Label>
-              <Select 
-                value={selectedVenditore} 
-                onValueChange={setSelectedVenditore}
-                disabled={isLoading || isAssigning}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Scegli un venditore..." />
-                </SelectTrigger>
-                <SelectContent className="max-h-[200px] overflow-y-auto">
-                  {venditori.map((venditore) => (
-                    <SelectItem key={venditore.id} value={venditore.id}>
-                      {venditore.nome} {venditore.cognome}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+              <div className="space-y-2">
+                <Label>Seleziona Venditore</Label>
+                <Select 
+                  value={selectedVenditore} 
+                  onValueChange={setSelectedVenditore}
+                  disabled={isLoading || isAssigning}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Scegli un venditore..." />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-[200px] overflow-y-auto">
+                    {venditori.map((venditore) => (
+                      <SelectItem key={venditore.id} value={venditore.id}>
+                        {venditore.nome} {venditore.cognome}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
               <Button 
                 onClick={handleAssignment}
-                disabled={isAssigning || !email.trim() || !selectedVenditore}
+                disabled={isAssigning || !selectedLead || !selectedVenditore}
                 className="w-full"
               >
                 {isAssigning ? "Assegnazione..." : "Assegna Lead"}
