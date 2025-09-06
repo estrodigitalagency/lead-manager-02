@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -32,6 +32,8 @@ interface Lead {
 const LeadAssignment = () => {
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [selectedVenditore, setSelectedVenditore] = useState("");
+  const [selectedCampagna, setSelectedCampagna] = useState("");
+  const [campagne, setCampagne] = useState<Array<{id: string, nome: string}>>([]);
   const [isAssigning, setIsAssigning] = useState(false);
   const [assignmentSuccess, setAssignmentSuccess] = useState<{
     leadName: string;
@@ -45,6 +47,26 @@ const LeadAssignment = () => {
     setSelectedLead(lead);
     setAssignmentSuccess(null); // Reset success message when new lead is selected
   };
+
+  // Carica le campagne disponibili
+  useEffect(() => {
+    const fetchCampagne = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('database_campagne')
+          .select('id, nome')
+          .eq('attivo', true)
+          .order('nome');
+        
+        if (error) throw error;
+        setCampagne(data || []);
+      } catch (error) {
+        console.error('Errore caricamento campagne:', error);
+      }
+    };
+
+    fetchCampagne();
+  }, []);
 
   const handleAssignment = async () => {
     if (!selectedLead) {
@@ -77,6 +99,7 @@ const LeadAssignment = () => {
         .from('lead_generation')
         .update({
           venditore: venditoreName,
+          campagna: selectedCampagna || null,
           stato: 'assegnato',
           data_assegnazione: new Date().toISOString(),
           assignable: false
@@ -91,7 +114,7 @@ const LeadAssignment = () => {
         .insert({
           venditore: venditoreName,
           leads_count: 1,
-          campagna: null,
+          campagna: selectedCampagna || null,
           fonti_escluse: null
         });
 
@@ -116,7 +139,7 @@ const LeadAssignment = () => {
           venditore_telefono: venditoreData.telefono || '',
           google_sheets_file_id: venditoreData.sheets_file_id || '',
           google_sheets_tab_name: venditoreData.sheets_tab_name || '',
-          campagna: null,
+          campagna: selectedCampagna || null,
           leads_count: 1,
           timestamp: new Date().toISOString(),
           leads: [{
@@ -183,6 +206,7 @@ const LeadAssignment = () => {
       // Reset form
       setSelectedLead(null);
       setSelectedVenditore("");
+      setSelectedCampagna("");
       
       // Hide success message after 5 seconds
       setTimeout(() => {
@@ -237,6 +261,27 @@ const LeadAssignment = () => {
                     {venditori.map((venditore) => (
                       <SelectItem key={venditore.id} value={venditore.id}>
                         {venditore.nome} {venditore.cognome}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Campagna (Opzionale)</Label>
+                <Select 
+                  value={selectedCampagna} 
+                  onValueChange={setSelectedCampagna}
+                  disabled={isAssigning}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleziona campagna (opzionale)..." />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-[200px] overflow-y-auto">
+                    <SelectItem value="">Nessuna campagna</SelectItem>
+                    {campagne.map((campagna) => (
+                      <SelectItem key={campagna.id} value={campagna.nome}>
+                        {campagna.nome}
                       </SelectItem>
                     ))}
                   </SelectContent>
