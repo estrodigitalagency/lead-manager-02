@@ -159,7 +159,7 @@ export async function assignLeadsWithExclusions(data: LeadAssignmentData) {
       .from('lead_generation')
       .update({ 
         venditore,
-        campagna: campagna || null,
+        campagna: (campagna && campagna.trim() !== '') ? campagna : null,
         stato: 'assegnato',
         assignable: false,
         data_assegnazione: currentTimestamp
@@ -243,7 +243,7 @@ export async function assignLeadsWithExclusions(data: LeadAssignmentData) {
         venditore_telefono: venditoreDates?.telefono || '',
         google_sheets_file_id: venditoreDates?.sheets_file_id || '',
         google_sheets_tab_name: venditoreDates?.sheets_tab_name || '',
-        campagna: campagna || '',
+        campagna: (campagna && campagna.trim() !== '') ? campagna : null,
         leads_count: actualAssignedCount,
         timestamp: new Date().toISOString(),
         leads: leadsToAssign.map(lead => ({
