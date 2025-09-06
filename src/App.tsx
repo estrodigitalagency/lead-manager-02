@@ -18,12 +18,22 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const isPublicRoute = publicRoutes.some(route => route.to === location.pathname);
   const isStandaloneRoute = standaloneRoutes.some(route => route.to === location.pathname);
   
+  console.log("🔐 ProtectedRoute Debug:", {
+    pathname: location.pathname,
+    isAuthenticated,
+    loading,
+    isPublicRoute,
+    isStandaloneRoute
+  });
+  
   if (!isAuthenticated && !isPublicRoute && !isStandaloneRoute && !loading) {
+    console.log("🚫 Redirecting to login...");
     // Redirect to login if not authenticated and not on public/standalone route
     window.location.href = '/login';
     return null;
   }
   
+  console.log("✅ Allowing route access");
   return <>{children}</>;
 };
 
