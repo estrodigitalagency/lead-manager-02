@@ -30,6 +30,8 @@ interface Lead {
 }
 
 const LeadAssignment = () => {
+  console.log("🔍 LeadAssignment component rendering...");
+  
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [selectedVenditore, setSelectedVenditore] = useState("");
   const [selectedCampagna, setSelectedCampagna] = useState("");
@@ -42,6 +44,7 @@ const LeadAssignment = () => {
   } | null>(null);
   
   const { venditori, isLoading } = useSalespeopleData();
+  console.log("👥 Venditori loaded:", venditori.length, "Loading:", isLoading);
 
   const handleLeadFound = (lead: Lead) => {
     setSelectedLead(lead);
@@ -50,6 +53,7 @@ const LeadAssignment = () => {
 
   // Carica le campagne disponibili
   useEffect(() => {
+    console.log("📋 Loading campaigns...");
     const fetchCampagne = async () => {
       try {
         const { data, error } = await supabase
@@ -60,6 +64,7 @@ const LeadAssignment = () => {
         
         if (error) throw error;
         setCampagne(data || []);
+        console.log("📋 Campaigns loaded:", data?.length || 0);
       } catch (error) {
         console.error('Errore caricamento campagne:', error);
       }
@@ -220,6 +225,8 @@ const LeadAssignment = () => {
     }
   };
 
+  console.log("🎨 About to render LeadAssignment UI...");
+  
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 p-4">
       <div className="min-h-screen flex items-center justify-center">
