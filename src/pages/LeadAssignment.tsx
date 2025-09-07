@@ -229,6 +229,13 @@ const LeadAssignment = () => {
   
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 p-4">
+      {/* Diagnostic Information */}
+      <div className="fixed top-4 right-4 bg-red-500 text-white p-2 rounded text-xs z-50">
+        <div>✅ LeadAssignment MOUNTED</div>
+        <div>Venditori: {venditori.length} (Loading: {isLoading ? 'YES' : 'NO'})</div>
+        <div>Campagne: {campagne.length}</div>
+        <div>Selected Lead: {selectedLead ? 'YES' : 'NO'}</div>
+      </div>
       <div className="min-h-screen flex items-center justify-center">
         <div className="w-full max-w-md space-y-6">
           {assignmentSuccess && (

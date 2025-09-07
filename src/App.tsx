@@ -18,15 +18,19 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const isPublicRoute = publicRoutes.some(route => route.to === location.pathname);
   const isStandaloneRoute = standaloneRoutes.some(route => route.to === location.pathname);
   
+  // Explicitly allow /lead-assignment without authentication
+  const isLeadAssignmentPage = location.pathname === '/lead-assignment';
+  
   console.log("🔐 ProtectedRoute Debug:", {
     pathname: location.pathname,
     isAuthenticated,
     loading,
     isPublicRoute,
-    isStandaloneRoute
+    isStandaloneRoute,
+    isLeadAssignmentPage
   });
   
-  if (!isAuthenticated && !isPublicRoute && !isStandaloneRoute && !loading) {
+  if (!isAuthenticated && !isPublicRoute && !isStandaloneRoute && !isLeadAssignmentPage && !loading) {
     console.log("🚫 Redirecting to login...");
     // Redirect to login if not authenticated and not on public/standalone route
     window.location.href = '/login';
