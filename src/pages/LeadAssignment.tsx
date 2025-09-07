@@ -33,7 +33,7 @@ const LeadAssignment = () => {
   console.log("🔍 LeadAssignment component rendering...");
   
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
-  const [selectedVenditore, setSelectedVenditore] = useState("");
+  const [selectedVenditore, setSelectedVenditore] = useState<string | undefined>(undefined);
   const [selectedCampagna, setSelectedCampagna] = useState("");
   const [campagne, setCampagne] = useState<Array<{id: string, nome: string}>>([]);
   const [isAssigning, setIsAssigning] = useState(false);
@@ -197,7 +197,7 @@ const LeadAssignment = () => {
       const { data: currentVenditore } = await supabase
         .from('venditori')
         .select('lead_attuali')
-        .eq('id', selectedVenditore)
+        .eq('id', selectedVenditore!)
         .single();
 
       if (currentVenditore) {
@@ -210,7 +210,7 @@ const LeadAssignment = () => {
 
       // Reset form
       setSelectedLead(null);
-      setSelectedVenditore("");
+      setSelectedVenditore(undefined);
       setSelectedCampagna("");
       
       // Hide success message after 5 seconds
