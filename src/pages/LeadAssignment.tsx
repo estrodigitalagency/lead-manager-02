@@ -284,15 +284,15 @@ const LeadAssignment = () => {
               <div className="space-y-2">
                 <Label>Campagna (Opzionale)</Label>
                 <Select 
-                  value={selectedCampagna} 
-                  onValueChange={setSelectedCampagna}
+                  value={selectedCampagna === "" ? "__NONE__" : selectedCampagna}
+                  onValueChange={(v) => setSelectedCampagna(v === "__NONE__" ? "" : v)}
                   disabled={isAssigning}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Seleziona campagna (opzionale)..." />
                   </SelectTrigger>
                   <SelectContent className="max-h-[200px] overflow-y-auto">
-                    <SelectItem value="">Nessuna campagna</SelectItem>
+                    <SelectItem value="__NONE__">Nessuna campagna</SelectItem>
                     {campagne.map((campagna) => (
                       <SelectItem key={campagna.id} value={campagna.nome}>
                         {campagna.nome}
