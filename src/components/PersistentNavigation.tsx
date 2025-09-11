@@ -96,7 +96,7 @@ const PersistentNavigation = () => {
                        signOut();
                        setOpen(false);
                      }}
-                     className="w-full text-base py-3 px-4 flex items-center gap-2 justify-start text-destructive hover:bg-destructive/10 hover:text-destructive"
+                     className="w-full text-base py-3 px-4 flex items-center gap-2 justify-start text-destructive hover:bg-destructive/20 hover:text-destructive bg-destructive/10 border border-destructive/20"
                    >
                      <LogOut className="h-5 w-5 flex-shrink-0" />
                      <span className="truncate">Esci</span>
@@ -129,7 +129,7 @@ const PersistentNavigation = () => {
             <Button 
               variant="ghost" 
               onClick={signOut}
-              className="flex items-center gap-2 text-destructive hover:bg-destructive/10 hover:text-destructive"
+              className="flex items-center gap-2 text-destructive hover:bg-destructive/20 hover:text-destructive bg-destructive/10 border border-destructive/20"
             >
               <LogOut className="h-4 w-4" />
               <span className="hidden sm:inline">Esci</span>
