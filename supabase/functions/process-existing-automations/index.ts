@@ -174,33 +174,37 @@ serve(async (req) => {
             console.log(`Successfully assigned lead ${lead.id}`)
             assigned = true
             
-            // Call webhook if needed
-            try {
-              const webhookData = {
-                leadId: lead.id,
-                nome: lead.nome,
-                cognome: lead.cognome || '',
-                email: lead.email,
-                telefono: lead.telefono,
-                fonte: lead.fonte,
-                ultima_fonte: lead.ultima_fonte,
-                venditore: `${targetSeller.nome} ${targetSeller.cognome}`,
-                sheets_file_id: targetSeller.sheets_file_id,
-                sheets_tab_name: sheetsTabName || targetSeller.sheets_tab_name,
-                campagna: lead.campagna,
-                market: lead.market,
-                assignedVia: `Processamento automatico: ${automation.nome}`
-              }
+            // Call webhook if automation has webhook enabled
+            if (automation.webhook_enabled) {
+              try {
+                const webhookData = {
+                  leadId: lead.id,
+                  nome: lead.nome,
+                  cognome: lead.cognome || '',
+                  email: lead.email,
+                  telefono: lead.telefono,
+                  fonte: lead.fonte,
+                  ultima_fonte: lead.ultima_fonte,
+                  venditore: `${targetSeller.nome} ${targetSeller.cognome}`,
+                  sheets_file_id: targetSeller.sheets_file_id,
+                  sheets_tab_name: sheetsTabName || targetSeller.sheets_tab_name,
+                  campagna: lead.campagna,
+                  market: lead.market,
+                  assignedVia: `Processamento automatico: ${automation.nome}`
+                }
 
-              const { error: webhookError } = await supabase.functions.invoke('lead-assign-webhook', {
-                body: webhookData
-              })
+                const { error: webhookError } = await supabase.functions.invoke('lead-assign-webhook', {
+                  body: webhookData
+                })
 
-              if (webhookError) {
-                console.error('Error calling webhook:', webhookError)
+                if (webhookError) {
+                  console.error('Error calling webhook:', webhookError)
+                }
+              } catch (webhookError) {
+                console.error('Error in webhook call:', webhookError)
               }
-            } catch (webhookError) {
-              console.error('Error in webhook call:', webhookError)
+            } else {
+              console.log('Webhook disabled for automation:', automation.nome)
             }
             
             results.push({

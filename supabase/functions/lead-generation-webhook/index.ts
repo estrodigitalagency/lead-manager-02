@@ -211,7 +211,7 @@ async function checkAndApplyAutomations(lead: any, supabase: any) {
         }
 
         if (targetSeller) {
-          await assignLeadAutomatically(lead, targetSeller, sheetsTabName, automation.nome, supabase);
+          await assignLeadAutomatically(lead, targetSeller, sheetsTabName, automation, supabase);
           return; // Ferma alla prima automazione che matcha
         } else {
           console.log(`No target seller found for automation: ${automation.nome}`);
@@ -314,9 +314,9 @@ async function findPreviousSeller(lead: any, supabase: any) {
 }
 
 // Funzione per assegnare automaticamente il lead
-async function assignLeadAutomatically(lead: any, seller: any, sheetsTabName: string | null, automationName: string, supabase: any) {
+async function assignLeadAutomatically(lead: any, seller: any, sheetsTabName: string | null, automation: any, supabase: any) {
   try {
-    console.log(`Assigning lead ${lead.id} to seller ${seller.nome} ${seller.cognome} via automation: ${automationName}`);
+    console.log(`Assigning lead ${lead.id} to seller ${seller.nome} ${seller.cognome} via automation: ${automation.nome}`);
     
     // Aggiorna il lead nel database
     const { error: updateError } = await supabase
@@ -334,40 +334,42 @@ async function assignLeadAutomatically(lead: any, seller: any, sheetsTabName: st
       return;
     }
 
-    // Chiama il webhook di assegnazione se configurato
-    try {
-      const webhookData = {
-        leadId: lead.id,
-        nome: lead.nome,
-        cognome: lead.cognome || '',
-        email: lead.email,
-        telefono: lead.telefono,
-        fonte: lead.fonte,
-        ultima_fonte: lead.ultima_fonte,
-        venditore: `${seller.nome} ${seller.cognome}`,
-        sheets_file_id: seller.sheets_file_id,
-        sheets_tab_name: sheetsTabName || seller.sheets_tab_name,
-        campagna: lead.campagna,
-        market: lead.market,
-        assignedVia: `Automazione: ${automationName}`
-      };
+    // Call webhook if automation has webhook enabled
+    if (automation.webhook_enabled) {
+      try {
+        const webhookData = {
+          leadId: lead.id,
+          nome: lead.nome,
+          cognome: lead.cognome || '',
+          email: lead.email,
+          telefono: lead.telefono,
+          fonte: lead.fonte,
+          ultima_fonte: lead.ultima_fonte,
+          venditore: `${seller.nome} ${seller.cognome}`,
+          sheets_file_id: seller.sheets_file_id,
+          sheets_tab_name: sheetsTabName || seller.sheets_tab_name,
+          campagna: lead.campagna,
+          market: lead.market,
+          assignedVia: `Automazione: ${automation.nome}`
+        };
 
-      // Invoca il webhook lead-assign-webhook
-      const { error: webhookError } = await supabase.functions.invoke('lead-assign-webhook', {
-        body: webhookData
-      });
+        const { error: webhookError } = await supabase.functions.invoke('lead-assign-webhook', {
+          body: webhookData
+        });
 
-      if (webhookError) {
-        console.error('Error calling lead-assign-webhook:', webhookError);
-      } else {
-        console.log('Successfully called lead-assign-webhook for automation assignment');
+        if (webhookError) {
+          console.error('Error calling lead-assign-webhook:', webhookError);
+        } else {
+          console.log('Successfully called lead-assign-webhook for automation assignment');
+        }
+      } catch (webhookError) {
+        console.error('Error in webhook call:', webhookError);
       }
-
-    } catch (webhookError) {
-      console.error('Error in webhook call:', webhookError);
+    } else {
+      console.log('Webhook disabled for automation:', automation.nome);
     }
 
-    console.log(`Lead ${lead.id} successfully assigned via automation: ${automationName}`);
+    console.log(`Lead ${lead.id} successfully assigned via automation: ${automation.nome}`);
     
   } catch (error) {
     console.error('Error in assignLeadAutomatically:', error);

@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useSalespeopleData } from "@/hooks/useSalespeopleData";
 import { NewAutomationForm, LeadAssignmentAutomation } from "@/types/automation";
 
@@ -19,6 +20,7 @@ const automationSchema = z.object({
   action_type: z.enum(['assign_to_seller', 'assign_to_previous_seller']),
   target_seller_id: z.string().optional(),
   sheets_tab_name: z.string().optional(),
+  webhook_enabled: z.boolean().optional(),
 });
 
 interface AutomationFormProps {
@@ -68,6 +70,7 @@ export function AutomationForm({ open, onOpenChange, onSubmit, automation, isLoa
       action_type: automation?.action_type || "assign_to_seller",
       target_seller_id: automation?.target_seller_id || undefined,
       sheets_tab_name: automation?.sheets_tab_name || "",
+      webhook_enabled: automation?.webhook_enabled ?? true,
     },
   });
 
@@ -264,6 +267,31 @@ export function AutomationForm({ open, onOpenChange, onSubmit, automation, isLoa
                 </FormItem>
               )}
             />
+
+            {(actionType === "assign_to_seller" || actionType === "assign_to_previous_seller") && (
+              <FormField
+                control={form.control}
+                name="webhook_enabled"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                    <FormControl>
+                      <Checkbox 
+                        checked={field.value} 
+                        onCheckedChange={field.onChange}
+                      />
+                    </FormControl>
+                    <div className="space-y-1 leading-none">
+                      <FormLabel>
+                        Invia dati via webhook
+                      </FormLabel>
+                      <p className="text-sm text-muted-foreground">
+                        Se abilitato, i dati dell'assegnazione verranno inviati al webhook configurato
+                      </p>
+                    </div>
+                  </FormItem>
+                )}
+              />
+            )}
 
             <div className="flex justify-end space-x-2 pt-4">
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>

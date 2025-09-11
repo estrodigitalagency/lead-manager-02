@@ -29,11 +29,13 @@ export function AutomationSettings() {
 
   const handleCreateAutomation = async (data: NewAutomationForm) => {
     const maxPriority = Math.max(...automations.map(a => a.priority), 0);
-    await createAutomation({
+    const automationData = {
       ...data,
       attivo: true,
-      priority: maxPriority + 1
-    });
+      priority: maxPriority + 1,
+      webhook_enabled: data.webhook_enabled ?? true, // Default to true if not specified
+    };
+    await createAutomation(automationData);
   };
 
   const handleEditAutomation = async (data: NewAutomationForm) => {

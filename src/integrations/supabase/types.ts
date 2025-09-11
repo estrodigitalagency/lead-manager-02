@@ -389,6 +389,7 @@ export type Database = {
           trigger_field: string
           trigger_when: string
           updated_at: string
+          webhook_enabled: boolean
         }
         Insert: {
           action_type: Database["public"]["Enums"]["automation_action_type"]
@@ -405,6 +406,7 @@ export type Database = {
           trigger_field?: string
           trigger_when?: string
           updated_at?: string
+          webhook_enabled?: boolean
         }
         Update: {
           action_type?: Database["public"]["Enums"]["automation_action_type"]
@@ -421,6 +423,7 @@ export type Database = {
           trigger_field?: string
           trigger_when?: string
           updated_at?: string
+          webhook_enabled?: boolean
         }
         Relationships: [
           {
