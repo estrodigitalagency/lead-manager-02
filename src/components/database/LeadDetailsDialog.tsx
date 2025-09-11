@@ -130,18 +130,38 @@ const LeadDetailsDialog = ({ lead, open, onOpenChange }: LeadDetailsDialogProps)
           </div>
 
           {/* Fonti */}
-          {fonti.length > 0 && (
+          {(fonti.length > 0 || lead.ultima_fonte) && (
             <div className="space-y-3">
               <h3 className="text-sm font-semibold text-muted-foreground border-b pb-1">
                 FONTI
               </h3>
-              <div className="flex flex-wrap gap-2">
-                {fonti.map((fonte, index) => (
-                  <Badge key={index} variant="outline" className="text-xs">
-                    <Tag className="h-3 w-3 mr-1" />
-                    {fonte}
-                  </Badge>
-                ))}
+              <div className="space-y-3">
+                {fonti.length > 0 && (
+                  <div>
+                    <div className="text-xs text-muted-foreground mb-2">Tutte le fonti:</div>
+                    <div className="flex flex-wrap gap-2">
+                      {fonti.map((fonte, index) => (
+                        <Badge key={index} variant="outline" className="text-xs">
+                          <Tag className="h-3 w-3 mr-1" />
+                          {fonte}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {lead.ultima_fonte && (
+                  <div>
+                    <div className="text-xs text-muted-foreground mb-2">Ultima fonte:</div>
+                    <div className="flex flex-wrap gap-2">
+                      {lead.ultima_fonte.split(',').map(f => f.trim()).filter(f => f).map((fonte, index) => (
+                        <Badge key={index} variant="outline" className="text-xs bg-primary/10 border-primary/30">
+                          <Tag className="h-3 w-3 mr-1" />
+                          {fonte}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           )}
