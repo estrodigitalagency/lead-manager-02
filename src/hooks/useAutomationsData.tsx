@@ -39,9 +39,16 @@ export const useAutomationsData = () => {
 
   const createAutomation = async (automation: Omit<LeadAssignmentAutomation, 'id' | 'created_at' | 'updated_at'>) => {
     try {
+      // Convert empty string to null for UUID field
+      const cleanedAutomation = {
+        ...automation,
+        target_seller_id: automation.target_seller_id && automation.target_seller_id.trim() !== '' ? automation.target_seller_id : null,
+        market: selectedMarket
+      };
+
       const { data, error } = await supabase
         .from('lead_assignment_automations')
-        .insert([{ ...automation, market: selectedMarket }])
+        .insert([cleanedAutomation])
         .select()
         .single();
       

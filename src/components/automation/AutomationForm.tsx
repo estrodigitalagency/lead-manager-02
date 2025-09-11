@@ -66,7 +66,7 @@ export function AutomationForm({ open, onOpenChange, onSubmit, automation, isLoa
       condition_type: automation?.condition_type || "contains",
       condition_value: automation?.condition_value || "",
       action_type: automation?.action_type || "assign_to_seller",
-      target_seller_id: automation?.target_seller_id || "",
+      target_seller_id: automation?.target_seller_id || undefined,
       sheets_tab_name: automation?.sheets_tab_name || "",
     },
   });
