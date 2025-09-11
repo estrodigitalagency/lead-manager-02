@@ -27,6 +27,7 @@ export const useCampaignsData = () => {
       const { data, error }: { data: any[] | null; error: any } = await supabase
         .from('database_campagne')
         .select('*')
+        .eq('market', selectedMarket) // Filter by selected market
         .order('nome', { ascending: true });
 
       if (error) throw error;
@@ -54,7 +55,7 @@ export const useCampaignsData = () => {
     try {
       const { error }: { error: any } = await supabase
         .from('database_campagne')
-        .insert([campaignData]);
+        .insert([{ ...campaignData, market: selectedMarket }]); // Add market to new campaigns
 
       if (error) throw error;
       

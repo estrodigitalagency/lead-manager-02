@@ -15,6 +15,7 @@ export const useSalespeopleData = () => {
       const { data, error } = await supabase
         .from('venditori')
         .select('id, nome, cognome, email, telefono, sheets_file_id, sheets_tab_name, stato, created_at')
+        .eq('market', selectedMarket) // Filter by selected market
         .order('nome');
       
       if (error) throw error;
@@ -35,7 +36,7 @@ export const useSalespeopleData = () => {
 
   useEffect(() => {
     fetchVenditori();
-  }, []);
+  }, [selectedMarket]); // Refetch when market changes
 
   return {
     venditori,
