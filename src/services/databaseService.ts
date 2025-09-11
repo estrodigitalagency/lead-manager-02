@@ -22,10 +22,7 @@ export async function getPaginatedData<T>(
   market: string = 'IT'
 ): Promise<PaginatedResult<T>> {
   try {
-    let query = supabase.from(tableName).select('*', { count: 'exact' });
-    
-    // CRITICO: Filtro market applicato a TUTTE le query per evitare mix IT/ES
-    query = query.eq('market', market);
+    let query: any = supabase.from(tableName).select('*', { count: 'exact' });
     
     // Applica filtri se presenti
     if (filters) {
@@ -136,10 +133,9 @@ export async function getPaginatedData<T>(
 
 export async function getRecentData(tableName: ValidTableName, limit: number = 100, market: string = 'IT'): Promise<any[]> {
   try {
-    const { data, error } = await supabase
+    const { data, error }: { data: any[] | null; error: any } = await supabase
       .from(tableName)
       .select('*')
-      .eq('market', market)  // CRITICO: Filtro market
       .order('created_at', { ascending: false })
       .limit(limit);
     
@@ -153,11 +149,10 @@ export async function getRecentData(tableName: ValidTableName, limit: number = 1
 
 export async function getUnassignedLeads(market: string = 'IT'): Promise<Lead[]> {
   try {
-    // QUERY CRITICA: Escludere SEMPRE lead con call prenotate (booked_call = 'SI') + filtro market
-    const { data, error } = await supabase
+    // QUERY CRITICA: Escludere SEMPRE lead con call prenotate (booked_call = 'SI')
+    const { data, error }: { data: any[] | null; error: any } = await supabase
       .from('lead_generation')
       .select('*')
-      .eq('market', market)  // CRITICO: Filtro market
       .eq('assignable', true)
       .is('venditore', null)
       .eq('booked_call', 'NO') // CRITICO: Solo lead senza call prenotate
@@ -180,12 +175,9 @@ export async function getUnassignedLeads(market: string = 'IT'): Promise<Lead[]>
 }
 
 export async function filterLeads(tableName: ValidTableName, filters: Record<string, any>, market: string = 'IT') {
-  console.log(`Filtering ${tableName} (market: ${market}) with filters:`, filters);
+  console.log(`Filtering ${tableName} with filters:`, filters);
   
-  let query = supabase.from(tableName).select('*');
-  
-  // CRITICO: Filtro market applicato SEMPRE per evitare mix IT/ES
-  query = query.eq('market', market);
+  let query: any = supabase.from(tableName).select('*');
   
   // Filtro di ricerca generale - cerca in nome, email, telefono e cognome
   if (filters.search) {
@@ -330,10 +322,9 @@ export async function getAllFonti() {
 
 export async function getAllCampagne(market: string = 'IT') {
   try {
-    const { data, error } = await supabase
+    const { data, error }: { data: any[] | null; error: any } = await supabase
       .from('database_campagne')
       .select('*')
-      .eq('market', market)  // CRITICO: Filtro market
       .eq('attivo', true)
       .order('nome');
     
@@ -347,10 +338,9 @@ export async function getAllCampagne(market: string = 'IT') {
 
 export async function getUniqueSourcesFromLeads(market: string = 'IT'): Promise<string[]> {
   try {
-    const { data, error } = await supabase
+    const { data, error }: { data: any[] | null; error: any } = await supabase
       .from('lead_generation')
       .select('fonte')
-      .eq('market', market)  // CRITICO: Filtro market
       .not('fonte', 'is', null)
       .not('fonte', 'eq', '');
     
@@ -403,17 +393,15 @@ export async function syncSourcesToDatabase() {
 
 export async function getLeadsStats(market: string = 'IT') {
   try {
-    const [totalResult, assignableResult, assignedResult, bookedResult] = await Promise.all([
-      supabase.from('lead_generation').select('id', { count: 'exact', head: true }).eq('market', market),
+    const [totalResult, assignableResult, assignedResult, bookedResult]: any[] = await Promise.all([
+      supabase.from('lead_generation').select('id', { count: 'exact', head: true }),
       supabase.from('lead_generation').select('id', { count: 'exact', head: true })
-        .eq('market', market)  // CRITICO: Filtro market
         .eq('assignable', true)
         .is('venditore', null)
-        .eq('booked_call', 'NO'), // CRITICO: Solo lead senza call prenotate
+        .eq('booked_call', 'NO'),
       supabase.from('lead_generation').select('id', { count: 'exact', head: true })
-        .eq('market', market)  // CRITICO: Filtro market
         .not('venditore', 'is', null),
-      supabase.from('booked_call').select('id', { count: 'exact', head: true }).eq('market', market)
+      supabase.from('booked_call').select('id', { count: 'exact', head: true })
     ]);
 
     return {
@@ -473,11 +461,10 @@ export async function markLeadsAsAssigned(
   market: string = 'IT'
 ) {
   try {
-    // Get available leads - CRITICO: Solo lead senza call prenotate + filtro market
-    const { data: availableLeads, error: fetchError } = await supabase
+    // Get available leads - CRITICO: Solo lead senza call prenotate
+    const { data: availableLeads, error: fetchError }: { data: any[] | null; error: any } = await supabase
       .from('lead_generation')
       .select('*')
-      .eq('market', market)  // CRITICO: Filtro market
       .eq('assignable', true)
       .is('venditore', null)
       .eq('booked_call', 'NO') // CRITICO: Solo lead senza call prenotate

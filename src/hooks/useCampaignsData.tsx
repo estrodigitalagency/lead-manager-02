@@ -24,10 +24,9 @@ export const useCampaignsData = () => {
 
   const fetchCampagne = async () => {
     try {
-      const { data, error } = await supabase
+      const { data, error }: { data: any[] | null; error: any } = await supabase
         .from('database_campagne')
         .select('*')
-        .eq('market', selectedMarket)  // CRITICO: Filtro per market
         .order('nome', { ascending: true });
 
       if (error) throw error;
@@ -53,12 +52,9 @@ export const useCampaignsData = () => {
     bypass_time_interval?: boolean;
   }) => {
     try {
-      const { error } = await supabase
+      const { error }: { error: any } = await supabase
         .from('database_campagne')
-        .insert([{
-          ...campaignData,
-          market: selectedMarket  // CRITICO: Imposta market automaticamente
-        }]);
+        .insert([campaignData]);
 
       if (error) throw error;
       
