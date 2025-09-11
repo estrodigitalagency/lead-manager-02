@@ -1,27 +1,25 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 
-export type Market = 'IT' | 'ES';
-
 interface MarketContextType {
-  selectedMarket: Market;
-  setSelectedMarket: (market: Market) => void;
+  selectedMarket: 'IT' | 'ES';
+  setSelectedMarket: (market: 'IT' | 'ES') => void;
 }
 
 const MarketContext = createContext<MarketContextType | undefined>(undefined);
 
 export const MarketProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   // Default to IT market per evitare problemi
-  const [selectedMarket, setSelectedMarket] = useState<Market>('IT');
+  const [selectedMarket, setSelectedMarket] = useState<'IT' | 'ES'>('IT');
 
   // Persist market selection in localStorage
   useEffect(() => {
-    const savedMarket = localStorage.getItem('selectedMarket') as Market;
-    if (savedMarket && (savedMarket === 'IT' || savedMarket === 'ES')) {
+    const savedMarket = localStorage.getItem('selectedMarket');
+    if (savedMarket === 'IT' || savedMarket === 'ES') {
       setSelectedMarket(savedMarket);
     }
   }, []);
 
-  const handleSetMarket = (market: Market) => {
+  const handleSetMarket = (market: 'IT' | 'ES') => {
     setSelectedMarket(market);
     localStorage.setItem('selectedMarket', market);
   };

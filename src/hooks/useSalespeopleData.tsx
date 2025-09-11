@@ -14,8 +14,7 @@ export const useSalespeopleData = () => {
     try {
       const { data, error } = await supabase
         .from('venditori')
-        .select('id, nome, cognome, email, telefono, sheets_file_id, sheets_tab_name, stato, created_at, market')
-        .eq('market', selectedMarket)  // CRITICO: Filtro per market
+        .select('id, nome, cognome, email, telefono, sheets_file_id, sheets_tab_name, stato, created_at')
         .order('nome');
       
       if (error) throw error;
@@ -36,7 +35,7 @@ export const useSalespeopleData = () => {
 
   useEffect(() => {
     fetchVenditori();
-  }, [selectedMarket]);  // CRITICO: Refetch quando cambia market
+  }, []);
 
   return {
     venditori,

@@ -8,7 +8,7 @@ const MarketSelector = () => {
   return (
     <div className="flex items-center gap-2">
       <span className="text-sm font-medium text-muted-foreground whitespace-nowrap">Mercato:</span>
-      <Select value={selectedMarket} onValueChange={setSelectedMarket}>
+      <Select value={selectedMarket} onValueChange={(value: 'IT' | 'ES') => setSelectedMarket(value)}>
         <SelectTrigger className="w-20 h-8 text-sm">
           <SelectValue />
         </SelectTrigger>

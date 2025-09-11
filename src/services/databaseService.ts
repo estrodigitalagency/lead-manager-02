@@ -1,10 +1,8 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { Lead } from "@/types/lead";
 import { LeadLavorato } from "@/types/leadLavorato";
 
 type ValidTableName = "lead_generation" | "booked_call" | "lead_assignments" | "lead_lavorati" | "system_settings" | "venditori";
-type Market = 'IT' | 'ES';
 
 // Nuova interfaccia per i risultati paginati
 export interface PaginatedResult<T> {
@@ -21,7 +19,7 @@ export async function getPaginatedData<T>(
   page: number = 1, 
   pageSize: number = 50,
   filters?: Record<string, any>,
-  market: Market = 'IT'
+  market: string = 'IT'
 ): Promise<PaginatedResult<T>> {
   try {
     let query = supabase.from(tableName).select('*', { count: 'exact' });
@@ -136,7 +134,7 @@ export async function getPaginatedData<T>(
   }
 }
 
-export async function getRecentData(tableName: ValidTableName, limit: number = 100, market: Market = 'IT'): Promise<any[]> {
+export async function getRecentData(tableName: ValidTableName, limit: number = 100, market: string = 'IT'): Promise<any[]> {
   try {
     const { data, error } = await supabase
       .from(tableName)
@@ -153,7 +151,7 @@ export async function getRecentData(tableName: ValidTableName, limit: number = 1
   }
 }
 
-export async function getUnassignedLeads(market: Market = 'IT'): Promise<Lead[]> {
+export async function getUnassignedLeads(market: string = 'IT'): Promise<Lead[]> {
   try {
     // QUERY CRITICA: Escludere SEMPRE lead con call prenotate (booked_call = 'SI') + filtro market
     const { data, error } = await supabase
@@ -181,7 +179,7 @@ export async function getUnassignedLeads(market: Market = 'IT'): Promise<Lead[]>
   }
 }
 
-export async function filterLeads(tableName: ValidTableName, filters: Record<string, any>, market: Market = 'IT') {
+export async function filterLeads(tableName: ValidTableName, filters: Record<string, any>, market: string = 'IT') {
   console.log(`Filtering ${tableName} (market: ${market}) with filters:`, filters);
   
   let query = supabase.from(tableName).select('*');
@@ -295,115 +293,8 @@ export async function filterLeads(tableName: ValidTableName, filters: Record<str
   console.log(`Filtered ${tableName} (market: ${market}) results:`, data?.length);
   return data;
 }
-  
-  // Filtro di ricerca generale - cerca in nome, email, telefono e cognome
-  if (filters.search) {
-    const searchTerm = filters.search.trim();
-    console.log('Applying search filter:', searchTerm);
-    
-    // Costruisci condizioni OR per cercare in più campi
-    const searchConditions = [];
-    
-    // Aggiungi condizioni per nome
-    searchConditions.push(`nome.ilike.%${searchTerm}%`);
-    
-    // Aggiungi condizioni per cognome se esiste
-    searchConditions.push(`cognome.ilike.%${searchTerm}%`);
-    
-    // Aggiungi condizioni per email
-    searchConditions.push(`email.ilike.%${searchTerm}%`);
-    
-    // Aggiungi condizioni per telefone
-    searchConditions.push(`telefono.ilike.%${searchTerm}%`);
-    
-    // Unisci tutte le condizioni con OR
-    query = query.or(searchConditions.join(','));
-  }
-  
-  // Filtri individuali (solo se non c'è ricerca generale)
-  if (!filters.search) {
-    if (filters.nome) {
-      query = query.ilike('nome', `%${filters.nome}%`);
-    }
-    
-    if (filters.email) {
-      query = query.ilike('email', `%${filters.email}%`);
-    }
-    
-    if (filters.telefono) {
-      query = query.ilike('telefono', `%${filters.telefono}%`);
-    }
-  }
-  
-  if (filters.venditore) {
-    query = query.ilike('venditore', `%${filters.venditore}%`);
-  }
-  
-  if (filters.campagna) {
-    query = query.ilike('campagna', `%${filters.campagna}%`);
-  }
-  
-  if (filters.esito) {
-    query = query.ilike('esito', `%${filters.esito}%`);
-  }
-  
-  // Filtri per periodo
-  if (filters.dataInizio) {
-    query = query.gte('created_at', `${filters.dataInizio}T00:00:00.000Z`);
-  }
-  
-  if (filters.dataFine) {
-    query = query.lte('created_at', `${filters.dataFine}T23:59:59.999Z`);
-  }
 
-  // Filtri per fonte avanzati
-  if (filters.fontiIncluse && filters.fontiIncluse.length > 0) {
-    console.log('Applying include fonte filter:', filters.fontiIncluse);
-    const conditions = filters.fontiIncluse.map((fonte: string) => `fonte.ilike.%${fonte}%`).join(',');
-    query = query.or(conditions);
-  }
-  
-  if (filters.fontiEscluse && filters.fontiEscluse.length > 0) {
-    console.log('Applying exclude fonte filter:', filters.fontiEscluse);
-    filters.fontiEscluse.forEach((fonte: string) => {
-      query = query.not('fonte', 'ilike', `%${fonte}%`);
-    });
-  }
-  
-  // Filtri con date range personalizzati per compatibilità
-  if (filters.dataFine && filters.dataInizio) {
-    const startDate = new Date(filters.dataInizio);
-    startDate.setHours(0, 0, 0, 0);
-    const endDate = new Date(filters.dataFine);
-    endDate.setHours(23, 59, 59, 999);
-    
-    query = query.gte('created_at', startDate.toISOString())
-                 .lte('created_at', endDate.toISOString());
-  } else if (filters.dataInizio) {
-    const startDate = new Date(filters.dataInizio);
-    startDate.setHours(0, 0, 0, 0);
-    query = query.gte('created_at', startDate.toISOString());
-  } else if (filters.dataFine) {
-    const endDate = new Date(filters.dataFine);
-    endDate.setHours(23, 59, 59, 999);
-    query = query.lte('created_at', endDate.toISOString());
-  }
-  
-  // Ordina per data di creazione
-  query = query.order('created_at', { ascending: false });
-  
-  const { data, error } = await query;
-  
-  if (error) {
-    console.error(`Error filtering ${tableName}:`, error);
-    throw error;
-  }
-  
-  console.log(`Filtered ${tableName} (market: ${market}) results:`, data?.length);
-  return data;
-}
-
-export async function bulkDeleteLeads(tableName: ValidTableName, ids: string[], market?: string) {
+export async function bulkDeleteLeads(tableName: ValidTableName, ids: string[]) {
   try {
     const { error } = await supabase
       .from(tableName)
@@ -421,7 +312,7 @@ export async function bulkDeleteLeads(tableName: ValidTableName, ids: string[], 
 // Alias for compatibility
 export const deleteMultipleLeads = bulkDeleteLeads;
 
-export async function getAllFonti(market: Market = 'IT') {
+export async function getAllFonti() {
   try {
     const { data, error } = await supabase
       .from('database_fonti')
@@ -437,7 +328,7 @@ export async function getAllFonti(market: Market = 'IT') {
   }
 }
 
-export async function getAllCampagne(market: Market = 'IT') {
+export async function getAllCampagne(market: string = 'IT') {
   try {
     const { data, error } = await supabase
       .from('database_campagne')
@@ -454,7 +345,7 @@ export async function getAllCampagne(market: Market = 'IT') {
   }
 }
 
-export async function getUniqueSourcesFromLeads(market: Market = 'IT'): Promise<string[]> {
+export async function getUniqueSourcesFromLeads(market: string = 'IT'): Promise<string[]> {
   try {
     const { data, error } = await supabase
       .from('lead_generation')
@@ -510,7 +401,7 @@ export async function syncSourcesToDatabase() {
   }
 }
 
-export async function getLeadsStats(market: Market = 'IT') {
+export async function getLeadsStats(market: string = 'IT') {
   try {
     const [totalResult, assignableResult, assignedResult, bookedResult] = await Promise.all([
       supabase.from('lead_generation').select('id', { count: 'exact', head: true }).eq('market', market),
@@ -578,13 +469,15 @@ export async function markLeadsAsAssigned(
   numLead: number, 
   venditore: string, 
   campagna?: string, 
-  webhookUrl?: string
+  webhookUrl?: string,
+  market: string = 'IT'
 ) {
   try {
-    // Get available leads - CRITICO: Solo lead senza call prenotate
+    // Get available leads - CRITICO: Solo lead senza call prenotate + filtro market
     const { data: availableLeads, error: fetchError } = await supabase
       .from('lead_generation')
       .select('*')
+      .eq('market', market)  // CRITICO: Filtro market
       .eq('assignable', true)
       .is('venditore', null)
       .eq('booked_call', 'NO') // CRITICO: Solo lead senza call prenotate
