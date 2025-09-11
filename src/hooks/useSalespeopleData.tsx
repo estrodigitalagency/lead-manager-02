@@ -3,8 +3,10 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Venditore } from "@/types/venditore";
+import { useMarket } from "@/contexts/MarketContext";
 
 export const useSalespeopleData = () => {
+  const { selectedMarket } = useMarket();
   const [venditori, setVenditori] = useState<Venditore[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -12,7 +14,8 @@ export const useSalespeopleData = () => {
     try {
       const { data, error } = await supabase
         .from('venditori')
-        .select('id, nome, cognome, email, telefono, sheets_file_id, sheets_tab_name, stato, created_at')
+        .select('id, nome, cognome, email, telefono, sheets_file_id, sheets_tab_name, stato, created_at, market')
+        .eq('market', selectedMarket)  // CRITICO: Filtro per market
         .order('nome');
       
       if (error) throw error;
@@ -33,7 +36,7 @@ export const useSalespeopleData = () => {
 
   useEffect(() => {
     fetchVenditori();
-  }, []);
+  }, [selectedMarket]);  // CRITICO: Refetch quando cambia market
 
   return {
     venditori,

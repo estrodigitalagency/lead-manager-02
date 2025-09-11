@@ -7,6 +7,7 @@ import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import { navItems, standaloneRoutes, publicRoutes } from "./nav-items";
 import { LeadSyncProvider } from "@/contexts/LeadSyncContext";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
+import { MarketProvider } from "@/contexts/MarketContext";
 import PersistentNavigation from "@/components/PersistentNavigation";
 
 const queryClient = new QueryClient();
@@ -68,14 +69,16 @@ const AppContent = () => {
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
-      <LeadSyncProvider>
-        <TooltipProvider>
-          <Toaster />
-          <BrowserRouter>
-            <AppContent />
-          </BrowserRouter>
-        </TooltipProvider>
-      </LeadSyncProvider>
+      <MarketProvider>
+        <LeadSyncProvider>
+          <TooltipProvider>
+            <Toaster />
+            <BrowserRouter>
+              <AppContent />
+            </BrowserRouter>
+          </TooltipProvider>
+        </LeadSyncProvider>
+      </MarketProvider>
     </AuthProvider>
   </QueryClientProvider>
 );

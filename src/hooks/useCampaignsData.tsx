@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { useMarket } from '@/contexts/MarketContext';
 
 export interface Campaign {
   id: string;
@@ -17,6 +18,7 @@ export interface Campaign {
 }
 
 export const useCampaignsData = () => {
+  const { selectedMarket } = useMarket();
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -25,6 +27,7 @@ export const useCampaignsData = () => {
       const { data, error } = await supabase
         .from('database_campagne')
         .select('*')
+        .eq('market', selectedMarket)  // CRITICO: Filtro per market
         .order('nome', { ascending: true });
 
       if (error) throw error;
@@ -52,7 +55,10 @@ export const useCampaignsData = () => {
     try {
       const { error } = await supabase
         .from('database_campagne')
-        .insert([campaignData]);
+        .insert([{
+          ...campaignData,
+          market: selectedMarket  // CRITICO: Imposta market automaticamente
+        }]);
 
       if (error) throw error;
       
@@ -100,7 +106,7 @@ export const useCampaignsData = () => {
 
   useEffect(() => {
     fetchCampagne();
-  }, []);
+  }, [selectedMarket]);  // CRITICO: Refetch quando cambia market
 
   return {
     campaigns,

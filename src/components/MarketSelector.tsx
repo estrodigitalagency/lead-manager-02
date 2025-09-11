@@ -1,0 +1,24 @@
+import React from 'react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useMarket } from "@/contexts/MarketContext";
+
+const MarketSelector = () => {
+  const { selectedMarket, setSelectedMarket } = useMarket();
+
+  return (
+    <div className="flex items-center gap-2">
+      <span className="text-sm font-medium text-muted-foreground whitespace-nowrap">Mercato:</span>
+      <Select value={selectedMarket} onValueChange={setSelectedMarket}>
+        <SelectTrigger className="w-20 h-8 text-sm">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="IT">🇮🇹 IT</SelectItem>
+          <SelectItem value="ES">🇪🇸 ES</SelectItem>
+        </SelectContent>
+      </Select>
+    </div>
+  );
+};
+
+export default MarketSelector;

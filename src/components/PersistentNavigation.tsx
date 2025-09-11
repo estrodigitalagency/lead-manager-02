@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Users, Database, BarChart3, Settings, Menu, History, LogOut } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useAuth } from "@/contexts/AuthContext";
+import MarketSelector from "@/components/MarketSelector";
 import {
   Drawer,
   DrawerContent,
@@ -120,6 +121,9 @@ const PersistentNavigation = () => {
             <div className="flex items-center gap-1 overflow-x-auto flex-1 min-w-0">
               <NavItems />
             </div>
+          </div>
+          <div className="flex items-center gap-4">
+            <MarketSelector />
           </div>
           <div className="flex-shrink-0">
             <Button 
