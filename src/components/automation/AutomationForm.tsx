@@ -1,0 +1,219 @@
+import { useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { useSalespeopleData } from "@/hooks/useSalespeopleData";
+import { NewAutomationForm, LeadAssignmentAutomation } from "@/types/automation";
+
+const automationSchema = z.object({
+  nome: z.string().min(1, "Il nome è obbligatorio"),
+  condition_type: z.enum(['contains', 'equals', 'starts_with', 'ends_with', 'not_contains']),
+  condition_value: z.string().min(1, "Il valore della condizione è obbligatorio"),
+  action_type: z.enum(['assign_to_seller', 'assign_to_previous_seller']),
+  target_seller_id: z.string().optional(),
+  sheets_tab_name: z.string().optional(),
+});
+
+interface AutomationFormProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onSubmit: (data: NewAutomationForm) => Promise<void>;
+  automation?: LeadAssignmentAutomation;
+  isLoading?: boolean;
+}
+
+const conditionTypeLabels = {
+  contains: "Contiene",
+  equals: "È uguale a",
+  starts_with: "Inizia con",
+  ends_with: "Finisce con",
+  not_contains: "Non contiene"
+};
+
+const actionTypeLabels = {
+  assign_to_seller: "Assegna a venditore specifico",
+  assign_to_previous_seller: "Assegna al venditore precedente"
+};
+
+export function AutomationForm({ open, onOpenChange, onSubmit, automation, isLoading }: AutomationFormProps) {
+  const { venditori } = useSalespeopleData();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const form = useForm<NewAutomationForm>({
+    resolver: zodResolver(automationSchema),
+    defaultValues: {
+      nome: automation?.nome || "",
+      condition_type: automation?.condition_type || "contains",
+      condition_value: automation?.condition_value || "",
+      action_type: automation?.action_type || "assign_to_seller",
+      target_seller_id: automation?.target_seller_id || "",
+      sheets_tab_name: automation?.sheets_tab_name || "",
+    },
+  });
+
+  const actionType = form.watch("action_type");
+
+  const handleSubmit = async (data: NewAutomationForm) => {
+    try {
+      setIsSubmitting(true);
+      await onSubmit(data);
+      form.reset();
+      onOpenChange(false);
+    } catch (error) {
+      console.error("Error submitting automation:", error);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-[500px]">
+        <DialogHeader>
+          <DialogTitle>
+            {automation ? "Modifica Automazione" : "Nuova Automazione"}
+          </DialogTitle>
+        </DialogHeader>
+
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
+            <FormField
+              control={form.control}
+              name="nome"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Nome Automazione</FormLabel>
+                  <FormControl>
+                    <Input placeholder="es. Facebook Ads al venditore Mario" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="condition_type"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Tipo Condizione</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Seleziona condizione" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {Object.entries(conditionTypeLabels).map(([value, label]) => (
+                          <SelectItem key={value} value={value}>
+                            {label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="condition_value"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Valore</FormLabel>
+                    <FormControl>
+                      <Input placeholder="es. facebook" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            <FormField
+              control={form.control}
+              name="action_type"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Azione</FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Seleziona azione" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {Object.entries(actionTypeLabels).map(([value, label]) => (
+                        <SelectItem key={value} value={value}>
+                          {label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {actionType === "assign_to_seller" && (
+              <FormField
+                control={form.control}
+                name="target_seller_id"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Venditore</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Seleziona venditore" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {venditori.filter(v => v.stato === 'attivo').map((venditore) => (
+                          <SelectItem key={venditore.id} value={venditore.id}>
+                            {venditore.nome} {venditore.cognome}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
+
+            <FormField
+              control={form.control}
+              name="sheets_tab_name"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Nome Tab Google Sheets (opzionale)</FormLabel>
+                  <FormControl>
+                    <Input placeholder="es. Facebook, Ads, Eventi" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <div className="flex justify-end space-x-2 pt-4">
+              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+                Annulla
+              </Button>
+              <Button type="submit" disabled={isSubmitting || isLoading}>
+                {isSubmitting ? "Salvando..." : automation ? "Aggiorna" : "Crea"}
+              </Button>
+            </div>
+          </form>
+        </Form>
+      </DialogContent>
+    </Dialog>
+  );
+}

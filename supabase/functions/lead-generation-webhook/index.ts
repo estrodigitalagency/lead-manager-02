@@ -141,32 +141,210 @@ serve(async (req) => {
       throw insertError
     }
 
-    console.log('Successfully created new lead:', newLead)
-
-    return new Response(
-      JSON.stringify({
-        success: true,
-        duplicate: false,
-        lead: newLead,
-        message: 'Lead inserito con successo'
-      }),
-      {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 200,
-      },
-    )
+    console.log('Successfully created new lead:', newLead);
+    
+    // Se il lead ha ultima_fonte (è un duplicato con fonte diversa), controlla automazioni
+    if (newLead.ultima_fonte && newLead.ultima_fonte !== newLead.fonte) {
+      console.log('Checking automations for lead with ultima_fonte:', newLead.ultima_fonte);
+      await checkAndApplyAutomations(newLead, supabase);
+    }
+    
+    return new Response(JSON.stringify({
+      success: true,
+      lead: newLead,
+      action: existingLeads && existingLeads.length > 0 ? 'updated_ultima_fonte' : 'created_new'
+    }), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      status: 200
+    });
 
   } catch (error) {
-    console.error('Error processing lead:', error)
-    return new Response(
-      JSON.stringify({ 
-        success: false, 
-        error: error.message 
-      }),
-      {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 500,
-      },
-    )
+    console.error('Error in lead-generation-webhook:', error);
+    return new Response(JSON.stringify({
+      error: 'Internal server error',
+      details: error.message
+    }), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      status: 500
+    });
   }
-})
+});
+
+// Funzione per controllare e applicare automazioni
+async function checkAndApplyAutomations(lead: any, supabase: any) {
+  try {
+    console.log('Fetching active automations...');
+    
+    // Recupera tutte le automazioni attive ordinate per priorità
+    const { data: automations, error: automationsError } = await supabase
+      .from('lead_assignment_automations')
+      .select(`
+        *,
+        venditori!target_seller_id(nome, cognome, sheets_file_id, sheets_tab_name)
+      `)
+      .eq('attivo', true)
+      .order('priority', { ascending: true });
+
+    if (automationsError) {
+      console.error('Error fetching automations:', automationsError);
+      return;
+    }
+
+    if (!automations || automations.length === 0) {
+      console.log('No active automations found');
+      return;
+    }
+
+    console.log(`Found ${automations.length} active automations`);
+
+    // Controlla ogni automazione nell'ordine di priorità
+    for (const automation of automations) {
+      console.log(`Checking automation: ${automation.nome}`);
+      
+      if (checkCondition(lead.ultima_fonte, automation.condition_type, automation.condition_value)) {
+        console.log(`Automation condition matched: ${automation.nome}`);
+        
+        let targetSeller = null;
+        let sheetsTabName = null;
+
+        if (automation.action_type === 'assign_to_seller' && automation.target_seller_id) {
+          // Assegna al venditore specificato
+          targetSeller = automation.venditori;
+          sheetsTabName = automation.sheets_tab_name || automation.venditori?.sheets_tab_name;
+          
+        } else if (automation.action_type === 'assign_to_previous_seller') {
+          // Trova l'ultimo venditore assegnato per lead simili
+          targetSeller = await findPreviousSeller(lead, supabase);
+          sheetsTabName = automation.sheets_tab_name;
+        }
+
+        if (targetSeller) {
+          await assignLeadAutomatically(lead, targetSeller, sheetsTabName, automation.nome, supabase);
+          return; // Ferma alla prima automazione che matcha
+        } else {
+          console.log(`No target seller found for automation: ${automation.nome}`);
+        }
+      }
+    }
+
+    console.log('No automation conditions matched');
+    
+  } catch (error) {
+    console.error('Error in checkAndApplyAutomations:', error);
+  }
+}
+
+// Funzione per controllare se una condizione è soddisfatta
+function checkCondition(ultimaFonte: string, conditionType: string, conditionValue: string): boolean {
+  if (!ultimaFonte || !conditionValue) return false;
+  
+  const fonte = ultimaFonte.toLowerCase();
+  const value = conditionValue.toLowerCase();
+  
+  switch (conditionType) {
+    case 'contains':
+      return fonte.includes(value);
+    case 'equals':
+      return fonte === value;
+    case 'starts_with':
+      return fonte.startsWith(value);
+    case 'ends_with':
+      return fonte.endsWith(value);
+    case 'not_contains':
+      return !fonte.includes(value);
+    default:
+      return false;
+  }
+}
+
+// Funzione per trovare il venditore precedente
+async function findPreviousSeller(lead: any, supabase: any) {
+  try {
+    // Cerca l'ultimo lead simile (stesso email o telefono) che ha un venditore assegnato
+    const { data: previousLeads, error } = await supabase
+      .from('lead_generation')
+      .select(`
+        venditore,
+        venditori!inner(id, nome, cognome, sheets_file_id, sheets_tab_name)
+      `)
+      .or(`email.eq.${lead.email},telefono.eq.${lead.telefono}`)
+      .not('venditore', 'is', null)
+      .order('data_assegnazione', { ascending: false })
+      .limit(1);
+
+    if (error) {
+      console.error('Error finding previous seller:', error);
+      return null;
+    }
+
+    if (previousLeads && previousLeads.length > 0) {
+      console.log('Found previous seller:', previousLeads[0].venditori);
+      return previousLeads[0].venditori;
+    }
+
+    return null;
+  } catch (error) {
+    console.error('Error in findPreviousSeller:', error);
+    return null;
+  }
+}
+
+// Funzione per assegnare automaticamente il lead
+async function assignLeadAutomatically(lead: any, seller: any, sheetsTabName: string | null, automationName: string, supabase: any) {
+  try {
+    console.log(`Assigning lead ${lead.id} to seller ${seller.nome} ${seller.cognome} via automation: ${automationName}`);
+    
+    // Aggiorna il lead nel database
+    const { error: updateError } = await supabase
+      .from('lead_generation')
+      .update({
+        venditore: `${seller.nome} ${seller.cognome}`,
+        stato: 'assegnato',
+        data_assegnazione: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', lead.id);
+
+    if (updateError) {
+      console.error('Error updating lead:', updateError);
+      return;
+    }
+
+    // Chiama il webhook di assegnazione se configurato
+    try {
+      const webhookData = {
+        leadId: lead.id,
+        nome: lead.nome,
+        cognome: lead.cognome || '',
+        email: lead.email,
+        telefono: lead.telefono,
+        fonte: lead.fonte,
+        ultima_fonte: lead.ultima_fonte,
+        venditore: `${seller.nome} ${seller.cognome}`,
+        sheets_file_id: seller.sheets_file_id,
+        sheets_tab_name: sheetsTabName || seller.sheets_tab_name,
+        campagna: lead.campagna,
+        assignedVia: `Automazione: ${automationName}`
+      };
+
+      // Invoca il webhook lead-assign-webhook
+      const { error: webhookError } = await supabase.functions.invoke('lead-assign-webhook', {
+        body: webhookData
+      });
+
+      if (webhookError) {
+        console.error('Error calling lead-assign-webhook:', webhookError);
+      } else {
+        console.log('Successfully called lead-assign-webhook for automation assignment');
+      }
+
+    } catch (webhookError) {
+      console.error('Error in webhook call:', webhookError);
+    }
+
+    console.log(`Lead ${lead.id} successfully assigned via automation: ${automationName}`);
+    
+  } catch (error) {
+    console.error('Error in assignLeadAutomatically:', error);
+  }
+}

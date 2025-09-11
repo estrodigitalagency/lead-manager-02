@@ -352,6 +352,56 @@ export type Database = {
         }
         Relationships: []
       }
+      lead_assignment_automations: {
+        Row: {
+          action_type: Database["public"]["Enums"]["automation_action_type"]
+          attivo: boolean
+          condition_type: Database["public"]["Enums"]["automation_condition_type"]
+          condition_value: string
+          created_at: string
+          id: string
+          nome: string
+          priority: number
+          sheets_tab_name: string | null
+          target_seller_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          action_type: Database["public"]["Enums"]["automation_action_type"]
+          attivo?: boolean
+          condition_type: Database["public"]["Enums"]["automation_condition_type"]
+          condition_value: string
+          created_at?: string
+          id?: string
+          nome: string
+          priority?: number
+          sheets_tab_name?: string | null
+          target_seller_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          action_type?: Database["public"]["Enums"]["automation_action_type"]
+          attivo?: boolean
+          condition_type?: Database["public"]["Enums"]["automation_condition_type"]
+          condition_value?: string
+          created_at?: string
+          id?: string
+          nome?: string
+          priority?: number
+          sheets_tab_name?: string | null
+          target_seller_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_assignment_automations_target_seller_id_fkey"
+            columns: ["target_seller_id"]
+            isOneToOne: false
+            referencedRelation: "venditori"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lead_assignments: {
         Row: {
           assigned_at: string | null
@@ -673,7 +723,13 @@ export type Database = {
       }
     }
     Enums: {
-      [_ in never]: never
+      automation_action_type: "assign_to_seller" | "assign_to_previous_seller"
+      automation_condition_type:
+        | "contains"
+        | "equals"
+        | "starts_with"
+        | "ends_with"
+        | "not_contains"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -800,6 +856,15 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      automation_action_type: ["assign_to_seller", "assign_to_previous_seller"],
+      automation_condition_type: [
+        "contains",
+        "equals",
+        "starts_with",
+        "ends_with",
+        "not_contains",
+      ],
+    },
   },
 } as const

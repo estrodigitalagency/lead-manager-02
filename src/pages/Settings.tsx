@@ -4,12 +4,13 @@ import { Link } from "react-router-dom";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { Webhook, ArrowLeft, Users, Database, Tag } from "lucide-react";
+import { Webhook, ArrowLeft, Users, Database, Tag, Zap } from "lucide-react";
 import SalespeopleSettings from "@/components/SalespeopleSettings";
 import CampaignsSettings from "@/components/CampaignsSettings";
 import DatabaseSection from "@/components/settings/DatabaseSection";
 import AttributionWindowSettings from "@/components/settings/AttributionWindowSettings";
 import WebhookSettings from "@/components/settings/WebhookSettings";
+import { AutomationSettings } from "@/components/automation/AutomationSettings";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 const Settings = () => {
@@ -19,7 +20,7 @@ const Settings = () => {
     <div className="container mx-auto px-4 py-8 pt-20">      
       <Tabs defaultValue="attribution" className="w-full" orientation={isMobile ? "vertical" : "horizontal"}>
         <div className={`${isMobile ? 'flex flex-col space-y-4' : 'block'}`}>
-          <TabsList className={`${isMobile ? 'flex flex-col h-auto w-full space-y-1 p-1' : 'grid w-full grid-cols-5'} mb-8 border`}>
+          <TabsList className={`${isMobile ? 'flex flex-col h-auto w-full space-y-1 p-1' : 'grid w-full grid-cols-6'} mb-8 border`}>
             <TabsTrigger 
               value="database" 
               className={`data-[state=active]:text-primary ${isMobile ? 'w-full justify-start text-left px-4 py-3' : ''}`}
@@ -55,6 +56,13 @@ const Settings = () => {
               <Tag className={`mr-2 ${isMobile ? 'h-4 w-4' : 'h-4 w-4'}`} />
               Campagne
             </TabsTrigger>
+            <TabsTrigger 
+              value="automations" 
+              className={`data-[state=active]:text-primary ${isMobile ? 'w-full justify-start text-left px-4 py-3' : ''}`}
+            >
+              <Zap className={`mr-2 ${isMobile ? 'h-4 w-4' : 'h-4 w-4'}`} />
+              Automazioni
+            </TabsTrigger>
           </TabsList>
           
           <div className={`${isMobile ? 'flex-1' : ''}`}>
@@ -80,6 +88,10 @@ const Settings = () => {
               <Card className="border">
                 <CampaignsSettings />
               </Card>
+            </TabsContent>
+            
+            <TabsContent value="automations">
+              <AutomationSettings />
             </TabsContent>
           </div>
         </div>
