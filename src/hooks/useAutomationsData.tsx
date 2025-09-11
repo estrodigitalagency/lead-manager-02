@@ -2,8 +2,10 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { LeadAssignmentAutomation } from "@/types/automation";
+import { useMarket } from "@/contexts/MarketContext";
 
 export const useAutomationsData = () => {
+  const { selectedMarket } = useMarket();
   const [automations, setAutomations] = useState<LeadAssignmentAutomation[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -13,6 +15,7 @@ export const useAutomationsData = () => {
       const { data, error } = await supabase
         .from('lead_assignment_automations')
         .select('*')
+        .eq('market', selectedMarket)
         .order('priority', { ascending: true });
       
       if (error) throw error;
@@ -38,7 +41,7 @@ export const useAutomationsData = () => {
     try {
       const { data, error } = await supabase
         .from('lead_assignment_automations')
-        .insert([automation])
+        .insert([{ ...automation, market: selectedMarket }])
         .select()
         .single();
       
@@ -119,7 +122,7 @@ export const useAutomationsData = () => {
 
   useEffect(() => {
     fetchAutomations();
-  }, []);
+  }, [selectedMarket]); // Refetch when market changes
 
   return {
     automations,

@@ -303,7 +303,7 @@ export async function assignLeadsWithExclusions(data: LeadAssignmentData) {
       toast.success(`${actualAssignedCount} lead assegnati con successo (nessun webhook configurato)`);
     }
 
-    // Record the assignment in history with all fields including the new one
+    // Record the assignment in history with all fields including market
     const { error: historyError } = await supabase
       .from('assignment_history')
       .insert({
@@ -314,7 +314,8 @@ export async function assignLeadsWithExclusions(data: LeadAssignmentData) {
         fonti_incluse: includedSources.length > 0 ? includedSources : null,
         exclude_from_included: excludeFromIncluded.length > 0 ? excludeFromIncluded : null,
         source_mode: sourceMode,
-        bypass_time_interval: bypassTimeInterval
+        bypass_time_interval: bypassTimeInterval,
+        market: market
       });
 
     if (historyError) {

@@ -25,6 +25,7 @@ export type Database = {
           fonti_incluse: string[] | null
           id: string
           leads_count: number
+          market: string
           source_mode: string | null
           venditore: string
         }
@@ -38,6 +39,7 @@ export type Database = {
           fonti_incluse?: string[] | null
           id?: string
           leads_count: number
+          market?: string
           source_mode?: string | null
           venditore: string
         }
@@ -51,6 +53,7 @@ export type Database = {
           fonti_incluse?: string[] | null
           id?: string
           leads_count?: number
+          market?: string
           source_mode?: string | null
           venditore?: string
         }
@@ -378,6 +381,7 @@ export type Database = {
           condition_value: string
           created_at: string
           id: string
+          market: string
           nome: string
           priority: number
           sheets_tab_name: string | null
@@ -393,6 +397,7 @@ export type Database = {
           condition_value: string
           created_at?: string
           id?: string
+          market?: string
           nome: string
           priority?: number
           sheets_tab_name?: string | null
@@ -408,6 +413,7 @@ export type Database = {
           condition_value?: string
           created_at?: string
           id?: string
+          market?: string
           nome?: string
           priority?: number
           sheets_tab_name?: string | null
@@ -720,6 +726,7 @@ export type Database = {
           calendly_url: string
           created_at: string
           id: string
+          market: string
           nome_venditore: string
           updated_at: string
         }
@@ -728,6 +735,7 @@ export type Database = {
           calendly_url: string
           created_at?: string
           id?: string
+          market?: string
           nome_venditore: string
           updated_at?: string
         }
@@ -736,6 +744,7 @@ export type Database = {
           calendly_url?: string
           created_at?: string
           id?: string
+          market?: string
           nome_venditore?: string
           updated_at?: string
         }

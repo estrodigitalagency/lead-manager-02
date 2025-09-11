@@ -45,6 +45,7 @@ export default function DatabaseSection() {
     venditore: "Giovanni Bianchi",
     stato: "assegnato",
     booked_call: "NO",
+    market: "IT",
     note: "Interessato al prodotto X"
   };
 
@@ -55,6 +56,7 @@ export default function DatabaseSection() {
     telefono: "+39 098 765 4321",
     fonte: "calendly, website",
     scheduled_at: "2024-01-15T14:30:00Z",
+    market: "IT",
     note: "Chiamata di consulenza"
   };
   
@@ -90,6 +92,7 @@ export default function DatabaseSection() {
         { name: "venditore", required: false, description: "Nome del venditore assegnato (se già assegnato)" },
         { name: "stato", required: false, description: "Stato del lead (es: nuovo, assegnato, lavorato)" },
         { name: "booked_call", required: false, description: "\"SI\" o \"NO\" se ha prenotato una chiamata" },
+        { name: "market", required: false, description: "Mercato di riferimento: \"IT\" (Italia) o \"ES\" (Spagna). Default: \"IT\"" },
         { name: "note", required: false, description: "Note aggiuntive sul lead" }
       ]
     },
@@ -117,6 +120,7 @@ export default function DatabaseSection() {
         { name: "telefono", required: true, description: "Numero di telefono" },
         { name: "fonte", required: false, description: "Fonti della prenotazione separate da virgola (es: calendly, website)" },
         { name: "scheduled_at", required: true, description: "Data e ora della chiamata (formato ISO 8601)" },
+        { name: "market", required: false, description: "Mercato di riferimento: \"IT\" (Italia) o \"ES\" (Spagna). Default: \"IT\"" },
         { name: "note", required: false, description: "Note aggiuntive sulla prenotazione" }
       ]
     },
