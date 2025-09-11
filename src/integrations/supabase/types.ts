@@ -65,6 +65,7 @@ export type Database = {
           fonte: string | null
           id: string
           lead_id: string | null
+          market: string
           nome: string | null
           scheduled_at: string
           stato: string | null
@@ -80,6 +81,7 @@ export type Database = {
           fonte?: string | null
           id?: string
           lead_id?: string | null
+          market?: string
           nome?: string | null
           scheduled_at: string
           stato?: string | null
@@ -95,6 +97,7 @@ export type Database = {
           fonte?: string | null
           id?: string
           lead_id?: string | null
+          market?: string
           nome?: string | null
           scheduled_at?: string
           stato?: string | null
@@ -120,6 +123,7 @@ export type Database = {
           email: string
           fonte: string | null
           id: string
+          market: string
           nome: string
           telefono: string
           venditore: string | null
@@ -132,6 +136,7 @@ export type Database = {
           email: string
           fonte?: string | null
           id?: string
+          market?: string
           nome: string
           telefono: string
           venditore?: string | null
@@ -144,6 +149,7 @@ export type Database = {
           email?: string
           fonte?: string | null
           id?: string
+          market?: string
           nome?: string
           telefono?: string
           venditore?: string | null
@@ -159,6 +165,7 @@ export type Database = {
           email: string
           fonte: string | null
           id: string
+          market: string
           nome: string
           telefono: string
           venditore: string | null
@@ -170,6 +177,7 @@ export type Database = {
           email: string
           fonte?: string | null
           id?: string
+          market?: string
           nome: string
           telefono: string
           venditore?: string | null
@@ -181,6 +189,7 @@ export type Database = {
           email?: string
           fonte?: string | null
           id?: string
+          market?: string
           nome?: string
           telefono?: string
           venditore?: string | null
@@ -195,6 +204,7 @@ export type Database = {
           email: string
           fonte: string | null
           id: string
+          market: string
           nome: string
           telefono: string
           venditore: string | null
@@ -206,6 +216,7 @@ export type Database = {
           email: string
           fonte?: string | null
           id?: string
+          market?: string
           nome: string
           telefono: string
           venditore?: string | null
@@ -217,6 +228,7 @@ export type Database = {
           email?: string
           fonte?: string | null
           id?: string
+          market?: string
           nome?: string
           telefono?: string
           venditore?: string | null
@@ -230,6 +242,7 @@ export type Database = {
           email: string
           fonte: string | null
           id: string
+          market: string
           nome: string
           telefono: string | null
         }
@@ -239,6 +252,7 @@ export type Database = {
           email: string
           fonte?: string | null
           id?: string
+          market?: string
           nome: string
           telefono?: string | null
         }
@@ -248,6 +262,7 @@ export type Database = {
           email?: string
           fonte?: string | null
           id?: string
+          market?: string
           nome?: string
           telefono?: string | null
         }
@@ -263,6 +278,7 @@ export type Database = {
           fonti_escluse: string[] | null
           fonti_incluse: string[] | null
           id: string
+          market: string
           nome: string
           source_mode: string | null
           updated_at: string
@@ -276,6 +292,7 @@ export type Database = {
           fonti_escluse?: string[] | null
           fonti_incluse?: string[] | null
           id?: string
+          market?: string
           nome: string
           source_mode?: string | null
           updated_at?: string
@@ -289,6 +306,7 @@ export type Database = {
           fonti_escluse?: string[] | null
           fonti_incluse?: string[] | null
           id?: string
+          market?: string
           nome?: string
           source_mode?: string | null
           updated_at?: string
@@ -459,6 +477,7 @@ export type Database = {
           fonte: string | null
           id: string
           lead_score: string | null
+          market: string
           nome: string
           stato: string | null
           telefono: string | null
@@ -477,6 +496,7 @@ export type Database = {
           fonte?: string | null
           id?: string
           lead_score?: string | null
+          market?: string
           nome: string
           stato?: string | null
           telefono?: string | null
@@ -495,6 +515,7 @@ export type Database = {
           fonte?: string | null
           id?: string
           lead_score?: string | null
+          market?: string
           nome?: string
           stato?: string | null
           telefono?: string | null
@@ -513,6 +534,7 @@ export type Database = {
           email: string | null
           esito: string | null
           id: string
+          market: string
           nome: string
           obiezioni: string | null
           telefono: string | null
@@ -527,6 +549,7 @@ export type Database = {
           email?: string | null
           esito?: string | null
           id?: string
+          market?: string
           nome: string
           obiezioni?: string | null
           telefono?: string | null
@@ -541,6 +564,7 @@ export type Database = {
           email?: string | null
           esito?: string | null
           id?: string
+          market?: string
           nome?: string
           obiezioni?: string | null
           telefono?: string | null
@@ -645,6 +669,7 @@ export type Database = {
           id: string
           lead_attuali: number | null
           lead_capacity: number | null
+          market: string
           nome: string
           sheets_file_id: string
           sheets_tab_name: string
@@ -661,6 +686,7 @@ export type Database = {
           id?: string
           lead_attuali?: number | null
           lead_capacity?: number | null
+          market?: string
           nome: string
           sheets_file_id?: string
           sheets_tab_name?: string
@@ -677,6 +703,7 @@ export type Database = {
           id?: string
           lead_attuali?: number | null
           lead_capacity?: number | null
+          market?: string
           nome?: string
           sheets_file_id?: string
           sheets_tab_name?: string
