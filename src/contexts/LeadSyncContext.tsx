@@ -1,8 +1,8 @@
-
 import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { getOptimizedLeadCounts, checkLeadsAssignability } from '@/services/leadAssignabilityService';
 import { getLeadsStats } from '@/services/databaseService';
+import { useMarket } from '@/contexts/MarketContext';
 
 interface LeadStats {
   total: number;
@@ -31,6 +31,7 @@ export const useLeadSync = () => {
 };
 
 export const LeadSyncProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { selectedMarket } = useMarket();
   const [stats, setStats] = useState<LeadStats>({
     total: 0,
     assignable: 0,
@@ -78,7 +79,7 @@ export const LeadSyncProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     setIsRefreshing(true);
     
     try {
-      const newStats = await getLeadsStats();
+      const newStats = await getLeadsStats(selectedMarket);
       console.log('📊 New stats loaded:', newStats);
       setStats(newStats);
     } catch (error) {
@@ -87,7 +88,7 @@ export const LeadSyncProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       operationLockRef.current = false;
       setIsRefreshing(false);
     }
-  }, []);
+  }, [selectedMarket]);
 
   // Debounced refresh per evitare troppe chiamate consecutive
   const debouncedRefresh = useCallback(() => {
@@ -168,7 +169,7 @@ export const LeadSyncProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       operationLockRef.current = false;
       verificationLockRef.current = false;
     };
-  }, []); // Dipendenze vuote per evitare re-inizializzazioni
+  }, [selectedMarket, refreshAllData, performVerification]); // Include selectedMarket as dependency
 
   const value: LeadSyncContextType = {
     stats,

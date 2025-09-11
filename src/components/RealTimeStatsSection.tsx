@@ -4,8 +4,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { TrendingUp, Users, Database, Zap } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useLeadSync } from '@/contexts/LeadSyncContext';
+import { useMarket } from '@/contexts/MarketContext';
 
 export const RealTimeStatsSection = () => {
+  const { selectedMarket } = useMarket();
   const { stats, isRefreshing } = useLeadSync();
   const [customStats, setCustomStats] = useState({
     leadGeneratiUltimi30: 0,
@@ -25,24 +27,27 @@ export const RealTimeStatsSection = () => {
 
         console.log('📊 Fetching custom stats with 30 days cutoff:', thirtyDaysAgoISO);
 
-        // 1. Lead Generati - Ultimi 30 giorni
+        // 1. Lead Generati - Ultimi 30 giorni filtrati per market
         const { count: leadGeneratiCount } = await supabase
           .from('lead_generation')
           .select('id', { count: 'exact' })
-          .gte('created_at', thirtyDaysAgoISO);
+          .gte('created_at', thirtyDaysAgoISO)
+          .eq('market', selectedMarket);
 
-        // 2. Call Generate - Ultimi 30 giorni (booked_call)
+        // 2. Call Generate - Ultimi 30 giorni (booked_call) filtrate per market
         const { count: callGenerateCount } = await supabase
           .from('booked_call')
           .select('id', { count: 'exact' })
-          .gte('created_at', thirtyDaysAgoISO);
+          .gte('created_at', thirtyDaysAgoISO)
+          .eq('market', selectedMarket);
 
-        // 3. Tempo medio assegnazione - SOLO per lead degli ultimi 30 giorni con data_assegnazione
+        // 3. Tempo medio assegnazione - SOLO per lead degli ultimi 30 giorni con data_assegnazione del market selezionato
         const { data: assignedLeads } = await supabase
           .from('lead_generation')
           .select('created_at, data_assegnazione')
           .not('data_assegnazione', 'is', null)
-          .gte('created_at', thirtyDaysAgoISO);
+          .gte('created_at', thirtyDaysAgoISO)
+          .eq('market', selectedMarket);
 
         let tempoMedio = 0;
         if (assignedLeads && assignedLeads.length > 0) {
@@ -76,7 +81,7 @@ export const RealTimeStatsSection = () => {
     };
 
     fetchCustomStats();
-  }, []);
+  }, [selectedMarket]); // Refetch when market changes
 
   const statsConfig = [
     {

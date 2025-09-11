@@ -31,6 +31,7 @@ import DatabaseTableContainer from "@/components/database/DatabaseTableContainer
 import LeadsTable from "@/components/database/LeadsTable";
 import BookingsTable from "@/components/database/BookingsTable";
 import LeadLavoratiTable from "@/components/database/LeadLavoratiTable";
+import { useMarket } from "@/contexts/MarketContext";
 
 interface CalendlyBooking {
   id: string;
@@ -47,6 +48,7 @@ interface CalendlyBooking {
 type ValidTableName = "lead_generation" | "booked_call" | "lead_assignments" | "lead_lavorati" | "system_settings" | "venditori";
 
 const DatabasePage = () => {
+  const { selectedMarket } = useMarket();
   const isMobile = useIsMobile();
   const { refreshAllData, isRefreshing } = useLeadSync();
   const {
@@ -79,7 +81,7 @@ const DatabasePage = () => {
   // Aggiungi stato per i dati dei lead
   const [leadsData, setLeadsData] = useState<Lead[]>([]);
 
-  // Funzioni per caricare bookings e lead lavorati (manteniamo la logica esistente)
+  // Funzioni per caricare bookings e lead lavorati (manteniamo la logica esistente ma filtriamo per market)
   const fetchBookings = async () => {
     setIsLoadingBookings(true);
     try {
@@ -87,7 +89,7 @@ const DatabasePage = () => {
         'booked_call',
         1,
         1000, // Carica molti record per ora, poi si può paginare anche questi
-        activeFilters
+        { ...activeFilters, market: selectedMarket }
       );
       setBookings(result.data);
     } catch (error) {
@@ -104,7 +106,7 @@ const DatabasePage = () => {
         'lead_lavorati',
         1,
         1000, // Carica molti record per ora, poi si può paginare anche questi
-        activeFilters
+        { ...activeFilters, market: selectedMarket }
       );
       setLeadLavorati(result.data);
     } catch (error) {
@@ -164,7 +166,7 @@ const DatabasePage = () => {
     initializeDatabase();
   }, []); // Empty dependency array to run only once
 
-  // Ricarica dati quando cambiano i filtri
+  // Ricarica dati quando cambiano i filtri o il market
   useEffect(() => {
     if (verification.status !== 'idle') {
       Promise.all([
@@ -172,7 +174,7 @@ const DatabasePage = () => {
         fetchLeadLavorati()
       ]);
     }
-  }, [activeFilters]);
+  }, [activeFilters, selectedMarket]);
 
   const handleRefresh = async () => {
     console.log("🔄 Manual refresh requested...");

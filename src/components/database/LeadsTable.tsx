@@ -8,7 +8,7 @@ import { Lead } from "@/types/lead";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useTableSorting } from "@/hooks/useTableSorting";
 import { useColumnVisibility, ColumnConfig } from "@/hooks/useColumnVisibility";
-import { useServerPagination } from "@/hooks/useServerPagination";
+import { useServerPaginationWithMarket } from "@/hooks/useServerPaginationWithMarket";
 import MobileLeadsTable from "./MobileLeadsTable";
 import PaginationControls from "./PaginationControls";
 import LeadTableHeader from "./LeadTableHeader";
@@ -67,7 +67,7 @@ const LeadsTable = ({
     startIndex,
     endIndex,
     refetch
-  } = useServerPagination<Lead>({ 
+  } = useServerPaginationWithMarket<Lead>({ 
     tableName: 'lead_generation',
     initialPageSize: 50,
     filters
