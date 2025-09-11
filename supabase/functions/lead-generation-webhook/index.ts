@@ -25,8 +25,8 @@ serve(async (req) => {
 
     console.log('Received lead data:', { nome, cognome, email, telefono, fonte, campagna, notes, lead_score, venditore, stato, market: finalMarket })
 
-    // Set ultima_fonte equal to fonte (no duplicate checking)
-    const ultimaFonte = fonte;
+    // Calculate ultima_fonte based on existing leads
+    const ultimaFonte = await calculateUltimaFonte(email, telefono, fonte, finalMarket, supabase);
     
     // Determine assignable status and data_assegnazione based on provided data
     const isAssigned = venditore && venditore.trim() !== '';
@@ -88,6 +88,70 @@ serve(async (req) => {
   }
 });
 
+// Function to calculate ultima_fonte based on existing leads
+async function calculateUltimaFonte(email: string, telefono: string, newFonte: string, market: string, supabase: any): Promise<string> {
+  try {
+    console.log('Calculating ultima_fonte for:', { email, telefono, newFonte, market });
+    
+    // Find the most recent lead with same email or phone in the same market
+    const { data: existingLeads, error } = await supabase
+      .from('lead_generation')
+      .select('fonte, created_at')
+      .or(`email.eq.${email},telefono.eq.${telefono}`)
+      .eq('market', market)
+      .order('created_at', { ascending: false })
+      .limit(1);
+
+    if (error) {
+      console.error('Error fetching existing leads:', error);
+      return newFonte; // fallback to new fonte
+    }
+
+    // If no existing lead found, return the new fonte as ultima_fonte
+    if (!existingLeads || existingLeads.length === 0) {
+      console.log('No existing lead found, setting ultima_fonte = fonte');
+      return newFonte;
+    }
+
+    const existingLead = existingLeads[0];
+    const previousFonte = existingLead.fonte || '';
+    
+    console.log('Found existing lead with fonte:', previousFonte);
+    console.log('New fonte:', newFonte);
+    
+    // Calculate the difference between new fonte and previous fonte
+    const ultimaFonte = computeFonteDiff(previousFonte, newFonte);
+    
+    console.log('Calculated ultima_fonte:', ultimaFonte);
+    return ultimaFonte;
+    
+  } catch (error) {
+    console.error('Error in calculateUltimaFonte:', error);
+    return newFonte; // fallback to new fonte
+  }
+}
+
+// Function to compute the difference between fonte values
+function computeFonteDiff(previousFonte: string, newFonte: string): string {
+  if (!previousFonte || !newFonte) {
+    return newFonte || '';
+  }
+  
+  // Normalize and split fonte values
+  const previousSources = previousFonte.split(',').map(s => s.trim()).filter(s => s);
+  const newSources = newFonte.split(',').map(s => s.trim()).filter(s => s);
+  
+  // Find sources that are in newFonte but not in previousFonte
+  const diff = newSources.filter(source => !previousSources.includes(source));
+  
+  // If no difference, return empty string or the new fonte
+  if (diff.length === 0) {
+    return '';
+  }
+  
+  return diff.join(', ');
+}
+
 // Funzione per controllare e applicare automazioni
 async function checkAndApplyAutomations(lead: any, supabase: any) {
   try {
@@ -122,7 +186,7 @@ async function checkAndApplyAutomations(lead: any, supabase: any) {
       
       // Controlla se questa automazione dovrebbe scattare per questo tipo di lead
       const shouldTrigger = automation.trigger_when === 'new_lead' || 
-        (automation.trigger_when === 'duplicate_different_source' && lead.ultima_fonte && lead.ultima_fonte !== lead.fonte);
+        (automation.trigger_when === 'duplicate_different_source' && lead.ultima_fonte && lead.ultima_fonte.trim() !== '');
       
       if (!shouldTrigger) {
         console.log(`Automation ${automation.nome} skipped - trigger condition not met`);
