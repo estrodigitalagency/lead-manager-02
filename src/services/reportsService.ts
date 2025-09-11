@@ -9,6 +9,7 @@ export interface ReportFilters {
   fontiIncluse?: string[];
   fontiEscluse?: string[];
   sourceMode?: 'include' | 'exclude';
+  market?: 'IT' | 'ES';
 }
 
 export interface ReportMetrics {
@@ -96,6 +97,11 @@ async function getLeadTotaliGenerati(filters: ReportFilters): Promise<number> {
     .from('lead_generation')
     .select('id', { count: 'exact', head: true });
 
+  // Filter by market
+  if (filters.market) {
+    query = query.eq('market', filters.market);
+  }
+
   // Filtro per data di creazione
   if (filters.startDate) {
     const startDateTime = getStartOfDay(filters.startDate);
@@ -136,6 +142,11 @@ async function getCallTotaliPrenotate(filters: ReportFilters): Promise<number> {
   let query = supabase
     .from('booked_call')
     .select('id', { count: 'exact', head: true });
+
+  // Filter by market
+  if (filters.market) {
+    query = query.eq('market', filters.market);
+  }
 
   // Filtro per data di creazione
   if (filters.startDate) {
@@ -179,6 +190,11 @@ async function getLeadTotaliLavorati(filters: ReportFilters): Promise<number> {
     .select('id', { count: 'exact', head: true })
     .not('data_assegnazione', 'is', null);
 
+  // Filter by market
+  if (filters.market) {
+    query = query.eq('market', filters.market);
+  }
+
   // IMPORTANTE: Filtro per data di ASSEGNAZIONE, non di creazione
   if (filters.startDate) {
     const startDateTime = getStartOfDay(filters.startDate);
@@ -213,13 +229,19 @@ async function getLeadTotaliLavorati(filters: ReportFilters): Promise<number> {
   return count || 0;
 }
 
-export async function getAvailableFonti(): Promise<string[]> {
+export async function getAvailableFonti(market?: 'IT' | 'ES'): Promise<string[]> {
   try {
-    const { data, error } = await supabase
+    let query = supabase
       .from('lead_generation')
       .select('fonte')
       .not('fonte', 'is', null)
       .not('fonte', 'eq', '');
+    
+    if (market) {
+      query = query.eq('market', market);
+    }
+    
+    const { data, error } = await query;
 
     if (error) throw error;
 
@@ -243,13 +265,19 @@ export async function getAvailableFonti(): Promise<string[]> {
   }
 }
 
-export async function getAvailableVenditori(): Promise<string[]> {
+export async function getAvailableVenditori(market?: 'IT' | 'ES'): Promise<string[]> {
   try {
-    const { data, error } = await supabase
+    let query = supabase
       .from('lead_generation')
       .select('venditore')
       .not('venditore', 'is', null)
       .not('venditore', 'eq', '');
+    
+    if (market) {
+      query = query.eq('market', market);
+    }
+    
+    const { data, error } = await query;
 
     if (error) throw error;
 

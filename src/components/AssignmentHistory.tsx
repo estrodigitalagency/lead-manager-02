@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2, Clock, Filter, Info, Play } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useMarket } from "@/contexts/MarketContext";
 import AssignedLeadsDialog from "@/components/database/AssignedLeadsDialog";
 import ReplayAssignmentDialog from "@/components/database/ReplayAssignmentDialog";
 
@@ -30,6 +31,7 @@ interface AssignmentRecord {
 }
 
 const AssignmentHistory = () => {
+  const { selectedMarket } = useMarket();
   const [history, setHistory] = useState<AssignmentRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedAssignment, setSelectedAssignment] = useState<AssignmentRecord | null>(null);
@@ -43,6 +45,7 @@ const AssignmentHistory = () => {
         const { data, error } = await supabase
           .from('assignment_history')
           .select('*')
+          .eq('market', selectedMarket)
           .order('assigned_at', { ascending: false })
           .limit(100);
 
@@ -59,7 +62,7 @@ const AssignmentHistory = () => {
     };
 
     loadHistory();
-  }, []);
+  }, [selectedMarket]);
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleString('it-IT', {
@@ -247,6 +250,7 @@ const AssignmentHistory = () => {
               const { data, error } = await supabase
                 .from('assignment_history')
                 .select('*')
+                .eq('market', selectedMarket)
                 .order('assigned_at', { ascending: false })
                 .limit(100);
 

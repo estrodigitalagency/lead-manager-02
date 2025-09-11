@@ -4,12 +4,14 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, BarChart3 } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useMarket } from "@/contexts/MarketContext";
 import { ReportFilters, ReportMetrics, getReportMetrics } from "@/services/reportsService";
 import ReportFiltersComponent from "@/components/reports/ReportFilters";
 import ReportMetricsComponent from "@/components/reports/ReportMetrics";
 
 const ReportsPage = () => {
   const isMobile = useIsMobile();
+  const { selectedMarket } = useMarket();
   const [filters, setFilters] = useState<ReportFilters>({});
   const [metrics, setMetrics] = useState<ReportMetrics>({
     leadTotaliGenerati: 0,
@@ -21,7 +23,8 @@ const ReportsPage = () => {
   const loadMetrics = async () => {
     setIsLoading(true);
     try {
-      const reportMetrics = await getReportMetrics(filters);
+      const filtersWithMarket = { ...filters, market: selectedMarket };
+      const reportMetrics = await getReportMetrics(filtersWithMarket);
       setMetrics(reportMetrics);
     } catch (error) {
       console.error('Error loading report metrics:', error);
@@ -30,10 +33,10 @@ const ReportsPage = () => {
     }
   };
 
-  // Carica le metriche all'avvio
+  // Carica le metriche all'avvio e quando cambia il mercato
   useEffect(() => {
     loadMetrics();
-  }, []);
+  }, [selectedMarket]);
 
   const handleApplyFilters = () => {
     loadMetrics();

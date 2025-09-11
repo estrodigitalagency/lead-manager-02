@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CalendarIcon, FilterIcon } from "lucide-react";
+import { useMarket } from "@/contexts/MarketContext";
 import { ReportFilters, PRESET_PERIODS, getAvailableVenditori } from "@/services/reportsService";
 import ReportSourceFilters from "./ReportSourceFilters";
 
@@ -16,16 +17,17 @@ interface ReportFiltersProps {
 }
 
 const ReportFiltersComponent = ({ filters, onFiltersChange, onApplyFilters }: ReportFiltersProps) => {
+  const { selectedMarket } = useMarket();
   const [venditori, setVenditori] = useState<string[]>([]);
 
   useEffect(() => {
     const loadOptions = async () => {
-      const availableVenditori = await getAvailableVenditori();
+      const availableVenditori = await getAvailableVenditori(selectedMarket);
       setVenditori(availableVenditori);
     };
 
     loadOptions();
-  }, []);
+  }, [selectedMarket]);
 
   const handlePresetPeriod = (periodKey: string) => {
     const period = PRESET_PERIODS[periodKey as keyof typeof PRESET_PERIODS];

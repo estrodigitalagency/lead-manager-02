@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { X, Filter } from "lucide-react";
+import { useMarket } from "@/contexts/MarketContext";
 import { getAvailableFonti } from "@/services/reportsService";
 
 interface ReportSourceFiltersProps {
@@ -28,16 +29,17 @@ const ReportSourceFilters = ({
   onFontiEscluseChange,
   onClearSourceFilters
 }: ReportSourceFiltersProps) => {
+  const { selectedMarket } = useMarket();
   const [availableFonti, setAvailableFonti] = useState<string[]>([]);
   const [selectedFonte, setSelectedFonte] = useState<string>('');
 
   useEffect(() => {
     const loadFonti = async () => {
-      const fonti = await getAvailableFonti();
+      const fonti = await getAvailableFonti(selectedMarket);
       setAvailableFonti(fonti);
     };
     loadFonti();
-  }, []);
+  }, [selectedMarket]);
 
   const handleAddFonte = () => {
     if (!selectedFonte) return;
