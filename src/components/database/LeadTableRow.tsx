@@ -86,6 +86,12 @@ const LeadTableRow = ({
         </TableCell>
       )}
       
+      {visibleColumns.includes('ultima_fonte') && (
+        <TableCell className="text-sm">
+          <FonteDisplay fonte={lead.ultima_fonte} />
+        </TableCell>
+      )}
+      
       {visibleColumns.includes('lead_score') && (
         <TableCell className="text-sm">
           {lead.lead_score || '-'}

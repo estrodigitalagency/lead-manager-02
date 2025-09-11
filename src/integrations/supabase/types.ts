@@ -406,6 +406,7 @@ export type Database = {
           nome: string
           stato: string | null
           telefono: string | null
+          ultima_fonte: string | null
           updated_at: string | null
           venditore: string | null
         }
@@ -423,6 +424,7 @@ export type Database = {
           nome: string
           stato?: string | null
           telefono?: string | null
+          ultima_fonte?: string | null
           updated_at?: string | null
           venditore?: string | null
         }
@@ -440,6 +442,7 @@ export type Database = {
           nome?: string
           stato?: string | null
           telefono?: string | null
+          ultima_fonte?: string | null
           updated_at?: string | null
           venditore?: string | null
         }

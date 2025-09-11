@@ -89,6 +89,26 @@ serve(async (req) => {
     }
 
     // No duplicates found or different source - insert new lead
+    // Calculate ultima_fonte based on whether this is truly a new lead or has existing duplicates
+    let ultimaFonte = fonte; // Default: all fonte is considered "new"
+    
+    if (existingLeads && existingLeads.length > 0) {
+      // There are existing leads with different sources
+      // Calculate ultima_fonte as the difference between new and old sources
+      const mostRecentLead = existingLeads[0]; // Get the most recent duplicate
+      const oldFonti = mostRecentLead.fonte ? mostRecentLead.fonte.split(',').map(f => f.trim()) : [];
+      const newFonti = fonte ? fonte.split(',').map(f => f.trim()) : [];
+      
+      // Find sources that are in new fonte but not in old fonte
+      const uniqueNewFonti = newFonti.filter(f => !oldFonti.includes(f));
+      ultimaFonte = uniqueNewFonti.length > 0 ? uniqueNewFonti.join(',') : fonte;
+      
+      console.log('Calculated ultima_fonte for existing lead:', ultimaFonte)
+      console.log('Old fonti:', oldFonti, 'New fonti:', newFonti, 'Unique new:', uniqueNewFonti)
+    } else {
+      console.log('New lead - ultima_fonte equals fonte:', ultimaFonte)
+    }
+    
     // Determine assignable status and data_assegnazione based on provided data
     const isAssigned = venditore && venditore.trim() !== '';
     const finalStato = stato || 'nuovo';
@@ -110,7 +130,8 @@ serve(async (req) => {
         stato: finalStato,
         assignable: finalAssignable,
         booked_call: 'NO',
-        data_assegnazione: dataAssegnazione
+        data_assegnazione: dataAssegnazione,
+        ultima_fonte: ultimaFonte
       })
       .select()
       .single()

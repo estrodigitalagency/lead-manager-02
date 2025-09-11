@@ -11,6 +11,7 @@ export interface Lead {
   venditore?: string;
   campagna?: string;
   fonte?: string;
+  ultima_fonte?: string;
   lead_score?: number;
   stato?: string;
   updated_at?: string;
