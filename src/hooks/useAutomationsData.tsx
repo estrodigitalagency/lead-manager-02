@@ -19,6 +19,7 @@ export const useAutomationsData = () => {
       
       const typedData: LeadAssignmentAutomation[] = (data || []).map(item => ({
         ...item,
+        trigger_when: item.trigger_when as 'new_lead' | 'duplicate_different_source',
         trigger_field: item.trigger_field as 'ultima_fonte' | 'fonte' | 'nome' | 'email' | 'telefono' | 'campagna' | 'lead_score' | 'created_at',
         condition_type: item.condition_type as 'contains' | 'equals' | 'starts_with' | 'ends_with' | 'not_contains',
         action_type: item.action_type as 'assign_to_seller' | 'assign_to_previous_seller'

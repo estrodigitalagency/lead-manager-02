@@ -143,11 +143,9 @@ serve(async (req) => {
 
     console.log('Successfully created new lead:', newLead);
     
-    // Se il lead ha ultima_fonte (è un duplicato con fonte diversa), controlla automazioni
-    if (newLead.ultima_fonte && newLead.ultima_fonte !== newLead.fonte) {
-      console.log('Checking automations for lead with ultima_fonte:', newLead.ultima_fonte);
-      await checkAndApplyAutomations(newLead, supabase);
-    }
+    // Controlla automazioni basate sulla configurazione
+    console.log('Checking automations for new lead:', newLead.id);
+    await checkAndApplyAutomations(newLead, supabase);
     
     return new Response(JSON.stringify({
       success: true,
@@ -200,6 +198,15 @@ async function checkAndApplyAutomations(lead: any, supabase: any) {
     // Controlla ogni automazione nell'ordine di priorità
     for (const automation of automations) {
       console.log(`Checking automation: ${automation.nome}`);
+      
+      // Controlla se questa automazione dovrebbe scattare per questo tipo di lead
+      const shouldTrigger = automation.trigger_when === 'new_lead' || 
+        (automation.trigger_when === 'duplicate_different_source' && lead.ultima_fonte && lead.ultima_fonte !== lead.fonte);
+      
+      if (!shouldTrigger) {
+        console.log(`Automation ${automation.nome} skipped - trigger condition not met`);
+        continue;
+      }
       
       if (checkCondition(lead, automation.trigger_field, automation.condition_type, automation.condition_value)) {
         console.log(`Automation condition matched: ${automation.nome}`);

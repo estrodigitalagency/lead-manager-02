@@ -107,17 +107,20 @@ export function AutomationList({ automations, onToggle, onEdit, onDelete, onReor
                               </Badge>
                             </div>
                             
-                            <div className="text-sm text-muted-foreground space-y-1">
-                              <div>
-                                <strong>Trigger:</strong> {triggerFieldLabels[automation.trigger_field]} - {conditionTypeLabels[automation.condition_type]} - "{automation.condition_value}"
-                              </div>
-                              <div>
-                                <strong>Azione:</strong> {actionTypeLabels[automation.action_type]}
-                                {automation.sheets_tab_name && (
-                                  <span> → Tab: "{automation.sheets_tab_name}"</span>
-                                )}
-                              </div>
-                            </div>
+                             <div className="text-sm text-muted-foreground space-y-1">
+                               <div>
+                                 <strong>Quando:</strong> {automation.trigger_when === 'new_lead' ? 'Nuovo Lead' : 'Lead Duplicato (Fonte Diversa)'}
+                               </div>
+                               <div>
+                                 <strong>Trigger:</strong> {triggerFieldLabels[automation.trigger_field]} - {conditionTypeLabels[automation.condition_type]} - "{automation.condition_value}"
+                               </div>
+                               <div>
+                                 <strong>Azione:</strong> {actionTypeLabels[automation.action_type]}
+                                 {automation.sheets_tab_name && (
+                                   <span> → Tab: "{automation.sheets_tab_name}"</span>
+                                 )}
+                               </div>
+                             </div>
                           </div>
                         </div>
 

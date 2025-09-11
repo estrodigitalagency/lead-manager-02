@@ -12,6 +12,7 @@ import { NewAutomationForm, LeadAssignmentAutomation } from "@/types/automation"
 
 const automationSchema = z.object({
   nome: z.string().min(1, "Il nome è obbligatorio"),
+  trigger_when: z.enum(['new_lead', 'duplicate_different_source']),
   trigger_field: z.enum(['ultima_fonte', 'fonte', 'nome', 'email', 'telefono', 'campagna', 'lead_score', 'created_at']),
   condition_type: z.enum(['contains', 'equals', 'starts_with', 'ends_with', 'not_contains']),
   condition_value: z.string().min(1, "Il valore della condizione è obbligatorio"),
@@ -60,6 +61,7 @@ export function AutomationForm({ open, onOpenChange, onSubmit, automation, isLoa
     resolver: zodResolver(automationSchema),
     defaultValues: {
       nome: automation?.nome || "",
+      trigger_when: automation?.trigger_when || "new_lead",
       trigger_field: automation?.trigger_field || "ultima_fonte",
       condition_type: automation?.condition_type || "contains",
       condition_value: automation?.condition_value || "",
@@ -104,6 +106,28 @@ export function AutomationForm({ open, onOpenChange, onSubmit, automation, isLoa
                   <FormControl>
                     <Input placeholder="es. Facebook Ads al venditore Mario" {...field} />
                   </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="trigger_when"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Quando Attivare</FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Seleziona quando attivare" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="new_lead">Nuovo Lead</SelectItem>
+                      <SelectItem value="duplicate_different_source">Lead Duplicato (Fonte Diversa)</SelectItem>
+                    </SelectContent>
+                  </Select>
                   <FormMessage />
                 </FormItem>
               )}

@@ -3,6 +3,7 @@ export interface LeadAssignmentAutomation {
   nome: string;
   attivo: boolean;
   priority: number;
+  trigger_when: 'new_lead' | 'duplicate_different_source';
   trigger_field: 'ultima_fonte' | 'fonte' | 'nome' | 'email' | 'telefono' | 'campagna' | 'lead_score' | 'created_at';
   condition_type: 'contains' | 'equals' | 'starts_with' | 'ends_with' | 'not_contains';
   condition_value: string;
@@ -15,6 +16,7 @@ export interface LeadAssignmentAutomation {
 
 export interface NewAutomationForm {
   nome: string;
+  trigger_when: 'new_lead' | 'duplicate_different_source';
   trigger_field: 'ultima_fonte' | 'fonte' | 'nome' | 'email' | 'telefono' | 'campagna' | 'lead_score' | 'created_at';
   condition_type: 'contains' | 'equals' | 'starts_with' | 'ends_with' | 'not_contains';
   condition_value: string;
