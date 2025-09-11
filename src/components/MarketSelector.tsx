@@ -14,7 +14,7 @@ const MarketSelector = () => {
         </SelectTrigger>
         <SelectContent>
           <SelectItem value="IT">🇮🇹 IT</SelectItem>
-          <SelectItem value="ES">🇪🇸 ES</SelectItem>
+          <SelectItem value="ES" className="text-primary font-semibold bg-primary/10 focus:bg-primary/20 hover:bg-primary/20">🇪🇸 ES</SelectItem>
         </SelectContent>
       </Select>
     </div>;
