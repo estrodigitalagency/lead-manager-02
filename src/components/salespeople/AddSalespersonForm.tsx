@@ -7,12 +7,14 @@ import { Plus } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { NewVenditoreForm } from "@/types/venditore";
+import { useMarket } from "@/contexts/MarketContext";
 
 interface AddSalespersonFormProps {
   onSuccess: () => void;
 }
 
 const AddSalespersonForm = ({ onSuccess }: AddSalespersonFormProps) => {
+  const { selectedMarket } = useMarket();
   const [newVenditore, setNewVenditore] = useState<NewVenditoreForm>({
     nome: '',
     cognome: '',
@@ -48,7 +50,8 @@ const AddSalespersonForm = ({ onSuccess }: AddSalespersonFormProps) => {
           telefono: newVenditore.telefono.trim() || null,
           sheets_file_id: newVenditore.sheets_file_id.trim(),
           sheets_tab_name: newVenditore.sheets_tab_name.trim(),
-          stato: 'attivo'
+          stato: 'attivo',
+          market: selectedMarket
         }]);
 
       if (error) throw error;
