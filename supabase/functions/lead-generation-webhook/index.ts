@@ -144,9 +144,9 @@ function computeFonteDiff(previousFonte: string, newFonte: string): string {
   // Find sources that are in newFonte but not in previousFonte
   const diff = newSources.filter(source => !previousSources.includes(source));
   
-  // If no difference, return empty string or the new fonte
+  // If no difference, return the new fonte (not empty)
   if (diff.length === 0) {
-    return '';
+    return newFonte;
   }
   
   return diff.join(', ');
