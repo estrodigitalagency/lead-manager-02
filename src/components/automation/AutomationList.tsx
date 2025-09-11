@@ -98,7 +98,7 @@ export function AutomationList({ automations, onToggle, onEdit, onDelete, onReor
                             
                             <div className="text-sm text-muted-foreground space-y-1">
                               <div>
-                                <strong>Condizione:</strong> ultima_fonte {conditionTypeLabels[automation.condition_type]} "{automation.condition_value}"
+                                <strong>Trigger:</strong> Ultima Fonte - {conditionTypeLabels[automation.condition_type]} - "{automation.condition_value}"
                               </div>
                               <div>
                                 <strong>Azione:</strong> {actionTypeLabels[automation.action_type]}
