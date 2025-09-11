@@ -59,6 +59,87 @@ export type Database = {
         }
         Relationships: []
       }
+      automation_executions: {
+        Row: {
+          action_taken: string
+          automation_id: string
+          automation_name: string
+          created_at: string
+          error_message: string | null
+          executed_at: string
+          execution_source: string
+          id: string
+          lead_email: string | null
+          lead_id: string
+          lead_name: string | null
+          market: string
+          result: string
+          seller_assigned: string | null
+          seller_id: string | null
+          trigger_field: string
+          trigger_value: string
+          webhook_sent: boolean | null
+          webhook_success: boolean | null
+        }
+        Insert: {
+          action_taken: string
+          automation_id: string
+          automation_name: string
+          created_at?: string
+          error_message?: string | null
+          executed_at?: string
+          execution_source: string
+          id?: string
+          lead_email?: string | null
+          lead_id: string
+          lead_name?: string | null
+          market?: string
+          result: string
+          seller_assigned?: string | null
+          seller_id?: string | null
+          trigger_field: string
+          trigger_value: string
+          webhook_sent?: boolean | null
+          webhook_success?: boolean | null
+        }
+        Update: {
+          action_taken?: string
+          automation_id?: string
+          automation_name?: string
+          created_at?: string
+          error_message?: string | null
+          executed_at?: string
+          execution_source?: string
+          id?: string
+          lead_email?: string | null
+          lead_id?: string
+          lead_name?: string | null
+          market?: string
+          result?: string
+          seller_assigned?: string | null
+          seller_id?: string | null
+          trigger_field?: string
+          trigger_value?: string
+          webhook_sent?: boolean | null
+          webhook_success?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "automation_executions_automation_id_fkey"
+            columns: ["automation_id"]
+            isOneToOne: false
+            referencedRelation: "lead_assignment_automations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "automation_executions_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "lead_generation"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       booked_call: {
         Row: {
           cognome: string | null

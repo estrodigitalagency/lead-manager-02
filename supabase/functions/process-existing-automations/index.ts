@@ -125,23 +125,11 @@ serve(async (req) => {
           targetSeller = automation.venditori
           sheetsTabName = automation.sheets_tab_name || automation.venditori?.sheets_tab_name
         } else if (automation.action_type === 'assign_to_previous_seller') {
-          // Find previous seller
-          const { data: previousLeads, error } = await supabase
-            .from('lead_generation')
-            .select(`
-              venditore,
-              venditori!inner(id, nome, cognome, sheets_file_id, sheets_tab_name, market)
-            `)
-            .or(`email.eq.${lead.email},telefono.eq.${lead.telefono}`)
-            .eq('market', lead.market)
-            .not('venditore', 'is', null)
-            .order('data_assegnazione', { ascending: false })
-            .limit(1)
-
-          if (!error && previousLeads && previousLeads.length > 0) {
-            targetSeller = previousLeads[0].venditori
-            sheetsTabName = automation.sheets_tab_name
-            console.log('Found previous seller:', targetSeller?.nome)
+          // Find previous seller using the corrected logic
+          targetSeller = await findPreviousSeller(lead, supabase)
+          sheetsTabName = automation.sheets_tab_name
+          if (targetSeller) {
+            console.log('Found previous seller:', targetSeller.nome)
           } else {
             console.log('No previous seller found')
           }
@@ -163,6 +151,9 @@ serve(async (req) => {
 
           if (updateError) {
             console.error('Error updating lead:', updateError)
+            // Log error
+            await logAutomationExecution(lead, automation, targetSeller, 'error', updateError.message, 'manual_processing', supabase);
+            
             results.push({
               lead_id: lead.id,
               lead_name: lead.nome,
@@ -207,6 +198,9 @@ serve(async (req) => {
               console.log('Webhook disabled for automation:', automation.nome)
             }
             
+            // Log successful execution
+            await logAutomationExecution(lead, automation, targetSeller, 'success', null, 'manual_processing', supabase);
+            
             results.push({
               lead_id: lead.id,
               lead_name: lead.nome,
@@ -217,6 +211,9 @@ serve(async (req) => {
             })
           }
         } else {
+          // Log no target seller found
+          await logAutomationExecution(lead, automation, null, 'no_seller_found', 'No target seller found', 'manual_processing', supabase);
+          
           results.push({
             lead_id: lead.id,
             lead_name: lead.nome,
@@ -261,3 +258,113 @@ serve(async (req) => {
     })
   }
 })
+
+// Funzione per trovare il venditore precedente (corretta)  
+async function findPreviousSeller(lead: any, supabase: any) {
+  try {
+    console.log(`Finding previous seller for lead: ${lead.email} / ${lead.telefono} in market: ${lead.market}`);
+    
+    // Prima query: trova il nome del venditore precedente dai lead storici
+    const { data: previousLeads, error: leadsError } = await supabase
+      .from('lead_generation')
+      .select('venditore, data_assegnazione, created_at')
+      .or(`email.eq.${lead.email},telefono.eq.${lead.telefono}`)
+      .eq('market', lead.market)
+      .not('venditore', 'is', null)
+      .order('data_assegnazione', { ascending: false })
+      .limit(1);
+
+    if (leadsError) {
+      console.error('Error finding previous leads:', leadsError);
+      return null;
+    }
+
+    if (!previousLeads || previousLeads.length === 0) {
+      console.log('No previous leads found with assigned seller');
+      return null;
+    }
+
+    const previousSellerName = previousLeads[0].venditore;
+    console.log(`Found previous seller name: ${previousSellerName}`);
+
+    // Seconda query: cerca i dettagli del venditore nella tabella venditori
+    const { data: sellers, error: sellersError } = await supabase
+      .from('venditori')
+      .select('id, nome, cognome, sheets_file_id, sheets_tab_name, market, stato')
+      .eq('market', lead.market)
+      .eq('stato', 'attivo');
+
+    if (sellersError) {
+      console.error('Error fetching sellers:', sellersError);
+      return null;
+    }
+
+    if (!sellers || sellers.length === 0) {
+      console.log('No active sellers found in market');
+      return null;
+    }
+
+    // Cerca il venditore che corrisponde al nome
+    const targetSeller = sellers.find(seller => {
+      const fullName = `${seller.nome} ${seller.cognome}`.trim();
+      const normalizedTarget = previousSellerName.toLowerCase().trim();
+      const normalizedSeller = fullName.toLowerCase().trim();
+      
+      return normalizedSeller === normalizedTarget;
+    });
+
+    if (targetSeller) {
+      console.log(`Found matching seller:`, targetSeller);
+      return targetSeller;
+    } else {
+      console.log(`No matching seller found for name: ${previousSellerName}`);
+      return null;
+    }
+
+  } catch (error) {
+    console.error('Error in findPreviousSeller:', error);
+    return null;
+  }
+}
+
+// Funzione per registrare l'esecuzione dell'automazione
+async function logAutomationExecution(
+  lead: any, 
+  automation: any, 
+  seller: any | null, 
+  result: string, 
+  errorMessage: string | null, 
+  executionSource: string,
+  supabase: any
+) {
+  try {
+    const logData = {
+      automation_id: automation.id,
+      automation_name: automation.nome,
+      lead_id: lead.id,
+      lead_email: lead.email,
+      lead_name: `${lead.nome} ${lead.cognome || ''}`.trim(),
+      trigger_field: automation.trigger_field,
+      trigger_value: lead[automation.trigger_field] || '',
+      action_taken: automation.action_type,
+      seller_assigned: seller ? `${seller.nome} ${seller.cognome}` : null,
+      seller_id: seller?.id || null,
+      webhook_sent: automation.webhook_enabled && result === 'success',
+      webhook_success: automation.webhook_enabled && result === 'success',
+      result: result,
+      error_message: errorMessage,
+      execution_source: executionSource,
+      market: lead.market
+    };
+
+    const { error: logError } = await supabase
+      .from('automation_executions')
+      .insert(logData);
+
+    if (logError) {
+      console.error('Error logging automation execution:', logError);
+    }
+  } catch (error) {
+    console.error('Error in logAutomationExecution:', error);
+  }
+}
