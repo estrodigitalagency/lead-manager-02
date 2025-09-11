@@ -54,6 +54,7 @@ serve(async (req) => {
       .select('*')
       .gte('created_at', cutoffTime)
       .or(`email.eq."${email}",telefono.eq."${telefono}",and(nome.eq."${nome}",cognome.eq."${cognome}")`)
+      .order('created_at', { ascending: false })
 
     if (searchError) {
       console.error('Error searching for duplicates:', searchError)
