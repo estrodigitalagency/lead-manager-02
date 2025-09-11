@@ -9,12 +9,12 @@ const MarketSelector = () => {
   return <div className="flex items-center gap-2 bg-transparent">
       
       <Select value={selectedMarket} onValueChange={(value: 'IT' | 'ES') => setSelectedMarket(value)}>
-        <SelectTrigger className="w-20 h-8 text-sm">
+        <SelectTrigger className="w-20 h-8 text-sm bg-primary/20 border-primary/30 text-primary font-medium hover:bg-primary/30">
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
           <SelectItem value="IT">🇮🇹 IT</SelectItem>
-          <SelectItem value="ES" className="text-primary font-semibold bg-primary/10 focus:bg-primary/20 hover:bg-primary/20">🇪🇸 ES</SelectItem>
+          <SelectItem value="ES">🇪🇸 ES</SelectItem>
         </SelectContent>
       </Select>
     </div>;
