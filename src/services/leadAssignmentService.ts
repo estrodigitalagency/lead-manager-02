@@ -12,6 +12,7 @@ export interface LeadAssignmentData {
   bypassTimeInterval?: boolean;
   excludeFromIncluded?: string[];
   onlyHotLeads?: boolean;
+  market?: 'IT' | 'ES';
 }
 
 export async function assignLeadsWithExclusions(data: LeadAssignmentData) {
@@ -24,7 +25,8 @@ export async function assignLeadsWithExclusions(data: LeadAssignmentData) {
     sourceMode = 'exclude',
     bypassTimeInterval = false,
     excludeFromIncluded = [], 
-    onlyHotLeads = false
+    onlyHotLeads = false,
+    market = 'IT'
   } = data;
 
   try {
@@ -45,12 +47,13 @@ export async function assignLeadsWithExclusions(data: LeadAssignmentData) {
 
     const daysBeforeAssignable = settingsData?.value ? parseInt(settingsData.value) : 7;
 
-    // QUERY BASE: Recupera tutti i lead candidati
+    // QUERY BASE: Recupera tutti i lead candidati filtrati per market
     let query = supabase
       .from('lead_generation')
       .select('id, nome, cognome, email, telefono, fonte, lead_score, created_at, booked_call, venditore')
       .is('venditore', null)
-      .eq('booked_call', 'NO');
+      .eq('booked_call', 'NO')
+      .eq('market', market);
       
     // IMPORTANTE: Filtro per Lead Score = "Hot" SOLO se richiesto esplicitamente
     if (onlyHotLeads) {
@@ -171,12 +174,12 @@ export async function assignLeadsWithExclusions(data: LeadAssignmentData) {
       throw new Error(`Errore nell'aggiornamento dei lead: ${updateError.message}`);
     }
 
-    // MIGLIORAMENTO: Cerca venditore per nome completo (nome + cognome)
+    // MIGLIORAMENTO: Cerca venditore per nome completo (nome + cognome) nello stesso market
     const venditoreParts = venditore.trim().split(' ');
     const nomeVenditore = venditoreParts[0];
     const cognomeVenditore = venditoreParts.slice(1).join(' ');
 
-    console.log(`Cercando venditore: nome="${nomeVenditore}", cognome="${cognomeVenditore}"`);
+    console.log(`Cercando venditore: nome="${nomeVenditore}", cognome="${cognomeVenditore}", market="${market}"`);
 
     // Prova prima con nome e cognome separati
     let venditoreDates = null;
@@ -188,6 +191,7 @@ export async function assignLeadsWithExclusions(data: LeadAssignmentData) {
         .select('nome, cognome, email, telefono, sheets_file_id, sheets_tab_name')
         .eq('nome', nomeVenditore)
         .eq('cognome', cognomeVenditore)
+        .eq('market', market)
         .single();
       
       venditoreDates = data;
@@ -200,6 +204,7 @@ export async function assignLeadsWithExclusions(data: LeadAssignmentData) {
         .from('venditori')
         .select('nome, cognome, email, telefono, sheets_file_id, sheets_tab_name')
         .eq('nome', venditore)
+        .eq('market', market)
         .single();
       
       venditoreDates = data;
@@ -212,6 +217,7 @@ export async function assignLeadsWithExclusions(data: LeadAssignmentData) {
         .from('venditori')
         .select('nome, cognome, email, telefono, sheets_file_id, sheets_tab_name')
         .ilike('nome', `%${nomeVenditore}%`)
+        .eq('market', market)
         .single();
       
       venditoreDates = data;
@@ -244,6 +250,7 @@ export async function assignLeadsWithExclusions(data: LeadAssignmentData) {
         google_sheets_file_id: venditoreDates?.sheets_file_id || '',
         google_sheets_tab_name: venditoreDates?.sheets_tab_name || '',
         campagna: (campagna && campagna.trim() !== '') ? campagna : null,
+        market: market,
         leads_count: actualAssignedCount,
         timestamp: new Date().toISOString(),
         leads: leadsToAssign.map(lead => ({
@@ -253,6 +260,7 @@ export async function assignLeadsWithExclusions(data: LeadAssignmentData) {
           email: lead.email || '',
           telefono: lead.telefono || '',
           fonte: lead.fonte || '',
+          market: market,
           created_at: lead.created_at,
           assigned_at: new Date().toISOString()
         }))
@@ -314,7 +322,7 @@ export async function assignLeadsWithExclusions(data: LeadAssignmentData) {
       // Don't throw here as the main assignment succeeded
     }
 
-    // Update salesperson's current lead count - cerca usando la stessa logica
+    // Update salesperson's current lead count - cerca usando la stessa logica nello stesso market
     let currentVenditore = null;
     
     if (cognomeVenditore) {
@@ -323,6 +331,7 @@ export async function assignLeadsWithExclusions(data: LeadAssignmentData) {
         .select('lead_attuali')
         .eq('nome', nomeVenditore)
         .eq('cognome', cognomeVenditore)
+        .eq('market', market)
         .single();
       currentVenditore = data;
     }
@@ -332,6 +341,7 @@ export async function assignLeadsWithExclusions(data: LeadAssignmentData) {
         .from('venditori')
         .select('lead_attuali')
         .eq('nome', venditore)
+        .eq('market', market)
         .single();
       currentVenditore = data;
     }
@@ -341,6 +351,7 @@ export async function assignLeadsWithExclusions(data: LeadAssignmentData) {
         .from('venditori')
         .select('lead_attuali')
         .ilike('nome', `%${nomeVenditore}%`)
+        .eq('market', market)
         .single();
       currentVenditore = data;
     }
@@ -348,18 +359,20 @@ export async function assignLeadsWithExclusions(data: LeadAssignmentData) {
     if (currentVenditore) {
       const newLeadCount = (currentVenditore.lead_attuali || 0) + actualAssignedCount;
       
-      // Aggiorna usando la stessa logica di ricerca
+      // Aggiorna usando la stessa logica di ricerca con filtro market
       if (cognomeVenditore) {
         await supabase
           .from('venditori')
           .update({ lead_attuali: newLeadCount })
           .eq('nome', nomeVenditore)
-          .eq('cognome', cognomeVenditore);
+          .eq('cognome', cognomeVenditore)
+          .eq('market', market);
       } else {
         await supabase
           .from('venditori')
           .update({ lead_attuali: newLeadCount })
-          .eq('nome', venditore);
+          .eq('nome', venditore)
+          .eq('market', market);
       }
     }
 
@@ -378,7 +391,8 @@ export async function getAvailableLeadsCount(
   sourceMode: 'exclude' | 'include' = 'exclude',
   bypassTimeInterval: boolean = false,
   excludeFromIncluded: string[] = [], 
-  onlyHotLeads: boolean = false
+  onlyHotLeads: boolean = false,
+  market: 'IT' | 'ES' = 'IT'
 ): Promise<number> {
   try {
     console.log('getAvailableLeadsCount called with:', {
@@ -399,12 +413,13 @@ export async function getAvailableLeadsCount(
 
     const daysBeforeAssignable = settingsData?.value ? parseInt(settingsData.value) : 7;
 
-    // QUERY BASE: Recupera tutti i candidati
+    // QUERY BASE: Recupera tutti i candidati filtrati per market
     let query = supabase
       .from('lead_generation')
       .select('id, nome, cognome, email, telefono, fonte, lead_score, created_at, booked_call, venditore')
       .is('venditore', null)
-      .eq('booked_call', 'NO');
+      .eq('booked_call', 'NO')
+      .eq('market', market);
       
     // IMPORTANTE: Filtro per Lead Score = "Hot" SOLO se richiesto esplicitamente
     if (onlyHotLeads) {

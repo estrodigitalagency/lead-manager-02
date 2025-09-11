@@ -22,7 +22,11 @@ serve(async (req) => {
 
     // Parse webhook payload
     const payload = await req.json()
-    console.log('Received calendly webhook payload:', payload)
+    
+    // Default market to 'IT' for backward compatibility
+    const finalMarket = payload.market || 'IT'
+    
+    console.log('Received calendly webhook payload:', { ...payload, market: finalMarket })
     
     // Insert the booking data to the booked_call table
     // Important: Use the scheduled_at from the payload for both scheduled_at and data_call
@@ -36,7 +40,8 @@ serve(async (req) => {
         fonte: payload.fonte || null,
         scheduled_at: payload.scheduled_at || new Date().toISOString(),
         data_call: payload.data_call || payload.scheduled_at || new Date().toISOString(),
-        venditore: payload.venditore || null
+        venditore: payload.venditore || null,
+        market: finalMarket
       })
       .select()
 
@@ -70,6 +75,7 @@ serve(async (req) => {
         .from('lead_generation')
         .select('id, email, telefono, created_at')
         .gte('created_at', attributionWindowISODate)
+        .eq('market', finalMarket)
 
       // Apply filters for email or telefono
       if (payload.email && payload.telefono) {

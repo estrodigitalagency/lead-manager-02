@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { useSalespeopleData } from "@/hooks/useSalespeopleData";
 import { getAllCampagne } from "@/services/databaseService";
 import { assignLeadsWithExclusions, LeadAssignmentData } from "@/services/leadAssignmentService";
+import { useMarket } from "@/contexts/MarketContext";
 
 interface AssignmentRecord {
   id: string;
@@ -47,6 +48,7 @@ const ReplayAssignmentDialog = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   const { venditori, isLoading: venditoriLoading } = useSalespeopleData();
+  const { selectedMarket } = useMarket();
 
   useEffect(() => {
     if (open) {
@@ -88,7 +90,8 @@ const ReplayAssignmentDialog = ({
         sourceMode: (assignmentRecord.source_mode as 'exclude' | 'include') || 'exclude',
         bypassTimeInterval: assignmentRecord.bypass_time_interval || false,
         excludeFromIncluded: assignmentRecord.exclude_from_included || undefined,
-        onlyHotLeads: false // Default value
+        onlyHotLeads: false, // Default value
+        market: selectedMarket
       };
 
       await assignLeadsWithExclusions(assignmentData);

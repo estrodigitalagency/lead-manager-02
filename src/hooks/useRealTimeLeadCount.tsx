@@ -1,6 +1,7 @@
 
 import { useState, useCallback, useRef, useEffect } from "react";
 import { getAvailableLeadsCount } from "@/services/leadAssignmentService";
+import { useMarket } from "@/contexts/MarketContext";
 
 interface UseRealTimeLeadCountProps {
   excludedSources: string[];
@@ -19,6 +20,7 @@ export function useRealTimeLeadCount({
   excludeFromIncluded,
   onlyHotLeads = false
 }: UseRealTimeLeadCountProps) {
+  const { selectedMarket } = useMarket();
   const [count, setCount] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -50,7 +52,8 @@ export function useRealTimeLeadCount({
         sourceMode,
         bypassTimeInterval,
         excludeFromIncluded,
-        onlyHotLeads
+        onlyHotLeads,
+        selectedMarket
       );
 
       // Verifica che la richiesta non sia stata annullata
@@ -68,7 +71,7 @@ export function useRealTimeLeadCount({
         setIsLoading(false);
       }
     }
-  }, [excludedSources, includedSources, sourceMode, bypassTimeInterval, excludeFromIncluded, onlyHotLeads]);
+  }, [excludedSources, includedSources, sourceMode, bypassTimeInterval, excludeFromIncluded, onlyHotLeads, selectedMarket]);
 
   // Aggiorna il conteggio ogni volta che cambiano i parametri
   useEffect(() => {

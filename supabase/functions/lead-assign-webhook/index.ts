@@ -48,6 +48,7 @@ serve(async (req) => {
       google_sheets_file_id: assignmentData.google_sheets_file_id || '',
       google_sheets_tab_name: assignmentData.google_sheets_tab_name || '',
       campagna: assignmentData.campagna || '',
+      market: assignmentData.market || 'IT',
       leads_count: assignmentData.leads_count,
       timestamp: assignmentData.timestamp,
       leads: assignmentData.leads.map(lead => ({
@@ -59,6 +60,7 @@ serve(async (req) => {
         fonte: lead.fonte || '',
         lead_score: lead.lead_score || null,
         note: lead.note || '',
+        market: lead.market || 'IT',
         created_at: lead.created_at,
         assigned_at: lead.assigned_at
       }))

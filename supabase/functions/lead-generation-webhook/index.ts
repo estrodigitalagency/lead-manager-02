@@ -18,9 +18,12 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
 
-    const { nome, cognome, email, telefono, fonte, campagna, notes, lead_score, venditore, stato } = await req.json()
+    const { nome, cognome, email, telefono, fonte, campagna, notes, lead_score, venditore, stato, market } = await req.json()
 
-    console.log('Received lead data:', { nome, cognome, email, telefono, fonte, campagna, notes, lead_score, venditore, stato })
+    // Default market to 'IT' for backward compatibility
+    const finalMarket = market || 'IT'
+
+    console.log('Received lead data:', { nome, cognome, email, telefono, fonte, campagna, notes, lead_score, venditore, stato, market: finalMarket })
 
     // Set ultima_fonte equal to fonte (no duplicate checking)
     const ultimaFonte = fonte;
@@ -47,7 +50,8 @@ serve(async (req) => {
         assignable: finalAssignable,
         booked_call: 'NO',
         data_assegnazione: dataAssegnazione,
-        ultima_fonte: ultimaFonte
+        ultima_fonte: ultimaFonte,
+        market: finalMarket
       })
       .select()
       .single()
@@ -89,14 +93,15 @@ async function checkAndApplyAutomations(lead: any, supabase: any) {
   try {
     console.log('Fetching active automations...');
     
-    // Recupera tutte le automazioni attive ordinate per priorità
+    // Recupera tutte le automazioni attive ordinate per priorità, filtrate per market
     const { data: automations, error: automationsError } = await supabase
       .from('lead_assignment_automations')
       .select(`
         *,
-        venditori!target_seller_id(nome, cognome, sheets_file_id, sheets_tab_name)
+        venditori!target_seller_id(nome, cognome, sheets_file_id, sheets_tab_name, market)
       `)
       .eq('attivo', true)
+      .eq('market', lead.market)
       .order('priority', { ascending: true });
 
     if (automationsError) {
@@ -214,14 +219,15 @@ function checkCondition(lead: any, triggerField: string, conditionType: string, 
 // Funzione per trovare il venditore precedente
 async function findPreviousSeller(lead: any, supabase: any) {
   try {
-    // Cerca l'ultimo lead simile (stesso email o telefono) che ha un venditore assegnato
+    // Cerca l'ultimo lead simile (stesso email o telefono) che ha un venditore assegnato nello stesso market
     const { data: previousLeads, error } = await supabase
       .from('lead_generation')
       .select(`
         venditore,
-        venditori!inner(id, nome, cognome, sheets_file_id, sheets_tab_name)
+        venditori!inner(id, nome, cognome, sheets_file_id, sheets_tab_name, market)
       `)
       .or(`email.eq.${lead.email},telefono.eq.${lead.telefono}`)
+      .eq('market', lead.market)
       .not('venditore', 'is', null)
       .order('data_assegnazione', { ascending: false })
       .limit(1);
@@ -278,6 +284,7 @@ async function assignLeadAutomatically(lead: any, seller: any, sheetsTabName: st
         sheets_file_id: seller.sheets_file_id,
         sheets_tab_name: sheetsTabName || seller.sheets_tab_name,
         campagna: lead.campagna,
+        market: lead.market,
         assignedVia: `Automazione: ${automationName}`
       };
 

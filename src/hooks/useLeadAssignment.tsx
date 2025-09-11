@@ -5,8 +5,10 @@ import { getAllFonti, getAllCampagne, getUniqueSourcesFromLeads, syncSourcesToDa
 import { assignLeadsWithExclusions, LeadAssignmentData } from "@/services/leadAssignmentService";
 import { Campaign } from '@/hooks/useCampaignsData';
 import { useRealTimeLeadCount } from "./useRealTimeLeadCount";
+import { useMarket } from "@/contexts/MarketContext";
 
 export function useLeadAssignment() {
+  const { selectedMarket } = useMarket();
   const [numLead, setNumLead] = useState("");
   const [venditore, setVenditore] = useState("");
   const [campagna, setCampagna] = useState("");
@@ -237,13 +239,14 @@ export function useLeadAssignment() {
       await assignLeadsWithExclusions({
         numLead: numLeadInt,
         venditore,
-      campagna,
-      excludedSources,
-      includedSources,
-      sourceMode,
-      bypassTimeInterval,
-      excludeFromIncluded,
-      onlyHotLeads
+        campagna,
+        excludedSources,
+        includedSources,
+        sourceMode,
+        bypassTimeInterval,
+        excludeFromIncluded,
+        onlyHotLeads,
+        market: selectedMarket
       });
       
       toast.success(`${numLeadInt} lead assegnati con successo a ${venditore}`);

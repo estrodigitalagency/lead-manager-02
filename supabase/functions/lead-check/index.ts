@@ -15,6 +15,18 @@ serve(async (req) => {
   }
 
   try {
+    // Parse request body to get market parameter (optional)
+    let market = 'IT' // Default market
+    try {
+      const body = await req.json()
+      if (body.market) {
+        market = body.market
+      }
+    } catch {
+      // If no body or invalid JSON, use default market
+    }
+    
+    console.log(`Running lead check for market: ${market}`)
     // Create a Supabase client
     const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? ''
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
@@ -40,12 +52,13 @@ serve(async (req) => {
     
     console.log(`Starting lead check with attribution window of ${attributionWindow} days and ${daysBeforeAssignable} days before assignable`)
     
-    // STEP 1: REGOLA ASSOLUTA - TUTTI i lead con booked_call='SI' NON SONO MAI ASSEGNABILI
-    console.log("STEP 1: Setting all leads with booked_call='SI' to be NON-assignable")
+    // STEP 1: REGOLA ASSOLUTA - TUTTI i lead con booked_call='SI' NON SONO MAI ASSEGNABILI (filtrato per market)
+    console.log(`STEP 1: Setting all leads with booked_call='SI' to be NON-assignable for market ${market}`)
     const { error: forceUpdateError } = await supabase
       .from('lead_generation')
       .update({ assignable: false, stato: 'prenotato' })
       .eq('booked_call', 'SI')
+      .eq('market', market)
     
     if (forceUpdateError) {
       console.error('Error in force update:', forceUpdateError)
@@ -64,32 +77,34 @@ serve(async (req) => {
     console.log(`Assignable cutoff date: ${assignableCutoffISODate}`)
     console.log(`Attribution cutoff date: ${attributionCutoffISODate}`)
     
-    // Get all leads with their contact info (ESCLUDO già quelli con call prenotate)
+    // Get all leads with their contact info (ESCLUDO già quelli con call prenotate, filtrato per market)
     const { data: allLeads, error: leadsError } = await supabase
       .from('lead_generation')
       .select('id, email, telefono, created_at, booked_call, assignable')
       .not('email', 'is', null)
       .not('telefono', 'is', null)
       .neq('booked_call', 'SI') // EVITO di processare lead con call già prenotate
+      .eq('market', market)
     
     if (leadsError) {
       throw leadsError
     }
     
-    console.log(`Found ${allLeads?.length || 0} leads to check (excluding already booked)`)
+    console.log(`Found ${allLeads?.length || 0} leads to check for market ${market} (excluding already booked)`)
     
     if (!allLeads || allLeads.length === 0) {
       return new Response(
-        JSON.stringify({ success: true, checked: 0, updated: 0 }),
+        JSON.stringify({ success: true, market, checked: 0, updated: 0 }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
       )
     }
     
-    // Get all bookings created within the attribution window
+    // Get all bookings created within the attribution window (filtrato per market)
     const { data: allBookings, error: bookingsError } = await supabase
       .from('booked_call')
       .select('email, telefono, created_at')
       .gte('created_at', attributionCutoffISODate)
+      .eq('market', market)
     
     if (bookingsError) {
       console.error('Error fetching bookings:', bookingsError)
@@ -205,22 +220,24 @@ serve(async (req) => {
       console.log(`Processed batch ${Math.floor(i/batchSize) + 1}/${Math.ceil(allLeads.length/batchSize)}`)
     }
     
-    // STEP 2: FINAL SAFETY CHECK - Force update any remaining leads with booked_call='SI'
-    console.log("STEP 2: Final safety check for leads with booked_call='SI'")
+    // STEP 2: FINAL SAFETY CHECK - Force update any remaining leads with booked_call='SI' (filtrato per market)
+    console.log(`STEP 2: Final safety check for leads with booked_call='SI' for market ${market}`)
     const { error: finalUpdateError } = await supabase
       .from('lead_generation')
       .update({ assignable: false, stato: 'prenotato' })
       .eq('booked_call', 'SI')
+      .eq('market', market)
     
     if (finalUpdateError) {
       console.error('Error in final safety update:', finalUpdateError)
     }
     
-    console.log(`Lead check completed. Updated ${totalUpdatedLeads} leads out of ${allLeads.length} checked.`)
+    console.log(`Lead check completed for market ${market}. Updated ${totalUpdatedLeads} leads out of ${allLeads.length} checked.`)
     
     return new Response(
       JSON.stringify({ 
-        success: true, 
+        success: true,
+        market,
         checked: allLeads.length,
         updated: totalUpdatedLeads 
       }),
