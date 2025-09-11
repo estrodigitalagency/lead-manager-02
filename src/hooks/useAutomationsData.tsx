@@ -17,7 +17,14 @@ export const useAutomationsData = () => {
       
       if (error) throw error;
       
-      setAutomations(data || []);
+      const typedData: LeadAssignmentAutomation[] = (data || []).map(item => ({
+        ...item,
+        trigger_field: item.trigger_field as 'ultima_fonte' | 'fonte' | 'nome' | 'email' | 'telefono' | 'campagna' | 'lead_score' | 'created_at',
+        condition_type: item.condition_type as 'contains' | 'equals' | 'starts_with' | 'ends_with' | 'not_contains',
+        action_type: item.action_type as 'assign_to_seller' | 'assign_to_previous_seller'
+      }));
+      
+      setAutomations(typedData);
     } catch (error) {
       console.error("Error fetching automations:", error);
       toast.error("Errore nel caricamento delle automazioni");

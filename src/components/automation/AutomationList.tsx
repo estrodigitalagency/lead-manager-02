@@ -16,6 +16,17 @@ interface AutomationListProps {
   onReorder: (result: any) => void;
 }
 
+const triggerFieldLabels = {
+  ultima_fonte: "Ultima Fonte",
+  fonte: "Fonte", 
+  nome: "Nome",
+  email: "Email",
+  telefono: "Telefono",
+  campagna: "Campagna",
+  lead_score: "Lead Score",
+  created_at: "Data Creazione"
+};
+
 const conditionTypeLabels = {
   contains: "contiene",
   equals: "è uguale a",
@@ -98,7 +109,7 @@ export function AutomationList({ automations, onToggle, onEdit, onDelete, onReor
                             
                             <div className="text-sm text-muted-foreground space-y-1">
                               <div>
-                                <strong>Trigger:</strong> Ultima Fonte - {conditionTypeLabels[automation.condition_type]} - "{automation.condition_value}"
+                                <strong>Trigger:</strong> {triggerFieldLabels[automation.trigger_field]} - {conditionTypeLabels[automation.condition_type]} - "{automation.condition_value}"
                               </div>
                               <div>
                                 <strong>Azione:</strong> {actionTypeLabels[automation.action_type]}

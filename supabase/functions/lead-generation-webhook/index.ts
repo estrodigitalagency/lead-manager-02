@@ -201,7 +201,7 @@ async function checkAndApplyAutomations(lead: any, supabase: any) {
     for (const automation of automations) {
       console.log(`Checking automation: ${automation.nome}`);
       
-      if (checkCondition(lead.ultima_fonte, automation.condition_type, automation.condition_value)) {
+      if (checkCondition(lead, automation.trigger_field, automation.condition_type, automation.condition_value)) {
         console.log(`Automation condition matched: ${automation.nome}`);
         
         let targetSeller = null;
@@ -235,23 +235,54 @@ async function checkAndApplyAutomations(lead: any, supabase: any) {
 }
 
 // Funzione per controllare se una condizione è soddisfatta
-function checkCondition(ultimaFonte: string, conditionType: string, conditionValue: string): boolean {
-  if (!ultimaFonte || !conditionValue) return false;
+function checkCondition(lead: any, triggerField: string, conditionType: string, conditionValue: string): boolean {
+  if (!conditionValue) return false;
   
-  const fonte = ultimaFonte.toLowerCase();
+  // Estrai il valore del campo specificato dal lead
+  let fieldValue = '';
+  switch (triggerField) {
+    case 'ultima_fonte':
+      fieldValue = lead.ultima_fonte || '';
+      break;
+    case 'fonte':
+      fieldValue = lead.fonte || '';
+      break;
+    case 'nome':
+      fieldValue = lead.nome || '';
+      break;
+    case 'email':
+      fieldValue = lead.email || '';
+      break;
+    case 'telefono':
+      fieldValue = lead.telefono || '';
+      break;
+    case 'campagna':
+      fieldValue = lead.campagna || '';
+      break;
+    case 'lead_score':
+      fieldValue = lead.lead_score || '';
+      break;
+    case 'created_at':
+      fieldValue = lead.created_at || '';
+      break;
+    default:
+      return false;
+  }
+  
+  const field = fieldValue.toLowerCase();
   const value = conditionValue.toLowerCase();
   
   switch (conditionType) {
     case 'contains':
-      return fonte.includes(value);
+      return field.includes(value);
     case 'equals':
-      return fonte === value;
+      return field === value;
     case 'starts_with':
-      return fonte.startsWith(value);
+      return field.startsWith(value);
     case 'ends_with':
-      return fonte.endsWith(value);
+      return field.endsWith(value);
     case 'not_contains':
-      return !fonte.includes(value);
+      return !field.includes(value);
     default:
       return false;
   }

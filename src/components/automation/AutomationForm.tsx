@@ -12,6 +12,7 @@ import { NewAutomationForm, LeadAssignmentAutomation } from "@/types/automation"
 
 const automationSchema = z.object({
   nome: z.string().min(1, "Il nome è obbligatorio"),
+  trigger_field: z.enum(['ultima_fonte', 'fonte', 'nome', 'email', 'telefono', 'campagna', 'lead_score', 'created_at']),
   condition_type: z.enum(['contains', 'equals', 'starts_with', 'ends_with', 'not_contains']),
   condition_value: z.string().min(1, "Il valore della condizione è obbligatorio"),
   action_type: z.enum(['assign_to_seller', 'assign_to_previous_seller']),
@@ -26,6 +27,17 @@ interface AutomationFormProps {
   automation?: LeadAssignmentAutomation;
   isLoading?: boolean;
 }
+
+const triggerFieldLabels = {
+  ultima_fonte: "Ultima Fonte",
+  fonte: "Fonte",
+  nome: "Nome",
+  email: "Email", 
+  telefono: "Telefono",
+  campagna: "Campagna",
+  lead_score: "Lead Score",
+  created_at: "Data Creazione"
+};
 
 const conditionTypeLabels = {
   contains: "Contiene",
@@ -48,6 +60,7 @@ export function AutomationForm({ open, onOpenChange, onSubmit, automation, isLoa
     resolver: zodResolver(automationSchema),
     defaultValues: {
       nome: automation?.nome || "",
+      trigger_field: automation?.trigger_field || "ultima_fonte",
       condition_type: automation?.condition_type || "contains",
       condition_value: automation?.condition_value || "",
       action_type: automation?.action_type || "assign_to_seller",
@@ -91,6 +104,31 @@ export function AutomationForm({ open, onOpenChange, onSubmit, automation, isLoa
                   <FormControl>
                     <Input placeholder="es. Facebook Ads al venditore Mario" {...field} />
                   </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="trigger_field"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Campo Trigger</FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Seleziona campo" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {Object.entries(triggerFieldLabels).map(([value, label]) => (
+                        <SelectItem key={value} value={value}>
+                          {label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   <FormMessage />
                 </FormItem>
               )}

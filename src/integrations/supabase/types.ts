@@ -364,6 +364,7 @@ export type Database = {
           priority: number
           sheets_tab_name: string | null
           target_seller_id: string | null
+          trigger_field: string
           updated_at: string
         }
         Insert: {
@@ -377,6 +378,7 @@ export type Database = {
           priority?: number
           sheets_tab_name?: string | null
           target_seller_id?: string | null
+          trigger_field?: string
           updated_at?: string
         }
         Update: {
@@ -390,6 +392,7 @@ export type Database = {
           priority?: number
           sheets_tab_name?: string | null
           target_seller_id?: string | null
+          trigger_field?: string
           updated_at?: string
         }
         Relationships: [
