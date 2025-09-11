@@ -122,7 +122,7 @@ const PersistentNavigation = () => {
               <NavItems />
             </div>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-4 mr-4">
             <MarketSelector />
           </div>
           <div className="flex-shrink-0">
