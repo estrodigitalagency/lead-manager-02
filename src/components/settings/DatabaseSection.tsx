@@ -308,12 +308,12 @@ export default function DatabaseSection() {
                             <div className="space-y-2">
                               {db.webhookFields.map((field) => (
                                 <div key={field.name} className="flex items-start gap-2">
-                                  <code className="bg-gray-100 px-2 py-1 rounded text-sm">
+                                  <code className="bg-muted border border-border px-2 py-1 rounded text-sm text-foreground">
                                     {field.name}
                                   </code>
                                   <div className="text-sm">
-                                    {field.required && <span className="text-red-600 font-medium">Obbligatorio</span>}
-                                    {!field.required && <span className="text-gray-500">Opzionale</span>}
+                                    {field.required && <span className="text-destructive font-medium">Obbligatorio</span>}
+                                    {!field.required && <span className="text-muted-foreground">Opzionale</span>}
                                     <span className="ml-2">{field.description}</span>
                                   </div>
                                 </div>
