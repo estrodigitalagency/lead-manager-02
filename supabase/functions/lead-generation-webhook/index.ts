@@ -18,15 +18,15 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
 
-    const { nome, cognome, email, telefono, fonte, campagna, notes, lead_score, venditore, stato, market } = await req.json()
+    const { nome, cognome, email, telefono, fonte, campagna, notes, lead_score, venditore, stato, market, ultima_fonte } = await req.json()
 
     // Default market to 'IT' for backward compatibility
     const finalMarket = market || 'IT'
 
-    console.log('Received lead data:', { nome, cognome, email, telefono, fonte, campagna, notes, lead_score, venditore, stato, market: finalMarket })
+    console.log('Received lead data:', { nome, cognome, email, telefono, fonte, campagna, notes, lead_score, venditore, stato, market: finalMarket, ultima_fonte })
 
-    // Calculate ultima_fonte based on existing leads
-    const ultimaFonte = await calculateUltimaFonte(email, telefono, fonte, finalMarket, supabase);
+    // Use provided ultima_fonte if available, otherwise calculate it
+    const finalUltimaFonte = ultima_fonte || await calculateUltimaFonte(email, telefono, fonte, finalMarket, supabase);
     
     // Determine assignable status and data_assegnazione based on provided data
     const isAssigned = venditore && venditore.trim() !== '';
@@ -50,7 +50,7 @@ serve(async (req) => {
         assignable: finalAssignable,
         booked_call: 'NO',
         data_assegnazione: dataAssegnazione,
-        ultima_fonte: ultimaFonte,
+        ultima_fonte: finalUltimaFonte,
         market: finalMarket
       })
       .select()
