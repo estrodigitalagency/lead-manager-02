@@ -42,6 +42,14 @@ export function useLeadAssignment() {
     initializeData();
   }, []);
 
+  // Reload data when market changes
+  useEffect(() => {
+    if (selectedMarket) {
+      fetchSalespeople();
+      fetchCampagne();
+    }
+  }, [selectedMarket]);
+
   const initializeData = async () => {
     try {
       console.log('🚀 Initializing lead assignment data...');
@@ -67,11 +75,12 @@ export function useLeadAssignment() {
         .from('venditori')
         .select('id, nome, cognome')
         .eq('stato', 'attivo')
+        .eq('market', selectedMarket)
         .order('nome');
       
       if (error) throw error;
       setSalespeople(data || []);
-      console.log(`📊 Loaded ${data?.length || 0} active salespeople`);
+      console.log(`📊 Loaded ${data?.length || 0} active salespeople for market ${selectedMarket}`);
     } catch (error) {
       console.error("Error fetching salespeople:", error);
     }
@@ -103,6 +112,7 @@ export function useLeadAssignment() {
       const { data, error } = await supabase
         .from('database_campagne')
         .select('*')
+        .eq('market', selectedMarket)
         .order('nome', { ascending: true });
 
       if (error) throw error;
@@ -112,7 +122,7 @@ export function useLeadAssignment() {
       })) || [];
       
       setCampagne(campaignsData);
-      console.log(`📊 Loaded ${campaignsData.length} campagne`);
+      console.log(`📊 Loaded ${campaignsData.length} campagne for market ${selectedMarket}`);
     } catch (error) {
       console.error("Error fetching campagne:", error);
     }
