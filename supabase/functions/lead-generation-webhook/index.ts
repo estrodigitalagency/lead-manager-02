@@ -423,32 +423,59 @@ async function assignLeadAutomatically(lead: any, seller: any, sheetsTabName: st
     // Call webhook if automation has webhook enabled
     if (automation.webhook_enabled) {
       try {
-        const webhookData = {
-          leadId: lead.id,
-          nome: lead.nome,
-          cognome: lead.cognome || '',
-          email: lead.email,
-          telefono: lead.telefono,
-          fonte: lead.fonte,
-          ultima_fonte: lead.ultima_fonte,
-          venditore: `${seller.nome} ${seller.cognome}`,
-          sheets_file_id: seller.sheets_file_id,
-          sheets_tab_name: sheetsTabName || seller.sheets_tab_name,
-          campagna: lead.campagna,
-          market: lead.market,
-          assignedVia: `Automazione: ${automation.nome}`
-        };
+        // Get webhook URL from system settings
+        const { data: webhookSettings, error: webhookError } = await supabase
+          .from('system_settings')
+          .select('value')
+          .eq('key', 'lead_assign_webhook_url')
+          .single();
 
-        const { error: webhookCallError } = await supabase.functions.invoke('lead-assign-webhook', {
-          body: webhookData
-        });
-
-        if (webhookCallError) {
-          console.error('Error calling lead-assign-webhook:', webhookCallError);
+        if (webhookError || !webhookSettings?.value) {
+          console.error('Webhook URL not configured in system settings');
           webhookSuccess = false;
-          webhookError = webhookCallError.message;
+          webhookError = 'Webhook URL not configured';
         } else {
-          console.log('Successfully called lead-assign-webhook for automation assignment');
+          const webhookUrl = webhookSettings.value;
+          
+          // Format payload as expected by lead-assign-webhook
+          const assignmentData = {
+            venditore: seller.nome,
+            venditore_cognome: seller.cognome,
+            venditore_email: '',
+            venditore_telefono: '',
+            google_sheets_file_id: seller.sheets_file_id || '',
+            google_sheets_tab_name: sheetsTabName || seller.sheets_tab_name || '',
+            campagna: lead.campagna || '',
+            market: lead.market,
+            leads_count: 1,
+            timestamp: new Date().toISOString(),
+            leads: [{
+              id: lead.id,
+              nome: lead.nome,
+              cognome: lead.cognome || '',
+              email: lead.email,
+              telefono: lead.telefono,
+              fonte: lead.fonte,
+              market: lead.market,
+              created_at: lead.created_at,
+              assigned_at: new Date().toISOString()
+            }]
+          };
+
+          const { error: webhookCallError } = await supabase.functions.invoke('lead-assign-webhook', {
+            body: {
+              assignmentData,
+              webhookUrl
+            }
+          });
+
+          if (webhookCallError) {
+            console.error('Error calling lead-assign-webhook:', webhookCallError);
+            webhookSuccess = false;
+            webhookError = webhookCallError.message;
+          } else {
+            console.log('Successfully called lead-assign-webhook for automation assignment');
+          }
         }
       } catch (error) {
         console.error('Error in webhook call:', error);
