@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -77,6 +77,37 @@ export function AutomationForm({ open, onOpenChange, onSubmit, automation, isLoa
   });
 
   const actionType = form.watch("action_type");
+
+  // Reset form when automation prop changes
+  useEffect(() => {
+    if (automation) {
+      form.reset({
+        nome: automation.nome || "",
+        trigger_when: automation.trigger_when || "new_lead",
+        trigger_field: automation.trigger_field || "ultima_fonte",
+        condition_type: automation.condition_type || "contains",
+        condition_value: automation.condition_value || "",
+        action_type: automation.action_type || "assign_to_seller",
+        target_seller_id: automation.target_seller_id || undefined,
+        sheets_tab_name: automation.sheets_tab_name || "",
+        campagna: automation.campagna || "",
+        webhook_enabled: automation.webhook_enabled ?? true,
+      });
+    } else {
+      form.reset({
+        nome: "",
+        trigger_when: "new_lead",
+        trigger_field: "ultima_fonte",
+        condition_type: "contains",
+        condition_value: "",
+        action_type: "assign_to_seller",
+        target_seller_id: undefined,
+        sheets_tab_name: "",
+        campagna: "",
+        webhook_enabled: true,
+      });
+    }
+  }, [automation, form]);
 
   const handleSubmit = async (data: NewAutomationForm) => {
     try {
