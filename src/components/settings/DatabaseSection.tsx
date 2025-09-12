@@ -41,6 +41,7 @@ export default function DatabaseSection() {
     telefono: "+39 123 456 7890",
     campagna: "Google Ads",
     fonte: "google, facebook",
+    ultima_fonte: "facebook",
     lead_score: 85,
     venditore: "Giovanni Bianchi",
     stato: "assegnato",
@@ -78,6 +79,7 @@ export default function DatabaseSection() {
         { name: "assignable", type: "boolean", nullable: true, default: "false" },
         { name: "venditore", type: "text", nullable: true, default: "-" },
         { name: "booked_call", type: "text", nullable: true, default: "NO" },
+        { name: "ultima_fonte", type: "text", nullable: true, default: "null" },
       ],
       webhookEndpoint: "https://btcwmuyemmkiteqlopce.functions.supabase.co/lead-generation-webhook",
       webhookExample: leadGenerationExample,
@@ -92,6 +94,7 @@ export default function DatabaseSection() {
         { name: "venditore", required: false, description: "Nome del venditore assegnato (se già assegnato)" },
         { name: "stato", required: false, description: "Stato del lead (es: nuovo, assegnato, lavorato)" },
         { name: "booked_call", required: false, description: "\"SI\" o \"NO\" se ha prenotato una chiamata" },
+        { name: "ultima_fonte", required: false, description: "Ultima fonte di acquisizione del lead (opzionale, se non specificata verrà calcolata automaticamente)" },
         { name: "market", required: false, description: "Mercato di riferimento: \"IT\" (Italia) o \"ES\" (Spagna). Default: \"IT\"" },
         { name: "note", required: false, description: "Note aggiuntive sul lead" }
       ]
@@ -284,7 +287,7 @@ export default function DatabaseSection() {
 
                           <div>
                             <h4 className="font-medium mb-2">Esempio JSON:</h4>
-                            <div className="bg-gray-50 p-4 rounded-lg">
+                            <div className="bg-muted/30 p-4 rounded-lg border border-border/20">
                               <pre className="text-sm overflow-x-auto">
 {JSON.stringify(db.webhookExample, null, 2)}
                               </pre>
