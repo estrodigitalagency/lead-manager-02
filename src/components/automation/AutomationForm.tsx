@@ -20,6 +20,7 @@ const automationSchema = z.object({
   action_type: z.enum(['assign_to_seller', 'assign_to_previous_seller']),
   target_seller_id: z.string().optional(),
   sheets_tab_name: z.string().optional(),
+  campagna: z.string().optional(),
   webhook_enabled: z.boolean().optional(),
 });
 
@@ -70,6 +71,7 @@ export function AutomationForm({ open, onOpenChange, onSubmit, automation, isLoa
       action_type: automation?.action_type || "assign_to_seller",
       target_seller_id: automation?.target_seller_id || undefined,
       sheets_tab_name: automation?.sheets_tab_name || "",
+      campagna: automation?.campagna || "",
       webhook_enabled: automation?.webhook_enabled ?? true,
     },
   });
@@ -262,6 +264,20 @@ export function AutomationForm({ open, onOpenChange, onSubmit, automation, isLoa
                   <FormLabel>Nome Tab Google Sheets (opzionale)</FormLabel>
                   <FormControl>
                     <Input placeholder="es. Facebook, Ads, Eventi" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="campagna"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Campagna (opzionale)</FormLabel>
+                  <FormControl>
+                    <Input placeholder="es. Workshop Settembre25" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

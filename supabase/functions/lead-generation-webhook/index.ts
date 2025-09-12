@@ -401,14 +401,23 @@ async function assignLeadAutomatically(lead: any, seller: any, sheetsTabName: st
     console.log(`Assigning lead ${lead.id} to seller ${seller.nome} ${seller.cognome} via automation: ${automation.nome}`);
     
     // Aggiorna il lead nel database
+    const updateData = {
+      venditore: `${seller.nome} ${seller.cognome}`,
+      stato: 'assegnato',
+      data_assegnazione: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+    
+    // Usa campagna dall'automazione se fornita, altrimenti dal sheets_tab_name per retrocompatibilità
+    if (automation.campagna) {
+      updateData.campagna = automation.campagna;
+    } else if (sheetsTabName) {
+      updateData.campagna = sheetsTabName;
+    }
+    
     const { error: updateError } = await supabase
       .from('lead_generation')
-      .update({
-        venditore: `${seller.nome} ${seller.cognome}`,
-        stato: 'assegnato',
-        data_assegnazione: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      })
+      .update(updateData)
       .eq('id', lead.id);
 
     if (updateError) {
@@ -445,7 +454,7 @@ async function assignLeadAutomatically(lead: any, seller: any, sheetsTabName: st
             venditore_telefono: '',
             google_sheets_file_id: seller.sheets_file_id || '',
             google_sheets_tab_name: sheetsTabName || seller.sheets_tab_name || '',
-            campagna: lead.campagna || '',
+            campagna: automation.campagna || sheetsTabName || lead.campagna || '',
             market: lead.market,
             leads_count: 1,
             timestamp: new Date().toISOString(),

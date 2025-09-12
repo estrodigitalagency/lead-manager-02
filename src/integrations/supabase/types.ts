@@ -458,6 +458,7 @@ export type Database = {
         Row: {
           action_type: Database["public"]["Enums"]["automation_action_type"]
           attivo: boolean
+          campagna: string | null
           condition_type: Database["public"]["Enums"]["automation_condition_type"]
           condition_value: string
           created_at: string
@@ -475,6 +476,7 @@ export type Database = {
         Insert: {
           action_type: Database["public"]["Enums"]["automation_action_type"]
           attivo?: boolean
+          campagna?: string | null
           condition_type: Database["public"]["Enums"]["automation_condition_type"]
           condition_value: string
           created_at?: string
@@ -492,6 +494,7 @@ export type Database = {
         Update: {
           action_type?: Database["public"]["Enums"]["automation_action_type"]
           attivo?: boolean
+          campagna?: string | null
           condition_type?: Database["public"]["Enums"]["automation_condition_type"]
           condition_value?: string
           created_at?: string

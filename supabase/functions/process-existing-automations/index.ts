@@ -139,14 +139,23 @@ serve(async (req) => {
           console.log(`Assigning lead ${lead.id} to seller ${targetSeller.nome} ${targetSeller.cognome}`)
           
           // Update the lead
+          const updateData = {
+            venditore: `${targetSeller.nome} ${targetSeller.cognome}`,
+            stato: 'assegnato',
+            data_assegnazione: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          };
+          
+          // Usa campagna dall'automazione se fornita, altrimenti dal sheets_tab_name per retrocompatibilità
+          if (automation.campagna) {
+            updateData.campagna = automation.campagna;
+          } else if (sheetsTabName) {
+            updateData.campagna = sheetsTabName;
+          }
+          
           const { error: updateError } = await supabase
             .from('lead_generation')
-            .update({
-              venditore: `${targetSeller.nome} ${targetSeller.cognome}`,
-              stato: 'assegnato',
-              data_assegnazione: new Date().toISOString(),
-              updated_at: new Date().toISOString()
-            })
+            .update(updateData)
             .eq('id', lead.id)
 
           if (updateError) {
@@ -188,7 +197,7 @@ serve(async (req) => {
                     venditore_telefono: '',
                     google_sheets_file_id: targetSeller.sheets_file_id || '',
                     google_sheets_tab_name: sheetsTabName || targetSeller.sheets_tab_name || '',
-                    campagna: lead.campagna || '',
+                    campagna: automation.campagna || sheetsTabName || lead.campagna || '',
                     market: lead.market,
                     leads_count: 1,
                     timestamp: new Date().toISOString(),

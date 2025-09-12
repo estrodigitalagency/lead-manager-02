@@ -10,6 +10,7 @@ export interface LeadAssignmentAutomation {
   action_type: 'assign_to_seller' | 'assign_to_previous_seller';
   target_seller_id?: string;
   sheets_tab_name?: string;
+  campagna?: string;
   webhook_enabled: boolean;
   created_at: string;
   updated_at: string;
@@ -24,5 +25,6 @@ export interface NewAutomationForm {
   action_type: 'assign_to_seller' | 'assign_to_previous_seller';
   target_seller_id?: string;
   sheets_tab_name?: string;
+  campagna?: string;
   webhook_enabled?: boolean;
 }
