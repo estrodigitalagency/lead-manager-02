@@ -108,35 +108,37 @@ export function AutomationSettings() {
   return (
     <div className="space-y-6">
       <Tabs defaultValue="automations" className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="automations" className="flex items-center space-x-2">
+        <TabsList className="grid w-full grid-cols-2 h-auto">
+          <TabsTrigger value="automations" className="flex items-center space-x-1 sm:space-x-2 py-3">
             <Zap className="h-4 w-4" />
-            <span>Automazioni</span>
+            <span className="text-sm">Automazioni</span>
           </TabsTrigger>
-          <TabsTrigger value="history" className="flex items-center space-x-2">
+          <TabsTrigger value="history" className="flex items-center space-x-1 sm:space-x-2 py-3">
             <History className="h-4 w-4" />
-            <span>Storico Esecuzioni</span>
+            <span className="text-sm">Storico</span>
           </TabsTrigger>
         </TabsList>
 
         <TabsContent value="automations" className="space-y-6">
           <Card>
             <CardHeader>
-              <div className="flex items-center justify-between">
+              <div className="space-y-4">
                 <div className="flex items-center space-x-2">
                   <Zap className="h-5 w-5 text-primary" />
                   <div>
                     <CardTitle>Automazioni Lead</CardTitle>
-                    <CardDescription>
+                    <CardDescription className="hidden sm:block">
                       Gestisci le regole automatiche per l'assegnazione dei lead duplicati
                     </CardDescription>
                   </div>
                 </div>
-                <div className="flex items-center space-x-2">
+                
+                <div className="flex flex-col sm:flex-row gap-2 sm:gap-2">
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={() => setShowTestPanel(!showTestPanel)}
+                    className="w-full sm:w-auto"
                   >
                     Test Automazioni
                   </Button>
@@ -145,13 +147,19 @@ export function AutomationSettings() {
                     size="sm"
                     onClick={handleProcessExistingLeads}
                     disabled={isProcessing || activeAutomationsCount === 0}
+                    className="w-full sm:w-auto"
                   >
                     <Play className="h-4 w-4 mr-2" />
-                    {isProcessing ? "Processando..." : "Processa Lead Esistenti"}
+                    <span className="hidden sm:inline">{isProcessing ? "Processando..." : "Processa Lead Esistenti"}</span>
+                    <span className="sm:hidden">{isProcessing ? "Processando..." : "Processa Lead"}</span>
                   </Button>
-                  <Button onClick={() => setShowForm(true)}>
+                  <Button 
+                    onClick={() => setShowForm(true)}
+                    className="w-full sm:w-auto"
+                  >
                     <Plus className="h-4 w-4 mr-2" />
-                    Nuova Automazione
+                    <span className="hidden sm:inline">Nuova Automazione</span>
+                    <span className="sm:hidden">Nuova</span>
                   </Button>
                 </div>
               </div>

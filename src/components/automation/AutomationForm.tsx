@@ -130,9 +130,9 @@ export function AutomationForm({ open, onOpenChange, onSubmit, automation, isLoa
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>
+          <DialogTitle className="text-base sm:text-lg">
             {automation ? "Modifica Automazione" : "Nuova Automazione"}
           </DialogTitle>
         </DialogHeader>
@@ -200,7 +200,7 @@ export function AutomationForm({ open, onOpenChange, onSubmit, automation, isLoa
               )}
             />
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <FormField
                 control={form.control}
                 name="condition_type"
@@ -410,11 +410,11 @@ export function AutomationForm({ open, onOpenChange, onSubmit, automation, isLoa
               />
             )}
 
-            <div className="flex justify-end space-x-2 pt-4">
-              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+            <div className="flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-2 pt-4">
+              <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="w-full sm:w-auto">
                 Annulla
               </Button>
-              <Button type="submit" disabled={isSubmitting || isLoading}>
+              <Button type="submit" disabled={isSubmitting || isLoading} className="w-full sm:w-auto">
                 {isSubmitting ? "Salvando..." : automation ? "Aggiorna" : "Crea"}
               </Button>
             </div>

@@ -88,71 +88,95 @@ export function AutomationList({ automations, onToggle, onEdit, onDelete, onReor
                       !automation.attivo ? 'opacity-60' : ''
                     }`}
                   >
-                    <CardContent className="p-4">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-3 flex-1">
-                          <div
-                            {...provided.dragHandleProps}
-                            className="flex flex-col items-center text-muted-foreground hover:text-foreground cursor-grab active:cursor-grabbing"
-                          >
-                            <GripVertical className="h-4 w-4" />
-                            <span className="text-xs font-mono">{automation.priority}</span>
-                          </div>
+                     <CardContent className="p-3 sm:p-4">
+                       <div className="space-y-3">
+                         {/* Header with title, badge and controls */}
+                         <div className="flex items-start justify-between">
+                           <div className="flex items-start space-x-2 flex-1">
+                             <div
+                               {...provided.dragHandleProps}
+                               className="flex flex-col items-center text-muted-foreground hover:text-foreground cursor-grab active:cursor-grabbing mt-1 touch-manipulation"
+                             >
+                               <GripVertical className="h-5 w-5 sm:h-4 sm:w-4" />
+                               <span className="text-xs font-mono bg-muted px-1 rounded">{automation.priority}</span>
+                             </div>
 
-                          <div className="flex-1">
-                            <div className="flex items-center space-x-2 mb-2">
-                              <h3 className="font-medium">{automation.nome}</h3>
-                              <Badge variant={automation.attivo ? "default" : "secondary"}>
-                                {automation.attivo ? "Attiva" : "Inattiva"}
-                              </Badge>
-                            </div>
-                            
-                             <div className="text-sm text-muted-foreground space-y-1">
-                               <div>
-                                 <strong>Quando:</strong> {automation.trigger_when === 'new_lead' ? 'Nuovo Lead' : 'Lead Duplicato (Fonte Diversa)'}
-                               </div>
-                               <div>
-                                 <strong>Trigger:</strong> {triggerFieldLabels[automation.trigger_field]} - {conditionTypeLabels[automation.condition_type]} - "{automation.condition_value}"
-                               </div>
-                               <div>
-                                 <strong>Azione:</strong> {actionTypeLabels[automation.action_type]}
-                                 {automation.sheets_tab_name && (
-                                   <span> → Tab: "{automation.sheets_tab_name}"</span>
-                                 )}
+                             <div className="flex-1 min-w-0">
+                               <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-2">
+                                 <h3 className="font-medium text-sm sm:text-base truncate">{automation.nome}</h3>
+                                 <Badge variant={automation.attivo ? "default" : "secondary"} className="self-start">
+                                   {automation.attivo ? "Attiva" : "Inattiva"}
+                                 </Badge>
                                </div>
                              </div>
-                          </div>
-                        </div>
+                           </div>
 
-                        <div className="flex items-center space-x-2">
-                          <Switch
-                            checked={automation.attivo}
-                            onCheckedChange={(checked) => onToggle(automation.id, checked)}
-                          />
-                          
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="sm">
-                                <MoreHorizontal className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem onClick={() => onEdit(automation)}>
-                                <Edit className="h-4 w-4 mr-2" />
-                                Modifica
-                              </DropdownMenuItem>
-                              <DropdownMenuItem 
-                                onClick={() => onDelete(automation.id)}
-                                className="text-destructive"
-                              >
-                                <Trash2 className="h-4 w-4 mr-2" />
-                                Elimina
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </div>
-                      </div>
-                    </CardContent>
+                           <div className="flex items-start space-x-2 ml-2">
+                             <Switch
+                               checked={automation.attivo}
+                               onCheckedChange={(checked) => onToggle(automation.id, checked)}
+                               className="touch-manipulation"
+                             />
+                             
+                             <DropdownMenu>
+                               <DropdownMenuTrigger asChild>
+                                 <Button variant="ghost" size="sm" className="h-8 w-8 p-0 touch-manipulation">
+                                   <MoreHorizontal className="h-4 w-4" />
+                                 </Button>
+                               </DropdownMenuTrigger>
+                               <DropdownMenuContent align="end">
+                                 <DropdownMenuItem onClick={() => onEdit(automation)}>
+                                   <Edit className="h-4 w-4 mr-2" />
+                                   Modifica
+                                 </DropdownMenuItem>
+                                 <DropdownMenuItem 
+                                   onClick={() => onDelete(automation.id)}
+                                   className="text-destructive"
+                                 >
+                                   <Trash2 className="h-4 w-4 mr-2" />
+                                   Elimina
+                                 </DropdownMenuItem>
+                               </DropdownMenuContent>
+                             </DropdownMenu>
+                           </div>
+                         </div>
+
+                         {/* Details - Mobile-friendly layout */}
+                         <div className="text-xs sm:text-sm text-muted-foreground space-y-2 pl-7">
+                           <div className="flex flex-col space-y-1">
+                             <div>
+                               <span className="font-medium text-foreground">Quando:</span>{" "}
+                               <span className="break-words">
+                                 {automation.trigger_when === 'new_lead' ? 'Nuovo Lead' : 'Lead Duplicato (Fonte Diversa)'}
+                               </span>
+                             </div>
+                             <div>
+                               <span className="font-medium text-foreground">Trigger:</span>{" "}
+                               <span className="break-words">
+                                 {triggerFieldLabels[automation.trigger_field]} {conditionTypeLabels[automation.condition_type]} "{automation.condition_value}"
+                               </span>
+                             </div>
+                             <div>
+                               <span className="font-medium text-foreground">Azione:</span>{" "}
+                               <span className="break-words">
+                                 {actionTypeLabels[automation.action_type]}
+                                 {automation.sheets_tab_name && (
+                                   <span className="block sm:inline"> → Tab: "{automation.sheets_tab_name}"</span>
+                                 )}
+                               </span>
+                             </div>
+                             {automation.excluded_sellers && automation.excluded_sellers.length > 0 && (
+                               <div>
+                                 <span className="font-medium text-foreground">Esclude:</span>{" "}
+                                 <span className="break-words">
+                                   {automation.excluded_sellers.join(", ")}
+                                 </span>
+                               </div>
+                             )}
+                           </div>
+                         </div>
+                       </div>
+                     </CardContent>
                   </Card>
                 )}
               </Draggable>
