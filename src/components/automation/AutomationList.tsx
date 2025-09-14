@@ -88,11 +88,11 @@ export function AutomationList({ automations, onToggle, onEdit, onDelete, onReor
                       !automation.attivo ? 'opacity-60' : ''
                     }`}
                   >
-                     <CardContent className="p-3 sm:p-4">
+                     <CardContent className="p-3 sm:p-4 min-w-0 overflow-hidden">
                        <div className="space-y-3">
                          {/* Header with title, badge and controls */}
-                         <div className="flex items-start justify-between">
-                           <div className="flex items-start space-x-2 flex-1">
+                         <div className="flex items-start justify-between min-w-0">
+                           <div className="flex items-start space-x-2 flex-1 min-w-0">
                              <div
                                {...provided.dragHandleProps}
                                className="flex flex-col items-center text-muted-foreground hover:text-foreground cursor-grab active:cursor-grabbing mt-1 touch-manipulation"
@@ -142,7 +142,7 @@ export function AutomationList({ automations, onToggle, onEdit, onDelete, onReor
                          </div>
 
                          {/* Details - Mobile-friendly layout */}
-                         <div className="text-xs sm:text-sm text-muted-foreground space-y-2 pl-7">
+                         <div className="text-xs sm:text-sm text-muted-foreground space-y-2 pl-7 min-w-0 whitespace-normal break-words overflow-hidden">
                            <div className="flex flex-col space-y-1">
                              <div>
                                <span className="font-medium text-foreground">Quando:</span>{" "}
