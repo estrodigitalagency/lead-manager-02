@@ -12,6 +12,7 @@ export interface LeadAssignmentAutomation {
   sheets_tab_name?: string;
   campagna?: string;
   webhook_enabled: boolean;
+  excluded_sellers?: string[];
   created_at: string;
   updated_at: string;
 }
@@ -27,4 +28,5 @@ export interface NewAutomationForm {
   sheets_tab_name?: string;
   campagna?: string;
   webhook_enabled?: boolean;
+  excluded_sellers?: string[];
 }

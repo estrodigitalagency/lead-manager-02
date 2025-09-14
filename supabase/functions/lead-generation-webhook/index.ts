@@ -207,6 +207,18 @@ async function checkAndApplyAutomations(lead: any, supabase: any) {
         } else if (automation.action_type === 'assign_to_previous_seller') {
           // Trova l'ultimo venditore assegnato per lead simili
           targetSeller = await findPreviousSeller(lead, supabase);
+          
+          // Controlla se il venditore precedente è nella lista esclusi
+          if (targetSeller && automation.excluded_sellers && automation.excluded_sellers.length > 0) {
+            const previousSellerName = `${targetSeller.nome} ${targetSeller.cognome}`.trim();
+            
+            if (automation.excluded_sellers.includes(previousSellerName)) {
+              console.log(`Previous seller ${previousSellerName} is excluded from automation: ${automation.nome}`);
+              await logAutomationExecution(lead, automation, null, 'seller_excluded', `Previous seller ${previousSellerName} is in excluded list`, 'webhook', supabase);
+              continue; // Passa alla prossima automazione
+            }
+          }
+          
           sheetsTabName = automation.sheets_tab_name;
         }
 

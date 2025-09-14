@@ -462,6 +462,7 @@ export type Database = {
           condition_type: Database["public"]["Enums"]["automation_condition_type"]
           condition_value: string
           created_at: string
+          excluded_sellers: string[] | null
           id: string
           market: string
           nome: string
@@ -480,6 +481,7 @@ export type Database = {
           condition_type: Database["public"]["Enums"]["automation_condition_type"]
           condition_value: string
           created_at?: string
+          excluded_sellers?: string[] | null
           id?: string
           market?: string
           nome: string
@@ -498,6 +500,7 @@ export type Database = {
           condition_type?: Database["public"]["Enums"]["automation_condition_type"]
           condition_value?: string
           created_at?: string
+          excluded_sellers?: string[] | null
           id?: string
           market?: string
           nome?: string

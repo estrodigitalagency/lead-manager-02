@@ -127,6 +127,18 @@ serve(async (req) => {
         } else if (automation.action_type === 'assign_to_previous_seller') {
           // Find previous seller using the corrected logic
           targetSeller = await findPreviousSeller(lead, supabase)
+          
+          // Controlla se il venditore precedente è nella lista esclusi
+          if (targetSeller && automation.excluded_sellers && automation.excluded_sellers.length > 0) {
+            const previousSellerName = `${targetSeller.nome} ${targetSeller.cognome}`.trim();
+            
+            if (automation.excluded_sellers.includes(previousSellerName)) {
+              console.log(`Previous seller ${previousSellerName} is excluded from automation: ${automation.nome}`);
+              await logAutomationExecution(lead, automation, null, 'seller_excluded', `Previous seller ${previousSellerName} is in excluded list`, executionSource, supabase);
+              continue; // Passa alla prossima automazione
+            }
+          }
+          
           sheetsTabName = automation.sheets_tab_name
           if (targetSeller) {
             console.log('Found previous seller:', targetSeller.nome)

@@ -8,6 +8,8 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Badge } from "@/components/ui/badge";
+import { X } from "lucide-react";
 import { useSalespeopleData } from "@/hooks/useSalespeopleData";
 import { NewAutomationForm, LeadAssignmentAutomation } from "@/types/automation";
 
@@ -22,6 +24,7 @@ const automationSchema = z.object({
   sheets_tab_name: z.string().optional(),
   campagna: z.string().optional(),
   webhook_enabled: z.boolean().optional(),
+  excluded_sellers: z.array(z.string()).optional(),
 });
 
 interface AutomationFormProps {
@@ -73,6 +76,7 @@ export function AutomationForm({ open, onOpenChange, onSubmit, automation, isLoa
       sheets_tab_name: automation?.sheets_tab_name || "",
       campagna: automation?.campagna || "",
       webhook_enabled: automation?.webhook_enabled ?? true,
+      excluded_sellers: automation?.excluded_sellers || [],
     },
   });
 
@@ -92,6 +96,7 @@ export function AutomationForm({ open, onOpenChange, onSubmit, automation, isLoa
         sheets_tab_name: automation.sheets_tab_name || "",
         campagna: automation.campagna || "",
         webhook_enabled: automation.webhook_enabled ?? true,
+        excluded_sellers: automation.excluded_sellers || [],
       });
     } else {
       form.reset({
@@ -105,6 +110,7 @@ export function AutomationForm({ open, onOpenChange, onSubmit, automation, isLoa
         sheets_tab_name: "",
         campagna: "",
         webhook_enabled: true,
+        excluded_sellers: [],
       });
     }
   }, [automation, form]);
@@ -335,6 +341,70 @@ export function AutomationForm({ open, onOpenChange, onSubmit, automation, isLoa
                         Se abilitato, i dati dell'assegnazione verranno inviati al webhook configurato
                       </p>
                     </div>
+                  </FormItem>
+                )}
+              />
+            )}
+
+            {actionType === "assign_to_previous_seller" && (
+              <FormField
+                control={form.control}
+                name="excluded_sellers"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Venditori Esclusi</FormLabel>
+                    <FormControl>
+                      <div className="space-y-2">
+                        <Select
+                          onValueChange={(value) => {
+                            if (value && !field.value?.includes(value)) {
+                              const currentValues = field.value || [];
+                              field.onChange([...currentValues, value]);
+                            }
+                          }}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Seleziona venditore da escludere" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {venditori.map((venditore) => (
+                              <SelectItem 
+                                key={venditore.id} 
+                                value={`${venditore.nome} ${venditore.cognome}`.trim()}
+                                disabled={field.value?.includes(`${venditore.nome} ${venditore.cognome}`.trim())}
+                              >
+                                {venditore.nome} {venditore.cognome}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        
+                        {field.value && field.value.length > 0 && (
+                          <div className="flex flex-wrap gap-2 mt-2">
+                            {field.value.map((seller, index) => (
+                              <Badge 
+                                key={index} 
+                                variant="secondary" 
+                                className="flex items-center gap-1"
+                              >
+                                {seller}
+                                <X 
+                                  className="h-3 w-3 cursor-pointer hover:text-destructive" 
+                                  onClick={() => {
+                                    const newValues = field.value?.filter((_, i) => i !== index);
+                                    field.onChange(newValues);
+                                  }}
+                                />
+                              </Badge>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </FormControl>
+                    <p className="text-sm text-muted-foreground">
+                      Se il venditore precedente è uno di questi, l'automazione non si attiva ma il lead resta assegnabile
+                    </p>
+                    <FormMessage />
                   </FormItem>
                 )}
               />

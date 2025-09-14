@@ -43,6 +43,7 @@ export const useAutomationsData = () => {
       const cleanedAutomation = {
         ...automation,
         target_seller_id: automation.target_seller_id && automation.target_seller_id.trim() !== '' ? automation.target_seller_id : null,
+        excluded_sellers: automation.excluded_sellers || [],
         market: selectedMarket
       };
 
