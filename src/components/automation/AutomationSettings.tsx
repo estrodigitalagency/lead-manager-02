@@ -108,14 +108,14 @@ export function AutomationSettings() {
   return (
     <div className="space-y-6">
       <Tabs defaultValue="automations" className="w-full">
-        <TabsList className="flex flex-col sm:grid sm:grid-cols-2 w-full h-auto">
-          <TabsTrigger value="automations" className="w-full flex items-center justify-center space-x-2 py-3">
+        <TabsList className="flex flex-col sm:grid sm:grid-cols-2 w-full h-auto gap-1 sm:gap-0">
+          <TabsTrigger value="automations" className="w-full h-12 flex items-center justify-center space-x-2 text-sm sm:py-3">
             <Zap className="h-4 w-4" />
-            <span className="text-sm">Automazioni</span>
+            <span>Automazioni</span>
           </TabsTrigger>
-          <TabsTrigger value="history" className="w-full flex items-center justify-center space-x-2 py-3">
+          <TabsTrigger value="history" className="w-full h-12 flex items-center justify-center space-x-2 text-sm sm:py-3">
             <History className="h-4 w-4" />
-            <span className="text-sm">Storico</span>
+            <span>Storico</span>
           </TabsTrigger>
         </TabsList>
 
