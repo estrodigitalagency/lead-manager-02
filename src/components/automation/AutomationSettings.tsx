@@ -108,7 +108,7 @@ export function AutomationSettings() {
   return (
     <div className="space-y-6">
       <Tabs defaultValue="automations" className="w-full">
-        <TabsList className="grid w-full grid-cols-2 h-auto">
+        <TabsList className="grid w-full grid-cols-2 h-auto mx-auto max-w-full">
           <TabsTrigger value="automations" className="flex items-center space-x-1 sm:space-x-2 py-3">
             <Zap className="h-4 w-4" />
             <span className="text-sm">Automazioni</span>
