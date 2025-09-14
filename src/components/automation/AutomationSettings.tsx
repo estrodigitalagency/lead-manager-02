@@ -106,34 +106,34 @@ export function AutomationSettings() {
   const activeAutomationsCount = automations.filter(a => a.attivo).length;
 
   return (
-    <div className="space-y-6">
-      <Tabs defaultValue="automations" className="w-full">
-        <TabsList className="flex flex-col sm:grid sm:grid-cols-2 w-full h-auto gap-1 sm:gap-0">
-          <TabsTrigger value="automations" className="w-full h-12 flex items-center justify-center space-x-2 text-sm sm:py-3">
-            <Zap className="h-4 w-4" />
-            <span>Automazioni</span>
+    <div className="space-y-6 w-full min-w-0 overflow-hidden">
+      <Tabs defaultValue="automations" className="w-full min-w-0">
+        <TabsList className="flex flex-col sm:grid sm:grid-cols-2 w-full h-auto gap-1 sm:gap-0 p-1">
+          <TabsTrigger value="automations" className="w-full h-12 flex items-center justify-center space-x-2 text-sm sm:py-3 min-w-0">
+            <Zap className="h-4 w-4 flex-shrink-0" />
+            <span className="truncate">Automazioni</span>
           </TabsTrigger>
-          <TabsTrigger value="history" className="w-full h-12 flex items-center justify-center space-x-2 text-sm sm:py-3">
-            <History className="h-4 w-4" />
-            <span>Storico</span>
+          <TabsTrigger value="history" className="w-full h-12 flex items-center justify-center space-x-2 text-sm sm:py-3 min-w-0">
+            <History className="h-4 w-4 flex-shrink-0" />
+            <span className="truncate">Storico</span>
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="automations" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <div className="space-y-4">
-                <div className="flex items-center space-x-2">
-                  <Zap className="h-5 w-5 text-primary" />
-                  <div>
-                    <CardTitle>Automazioni Lead</CardTitle>
-                    <CardDescription className="hidden sm:block">
+        <TabsContent value="automations" className="space-y-6 w-full min-w-0 overflow-hidden">
+          <Card className="w-full min-w-0 overflow-hidden">
+            <CardHeader className="pb-4">
+              <div className="space-y-4 w-full min-w-0">
+                <div className="flex items-center space-x-2 min-w-0">
+                  <Zap className="h-5 w-5 text-primary flex-shrink-0" />
+                  <div className="min-w-0 flex-1">
+                    <CardTitle className="truncate">Automazioni Lead</CardTitle>
+                    <CardDescription className="hidden sm:block text-sm">
                       Gestisci le regole automatiche per l'assegnazione dei lead duplicati
                     </CardDescription>
                   </div>
                 </div>
                 
-                <div className="flex flex-col sm:flex-row gap-2 sm:gap-2">
+                <div className="flex flex-col gap-2 w-full min-w-0">
                   <Button
                     variant="outline"
                     size="sm"
@@ -164,9 +164,9 @@ export function AutomationSettings() {
                 </div>
               </div>
             </CardHeader>
-            <CardContent>
-              <div className="flex items-center justify-between mb-4">
-                <div className="text-sm text-muted-foreground">
+            <CardContent className="w-full min-w-0 overflow-hidden p-4 sm:p-6">
+              <div className="flex items-center justify-between mb-4 w-full min-w-0">
+                <div className="text-sm text-muted-foreground truncate">
                   {activeAutomationsCount} di {automations.length} automazioni attive
                 </div>
               </div>
@@ -199,7 +199,7 @@ export function AutomationSettings() {
           )}
         </TabsContent>
 
-        <TabsContent value="history">
+        <TabsContent value="history" className="w-full min-w-0 overflow-hidden">
           <AutomationExecutionHistory />
         </TabsContent>
       </Tabs>
