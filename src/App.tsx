@@ -8,6 +8,7 @@ import { navItems, standaloneRoutes, publicRoutes } from "./nav-items";
 import { LeadSyncProvider } from "@/contexts/LeadSyncContext";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { MarketProvider } from "@/contexts/MarketContext";
+import { LanguageProvider } from "@/contexts/LanguageContext";
 import PersistentNavigation from "@/components/PersistentNavigation";
 
 const queryClient = new QueryClient();
@@ -70,14 +71,16 @@ const App = () => (
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
       <MarketProvider>
-        <LeadSyncProvider>
-          <TooltipProvider>
+        <LanguageProvider>
+          <LeadSyncProvider>
+            <TooltipProvider>
             <Toaster />
             <BrowserRouter>
               <AppContent />
             </BrowserRouter>
-          </TooltipProvider>
-        </LeadSyncProvider>
+            </TooltipProvider>
+          </LeadSyncProvider>
+        </LanguageProvider>
       </MarketProvider>
     </AuthProvider>
   </QueryClientProvider>

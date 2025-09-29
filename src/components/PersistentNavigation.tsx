@@ -5,6 +5,7 @@ import { Users, Database, BarChart3, Settings, Menu, History, LogOut } from "luc
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useAuth } from "@/contexts/AuthContext";
 import MarketSelector from "@/components/MarketSelector";
+import LanguageSelector from "@/components/LanguageSelector";
 import {
   Drawer,
   DrawerContent,
@@ -80,12 +81,14 @@ const PersistentNavigation = () => {
             <Link to="/" className="flex-shrink-0">
               <h1 className="text-lg font-semibold text-primary truncate">Lead Manager</h1>
             </Link>
-            <Drawer open={open} onOpenChange={setOpen}>
-              <DrawerTrigger asChild>
-                <Button variant="ghost" size="icon" className="flex-shrink-0">
-                  <Menu className="h-5 w-5" />
-                </Button>
-              </DrawerTrigger>
+            <div className="flex items-center gap-2">
+              <LanguageSelector variant="mobile" />
+              <Drawer open={open} onOpenChange={setOpen}>
+                <DrawerTrigger asChild>
+                  <Button variant="ghost" size="icon" className="flex-shrink-0">
+                    <Menu className="h-5 w-5" />
+                  </Button>
+                </DrawerTrigger>
               <DrawerContent className="bg-background max-h-[80vh]">
                 <div className="p-6 space-y-3 overflow-y-auto">
                   <h2 className="text-xl font-semibold mb-6 text-center">Menu</h2>
@@ -102,8 +105,9 @@ const PersistentNavigation = () => {
                      <span className="truncate">Esci</span>
                    </Button>
                 </div>
-              </DrawerContent>
-            </Drawer>
+                </DrawerContent>
+              </Drawer>
+            </div>
           </div>
         </div>
       </nav>
