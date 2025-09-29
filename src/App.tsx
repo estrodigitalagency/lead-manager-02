@@ -74,10 +74,10 @@ const App = () => (
         <LanguageProvider>
           <LeadSyncProvider>
             <TooltipProvider>
-            <Toaster />
-            <BrowserRouter>
-              <AppContent />
-            </BrowserRouter>
+              <Toaster />
+              <BrowserRouter>
+                <AppContent />
+              </BrowserRouter>
             </TooltipProvider>
           </LeadSyncProvider>
         </LanguageProvider>
