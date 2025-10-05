@@ -50,7 +50,7 @@ export async function assignLeadsWithExclusions(data: LeadAssignmentData) {
     // QUERY BASE: Recupera tutti i lead candidati filtrati per market
     let query = supabase
       .from('lead_generation')
-      .select('id, nome, cognome, email, telefono, fonte, lead_score, created_at, booked_call, venditore')
+      .select('id, nome, cognome, email, telefono, fonte, ultima_fonte, lead_score, created_at, booked_call, venditore')
       .is('venditore', null)
       .eq('booked_call', 'NO')
       .eq('market', market);
@@ -62,7 +62,7 @@ export async function assignLeadsWithExclusions(data: LeadAssignmentData) {
 
     // Apply source filtering logic SOLO se ci sono fonti specificate
     if (sourceMode === 'include' && includedSources.length > 0) {
-      const includeFilters = includedSources.map(source => `fonte.like.%${source}%`).join(',');
+      const includeFilters = includedSources.map(source => `ultima_fonte.like.%${source}%`).join(',');
       query = query.or(includeFilters);
     }
 
@@ -91,9 +91,9 @@ export async function assignLeadsWithExclusions(data: LeadAssignmentData) {
     let filteredLeads = convertedLeads;
     if (sourceMode === 'exclude' && excludedSources.length > 0) {
       filteredLeads = convertedLeads.filter(lead => {
-        if (!lead.fonte) return true;
+        if (!lead.ultima_fonte) return true;
         return !excludedSources.some(excludedSource => 
-          lead.fonte!.toLowerCase().includes(excludedSource.toLowerCase())
+          lead.ultima_fonte!.toLowerCase().includes(excludedSource.toLowerCase())
         );
       });
       console.log(`After exclusion filter: ${filteredLeads.length} leads`);
@@ -103,15 +103,15 @@ export async function assignLeadsWithExclusions(data: LeadAssignmentData) {
     if (excludeFromIncluded.length > 0 && includedSources.length > 0) {
       console.log(`Applying exclusions from included sources: ${excludeFromIncluded.join(', ')}`);
       filteredLeads = filteredLeads.filter(lead => {
-        if (!lead.fonte) return true;
+        if (!lead.ultima_fonte) return true;
         
         const isFromIncludedSource = includedSources.some(includedSource => 
-          lead.fonte!.toLowerCase().includes(includedSource.toLowerCase())
+          lead.ultima_fonte!.toLowerCase().includes(includedSource.toLowerCase())
         );
         
         if (isFromIncludedSource) {
           const hasExcludedTag = excludeFromIncluded.some(excludedTag => 
-            lead.fonte!.toLowerCase().includes(excludedTag.toLowerCase())
+            lead.ultima_fonte!.toLowerCase().includes(excludedTag.toLowerCase())
           );
           return !hasExcludedTag;
         }
@@ -417,7 +417,7 @@ export async function getAvailableLeadsCount(
     // QUERY BASE: Recupera tutti i candidati filtrati per market
     let query = supabase
       .from('lead_generation')
-      .select('id, nome, cognome, email, telefono, fonte, lead_score, created_at, booked_call, venditore')
+      .select('id, nome, cognome, email, telefono, fonte, ultima_fonte, lead_score, created_at, booked_call, venditore')
       .is('venditore', null)
       .eq('booked_call', 'NO')
       .eq('market', market);
@@ -430,12 +430,12 @@ export async function getAvailableLeadsCount(
     // Apply source filtering logic SOLO se ci sono fonti incluse specificate E siamo in modalità include
     if (sourceMode === 'include') {
       if (includedSources.length > 0) {
-        const includeFilters = includedSources.map(source => `fonte.like.%${source}%`).join(',');
+        const includeFilters = includedSources.map(source => `ultima_fonte.like.%${source}%`).join(',');
         query = query.or(includeFilters);
       } else {
         // Se siamo in modalità include ma non ci sono fonti specificate, non restituire nulla
         // Questo comportamento preserva la logica che quando selezioni "include" devi specificare le fonti
-        query = query.eq('fonte', 'NON_EXISTENT_SOURCE_TO_RETURN_EMPTY');
+        query = query.eq('ultima_fonte', 'NON_EXISTENT_SOURCE_TO_RETURN_EMPTY');
       }
     }
 
@@ -460,9 +460,9 @@ export async function getAvailableLeadsCount(
     let filteredLeads = convertedCandidates;
     if (sourceMode === 'exclude' && excludedSources.length > 0) {
       filteredLeads = convertedCandidates.filter(lead => {
-        if (!lead.fonte) return true;
+        if (!lead.ultima_fonte) return true;
         return !excludedSources.some(excludedSource => 
-          lead.fonte!.toLowerCase().includes(excludedSource.toLowerCase())
+          lead.ultima_fonte!.toLowerCase().includes(excludedSource.toLowerCase())
         );
       });
       console.log(`After exclusion filter: ${filteredLeads.length} leads`);
@@ -471,15 +471,15 @@ export async function getAvailableLeadsCount(
     // Apply exclusions from included sources SOLO se specificate
     if (excludeFromIncluded.length > 0 && includedSources.length > 0) {
       filteredLeads = filteredLeads.filter(lead => {
-        if (!lead.fonte) return true;
+        if (!lead.ultima_fonte) return true;
         
         const isFromIncludedSource = includedSources.some(includedSource => 
-          lead.fonte!.toLowerCase().includes(includedSource.toLowerCase())
+          lead.ultima_fonte!.toLowerCase().includes(includedSource.toLowerCase())
         );
         
         if (isFromIncludedSource) {
           const hasExcludedTag = excludeFromIncluded.some(excludedTag => 
-            lead.fonte!.toLowerCase().includes(excludedTag.toLowerCase())
+            lead.ultima_fonte!.toLowerCase().includes(excludedTag.toLowerCase())
           );
           return !hasExcludedTag;
         }

@@ -67,14 +67,14 @@ function applyFonteFilters(query: any, filters: ReportFilters) {
   if (filters.fonte && typeof filters.fonte === 'string' && filters.fonte.trim() !== '') {
     const cleanFonte = filters.fonte.trim();
     console.log('Applying specific fonte filter:', cleanFonte);
-    return query.or(`fonte.ilike.%${cleanFonte}%,fonte.ilike.% ${cleanFonte}%,fonte.ilike.%${cleanFonte} %`);
+    return query.or(`ultima_fonte.ilike.%${cleanFonte}%,ultima_fonte.ilike.% ${cleanFonte}%,ultima_fonte.ilike.%${cleanFonte} %`);
   }
 
   // Applicare filtri di inclusione/esclusione
   if (filters.sourceMode === 'include' && filters.fontiIncluse && filters.fontiIncluse.length > 0) {
     console.log('Applying include filters:', filters.fontiIncluse);
     const includeConditions = filters.fontiIncluse.map(fonte => 
-      `fonte.ilike.%${fonte}%`
+      `ultima_fonte.ilike.%${fonte}%`
     ).join(',');
     return query.or(includeConditions);
   }
@@ -82,7 +82,7 @@ function applyFonteFilters(query: any, filters: ReportFilters) {
   if (filters.sourceMode === 'exclude' && filters.fontiEscluse && filters.fontiEscluse.length > 0) {
     console.log('Applying exclude filters:', filters.fontiEscluse);
     filters.fontiEscluse.forEach(fonte => {
-      query = query.not('fonte', 'ilike', `%${fonte}%`);
+      query = query.not('ultima_fonte', 'ilike', `%${fonte}%`);
     });
     return query;
   }
