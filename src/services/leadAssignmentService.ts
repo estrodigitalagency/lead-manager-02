@@ -13,6 +13,175 @@ export interface LeadAssignmentData {
   excludeFromIncluded?: string[];
   onlyHotLeads?: boolean;
   market?: 'IT' | 'ES';
+  specificLeadIds?: string[]; // For replay functionality
+}
+
+// Helper function to process assignment completion (webhook, history, counter update)
+async function processAssignmentCompletion(
+  venditore: string,
+  campagna: string | undefined,
+  actualAssignedCount: number,
+  leadsToAssign: any[],
+  market: string,
+  excludedSources: string[],
+  includedSources: string[],
+  sourceMode: string,
+  bypassTimeInterval: boolean,
+  excludeFromIncluded: string[],
+  leadIds: string[]
+) {
+  // MIGLIORAMENTO: Cerca venditore per nome completo (nome + cognome) nello stesso market
+  const venditoreParts = venditore.trim().split(' ');
+  const nomeVenditore = venditoreParts[0];
+  const cognomeVenditore = venditoreParts.slice(1).join(' ');
+
+  console.log(`Cercando venditore: nome="${nomeVenditore}", cognome="${cognomeVenditore}", market="${market}"`);
+
+  // Prova prima con nome e cognome separati
+  let venditoreDates = null;
+  let venditoreError = null;
+
+  if (cognomeVenditore) {
+    const { data, error } = await supabase
+      .from('venditori')
+      .select('nome, cognome, email, telefono, sheets_file_id, sheets_tab_name')
+      .eq('nome', nomeVenditore)
+      .eq('cognome', cognomeVenditore)
+      .eq('market', market)
+      .single();
+    
+    venditoreDates = data;
+    venditoreError = error;
+  }
+
+  // Se non trova con nome/cognome separati, prova con nome completo nel campo nome
+  if (!venditoreDates) {
+    const { data, error } = await supabase
+      .from('venditori')
+      .select('nome, cognome, email, telefono, sheets_file_id, sheets_tab_name')
+      .eq('nome', venditore)
+      .eq('market', market)
+      .single();
+    
+    venditoreDates = data;
+    venditoreError = error;
+  }
+
+  // Se ancora non trova, prova cercando per nome che contiene il valore
+  if (!venditoreDates) {
+    const { data, error } = await supabase
+      .from('venditori')
+      .select('nome, cognome, email, telefono, sheets_file_id, sheets_tab_name')
+      .ilike('nome', `%${nomeVenditore}%`)
+      .eq('market', market)
+      .single();
+    
+    venditoreDates = data;
+    venditoreError = error;
+  }
+
+  if (venditoreError || !venditoreDates) {
+    console.warn('Could not fetch venditore details:', venditoreError);
+    console.warn('Proceeding without venditore details for webhook');
+  } else {
+    console.log('Venditore trovato:', venditoreDates);
+  }
+
+  // Get webhook URL
+  const { data: webhookData, error: webhookError } = await supabase
+    .from('system_settings')
+    .select('value')
+    .eq('key', 'lead_assign_webhook_url')
+    .single();
+
+  if (!webhookError && webhookData?.value) {
+    console.log('Calling webhook for lead assignment...');
+    
+    // Prepare webhook payload with all required data
+    const assignmentPayload = {
+      venditore: nomeVenditore,
+      venditore_cognome: venditoreDates?.cognome || cognomeVenditore || '',
+      venditore_email: venditoreDates?.email || '',
+      venditore_telefono: venditoreDates?.telefono || '',
+      google_sheets_file_id: venditoreDates?.sheets_file_id || '',
+      google_sheets_tab_name: venditoreDates?.sheets_tab_name || '',
+      campagna: (campagna && campagna.trim() !== '') ? campagna : null,
+      market: market,
+      leads_count: actualAssignedCount,
+      timestamp: new Date().toISOString(),
+      leads: leadsToAssign.map(lead => ({
+        id: lead.id,
+        nome: lead.nome,
+        cognome: lead.cognome || '',
+        email: lead.email || '',
+        telefono: lead.telefono || '',
+        fonte: lead.fonte || '',
+        market: market,
+        created_at: lead.created_at,
+        assigned_at: new Date().toISOString()
+      }))
+    };
+
+    console.log('Payload webhook con dati venditore:', {
+      venditore: assignmentPayload.venditore,
+      venditore_cognome: assignmentPayload.venditore_cognome,
+      google_sheets_file_id: assignmentPayload.google_sheets_file_id,
+      google_sheets_tab_name: assignmentPayload.google_sheets_tab_name,
+      leads_count: assignmentPayload.leads_count
+    });
+
+    try {
+      const { data: webhookResponse, error: webhookCallError } = await supabase.functions.invoke('lead-assign-webhook', {
+        body: {
+          assignmentData: assignmentPayload,
+          webhookUrl: webhookData.value
+        }
+      });
+
+      console.log('Webhook response:', webhookResponse);
+      console.log('Webhook error:', webhookCallError);
+
+      // Gestione migliorata della risposta del webhook
+      if (webhookCallError) {
+        console.error('Webhook call error:', webhookCallError);
+        toast.warning('Lead assegnati correttamente, ma il webhook ha restituito un errore. Verifica su Make se i dati sono stati ricevuti.');
+      } else {
+        // Considera il webhook come successo se non ci sono errori, anche se la risposta non è JSON
+        console.log('Webhook called successfully');
+        toast.success(`${actualAssignedCount} lead assegnati con successo e dati inviati al webhook`);
+      }
+    } catch (webhookError) {
+      console.error('Error calling webhook:', webhookError);
+      toast.warning('Lead assegnati correttamente, ma errore di connessione al webhook. Verifica su Make se i dati sono stati ricevuti.');
+    }
+  } else {
+    console.warn('No webhook URL configured');
+    toast.success(`${actualAssignedCount} lead assegnati con successo (nessun webhook configurato)`);
+  }
+
+  // Record the assignment in history with all fields including market and lead_ids
+  const { error: historyError } = await supabase
+    .from('assignment_history')
+    .insert({
+      venditore,
+      leads_count: actualAssignedCount,
+      campagna: campagna || null,
+      fonti_escluse: excludedSources.length > 0 ? excludedSources : null,
+      fonti_incluse: includedSources.length > 0 ? includedSources : null,
+      exclude_from_included: excludeFromIncluded.length > 0 ? excludeFromIncluded : null,
+      source_mode: sourceMode,
+      bypass_time_interval: bypassTimeInterval,
+      market: market,
+      lead_ids: leadIds // Save the specific lead IDs for replay
+    });
+
+  if (historyError) {
+    console.error('Error recording assignment history:', historyError);
+    // Don't throw here as the main assignment succeeded
+  }
+
+  // Update salesperson's current lead count is now handled by database trigger
+  console.log('Lead count will be updated automatically by database trigger');
 }
 
 export async function assignLeadsWithExclusions(data: LeadAssignmentData) {
@@ -26,7 +195,8 @@ export async function assignLeadsWithExclusions(data: LeadAssignmentData) {
     bypassTimeInterval = false,
     excludeFromIncluded = [], 
     onlyHotLeads = false,
-    market = 'IT'
+    market = 'IT',
+    specificLeadIds // For replay functionality
   } = data;
 
   try {
@@ -37,7 +207,72 @@ export async function assignLeadsWithExclusions(data: LeadAssignmentData) {
     console.log('Exclude from included:', excludeFromIncluded);
     console.log('Bypass time interval:', bypassTimeInterval);
     console.log('Only hot leads:', onlyHotLeads);
+    console.log('Specific lead IDs:', specificLeadIds);
 
+    // If specific lead IDs are provided (replay mode), use them directly
+    if (specificLeadIds && specificLeadIds.length > 0) {
+      console.log(`Replay mode: assigning specific ${specificLeadIds.length} leads`);
+      
+      const { data: specificLeads, error: fetchError } = await supabase
+        .from('lead_generation')
+        .select('id, nome, cognome, email, telefono, fonte, ultima_fonte, lead_score, created_at, booked_call, venditore')
+        .in('id', specificLeadIds)
+        .eq('market', market);
+
+      if (fetchError) {
+        console.error('Error fetching specific leads:', fetchError);
+        throw new Error(`Errore nel recupero dei lead specifici: ${fetchError.message}`);
+      }
+
+      if (!specificLeads || specificLeads.length === 0) {
+        throw new Error('Nessuno dei lead specificati è disponibile');
+      }
+
+      const leadsToAssign = specificLeads.slice(0, numLead);
+      const actualAssignedCount = leadsToAssign.length;
+      const leadIds = leadsToAssign.map(lead => lead.id);
+
+      console.log(`Replay: Assigning ${actualAssignedCount} specific leads:`, leadIds);
+
+      // Update the leads with the assigned salesperson
+      const currentTimestamp = new Date().toISOString();
+      
+      const { error: updateError } = await supabase
+        .from('lead_generation')
+        .update({ 
+          venditore,
+          campagna: (campagna && campagna.trim() !== '') ? campagna : null,
+          stato: 'assegnato',
+          assignable: false,
+          data_assegnazione: currentTimestamp
+        })
+        .in('id', leadIds);
+
+      if (updateError) {
+        console.error('Error updating leads:', updateError);
+        throw new Error(`Errore nell'aggiornamento dei lead: ${updateError.message}`);
+      }
+
+      // Continue with webhook and history recording...
+      await processAssignmentCompletion(
+        venditore, 
+        campagna, 
+        actualAssignedCount, 
+        leadsToAssign, 
+        market,
+        excludedSources,
+        includedSources,
+        sourceMode,
+        bypassTimeInterval,
+        excludeFromIncluded,
+        leadIds
+      );
+
+      console.log(`Successfully replayed assignment of ${actualAssignedCount} leads to ${venditore}`);
+      return { assignedCount: actualAssignedCount, leads: leadsToAssign };
+    }
+
+    // Normal mode: find and assign leads based on filters
     // Prima recupera le impostazioni per il calcolo dello stato
     const { data: settingsData } = await supabase
       .from('system_settings')
@@ -174,208 +409,20 @@ export async function assignLeadsWithExclusions(data: LeadAssignmentData) {
       throw new Error(`Errore nell'aggiornamento dei lead: ${updateError.message}`);
     }
 
-    // MIGLIORAMENTO: Cerca venditore per nome completo (nome + cognome) nello stesso market
-    const venditoreParts = venditore.trim().split(' ');
-    const nomeVenditore = venditoreParts[0];
-    const cognomeVenditore = venditoreParts.slice(1).join(' ');
-
-    console.log(`Cercando venditore: nome="${nomeVenditore}", cognome="${cognomeVenditore}", market="${market}"`);
-
-    // Prova prima con nome e cognome separati
-    let venditoreDates = null;
-    let venditoreError = null;
-
-    if (cognomeVenditore) {
-      const { data, error } = await supabase
-        .from('venditori')
-        .select('nome, cognome, email, telefono, sheets_file_id, sheets_tab_name')
-        .eq('nome', nomeVenditore)
-        .eq('cognome', cognomeVenditore)
-        .eq('market', market)
-        .single();
-      
-      venditoreDates = data;
-      venditoreError = error;
-    }
-
-    // Se non trova con nome/cognome separati, prova con nome completo nel campo nome
-    if (!venditoreDates) {
-      const { data, error } = await supabase
-        .from('venditori')
-        .select('nome, cognome, email, telefono, sheets_file_id, sheets_tab_name')
-        .eq('nome', venditore)
-        .eq('market', market)
-        .single();
-      
-      venditoreDates = data;
-      venditoreError = error;
-    }
-
-    // Se ancora non trova, prova cercando per nome che contiene il valore
-    if (!venditoreDates) {
-      const { data, error } = await supabase
-        .from('venditori')
-        .select('nome, cognome, email, telefono, sheets_file_id, sheets_tab_name')
-        .ilike('nome', `%${nomeVenditore}%`)
-        .eq('market', market)
-        .single();
-      
-      venditoreDates = data;
-      venditoreError = error;
-    }
-
-    if (venditoreError || !venditoreDates) {
-      console.warn('Could not fetch venditore details:', venditoreError);
-      console.warn('Proceeding without venditore details for webhook');
-    } else {
-      console.log('Venditore trovato:', venditoreDates);
-    }
-
-    // Get webhook URL
-    const { data: webhookData, error: webhookError } = await supabase
-      .from('system_settings')
-      .select('value')
-      .eq('key', 'lead_assign_webhook_url')
-      .single();
-
-    if (!webhookError && webhookData?.value) {
-      console.log('Calling webhook for lead assignment...');
-      
-      // Prepare webhook payload with all required data
-      const assignmentPayload = {
-        venditore: nomeVenditore,
-        venditore_cognome: venditoreDates?.cognome || cognomeVenditore || '',
-        venditore_email: venditoreDates?.email || '',
-        venditore_telefono: venditoreDates?.telefono || '',
-        google_sheets_file_id: venditoreDates?.sheets_file_id || '',
-        google_sheets_tab_name: venditoreDates?.sheets_tab_name || '',
-        campagna: (campagna && campagna.trim() !== '') ? campagna : null,
-        market: market,
-        leads_count: actualAssignedCount,
-        timestamp: new Date().toISOString(),
-        leads: leadsToAssign.map(lead => ({
-          id: lead.id,
-          nome: lead.nome,
-          cognome: lead.cognome || '',
-          email: lead.email || '',
-          telefono: lead.telefono || '',
-          fonte: lead.fonte || '',
-          market: market,
-          created_at: lead.created_at,
-          assigned_at: new Date().toISOString()
-        }))
-      };
-
-      console.log('Payload webhook con dati venditore:', {
-        venditore: assignmentPayload.venditore,
-        venditore_cognome: assignmentPayload.venditore_cognome,
-        google_sheets_file_id: assignmentPayload.google_sheets_file_id,
-        google_sheets_tab_name: assignmentPayload.google_sheets_tab_name,
-        leads_count: assignmentPayload.leads_count
-      });
-
-      try {
-        const { data: webhookResponse, error: webhookCallError } = await supabase.functions.invoke('lead-assign-webhook', {
-          body: {
-            assignmentData: assignmentPayload,
-            webhookUrl: webhookData.value
-          }
-        });
-
-        console.log('Webhook response:', webhookResponse);
-        console.log('Webhook error:', webhookCallError);
-
-        // Gestione migliorata della risposta del webhook
-        if (webhookCallError) {
-          console.error('Webhook call error:', webhookCallError);
-          toast.warning('Lead assegnati correttamente, ma il webhook ha restituito un errore. Verifica su Make se i dati sono stati ricevuti.');
-        } else {
-          // Considera il webhook come successo se non ci sono errori, anche se la risposta non è JSON
-          console.log('Webhook called successfully');
-          toast.success(`${actualAssignedCount} lead assegnati con successo e dati inviati al webhook`);
-        }
-      } catch (webhookError) {
-        console.error('Error calling webhook:', webhookError);
-        toast.warning('Lead assegnati correttamente, ma errore di connessione al webhook. Verifica su Make se i dati sono stati ricevuti.');
-      }
-    } else {
-      console.warn('No webhook URL configured');
-      toast.success(`${actualAssignedCount} lead assegnati con successo (nessun webhook configurato)`);
-    }
-
-    // Record the assignment in history with all fields including market
-    const { error: historyError } = await supabase
-      .from('assignment_history')
-      .insert({
-        venditore,
-        leads_count: actualAssignedCount,
-        campagna: campagna || null,
-        fonti_escluse: excludedSources.length > 0 ? excludedSources : null,
-        fonti_incluse: includedSources.length > 0 ? includedSources : null,
-        exclude_from_included: excludeFromIncluded.length > 0 ? excludeFromIncluded : null,
-        source_mode: sourceMode,
-        bypass_time_interval: bypassTimeInterval,
-        market: market
-      });
-
-    if (historyError) {
-      console.error('Error recording assignment history:', historyError);
-      // Don't throw here as the main assignment succeeded
-    }
-
-    // Update salesperson's current lead count - cerca usando la stessa logica nello stesso market
-    let currentVenditore = null;
-    
-    if (cognomeVenditore) {
-      const { data } = await supabase
-        .from('venditori')
-        .select('lead_attuali')
-        .eq('nome', nomeVenditore)
-        .eq('cognome', cognomeVenditore)
-        .eq('market', market)
-        .single();
-      currentVenditore = data;
-    }
-
-    if (!currentVenditore) {
-      const { data } = await supabase
-        .from('venditori')
-        .select('lead_attuali')
-        .eq('nome', venditore)
-        .eq('market', market)
-        .single();
-      currentVenditore = data;
-    }
-
-    if (!currentVenditore) {
-      const { data } = await supabase
-        .from('venditori')
-        .select('lead_attuali')
-        .ilike('nome', `%${nomeVenditore}%`)
-        .eq('market', market)
-        .single();
-      currentVenditore = data;
-    }
-
-    if (currentVenditore) {
-      const newLeadCount = (currentVenditore.lead_attuali || 0) + actualAssignedCount;
-      
-      // Aggiorna usando la stessa logica di ricerca con filtro market
-      if (cognomeVenditore) {
-        await supabase
-          .from('venditori')
-          .update({ lead_attuali: newLeadCount })
-          .eq('nome', nomeVenditore)
-          .eq('cognome', cognomeVenditore)
-          .eq('market', market);
-      } else {
-        await supabase
-          .from('venditori')
-          .update({ lead_attuali: newLeadCount })
-          .eq('nome', venditore)
-          .eq('market', market);
-      }
-    }
+    // Process webhook, history, and counter update
+    await processAssignmentCompletion(
+      venditore,
+      campagna,
+      actualAssignedCount,
+      leadsToAssign,
+      market,
+      excludedSources,
+      includedSources,
+      sourceMode,
+      bypassTimeInterval,
+      excludeFromIncluded,
+      leadIds
+    );
 
     console.log(`Successfully assigned ${actualAssignedCount} leads to ${venditore} (bypass: ${bypassTimeInterval})`);
     return { assignedCount: actualAssignedCount, leads: leadsToAssign };
@@ -486,19 +533,26 @@ export async function getAvailableLeadsCount(
         
         return true;
       });
-      console.log(`After exclusions from included: ${filteredLeads.length} leads`);
+      console.log(`After exclusion from included: ${filteredLeads.length} leads`);
     }
 
+    let assignableCount;
+
     if (bypassTimeInterval) {
-      // Se bypass è attivo, conta tutti i candidati filtrati
-      console.log(`Bypass active: returning ${filteredLeads.length} leads`);
-      return filteredLeads.length;
+      // Se bypass è attivo, considera tutti i lead filtrati
+      assignableCount = filteredLeads.length;
+      console.log(`Bypass attivo: conteggiando tutti i ${filteredLeads.length} lead candidati`);
     } else {
-      // Comportamento normale: conta tutti i lead che soddisfano i criteri base
-      // (venditore = null, booked_call = 'NO') indipendentemente dalla data di creazione
-      console.log(`Normal mode: returning ${filteredLeads.length} assignable leads`);
-      return filteredLeads.length;
+      // Comportamento normale: conta solo i lead con stato "Assegnabile"
+      assignableCount = filteredLeads.filter(lead => {
+        const status = getLeadStatus(lead, daysBeforeAssignable);
+        return status.label === 'Assegnabile';
+      }).length;
+      console.log(`Found ${assignableCount} assignable leads out of ${filteredLeads.length} candidates`);
     }
+
+    return assignableCount;
+
   } catch (error) {
     console.error('Error in getAvailableLeadsCount:', error);
     return 0;

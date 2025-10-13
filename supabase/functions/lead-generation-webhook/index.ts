@@ -438,6 +438,29 @@ async function assignLeadAutomatically(lead: any, seller: any, sheetsTabName: st
       return;
     }
 
+    // Record the automation assignment in assignment_history for tracking
+    const { error: historyError } = await supabase
+      .from('assignment_history')
+      .insert({
+        venditore: `${seller.nome} ${seller.cognome}`,
+        leads_count: 1,
+        campagna: updateData.campagna || null,
+        fonti_escluse: null,
+        fonti_incluse: null,
+        exclude_from_included: null,
+        source_mode: 'exclude',
+        bypass_time_interval: false,
+        market: lead.market,
+        lead_ids: [lead.id]
+      });
+
+    if (historyError) {
+      console.error('Error recording automation assignment in history:', historyError);
+      // Don't fail the assignment if history recording fails
+    } else {
+      console.log('Automation assignment recorded in history');
+    }
+
     let webhookSuccess = true;
     let webhookError = null;
 

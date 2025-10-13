@@ -7,7 +7,7 @@ import { Loader2, Play } from "lucide-react";
 import { toast } from "sonner";
 import { useSalespeopleData } from "@/hooks/useSalespeopleData";
 import { getAllCampagne } from "@/services/databaseService";
-import { assignLeadsWithExclusions, LeadAssignmentData } from "@/services/leadAssignmentService";
+import { replayAssignment } from "@/services/replayAssignmentService";
 import { useMarket } from "@/contexts/MarketContext";
 
 interface AssignmentRecord {
@@ -81,27 +81,19 @@ const ReplayAssignmentDialog = ({
     setIsSubmitting(true);
 
     try {
-      const assignmentData: LeadAssignmentData = {
-        numLead: assignmentRecord.leads_count,
-        venditore: selectedVenditore,
-        campagna: selectedCampagna && selectedCampagna !== "none" ? selectedCampagna : undefined,
-        excludedSources: assignmentRecord.fonti_escluse || undefined,
-        includedSources: assignmentRecord.fonti_incluse || undefined,
-        sourceMode: (assignmentRecord.source_mode as 'exclude' | 'include') || 'exclude',
-        bypassTimeInterval: assignmentRecord.bypass_time_interval || false,
-        excludeFromIncluded: assignmentRecord.exclude_from_included || undefined,
-        onlyHotLeads: false, // Default value
-        market: selectedMarket
-      };
-
-      await assignLeadsWithExclusions(assignmentData);
+      await replayAssignment({
+        historyId: assignmentRecord.id,
+        newVenditore: selectedVenditore,
+        newCampagna: selectedCampagna && selectedCampagna !== "none" ? selectedCampagna : undefined
+      });
       
       toast.success(`Replay completato: ${assignmentRecord.leads_count} lead assegnati a ${selectedVenditore}`);
       onOpenChange(false);
       onSuccess?.();
     } catch (error) {
       console.error("Error in replay assignment:", error);
-      toast.error("Errore durante il replay dell'assegnazione");
+      const errorMessage = error instanceof Error ? error.message : "Errore durante il replay dell'assegnazione";
+      toast.error(errorMessage);
     } finally {
       setIsSubmitting(false);
     }
@@ -178,7 +170,7 @@ const ReplayAssignmentDialog = ({
 
             <div className="text-sm text-muted-foreground p-3 bg-blue-50 rounded-lg">
               <p className="font-medium mb-1">Nota:</p>
-              <p>Il replay manterrà tutti i filtri originali (fonti incluse/escluse, controlli temporali, etc.) e assegnerà lo stesso numero di lead ({assignmentRecord.leads_count}) al nuovo venditore selezionato.</p>
+              <p>Il replay riassegnerà ESATTAMENTE gli stessi {assignmentRecord.leads_count} lead dell'assegnazione originale al nuovo venditore selezionato. I lead verranno prima sbloccati e poi riassegnati.</p>
             </div>
           </div>
         )}

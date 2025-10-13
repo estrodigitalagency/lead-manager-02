@@ -24,6 +24,7 @@ export type Database = {
           fonti_escluse: string[] | null
           fonti_incluse: string[] | null
           id: string
+          lead_ids: string[] | null
           leads_count: number
           market: string
           source_mode: string | null
@@ -38,6 +39,7 @@ export type Database = {
           fonti_escluse?: string[] | null
           fonti_incluse?: string[] | null
           id?: string
+          lead_ids?: string[] | null
           leads_count: number
           market?: string
           source_mode?: string | null
@@ -52,6 +54,7 @@ export type Database = {
           fonti_escluse?: string[] | null
           fonti_incluse?: string[] | null
           id?: string
+          lead_ids?: string[] | null
           leads_count?: number
           market?: string
           source_mode?: string | null
@@ -431,6 +434,7 @@ export type Database = {
           created_at: string
           fonte_name: string
           id: string
+          match_type: string
           priorita: number
           updated_at: string
         }
@@ -440,6 +444,7 @@ export type Database = {
           created_at?: string
           fonte_name: string
           id?: string
+          match_type?: string
           priorita?: number
           updated_at?: string
         }
@@ -449,6 +454,7 @@ export type Database = {
           created_at?: string
           fonte_name?: string
           id?: string
+          match_type?: string
           priorita?: number
           updated_at?: string
         }
