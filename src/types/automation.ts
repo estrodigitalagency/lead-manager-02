@@ -13,6 +13,8 @@ export interface LeadAssignmentAutomation {
   campagna?: string;
   webhook_enabled: boolean;
   excluded_sellers?: string[];
+  lock_period_days?: number;
+  trigger_sources?: string[];
   created_at: string;
   updated_at: string;
 }
@@ -29,4 +31,6 @@ export interface NewAutomationForm {
   campagna?: string;
   webhook_enabled?: boolean;
   excluded_sellers?: string[];
+  lock_period_days?: number;
+  trigger_sources?: string[];
 }

@@ -7,6 +7,24 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+// Utility functions for normalization and date calculations
+function normalizeEmail(email: string | null): string {
+  if (!email) return '';
+  return email.toLowerCase().trim();
+}
+
+function normalizePhone(phone: string | null): string {
+  if (!phone) return '';
+  return phone.replace(/[^0-9+]/g, '');
+}
+
+function calculateDaysSince(dateString: string): number {
+  const date = new Date(dateString);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  return Math.floor(diffMs / (1000 * 60 * 60 * 24));
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
@@ -93,27 +111,36 @@ async function calculateUltimaFonte(email: string, telefono: string, newFonte: s
   try {
     console.log('Calculating ultima_fonte for:', { email, telefono, newFonte, market });
     
+    // Normalize email and phone for matching
+    const normalizedEmail = normalizeEmail(email);
+    const normalizedPhone = normalizePhone(telefono);
+    
     // Find the most recent lead with same email or phone in the same market
     const { data: existingLeads, error } = await supabase
       .from('lead_generation')
-      .select('fonte, created_at')
-      .or(`email.eq.${email},telefono.eq.${telefono}`)
+      .select('fonte, created_at, email, telefono')
       .eq('market', market)
       .order('created_at', { ascending: false })
-      .limit(1);
+      .limit(100);
+    
+    // Filter manually with normalized values
+    const matchingLeads = existingLeads?.filter(lead => 
+      normalizeEmail(lead.email) === normalizedEmail || 
+      normalizePhone(lead.telefono) === normalizedPhone
+    );
 
     if (error) {
       console.error('Error fetching existing leads:', error);
       return newFonte; // fallback to new fonte
     }
 
-    // If no existing lead found, return the new fonte as ultima_fonte
-    if (!existingLeads || existingLeads.length === 0) {
+    // If no matching lead found, return the new fonte as ultima_fonte
+    if (!matchingLeads || matchingLeads.length === 0) {
       console.log('No existing lead found, setting ultima_fonte = fonte');
       return newFonte;
     }
 
-    const existingLead = existingLeads[0];
+    const existingLead = matchingLeads[0];
     const previousFonte = existingLead.fonte || '';
     
     console.log('Found existing lead with fonte:', previousFonte);
@@ -193,7 +220,7 @@ async function checkAndApplyAutomations(lead: any, supabase: any) {
         continue;
       }
       
-      if (checkCondition(lead, automation.trigger_field, automation.condition_type, automation.condition_value)) {
+      if (checkCondition(lead, automation.trigger_field, automation.condition_type, automation.condition_value, automation.trigger_sources)) {
         console.log(`Automation condition matched: ${automation.nome}`);
         
         let targetSeller = null;
@@ -205,8 +232,43 @@ async function checkAndApplyAutomations(lead: any, supabase: any) {
           sheetsTabName = automation.sheets_tab_name || automation.venditori?.sheets_tab_name;
           
         } else if (automation.action_type === 'assign_to_previous_seller') {
-          // Trova l'ultimo venditore assegnato per lead simili
-          targetSeller = await findPreviousSeller(lead, supabase);
+          // Se c'è lock_period_days, usa logica con controllo fonte
+          if (automation.lock_period_days !== null && automation.lock_period_days !== undefined) {
+            const previousAssignment = await findPreviousSellerWithSourceCheck(lead, automation.trigger_sources || [], supabase);
+            
+            if (previousAssignment) {
+              // lock_period_days = -1 significa "sempre riassegna" (workshop mode)
+              if (automation.lock_period_days === -1) {
+                console.log(`Workshop mode: always reassigning to ${previousAssignment.seller.nome} ${previousAssignment.seller.cognome}`);
+                targetSeller = previousAssignment.seller;
+                sheetsTabName = automation.sheets_tab_name || previousAssignment.seller.sheets_tab_name;
+              } else if (automation.lock_period_days > 0) {
+                // Modalità evergreen: controlla i giorni
+                const daysSinceAssignment = calculateDaysSince(previousAssignment.data_assegnazione);
+                
+                console.log(`Lock period check: ${daysSinceAssignment} days since last assignment (limit: ${automation.lock_period_days})`);
+                
+                if (daysSinceAssignment < automation.lock_period_days) {
+                  // ENTRO il lock period → riassegna allo stesso venditore
+                  console.log(`Within lock period, reassigning to ${previousAssignment.seller.nome} ${previousAssignment.seller.cognome}`);
+                  targetSeller = previousAssignment.seller;
+                  sheetsTabName = automation.sheets_tab_name || previousAssignment.seller.sheets_tab_name;
+                } else {
+                  // OLTRE il lock period → NON assegnare, lascia libero
+                  console.log(`Beyond lock period, lead ${lead.id} remains unassigned`);
+                  await logAutomationExecution(lead, automation, null, 'beyond_lock_period', `${daysSinceAssignment} days since last assignment exceeds lock period of ${automation.lock_period_days} days`, 'webhook', supabase);
+                  continue;
+                }
+              }
+            } else {
+              console.log('No previous assignment found with matching source');
+              await logAutomationExecution(lead, automation, null, 'no_previous_assignment', 'No previous assignment found with matching source', 'webhook', supabase);
+              continue;
+            }
+          } else {
+            // Nessun lock_period_days: comportamento normale
+            targetSeller = await findPreviousSeller(lead, supabase);
+          }
           
           // Controlla se il venditore precedente è nella lista esclusi
           if (targetSeller && automation.excluded_sellers && automation.excluded_sellers.length > 0) {
@@ -219,7 +281,9 @@ async function checkAndApplyAutomations(lead: any, supabase: any) {
             }
           }
           
-          sheetsTabName = automation.sheets_tab_name;
+          if (!sheetsTabName) {
+            sheetsTabName = automation.sheets_tab_name;
+          }
         }
 
         if (targetSeller) {
@@ -240,7 +304,24 @@ async function checkAndApplyAutomations(lead: any, supabase: any) {
 }
 
 // Funzione per controllare se una condizione è soddisfatta
-function checkCondition(lead: any, triggerField: string, conditionType: string, conditionValue: string): boolean {
+function checkCondition(
+  lead: any, 
+  triggerField: string, 
+  conditionType: string, 
+  conditionValue: string,
+  triggerSources?: string[]
+): boolean {
+  // Se ci sono trigger_sources, usa quelli invece di conditionValue
+  if (triggerSources && triggerSources.length > 0) {
+    const fieldValue = (lead[triggerField] || '').toLowerCase().trim();
+    
+    return triggerSources.some(source => {
+      const normalizedSource = source.toLowerCase().trim();
+      // Supporta sia match esatto che parziale (es: "vsl14" in "vsl14,leadmanager")
+      return fieldValue.includes(normalizedSource);
+    });
+  }
+  
   if (!conditionValue) return false;
   
   // Estrai il valore del campo specificato dal lead
@@ -293,36 +374,127 @@ function checkCondition(lead: any, triggerField: string, conditionType: string, 
   }
 }
 
-// Funzione per trovare il venditore precedente
+// Funzione per trovare il venditore precedente con controllo fonte
+async function findPreviousSellerWithSourceCheck(lead: any, automationSources: string[], supabase: any) {
+  try {
+    console.log(`Finding previous seller WITH source check for: ${lead.email} / ${lead.telefono}`);
+    
+    const normalizedEmail = normalizeEmail(lead.email);
+    const normalizedPhone = normalizePhone(lead.telefono);
+    
+    // Trova i lead precedenti con venditore assegnato
+    const { data: previousLeads, error: leadsError } = await supabase
+      .from('lead_generation')
+      .select('venditore, data_assegnazione, fonte, email, telefono')
+      .eq('market', lead.market)
+      .not('venditore', 'is', null)
+      .not('data_assegnazione', 'is', null)
+      .order('data_assegnazione', { ascending: false })
+      .limit(100);
+    
+    if (leadsError) {
+      console.error('Error finding previous leads:', leadsError);
+      return null;
+    }
+    
+    // Filtra manualmente con normalizzazione e controllo fonte
+    const matchingLead = previousLeads?.find(l => {
+      const emailMatch = normalizeEmail(l.email) === normalizedEmail;
+      const phoneMatch = normalizePhone(l.telefono) === normalizedPhone;
+      
+      if (!emailMatch && !phoneMatch) return false;
+      
+      // Se ci sono automationSources, verifica che la fonte del lead precedente corrisponda
+      if (automationSources && automationSources.length > 0) {
+        const leadFonte = (l.fonte || '').toLowerCase().trim();
+        const sourceMatches = automationSources.some(source => {
+          const normalizedSource = source.toLowerCase().trim();
+          return leadFonte.includes(normalizedSource);
+        });
+        
+        if (!sourceMatches) {
+          console.log(`Lead ${l.venditore} skipped: fonte "${l.fonte}" doesn't match automation sources`);
+          return false;
+        }
+      }
+      
+      return true;
+    });
+    
+    if (!matchingLead) {
+      console.log('No previous assignment found with matching source');
+      return null;
+    }
+    
+    const previousSellerName = matchingLead.venditore;
+    const dataAssegnazione = matchingLead.data_assegnazione;
+    
+    console.log(`Found previous assignment: ${previousSellerName} on ${dataAssegnazione} with fonte: ${matchingLead.fonte}`);
+    // Cerca i dettagli del venditore nella tabella venditori
+    const { data: sellers } = await supabase
+      .from('venditori')
+      .select('id, nome, cognome, sheets_file_id, sheets_tab_name, market, stato')
+      .eq('market', lead.market)
+      .eq('stato', 'attivo');
+    
+    const targetSeller = sellers?.find(seller => {
+      const fullName = `${seller.nome} ${seller.cognome}`.trim();
+      return fullName.toLowerCase() === previousSellerName.toLowerCase().trim();
+    });
+    
+    if (!targetSeller) {
+      console.log(`Seller ${previousSellerName} not found or inactive`);
+      return null;
+    }
+    
+    return {
+      seller: targetSeller,
+      data_assegnazione: dataAssegnazione
+    };
+    
+  } catch (error) {
+    console.error('Error in findPreviousSellerWithSourceCheck:', error);
+    return null;
+  }
+}
+
+// Funzione per trovare il venditore precedente (versione semplice senza controllo fonte)
 async function findPreviousSeller(lead: any, supabase: any) {
   try {
     console.log(`Finding previous seller for lead: ${lead.email} / ${lead.telefono} in market: ${lead.market}`);
     
+    const normalizedEmail = normalizeEmail(lead.email);
+    const normalizedPhone = normalizePhone(lead.telefono);
+    
     // Prima query: trova il nome del venditore precedente dai lead storici
     const { data: previousLeads, error: leadsError } = await supabase
       .from('lead_generation')
-      .select('venditore, data_assegnazione, created_at')
-      .or(`email.eq.${lead.email},telefono.eq.${lead.telefono}`)
+      .select('venditore, data_assegnazione, email, telefono')
       .eq('market', lead.market)
       .not('venditore', 'is', null)
       .order('data_assegnazione', { ascending: false })
-      .limit(1);
+      .limit(100);
 
     if (leadsError) {
       console.error('Error finding previous leads:', leadsError);
       return null;
     }
 
-    if (!previousLeads || previousLeads.length === 0) {
+    // Filtra manualmente con normalizzazione
+    const matchingLead = previousLeads?.find(l => 
+      normalizeEmail(l.email) === normalizedEmail || 
+      normalizePhone(l.telefono) === normalizedPhone
+    );
+
+    if (!matchingLead) {
       console.log('No previous leads found with assigned seller');
       return null;
     }
 
-    const previousSellerName = previousLeads[0].venditore;
+    const previousSellerName = matchingLead.venditore;
     console.log(`Found previous seller name: ${previousSellerName}`);
 
     // Seconda query: cerca i dettagli del venditore nella tabella venditori
-    // Gestisce sia "Nome Cognome" che "nome cognome" (case insensitive)
     const { data: sellers, error: sellersError } = await supabase
       .from('venditori')
       .select('id, nome, cognome, sheets_file_id, sheets_tab_name, market, stato')

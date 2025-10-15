@@ -470,12 +470,14 @@ export type Database = {
           created_at: string
           excluded_sellers: string[] | null
           id: string
+          lock_period_days: number | null
           market: string
           nome: string
           priority: number
           sheets_tab_name: string | null
           target_seller_id: string | null
           trigger_field: string
+          trigger_sources: string[] | null
           trigger_when: string
           updated_at: string
           webhook_enabled: boolean
@@ -489,12 +491,14 @@ export type Database = {
           created_at?: string
           excluded_sellers?: string[] | null
           id?: string
+          lock_period_days?: number | null
           market?: string
           nome: string
           priority?: number
           sheets_tab_name?: string | null
           target_seller_id?: string | null
           trigger_field?: string
+          trigger_sources?: string[] | null
           trigger_when?: string
           updated_at?: string
           webhook_enabled?: boolean
@@ -508,12 +512,14 @@ export type Database = {
           created_at?: string
           excluded_sellers?: string[] | null
           id?: string
+          lock_period_days?: number | null
           market?: string
           nome?: string
           priority?: number
           sheets_tab_name?: string | null
           target_seller_id?: string | null
           trigger_field?: string
+          trigger_sources?: string[] | null
           trigger_when?: string
           updated_at?: string
           webhook_enabled?: boolean

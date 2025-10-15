@@ -25,6 +25,8 @@ const automationSchema = z.object({
   campagna: z.string().optional(),
   webhook_enabled: z.boolean().optional(),
   excluded_sellers: z.array(z.string()).optional(),
+  lock_period_days: z.number().optional(),
+  trigger_sources: z.array(z.string()).optional(),
 });
 
 interface AutomationFormProps {
@@ -63,6 +65,8 @@ export function AutomationForm({ open, onOpenChange, onSubmit, automation, isLoa
   const { venditori } = useSalespeopleData();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const [sourcesInput, setSourcesInput] = useState("");
+
   const form = useForm<NewAutomationForm>({
     resolver: zodResolver(automationSchema),
     defaultValues: {
@@ -77,6 +81,8 @@ export function AutomationForm({ open, onOpenChange, onSubmit, automation, isLoa
       campagna: automation?.campagna || "",
       webhook_enabled: automation?.webhook_enabled ?? true,
       excluded_sellers: automation?.excluded_sellers || [],
+      lock_period_days: automation?.lock_period_days || undefined,
+      trigger_sources: automation?.trigger_sources || [],
     },
   });
 
@@ -97,6 +103,8 @@ export function AutomationForm({ open, onOpenChange, onSubmit, automation, isLoa
         campagna: automation.campagna || "",
         webhook_enabled: automation.webhook_enabled ?? true,
         excluded_sellers: automation.excluded_sellers || [],
+        lock_period_days: automation.lock_period_days || undefined,
+        trigger_sources: automation.trigger_sources || [],
       });
     } else {
       form.reset({
@@ -111,6 +119,8 @@ export function AutomationForm({ open, onOpenChange, onSubmit, automation, isLoa
         campagna: "",
         webhook_enabled: true,
         excluded_sellers: [],
+        lock_period_days: undefined,
+        trigger_sources: [],
       });
     }
   }, [automation, form]);
@@ -347,9 +357,116 @@ export function AutomationForm({ open, onOpenChange, onSubmit, automation, isLoa
             )}
 
             {actionType === "assign_to_previous_seller" && (
-              <FormField
-                control={form.control}
-                name="excluded_sellers"
+              <>
+                <FormField
+                  control={form.control}
+                  name="trigger_sources"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Fonti (opzionale - per lock period)</FormLabel>
+                      <FormControl>
+                        <div className="space-y-2">
+                          <div className="flex gap-2">
+                            <Input
+                              placeholder="es. vsl14, vsl15, vsl30..."
+                              value={sourcesInput}
+                              onChange={(e) => setSourcesInput(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  e.preventDefault();
+                                  const sources = sourcesInput.split(',').map(s => s.trim()).filter(s => s);
+                                  if (sources.length > 0) {
+                                    const currentValues = field.value || [];
+                                    field.onChange([...currentValues, ...sources.filter(s => !currentValues.includes(s))]);
+                                    setSourcesInput('');
+                                  }
+                                }
+                              }}
+                            />
+                            <Button
+                              type="button"
+                              variant="outline"
+                              onClick={() => {
+                                const sources = sourcesInput.split(',').map(s => s.trim()).filter(s => s);
+                                if (sources.length > 0) {
+                                  const currentValues = field.value || [];
+                                  field.onChange([...currentValues, ...sources.filter(s => !currentValues.includes(s))]);
+                                  setSourcesInput('');
+                                }
+                              }}
+                            >
+                              Aggiungi
+                            </Button>
+                          </div>
+                          
+                          {field.value && field.value.length > 0 && (
+                            <div className="flex flex-wrap gap-2">
+                              {field.value.map((source, index) => (
+                                <Badge 
+                                  key={index} 
+                                  variant="secondary" 
+                                  className="flex items-center gap-1"
+                                >
+                                  {source}
+                                  <X 
+                                    className="h-3 w-3 cursor-pointer hover:text-destructive" 
+                                    onClick={() => {
+                                      const newValues = field.value?.filter((_, i) => i !== index);
+                                      field.onChange(newValues);
+                                    }}
+                                  />
+                                </Badge>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </FormControl>
+                      <p className="text-sm text-muted-foreground">
+                        Se specificate, usa queste fonti per matching invece di condition_value. Separare con virgola.
+                      </p>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="lock_period_days"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Giorni di Blocco (opzionale)</FormLabel>
+                      <Select 
+                        onValueChange={(value) => field.onChange(value === "none" ? undefined : parseInt(value))}
+                        value={field.value === undefined ? "none" : field.value.toString()}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Seleziona periodo" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="none">Nessun blocco</SelectItem>
+                          <SelectItem value="-1">Sempre riassegna (Workshop)</SelectItem>
+                          <SelectItem value="7">7 giorni</SelectItem>
+                          <SelectItem value="14">14 giorni</SelectItem>
+                          <SelectItem value="30">30 giorni (Evergreen)</SelectItem>
+                          <SelectItem value="60">60 giorni</SelectItem>
+                          <SelectItem value="90">90 giorni</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <p className="text-sm text-muted-foreground">
+                        {field.value === -1 && "Il lead sarà sempre riassegnato allo stesso venditore"}
+                        {field.value && field.value > 0 && `Il lead sarà riassegnato solo entro ${field.value} giorni dall'ultima assegnazione`}
+                        {!field.value && "Nessun controllo automatico di riassegnazione"}
+                      </p>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="excluded_sellers"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Venditori Esclusi</FormLabel>
@@ -408,6 +525,7 @@ export function AutomationForm({ open, onOpenChange, onSubmit, automation, isLoa
                   </FormItem>
                 )}
               />
+              </>
             )}
 
             <div className="flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-2 pt-4">
