@@ -220,7 +220,7 @@ async function checkAndApplyAutomations(lead: any, supabase: any) {
         continue;
       }
       
-      if (checkCondition(lead, automation.trigger_field, automation.condition_type, automation.condition_value, automation.trigger_sources)) {
+      if (checkCondition(lead, automation.trigger_field, automation.condition_type, automation.condition_value)) {
         console.log(`Automation condition matched: ${automation.nome}`);
         
         let targetSeller = null;
@@ -234,7 +234,7 @@ async function checkAndApplyAutomations(lead: any, supabase: any) {
         } else if (automation.action_type === 'assign_to_previous_seller') {
           // Se c'è lock_period_days, usa logica con controllo fonte
           if (automation.lock_period_days !== null && automation.lock_period_days !== undefined) {
-            const previousAssignment = await findPreviousSellerWithSourceCheck(lead, automation.trigger_sources || [], supabase);
+            const previousAssignment = await findPreviousSellerWithSourceCheck(lead, automation.condition_value || [], supabase);
             
             if (previousAssignment) {
               // lock_period_days = -1 significa "sempre riassegna" (workshop mode)
@@ -308,21 +308,9 @@ function checkCondition(
   lead: any, 
   triggerField: string, 
   conditionType: string, 
-  conditionValue: string,
-  triggerSources?: string[]
+  conditionValues: string[]
 ): boolean {
-  // Se ci sono trigger_sources, usa quelli invece di conditionValue
-  if (triggerSources && triggerSources.length > 0) {
-    const fieldValue = (lead[triggerField] || '').toLowerCase().trim();
-    
-    return triggerSources.some(source => {
-      const normalizedSource = source.toLowerCase().trim();
-      // Supporta sia match esatto che parziale (es: "vsl14" in "vsl14,leadmanager")
-      return fieldValue.includes(normalizedSource);
-    });
-  }
-  
-  if (!conditionValue) return false;
+  if (!conditionValues || conditionValues.length === 0) return false;
   
   // Estrai il valore del campo specificato dal lead
   let fieldValue = '';
@@ -356,22 +344,26 @@ function checkCondition(
   }
   
   const field = fieldValue.toLowerCase();
-  const value = conditionValue.toLowerCase();
   
-  switch (conditionType) {
-    case 'contains':
-      return field.includes(value);
-    case 'equals':
-      return field === value;
-    case 'starts_with':
-      return field.startsWith(value);
-    case 'ends_with':
-      return field.endsWith(value);
-    case 'not_contains':
-      return !field.includes(value);
-    default:
-      return false;
-  }
+  // Check if any of the condition values match
+  return conditionValues.some(conditionValue => {
+    const value = conditionValue.toLowerCase();
+    
+    switch (conditionType) {
+      case 'contains':
+        return field.includes(value);
+      case 'equals':
+        return field === value;
+      case 'starts_with':
+        return field.startsWith(value);
+      case 'ends_with':
+        return field.endsWith(value);
+      case 'not_contains':
+        return !field.includes(value);
+      default:
+        return false;
+    }
+  });
 }
 
 // Funzione per trovare il venditore precedente con controllo fonte

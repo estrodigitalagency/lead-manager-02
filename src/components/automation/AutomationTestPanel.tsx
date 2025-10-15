@@ -34,26 +34,30 @@ export function AutomationTestPanel({ automations, onClose }: AutomationTestPane
   const [testValue, setTestValue] = useState("");
   const [testResults, setTestResults] = useState<TestResult[]>([]);
 
-  const checkCondition = (ultimaFonte: string, conditionType: string, conditionValue: string): boolean => {
-    if (!ultimaFonte || !conditionValue) return false;
+  const checkCondition = (ultimaFonte: string, conditionType: string, conditionValues: string[]): boolean => {
+    if (!ultimaFonte || !conditionValues || conditionValues.length === 0) return false;
     
     const fonte = ultimaFonte.toLowerCase();
-    const value = conditionValue.toLowerCase();
     
-    switch (conditionType) {
-      case 'contains':
-        return fonte.includes(value);
-      case 'equals':
-        return fonte === value;
-      case 'starts_with':
-        return fonte.startsWith(value);
-      case 'ends_with':
-        return fonte.endsWith(value);
-      case 'not_contains':
-        return !fonte.includes(value);
-      default:
-        return false;
-    }
+    // Check if any of the condition values match
+    return conditionValues.some(conditionValue => {
+      const value = conditionValue.toLowerCase();
+      
+      switch (conditionType) {
+        case 'contains':
+          return fonte.includes(value);
+        case 'equals':
+          return fonte === value;
+        case 'starts_with':
+          return fonte.startsWith(value);
+        case 'ends_with':
+          return fonte.endsWith(value);
+        case 'not_contains':
+          return !fonte.includes(value);
+        default:
+          return false;
+      }
+    });
   };
 
   const runTest = () => {
@@ -72,7 +76,7 @@ export function AutomationTestPanel({ automations, onClose }: AutomationTestPane
       } else if (matched && foundMatch) {
         reason = "⏸️ Questa automazione corrisponde ma non verrebbe eseguita (priorità inferiore)";
       } else {
-        reason = `❌ Condizione non soddisfatta: "${testValue}" ${conditionTypeLabels[automation.condition_type]} "${automation.condition_value}"`;
+        reason = `❌ Condizione non soddisfatta: "${testValue}" ${conditionTypeLabels[automation.condition_type]} "${automation.condition_value.join(', ')}"`;
       }
 
       results.push({
@@ -183,8 +187,8 @@ export function AutomationTestPanel({ automations, onClose }: AutomationTestPane
                         Priorità {result.automation.priority}
                       </Badge>
                     </div>
-                    <div className="text-xs text-muted-foreground mb-2">
-                      {conditionTypeLabels[result.automation.condition_type]} "{result.automation.condition_value}" → {actionTypeLabels[result.automation.action_type]}
+                     <div className="text-xs text-muted-foreground mb-2">
+                      {conditionTypeLabels[result.automation.condition_type]} "{result.automation.condition_value.join(', ')}" → {actionTypeLabels[result.automation.action_type]}
                     </div>
                     <div className="text-sm">{result.reason}</div>
                   </div>

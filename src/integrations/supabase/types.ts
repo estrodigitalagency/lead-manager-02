@@ -466,7 +466,7 @@ export type Database = {
           attivo: boolean
           campagna: string | null
           condition_type: Database["public"]["Enums"]["automation_condition_type"]
-          condition_value: string
+          condition_value: string[]
           created_at: string
           excluded_sellers: string[] | null
           id: string
@@ -487,7 +487,7 @@ export type Database = {
           attivo?: boolean
           campagna?: string | null
           condition_type: Database["public"]["Enums"]["automation_condition_type"]
-          condition_value: string
+          condition_value: string[]
           created_at?: string
           excluded_sellers?: string[] | null
           id?: string
@@ -508,7 +508,7 @@ export type Database = {
           attivo?: boolean
           campagna?: string | null
           condition_type?: Database["public"]["Enums"]["automation_condition_type"]
-          condition_value?: string
+          condition_value?: string[]
           created_at?: string
           excluded_sellers?: string[] | null
           id?: string
