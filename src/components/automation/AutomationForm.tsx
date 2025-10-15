@@ -19,7 +19,7 @@ const automationSchema = z.object({
   trigger_when: z.enum(['new_lead', 'duplicate_different_source']),
   trigger_field: z.enum(['ultima_fonte', 'fonte', 'nome', 'email', 'telefono', 'campagna', 'lead_score', 'created_at']),
   condition_type: z.enum(['contains', 'equals', 'starts_with', 'ends_with', 'not_contains']),
-  condition_value: z.string().min(1, "Il valore della condizione è obbligatorio"),
+  condition_value: z.array(z.string()).min(1, "Seleziona almeno una fonte"),
   action_type: z.enum(['assign_to_seller', 'assign_to_previous_seller']),
   target_seller_id: z.string().optional(),
   sheets_tab_name: z.string().optional(),
@@ -74,7 +74,7 @@ export function AutomationForm({ open, onOpenChange, onSubmit, automation, isLoa
       trigger_when: automation?.trigger_when || "new_lead",
       trigger_field: automation?.trigger_field || "ultima_fonte",
       condition_type: automation?.condition_type || "contains",
-      condition_value: automation?.condition_value || "",
+      condition_value: automation?.condition_value || [],
       action_type: automation?.action_type || "assign_to_seller",
       target_seller_id: automation?.target_seller_id || undefined,
       sheets_tab_name: automation?.sheets_tab_name || "",
@@ -117,7 +117,7 @@ export function AutomationForm({ open, onOpenChange, onSubmit, automation, isLoa
         trigger_when: automation.trigger_when || "new_lead",
         trigger_field: automation.trigger_field || "ultima_fonte",
         condition_type: automation.condition_type || "contains",
-        condition_value: automation.condition_value || "",
+        condition_value: automation.condition_value || [],
         action_type: automation.action_type || "assign_to_seller",
         target_seller_id: automation.target_seller_id || undefined,
         sheets_tab_name: automation.sheets_tab_name || "",
@@ -133,7 +133,7 @@ export function AutomationForm({ open, onOpenChange, onSubmit, automation, isLoa
         trigger_when: "new_lead",
         trigger_field: "ultima_fonte",
         condition_type: "contains",
-        condition_value: "",
+        condition_value: [],
         action_type: "assign_to_seller",
         target_seller_id: undefined,
         sheets_tab_name: "",
@@ -269,24 +269,54 @@ export function AutomationForm({ open, onOpenChange, onSubmit, automation, isLoa
                 name="condition_value"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Valore</FormLabel>
+                    <FormLabel>Fonti</FormLabel>
                     <FormControl>
-                      {triggerField === "ultima_fonte" ? (
-                        <Select onValueChange={field.onChange} value={field.value}>
+                      <div className="space-y-2">
+                        <Select
+                          onValueChange={(value) => {
+                            if (value && !field.value?.includes(value)) {
+                              const currentValues = field.value || [];
+                              field.onChange([...currentValues, value]);
+                            }
+                          }}
+                        >
                           <SelectTrigger>
-                            <SelectValue placeholder="Seleziona fonte" />
+                            <SelectValue placeholder="Seleziona fonti da includere" />
                           </SelectTrigger>
                           <SelectContent>
                             {availableSources.map((source) => (
-                              <SelectItem key={source} value={source}>
+                              <SelectItem 
+                                key={source} 
+                                value={source}
+                                disabled={field.value?.includes(source)}
+                              >
                                 {source}
                               </SelectItem>
                             ))}
                           </SelectContent>
                         </Select>
-                      ) : (
-                        <Input placeholder="es. facebook" {...field} />
-                      )}
+                        
+                        {field.value && field.value.length > 0 && (
+                          <div className="flex flex-wrap gap-2 mt-2">
+                            {field.value.map((source, index) => (
+                              <Badge 
+                                key={index} 
+                                variant="secondary" 
+                                className="flex items-center gap-1"
+                              >
+                                {source}
+                                <X 
+                                  className="h-3 w-3 cursor-pointer hover:text-destructive" 
+                                  onClick={() => {
+                                    const newValues = field.value?.filter((_, i) => i !== index);
+                                    field.onChange(newValues);
+                                  }}
+                                />
+                              </Badge>
+                            ))}
+                          </div>
+                        )}
+                      </div>
                     </FormControl>
                     <FormMessage />
                   </FormItem>

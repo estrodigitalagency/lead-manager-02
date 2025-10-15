@@ -6,7 +6,7 @@ export interface LeadAssignmentAutomation {
   trigger_when: 'new_lead' | 'duplicate_different_source';
   trigger_field: 'ultima_fonte' | 'fonte' | 'nome' | 'email' | 'telefono' | 'campagna' | 'lead_score' | 'created_at';
   condition_type: 'contains' | 'equals' | 'starts_with' | 'ends_with' | 'not_contains';
-  condition_value: string;
+  condition_value: string[];
   action_type: 'assign_to_seller' | 'assign_to_previous_seller';
   target_seller_id?: string;
   sheets_tab_name?: string;
@@ -23,7 +23,7 @@ export interface NewAutomationForm {
   trigger_when: 'new_lead' | 'duplicate_different_source';
   trigger_field: 'ultima_fonte' | 'fonte' | 'nome' | 'email' | 'telefono' | 'campagna' | 'lead_score' | 'created_at';
   condition_type: 'contains' | 'equals' | 'starts_with' | 'ends_with' | 'not_contains';
-  condition_value: string;
+  condition_value: string[];
   action_type: 'assign_to_seller' | 'assign_to_previous_seller';
   target_seller_id?: string;
   sheets_tab_name?: string;
