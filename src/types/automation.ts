@@ -14,7 +14,6 @@ export interface LeadAssignmentAutomation {
   webhook_enabled: boolean;
   excluded_sellers?: string[];
   lock_period_days?: number;
-  trigger_sources?: string[];
   created_at: string;
   updated_at: string;
 }
@@ -32,5 +31,5 @@ export interface NewAutomationForm {
   webhook_enabled?: boolean;
   excluded_sellers?: string[];
   lock_period_days?: number;
-  trigger_sources?: string[];
+  lock_period_enabled?: boolean;
 }

@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { X } from "lucide-react";
 import { useSalespeopleData } from "@/hooks/useSalespeopleData";
 import { NewAutomationForm, LeadAssignmentAutomation } from "@/types/automation";
+import { supabase } from "@/integrations/supabase/client";
 
 const automationSchema = z.object({
   nome: z.string().min(1, "Il nome è obbligatorio"),
@@ -25,8 +26,8 @@ const automationSchema = z.object({
   campagna: z.string().optional(),
   webhook_enabled: z.boolean().optional(),
   excluded_sellers: z.array(z.string()).optional(),
+  lock_period_enabled: z.boolean().optional(),
   lock_period_days: z.number().optional(),
-  trigger_sources: z.array(z.string()).optional(),
 });
 
 interface AutomationFormProps {
@@ -64,8 +65,7 @@ const actionTypeLabels = {
 export function AutomationForm({ open, onOpenChange, onSubmit, automation, isLoading }: AutomationFormProps) {
   const { venditori } = useSalespeopleData();
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  const [sourcesInput, setSourcesInput] = useState("");
+  const [availableSources, setAvailableSources] = useState<string[]>([]);
 
   const form = useForm<NewAutomationForm>({
     resolver: zodResolver(automationSchema),
@@ -81,12 +81,33 @@ export function AutomationForm({ open, onOpenChange, onSubmit, automation, isLoa
       campagna: automation?.campagna || "",
       webhook_enabled: automation?.webhook_enabled ?? true,
       excluded_sellers: automation?.excluded_sellers || [],
-      lock_period_days: automation?.lock_period_days || undefined,
-      trigger_sources: automation?.trigger_sources || [],
+      lock_period_enabled: automation?.lock_period_days !== undefined && automation?.lock_period_days !== null,
+      lock_period_days: automation?.lock_period_days || 30,
     },
   });
 
   const actionType = form.watch("action_type");
+  const triggerField = form.watch("trigger_field");
+  const lockPeriodEnabled = form.watch("lock_period_enabled");
+
+  // Fetch available sources from database
+  useEffect(() => {
+    const fetchSources = async () => {
+      const { data, error } = await supabase
+        .from('lead_generation')
+        .select('ultima_fonte')
+        .not('ultima_fonte', 'is', null);
+      
+      if (!error && data) {
+        const uniqueSources = Array.from(new Set(data.map(d => d.ultima_fonte).filter(Boolean))) as string[];
+        setAvailableSources(uniqueSources.sort());
+      }
+    };
+    
+    if (open) {
+      fetchSources();
+    }
+  }, [open]);
 
   // Reset form when automation prop changes
   useEffect(() => {
@@ -103,8 +124,8 @@ export function AutomationForm({ open, onOpenChange, onSubmit, automation, isLoa
         campagna: automation.campagna || "",
         webhook_enabled: automation.webhook_enabled ?? true,
         excluded_sellers: automation.excluded_sellers || [],
-        lock_period_days: automation.lock_period_days || undefined,
-        trigger_sources: automation.trigger_sources || [],
+        lock_period_enabled: automation.lock_period_days !== undefined && automation.lock_period_days !== null,
+        lock_period_days: automation.lock_period_days || 30,
       });
     } else {
       form.reset({
@@ -119,8 +140,8 @@ export function AutomationForm({ open, onOpenChange, onSubmit, automation, isLoa
         campagna: "",
         webhook_enabled: true,
         excluded_sellers: [],
-        lock_period_days: undefined,
-        trigger_sources: [],
+        lock_period_enabled: false,
+        lock_period_days: 30,
       });
     }
   }, [automation, form]);
@@ -128,7 +149,14 @@ export function AutomationForm({ open, onOpenChange, onSubmit, automation, isLoa
   const handleSubmit = async (data: NewAutomationForm) => {
     try {
       setIsSubmitting(true);
-      await onSubmit(data);
+      
+      // Remove lock_period_enabled from the data and set lock_period_days to undefined if not enabled
+      const { lock_period_enabled, ...submissionData } = data;
+      if (!lock_period_enabled) {
+        submissionData.lock_period_days = undefined;
+      }
+      
+      await onSubmit(submissionData);
       form.reset();
       onOpenChange(false);
     } catch (error) {
@@ -243,7 +271,22 @@ export function AutomationForm({ open, onOpenChange, onSubmit, automation, isLoa
                   <FormItem>
                     <FormLabel>Valore</FormLabel>
                     <FormControl>
-                      <Input placeholder="es. facebook" {...field} />
+                      {triggerField === "ultima_fonte" ? (
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Seleziona fonte" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {availableSources.map((source) => (
+                              <SelectItem key={source} value={source}>
+                                {source}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      ) : (
+                        <Input placeholder="es. facebook" {...field} />
+                      )}
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -303,6 +346,120 @@ export function AutomationForm({ open, onOpenChange, onSubmit, automation, isLoa
               />
             )}
 
+            {actionType === "assign_to_previous_seller" && (
+              <>
+                <FormField
+                  control={form.control}
+                  name="lock_period_enabled"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                      <FormControl>
+                        <Checkbox 
+                          checked={field.value} 
+                          onCheckedChange={field.onChange}
+                        />
+                      </FormControl>
+                      <div className="space-y-1 leading-none">
+                        <FormLabel>
+                          Abilita Giorni di Blocco
+                        </FormLabel>
+                        <p className="text-sm text-muted-foreground">
+                          Se abilitato, il lead sarà riassegnato solo entro il periodo specificato
+                        </p>
+                      </div>
+                    </FormItem>
+                  )}
+                />
+
+                {lockPeriodEnabled && (
+                  <FormField
+                    control={form.control}
+                    name="lock_period_days"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Numero Giorni</FormLabel>
+                        <FormControl>
+                          <Input 
+                            type="number" 
+                            placeholder="es. 30" 
+                            {...field}
+                            onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
+                            value={field.value || ""}
+                          />
+                        </FormControl>
+                        <p className="text-sm text-muted-foreground">
+                          Il lead sarà riassegnato solo entro {field.value || 0} giorni dall'ultima assegnazione
+                        </p>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
+
+                <FormField
+                  control={form.control}
+                  name="excluded_sellers"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Venditori Esclusi (opzionale)</FormLabel>
+                      <FormControl>
+                        <div className="space-y-2">
+                          <Select
+                            onValueChange={(value) => {
+                              if (value && !field.value?.includes(value)) {
+                                const currentValues = field.value || [];
+                                field.onChange([...currentValues, value]);
+                              }
+                            }}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Seleziona venditore da escludere" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {venditori.map((venditore) => (
+                                <SelectItem 
+                                  key={venditore.id} 
+                                  value={`${venditore.nome} ${venditore.cognome}`.trim()}
+                                  disabled={field.value?.includes(`${venditore.nome} ${venditore.cognome}`.trim())}
+                                >
+                                  {venditore.nome} {venditore.cognome}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          
+                          {field.value && field.value.length > 0 && (
+                            <div className="flex flex-wrap gap-2 mt-2">
+                              {field.value.map((seller, index) => (
+                                <Badge 
+                                  key={index} 
+                                  variant="secondary" 
+                                  className="flex items-center gap-1"
+                                >
+                                  {seller}
+                                  <X 
+                                    className="h-3 w-3 cursor-pointer hover:text-destructive" 
+                                    onClick={() => {
+                                      const newValues = field.value?.filter((_, i) => i !== index);
+                                      field.onChange(newValues);
+                                    }}
+                                  />
+                                </Badge>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </FormControl>
+                      <p className="text-sm text-muted-foreground">
+                        Se il venditore precedente è uno di questi, l'automazione non si attiva
+                      </p>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </>
+            )}
+
             <FormField
               control={form.control}
               name="sheets_tab_name"
@@ -331,202 +488,28 @@ export function AutomationForm({ open, onOpenChange, onSubmit, automation, isLoa
               )}
             />
 
-            {(actionType === "assign_to_seller" || actionType === "assign_to_previous_seller") && (
-              <FormField
-                control={form.control}
-                name="webhook_enabled"
-                render={({ field }) => (
-                  <FormItem className="flex flex-row items-start space-x-3 space-y-0">
-                    <FormControl>
-                      <Checkbox 
-                        checked={field.value} 
-                        onCheckedChange={field.onChange}
-                      />
-                    </FormControl>
-                    <div className="space-y-1 leading-none">
-                      <FormLabel>
-                        Invia dati via webhook
-                      </FormLabel>
-                      <p className="text-sm text-muted-foreground">
-                        Se abilitato, i dati dell'assegnazione verranno inviati al webhook configurato
-                      </p>
-                    </div>
-                  </FormItem>
-                )}
-              />
-            )}
-
-            {actionType === "assign_to_previous_seller" && (
-              <>
-                <FormField
-                  control={form.control}
-                  name="trigger_sources"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Fonti (opzionale - per lock period)</FormLabel>
-                      <FormControl>
-                        <div className="space-y-2">
-                          <div className="flex gap-2">
-                            <Input
-                              placeholder="es. vsl14, vsl15, vsl30..."
-                              value={sourcesInput}
-                              onChange={(e) => setSourcesInput(e.target.value)}
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter') {
-                                  e.preventDefault();
-                                  const sources = sourcesInput.split(',').map(s => s.trim()).filter(s => s);
-                                  if (sources.length > 0) {
-                                    const currentValues = field.value || [];
-                                    field.onChange([...currentValues, ...sources.filter(s => !currentValues.includes(s))]);
-                                    setSourcesInput('');
-                                  }
-                                }
-                              }}
-                            />
-                            <Button
-                              type="button"
-                              variant="outline"
-                              onClick={() => {
-                                const sources = sourcesInput.split(',').map(s => s.trim()).filter(s => s);
-                                if (sources.length > 0) {
-                                  const currentValues = field.value || [];
-                                  field.onChange([...currentValues, ...sources.filter(s => !currentValues.includes(s))]);
-                                  setSourcesInput('');
-                                }
-                              }}
-                            >
-                              Aggiungi
-                            </Button>
-                          </div>
-                          
-                          {field.value && field.value.length > 0 && (
-                            <div className="flex flex-wrap gap-2">
-                              {field.value.map((source, index) => (
-                                <Badge 
-                                  key={index} 
-                                  variant="secondary" 
-                                  className="flex items-center gap-1"
-                                >
-                                  {source}
-                                  <X 
-                                    className="h-3 w-3 cursor-pointer hover:text-destructive" 
-                                    onClick={() => {
-                                      const newValues = field.value?.filter((_, i) => i !== index);
-                                      field.onChange(newValues);
-                                    }}
-                                  />
-                                </Badge>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      </FormControl>
-                      <p className="text-sm text-muted-foreground">
-                        Se specificate, usa queste fonti per matching invece di condition_value. Separare con virgola.
-                      </p>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="lock_period_days"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Giorni di Blocco (opzionale)</FormLabel>
-                      <Select 
-                        onValueChange={(value) => field.onChange(value === "none" ? undefined : parseInt(value))}
-                        value={field.value === undefined ? "none" : field.value.toString()}
-                      >
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Seleziona periodo" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="none">Nessun blocco</SelectItem>
-                          <SelectItem value="-1">Sempre riassegna (Workshop)</SelectItem>
-                          <SelectItem value="7">7 giorni</SelectItem>
-                          <SelectItem value="14">14 giorni</SelectItem>
-                          <SelectItem value="30">30 giorni (Evergreen)</SelectItem>
-                          <SelectItem value="60">60 giorni</SelectItem>
-                          <SelectItem value="90">90 giorni</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <p className="text-sm text-muted-foreground">
-                        {field.value === -1 && "Il lead sarà sempre riassegnato allo stesso venditore"}
-                        {field.value && field.value > 0 && `Il lead sarà riassegnato solo entro ${field.value} giorni dall'ultima assegnazione`}
-                        {!field.value && "Nessun controllo automatico di riassegnazione"}
-                      </p>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="excluded_sellers"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Venditori Esclusi</FormLabel>
-                    <FormControl>
-                      <div className="space-y-2">
-                        <Select
-                          onValueChange={(value) => {
-                            if (value && !field.value?.includes(value)) {
-                              const currentValues = field.value || [];
-                              field.onChange([...currentValues, value]);
-                            }
-                          }}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Seleziona venditore da escludere" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {venditori.map((venditore) => (
-                              <SelectItem 
-                                key={venditore.id} 
-                                value={`${venditore.nome} ${venditore.cognome}`.trim()}
-                                disabled={field.value?.includes(`${venditore.nome} ${venditore.cognome}`.trim())}
-                              >
-                                {venditore.nome} {venditore.cognome}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        
-                        {field.value && field.value.length > 0 && (
-                          <div className="flex flex-wrap gap-2 mt-2">
-                            {field.value.map((seller, index) => (
-                              <Badge 
-                                key={index} 
-                                variant="secondary" 
-                                className="flex items-center gap-1"
-                              >
-                                {seller}
-                                <X 
-                                  className="h-3 w-3 cursor-pointer hover:text-destructive" 
-                                  onClick={() => {
-                                    const newValues = field.value?.filter((_, i) => i !== index);
-                                    field.onChange(newValues);
-                                  }}
-                                />
-                              </Badge>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    </FormControl>
+            <FormField
+              control={form.control}
+              name="webhook_enabled"
+              render={({ field }) => (
+                <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                  <FormControl>
+                    <Checkbox 
+                      checked={field.value} 
+                      onCheckedChange={field.onChange}
+                    />
+                  </FormControl>
+                  <div className="space-y-1 leading-none">
+                    <FormLabel>
+                      Abilita Invio Webhook
+                    </FormLabel>
                     <p className="text-sm text-muted-foreground">
-                      Se il venditore precedente è uno di questi, l'automazione non si attiva ma il lead resta assegnabile
+                      Se abilitato, i dati dell'assegnazione verranno inviati al webhook configurato
                     </p>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              </>
-            )}
+                  </div>
+                </FormItem>
+              )}
+            />
 
             <div className="flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-2 pt-4">
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="w-full sm:w-auto">
