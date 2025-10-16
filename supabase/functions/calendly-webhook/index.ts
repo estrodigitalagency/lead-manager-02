@@ -69,6 +69,29 @@ serve(async (req) => {
     
     console.log(`Attribution window: ${attributionWindow} days, cutoff date: ${attributionWindowISODate}`)
     
+    // Get venditore name from calendly_url if provided
+    let venditoreNome = payload.venditore || null
+    
+    // If we have a calendly_url in the payload, try to find the venditore from venditori_calendly
+    if (payload.calendly_url) {
+      console.log(`Looking up venditore for Calendly URL: ${payload.calendly_url}`)
+      
+      const { data: venditoreData, error: venditoreError } = await supabase
+        .from('venditori_calendly')
+        .select('nome_venditore')
+        .eq('calendly_url', payload.calendly_url)
+        .eq('market', finalMarket)
+        .eq('attivo', true)
+        .single()
+      
+      if (venditoreError) {
+        console.error('Error finding venditore from calendly_url:', venditoreError)
+      } else if (venditoreData) {
+        venditoreNome = venditoreData.nome_venditore
+        console.log(`Found venditore from Calendly URL: ${venditoreNome}`)
+      }
+    }
+    
     // LOGICA CORRETTA: Update corresponding leads if they exist and are within attribution window
     if (payload.email || payload.telefono) {
       let query = supabase
@@ -93,20 +116,29 @@ serve(async (req) => {
       } else if (matchingLeads && matchingLeads.length > 0) {
         console.log(`Found ${matchingLeads.length} matching leads to update`)
         
+        // Prepare update object
+        const updateData: any = {
+          booked_call: 'SI',
+          assignable: false,  // CRITICO: Lead con call prenotate NON sono MAI assegnabili
+          stato: 'prenotato'
+        }
+        
+        // Add venditore if we found one
+        if (venditoreNome) {
+          updateData.venditore = venditoreNome
+          console.log(`Assigning venditore: ${venditoreNome}`)
+        }
+        
         // Update all matching leads
         const { error: updateError } = await supabase
           .from('lead_generation')
-          .update({ 
-            booked_call: 'SI',
-            assignable: false,  // CRITICO: Lead con call prenotate NON sono MAI assegnabili
-            stato: 'prenotato'
-          })
+          .update(updateData)
           .in('id', matchingLeads.map(lead => lead.id))
 
         if (updateError) {
           console.error('Error updating lead booked_call status:', updateError)
         } else {
-          console.log(`Updated ${matchingLeads.length} leads to booked_call=SI and assignable=false`)
+          console.log(`Updated ${matchingLeads.length} leads to booked_call=SI, assignable=false${venditoreNome ? `, venditore=${venditoreNome}` : ''}`)
         }
       } else {
         console.log('No matching leads found within attribution window')
