@@ -89,6 +89,20 @@ serve(async (req) => {
       } else if (venditoreData) {
         venditoreNome = venditoreData.nome_venditore
         console.log(`Found venditore from Calendly URL: ${venditoreNome}`)
+        
+        // CRITICAL: Update the booked_call record with the venditore we just found
+        if (data && data.length > 0 && venditoreNome) {
+          const { error: updateBookingError } = await supabase
+            .from('booked_call')
+            .update({ venditore: venditoreNome })
+            .eq('id', data[0].id)
+          
+          if (updateBookingError) {
+            console.error('Error updating booked_call with venditore:', updateBookingError)
+          } else {
+            console.log(`Updated booked_call ${data[0].id} with venditore: ${venditoreNome}`)
+          }
+        }
       }
     }
     
