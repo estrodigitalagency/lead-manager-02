@@ -110,7 +110,7 @@ serve(async (req) => {
     if (payload.email || payload.telefono) {
       let query = supabase
         .from('lead_generation')
-        .select('id, email, telefono, created_at')
+        .select('id, email, telefono, created_at, fonte')
         .gte('created_at', attributionWindowISODate)
         .eq('market', finalMarket)
 
@@ -130,6 +130,51 @@ serve(async (req) => {
       } else if (matchingLeads && matchingLeads.length > 0) {
         console.log(`Found ${matchingLeads.length} matching leads to update`)
         
+        // Se abbiamo trovato un venditore tramite calendly_url, normalizziamolo dalla tabella venditori
+        let normalizedVenditore = venditoreNome
+        if (venditoreNome) {
+          const { data: venditoriMatch, error: venditoriError } = await supabase
+            .from('venditori')
+            .select('nome, cognome')
+            .eq('market', finalMarket)
+            .eq('stato', 'attivo')
+          
+          if (!venditoriError && venditoriMatch && venditoriMatch.length > 0) {
+            // Cerca match case-insensitive
+            const venditoreFound = venditoriMatch.find(v => {
+              const fullName = `${v.nome} ${v.cognome}`.toLowerCase()
+              const firstNameOnly = v.nome.toLowerCase()
+              const venditoreLower = venditoreNome.toLowerCase().trim()
+              
+              return fullName === venditoreLower || firstNameOnly === venditoreLower
+            })
+            
+            if (venditoreFound) {
+              normalizedVenditore = `${venditoreFound.nome} ${venditoreFound.cognome}`
+              console.log(`Normalized venditore from "${venditoreNome}" to "${normalizedVenditore}"`)
+            } else {
+              console.warn(`Venditore "${venditoreNome}" not found in venditori table`)
+            }
+          }
+        }
+        
+        // Prendi la fonte dal primo lead trovato se non è presente nel payload
+        const fonteToUse = payload.fonte || matchingLeads[0]?.fonte || null
+        
+        // Aggiorna booked_call con la fonte copiata dal lead se necessario
+        if (data && data.length > 0 && fonteToUse && !payload.fonte) {
+          const { error: updateBookingFonteError } = await supabase
+            .from('booked_call')
+            .update({ fonte: fonteToUse })
+            .eq('id', data[0].id)
+          
+          if (updateBookingFonteError) {
+            console.error('Error updating booked_call with fonte from lead:', updateBookingFonteError)
+          } else {
+            console.log(`Updated booked_call ${data[0].id} with fonte from lead: ${fonteToUse}`)
+          }
+        }
+        
         // Prepare update object
         const updateData: any = {
           booked_call: 'SI',
@@ -137,10 +182,10 @@ serve(async (req) => {
           stato: 'prenotato'
         }
         
-        // Add venditore if we found one
-        if (venditoreNome) {
-          updateData.venditore = venditoreNome
-          console.log(`Assigning venditore: ${venditoreNome}`)
+        // Add normalized venditore if we found one
+        if (normalizedVenditore) {
+          updateData.venditore = normalizedVenditore
+          console.log(`Assigning normalized venditore: ${normalizedVenditore}`)
         }
         
         // Update all matching leads
@@ -152,7 +197,7 @@ serve(async (req) => {
         if (updateError) {
           console.error('Error updating lead booked_call status:', updateError)
         } else {
-          console.log(`Updated ${matchingLeads.length} leads to booked_call=SI, assignable=false${venditoreNome ? `, venditore=${venditoreNome}` : ''}`)
+          console.log(`Updated ${matchingLeads.length} leads to booked_call=SI, assignable=false${normalizedVenditore ? `, venditore=${normalizedVenditore}` : ''}`)
         }
       } else {
         console.log('No matching leads found within attribution window')
