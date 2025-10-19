@@ -232,42 +232,61 @@ async function checkAndApplyAutomations(lead: any, supabase: any) {
           sheetsTabName = automation.sheets_tab_name || automation.venditori?.sheets_tab_name;
           
         } else if (automation.action_type === 'assign_to_previous_seller') {
-          // Se c'è lock_period_days, usa logica con controllo fonte
-          if (automation.lock_period_days !== null && automation.lock_period_days !== undefined) {
-            const previousAssignment = await findPreviousSellerWithSourceCheck(lead, automation.condition_value || [], supabase);
+          // Cerca sempre tra TUTTI i lead precedenti (qualsiasi fonte)
+          const previousSeller = await findPreviousSeller(lead, supabase);
+          
+          if (previousSeller) {
+            // Recupera la data_assegnazione dal lead precedente
+            const { data: previousLeadData } = await supabase
+              .from('lead_generation')
+              .select('data_assegnazione')
+              .eq('market', lead.market)
+              .not('venditore', 'is', null)
+              .not('data_assegnazione', 'is', null)
+              .or(`email.eq.${lead.email},telefono.eq.${lead.telefono}`)
+              .order('data_assegnazione', { ascending: false })
+              .limit(1)
+              .single();
             
-            if (previousAssignment) {
-              // lock_period_days = -1 significa "sempre riassegna" (workshop mode)
+            const dataAssegnazione = previousLeadData?.data_assegnazione;
+            
+            if (automation.lock_period_days !== null && automation.lock_period_days !== undefined) {
+              // lock_period_days = -1 significa "sempre riassegna" (no lock)
               if (automation.lock_period_days === -1) {
-                console.log(`Workshop mode: always reassigning to ${previousAssignment.seller.nome} ${previousAssignment.seller.cognome}`);
-                targetSeller = previousAssignment.seller;
-                sheetsTabName = automation.sheets_tab_name || previousAssignment.seller.sheets_tab_name;
-              } else if (automation.lock_period_days > 0) {
-                // Modalità evergreen: controlla i giorni
-                const daysSinceAssignment = calculateDaysSince(previousAssignment.data_assegnazione);
+                console.log(`No lock period: always reassigning to ${previousSeller.nome} ${previousSeller.cognome}`);
+                targetSeller = previousSeller;
+                sheetsTabName = automation.sheets_tab_name || previousSeller.sheets_tab_name;
+              } else if (automation.lock_period_days > 0 && dataAssegnazione) {
+                // Controlla i giorni dal lock period
+                const daysSinceAssignment = calculateDaysSince(dataAssegnazione);
                 
                 console.log(`Lock period check: ${daysSinceAssignment} days since last assignment (limit: ${automation.lock_period_days})`);
                 
                 if (daysSinceAssignment < automation.lock_period_days) {
                   // ENTRO il lock period → riassegna allo stesso venditore
-                  console.log(`Within lock period, reassigning to ${previousAssignment.seller.nome} ${previousAssignment.seller.cognome}`);
-                  targetSeller = previousAssignment.seller;
-                  sheetsTabName = automation.sheets_tab_name || previousAssignment.seller.sheets_tab_name;
+                  console.log(`Within lock period, reassigning to ${previousSeller.nome} ${previousSeller.cognome}`);
+                  targetSeller = previousSeller;
+                  sheetsTabName = automation.sheets_tab_name || previousSeller.sheets_tab_name;
+                  // IMPORTANTE: Passare dataAssegnazione originale per NON aggiornarla
+                  targetSeller.originalDataAssegnazione = dataAssegnazione;
                 } else {
-                  // OLTRE il lock period → NON assegnare, lascia libero
-                  console.log(`Beyond lock period, lead ${lead.id} remains unassigned`);
-                  await logAutomationExecution(lead, automation, null, 'beyond_lock_period', `${daysSinceAssignment} days since last assignment exceeds lock period of ${automation.lock_period_days} days`, 'webhook', supabase);
+                  // OLTRE il lock period → NON assegnare, lascia assignable=true
+                  console.log(`Beyond lock period (${daysSinceAssignment}/${automation.lock_period_days} days), lead remains assignable`);
+                  await logAutomationExecution(lead, automation, null, 'beyond_lock_period', 
+                    `${daysSinceAssignment} days since last assignment exceeds lock period of ${automation.lock_period_days} days`, 
+                    'webhook', supabase);
                   continue;
                 }
               }
             } else {
-              console.log('No previous assignment found with matching source');
-              await logAutomationExecution(lead, automation, null, 'no_previous_assignment', 'No previous assignment found with matching source', 'webhook', supabase);
-              continue;
+              // Nessun lock_period_days: riassegna sempre al venditore precedente
+              targetSeller = previousSeller;
+              sheetsTabName = automation.sheets_tab_name || previousSeller.sheets_tab_name;
             }
           } else {
-            // Nessun lock_period_days: comportamento normale
-            targetSeller = await findPreviousSeller(lead, supabase);
+            console.log('No previous assignment found');
+            await logAutomationExecution(lead, automation, null, 'no_previous_assignment', 'No previous assignment found', 'webhook', supabase);
+            continue;
           }
           
           // Controlla se il venditore precedente è nella lista esclusi
@@ -576,13 +595,26 @@ async function assignLeadAutomatically(lead: any, seller: any, sheetsTabName: st
   try {
     console.log(`Assigning lead ${lead.id} to seller ${seller.nome} ${seller.cognome} via automation: ${automation.nome}`);
     
-    // Aggiorna il lead nel database
-    const updateData = {
+    // Prepara updateData
+    const updateData: any = {
       venditore: `${seller.nome} ${seller.cognome}`,
       stato: 'assegnato',
-      data_assegnazione: new Date().toISOString(),
       updated_at: new Date().toISOString()
     };
+    
+    // CRITICO: Aggiorna data_assegnazione SOLO se:
+    // 1. È la prima assegnazione (non c'era data_assegnazione prima)
+    // 2. È un cambio di venditore (non stiamo riassegnando lo stesso entro lock period)
+    if (seller.originalDataAssegnazione) {
+      // Stiamo riassegnando lo stesso venditore entro il lock period
+      // NON aggiornare data_assegnazione
+      console.log(`Reassigning within lock period, preserving original data_assegnazione: ${seller.originalDataAssegnazione}`);
+      updateData.data_assegnazione = seller.originalDataAssegnazione;
+    } else {
+      // Prima assegnazione o cambio venditore → aggiorna data_assegnazione
+      console.log('New assignment or seller change, updating data_assegnazione to NOW()');
+      updateData.data_assegnazione = new Date().toISOString();
+    }
     
     // Usa campagna dall'automazione se fornita, altrimenti dal sheets_tab_name per retrocompatibilità
     if (automation.campagna) {
