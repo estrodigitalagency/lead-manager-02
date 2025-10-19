@@ -65,7 +65,7 @@ const actionTypeLabels = {
 export function AutomationForm({ open, onOpenChange, onSubmit, automation, isLoading }: AutomationFormProps) {
   const { venditori } = useSalespeopleData();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [availableSources, setAvailableSources] = useState<string[]>([]);
+  const [conditionInput, setConditionInput] = useState("");
 
   const form = useForm<NewAutomationForm>({
     resolver: zodResolver(automationSchema),
@@ -89,25 +89,6 @@ export function AutomationForm({ open, onOpenChange, onSubmit, automation, isLoa
   const actionType = form.watch("action_type");
   const triggerField = form.watch("trigger_field");
   const lockPeriodEnabled = form.watch("lock_period_enabled");
-
-  // Fetch available sources from database
-  useEffect(() => {
-    const fetchSources = async () => {
-      const { data, error } = await supabase
-        .from('lead_generation')
-        .select('ultima_fonte')
-        .not('ultima_fonte', 'is', null);
-      
-      if (!error && data) {
-        const uniqueSources = Array.from(new Set(data.map(d => d.ultima_fonte).filter(Boolean))) as string[];
-        setAvailableSources(uniqueSources.sort());
-      }
-    };
-    
-    if (open) {
-      fetchSources();
-    }
-  }, [open]);
 
   // Reset form when automation prop changes
   useEffect(() => {
@@ -274,23 +255,38 @@ export function AutomationForm({ open, onOpenChange, onSubmit, automation, isLoa
                       <div className="space-y-2">
                         <div className="flex gap-2">
                           <Input 
-                            placeholder="es. workshop" 
+                            placeholder="es. workshop"
+                            value={conditionInput}
+                            onChange={(e) => setConditionInput(e.target.value)}
                             onKeyDown={(e) => {
                               if (e.key === 'Enter') {
                                 e.preventDefault();
-                                const input = e.currentTarget;
-                                const value = input.value.trim();
+                                const value = conditionInput.trim();
                                 if (value && !field.value?.includes(value)) {
                                   const currentValues = field.value || [];
                                   field.onChange([...currentValues, value]);
-                                  input.value = '';
+                                  setConditionInput('');
                                 }
                               }
                             }}
                           />
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => {
+                              const value = conditionInput.trim();
+                              if (value && !field.value?.includes(value)) {
+                                const currentValues = field.value || [];
+                                field.onChange([...currentValues, value]);
+                                setConditionInput('');
+                              }
+                            }}
+                          >
+                            Aggiungi
+                          </Button>
                         </div>
                         <p className="text-xs text-muted-foreground">
-                          Inserisci un valore e premi Invio per aggiungerlo
+                          Inserisci un valore e premi Invio o clicca Aggiungi
                         </p>
                         
                         {field.value && field.value.length > 0 && (
