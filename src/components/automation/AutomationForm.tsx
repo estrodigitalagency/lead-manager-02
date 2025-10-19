@@ -269,42 +269,39 @@ export function AutomationForm({ open, onOpenChange, onSubmit, automation, isLoa
                 name="condition_value"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Fonti</FormLabel>
+                    <FormLabel>Valore Condizione</FormLabel>
                     <FormControl>
                       <div className="space-y-2">
-                        <Select
-                          onValueChange={(value) => {
-                            if (value && !field.value?.includes(value)) {
-                              const currentValues = field.value || [];
-                              field.onChange([...currentValues, value]);
-                            }
-                          }}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Seleziona fonti da includere" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {availableSources.map((source) => (
-                              <SelectItem 
-                                key={source} 
-                                value={source}
-                                disabled={field.value?.includes(source)}
-                              >
-                                {source}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                        <div className="flex gap-2">
+                          <Input 
+                            placeholder="es. workshop" 
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault();
+                                const input = e.currentTarget;
+                                const value = input.value.trim();
+                                if (value && !field.value?.includes(value)) {
+                                  const currentValues = field.value || [];
+                                  field.onChange([...currentValues, value]);
+                                  input.value = '';
+                                }
+                              }
+                            }}
+                          />
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          Inserisci un valore e premi Invio per aggiungerlo
+                        </p>
                         
                         {field.value && field.value.length > 0 && (
                           <div className="flex flex-wrap gap-2 mt-2">
-                            {field.value.map((source, index) => (
+                            {field.value.map((value, index) => (
                               <Badge 
                                 key={index} 
                                 variant="secondary" 
                                 className="flex items-center gap-1"
                               >
-                                {source}
+                                {value}
                                 <X 
                                   className="h-3 w-3 cursor-pointer hover:text-destructive" 
                                   onClick={() => {
