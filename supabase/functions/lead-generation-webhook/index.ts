@@ -43,8 +43,8 @@ serve(async (req) => {
 
     console.log('Received lead data:', { nome, cognome, email, telefono, fonte, campagna, notes, lead_score, venditore, stato, market: finalMarket, ultima_fonte })
 
-    // Use provided ultima_fonte if available, otherwise calculate it
-    const finalUltimaFonte = ultima_fonte || await calculateUltimaFonte(email, telefono, fonte, finalMarket, supabase);
+    // Use provided ultima_fonte if available, otherwise use fonte as fallback (no calculation)
+    const finalUltimaFonte = ultima_fonte || fonte;
     
     // Determine assignable status and data_assegnazione based on provided data
     const isAssigned = venditore && venditore.trim() !== '';
