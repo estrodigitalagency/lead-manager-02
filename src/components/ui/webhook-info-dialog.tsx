@@ -21,16 +21,32 @@ export function WebhookInfoDialog({ isOpen, onOpenChange }: WebhookInfoDialogPro
     toast.success("Copiato negli appunti!");
   };
 
-  const leadGenerationExample = {
+  const leadGenerationExampleAuto = {
     nome: "Mario",
     cognome: "Rossi", 
     email: "mario.rossi@email.com",
     telefono: "+39 123 456 7890",
+    fonte: "google,leadmanager",
+    ultima_fonte: "google",
     campagna: "Google Ads",
-    fonte: "google",
-    booked_call: "NO",
-    note: "Interessato al prodotto X",
-    created_at: "2024-01-15T10:30:00Z"
+    lead_score: "HOT",
+    market: "IT",
+    notes: "Interessato al prodotto X"
+  };
+
+  const leadGenerationExamplePreassigned = {
+    nome: "Giovanni",
+    cognome: "Bianchi",
+    email: "giovanni.bianchi@email.com",
+    telefono: "+39 111 222 3333",
+    fonte: "facebook,leadmanager",
+    ultima_fonte: "facebook",
+    venditore: "Marco Verdi",
+    assignable: false,
+    stato: "assegnato",
+    market: "IT",
+    campagna: "Facebook Ads",
+    notes: "Lead già assegnato da sistema esterno"
   };
 
   const calendlyBookingExample = {
@@ -74,20 +90,41 @@ export function WebhookInfoDialog({ isOpen, onOpenChange }: WebhookInfoDialogPro
               </code>
             </div>
             
-            <div className="mt-4">
-              <h4 className="font-medium mb-2">Esempio JSON:</h4>
-              <div className="bg-slate-800 p-4 rounded-lg border relative">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="absolute top-2 right-2 text-white hover:bg-slate-700"
-                  onClick={() => copyToClipboard(JSON.stringify(leadGenerationExample, null, 2))}
-                >
-                  <Copy className="h-4 w-4" />
-                </Button>
-                <pre className="text-xs overflow-x-auto pr-12 text-green-400">
-{JSON.stringify(leadGenerationExample, null, 2)}
-                </pre>
+            <div className="mt-4 space-y-4">
+              <div>
+                <h4 className="font-medium mb-1">Esempio 1: Lead per Automazioni</h4>
+                <p className="text-xs text-muted-foreground mb-2">Senza venditore pre-assegnato</p>
+                <div className="bg-slate-800 p-4 rounded-lg border relative">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="absolute top-2 right-2 text-white hover:bg-slate-700"
+                    onClick={() => copyToClipboard(JSON.stringify(leadGenerationExampleAuto, null, 2))}
+                  >
+                    <Copy className="h-4 w-4" />
+                  </Button>
+                  <pre className="text-xs overflow-x-auto pr-12 text-green-400">
+{JSON.stringify(leadGenerationExampleAuto, null, 2)}
+                  </pre>
+                </div>
+              </div>
+
+              <div>
+                <h4 className="font-medium mb-1">Esempio 2: Lead Pre-assegnato</h4>
+                <p className="text-xs text-muted-foreground mb-2">Con venditore già assegnato (skip automazioni)</p>
+                <div className="bg-slate-800 p-4 rounded-lg border relative">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="absolute top-2 right-2 text-white hover:bg-slate-700"
+                    onClick={() => copyToClipboard(JSON.stringify(leadGenerationExamplePreassigned, null, 2))}
+                  >
+                    <Copy className="h-4 w-4" />
+                  </Button>
+                  <pre className="text-xs overflow-x-auto pr-12 text-green-400">
+{JSON.stringify(leadGenerationExamplePreassigned, null, 2)}
+                  </pre>
+                </div>
               </div>
             </div>
             
@@ -96,13 +133,17 @@ export function WebhookInfoDialog({ isOpen, onOpenChange }: WebhookInfoDialogPro
               <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
                 <div><code className="bg-gray-100 px-1 rounded">nome</code> - <strong>Obbligatorio</strong></div>
                 <div><code className="bg-gray-100 px-1 rounded">cognome</code> - Opzionale</div>
-                <div><code className="bg-gray-100 px-1 rounded">email</code> - <strong>Obbligatorio</strong></div>
-                <div><code className="bg-gray-100 px-1 rounded">telefono</code> - <strong>Obbligatorio</strong></div>
-                <div><code className="bg-gray-100 px-1 rounded">campagna</code> - Nome campagna</div>
+                <div><code className="bg-gray-100 px-1 rounded">email</code> - Email</div>
+                <div><code className="bg-gray-100 px-1 rounded">telefono</code> - Telefono</div>
                 <div><code className="bg-gray-100 px-1 rounded">fonte</code> - Fonte lead</div>
-                <div><code className="bg-gray-100 px-1 rounded">booked_call</code> - "SI" o "NO"</div>
-                <div><code className="bg-gray-100 px-1 rounded">note</code> - Note aggiuntive</div>
-                <div><code className="bg-gray-100 px-1 rounded">created_at</code> - Data creazione (ISO 8601)</div>
+                <div><code className="bg-gray-100 px-1 rounded">ultima_fonte</code> - Ultima fonte</div>
+                <div><code className="bg-gray-100 px-1 rounded">campagna</code> - Nome campagna</div>
+                <div><code className="bg-gray-100 px-1 rounded">lead_score</code> - HOT/WARM/COLD</div>
+                <div><code className="bg-gray-100 px-1 rounded">market</code> - IT/ES/FR (default: IT)</div>
+                <div><code className="bg-gray-100 px-1 rounded">venditore</code> - Nome venditore</div>
+                <div><code className="bg-gray-100 px-1 rounded">assignable</code> - false per skip automazioni</div>
+                <div><code className="bg-gray-100 px-1 rounded">stato</code> - Stato lead</div>
+                <div><code className="bg-gray-100 px-1 rounded">notes</code> - Note aggiuntive</div>
               </div>
             </div>
           </div>

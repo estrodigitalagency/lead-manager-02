@@ -12,16 +12,32 @@ export default function WebhookDocumentationSection() {
     toast.success("Copiato negli appunti!");
   };
 
-  const leadGenerationExample = {
+  const leadGenerationExampleAuto = {
     nome: "Mario",
     cognome: "Rossi",
     email: "mario.rossi@email.com",
     telefono: "+39 123 456 7890",
+    fonte: "google,leadmanager",
+    ultima_fonte: "google",
     campagna: "Google Ads",
-    fonte: "google",
-    booked_call: "NO",
-    note: "Interessato al prodotto X",
-    created_at: "2024-01-15T10:30:00Z"
+    lead_score: "HOT",
+    market: "IT",
+    notes: "Interessato al prodotto X"
+  };
+
+  const leadGenerationExamplePreassigned = {
+    nome: "Giovanni",
+    cognome: "Bianchi",
+    email: "giovanni.bianchi@email.com",
+    telefono: "+39 111 222 3333",
+    fonte: "facebook,leadmanager",
+    ultima_fonte: "facebook",
+    venditore: "Marco Verdi",
+    assignable: false,
+    stato: "assegnato",
+    market: "IT",
+    campagna: "Facebook Ads",
+    notes: "Lead già assegnato da sistema esterno"
   };
 
   const calendlyBookingExample = {
@@ -71,18 +87,35 @@ export default function WebhookDocumentationSection() {
               </Alert>
               
               <div className="space-y-3">
-                <h4 className="font-medium">Struttura dati JSON:</h4>
+                <h4 className="font-medium">Esempio 1: Lead per Automazioni</h4>
+                <p className="text-sm text-muted-foreground">Lead senza venditore pre-assegnato - le automazioni verranno eseguite</p>
                 <div className="bg-slate-800 p-4 rounded-lg border relative">
                   <Button
                     variant="ghost"
                     size="sm"
                     className="absolute top-2 right-2 text-white hover:bg-slate-700"
-                    onClick={() => copyToClipboard(JSON.stringify(leadGenerationExample, null, 2))}
+                    onClick={() => copyToClipboard(JSON.stringify(leadGenerationExampleAuto, null, 2))}
                   >
                     <Copy className="h-4 w-4" />
                   </Button>
                   <pre className="text-sm overflow-x-auto pr-12 text-green-400">
-{JSON.stringify(leadGenerationExample, null, 2)}
+{JSON.stringify(leadGenerationExampleAuto, null, 2)}
+                  </pre>
+                </div>
+
+                <h4 className="font-medium mt-4">Esempio 2: Lead Pre-assegnato</h4>
+                <p className="text-sm text-muted-foreground">Lead con venditore già assegnato - le automazioni NON verranno eseguite</p>
+                <div className="bg-slate-800 p-4 rounded-lg border relative">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="absolute top-2 right-2 text-white hover:bg-slate-700"
+                    onClick={() => copyToClipboard(JSON.stringify(leadGenerationExamplePreassigned, null, 2))}
+                  >
+                    <Copy className="h-4 w-4" />
+                  </Button>
+                  <pre className="text-sm overflow-x-auto pr-12 text-green-400">
+{JSON.stringify(leadGenerationExamplePreassigned, null, 2)}
                   </pre>
                 </div>
                 
@@ -91,13 +124,17 @@ export default function WebhookDocumentationSection() {
                   <ul className="text-sm space-y-1 ml-4">
                     <li><code className="bg-gray-100 px-1 rounded">nome</code> - <strong>Obbligatorio</strong>: Nome del lead</li>
                     <li><code className="bg-gray-100 px-1 rounded">cognome</code> - Cognome del lead</li>
-                    <li><code className="bg-gray-100 px-1 rounded">email</code> - <strong>Obbligatorio</strong>: Email del lead</li>
-                    <li><code className="bg-gray-100 px-1 rounded">telefono</code> - <strong>Obbligatorio</strong>: Numero di telefono</li>
+                    <li><code className="bg-gray-100 px-1 rounded">email</code> - Email del lead</li>
+                    <li><code className="bg-gray-100 px-1 rounded">telefono</code> - Numero di telefono</li>
+                    <li><code className="bg-gray-100 px-1 rounded">fonte</code> - Fonte del lead (es: google,leadmanager)</li>
+                    <li><code className="bg-gray-100 px-1 rounded">ultima_fonte</code> - Ultima fonte specifica del lead</li>
                     <li><code className="bg-gray-100 px-1 rounded">campagna</code> - Nome della campagna pubblicitaria</li>
-                    <li><code className="bg-gray-100 px-1 rounded">fonte</code> - Fonte del lead (es: google, facebook, linkedin)</li>
-                    <li><code className="bg-gray-100 px-1 rounded">booked_call</code> - "SI" o "NO" se ha prenotato una chiamata</li>
-                    <li><code className="bg-gray-100 px-1 rounded">note</code> - Note aggiuntive sul lead</li>
-                    <li><code className="bg-gray-100 px-1 rounded">created_at</code> - <strong>Data creazione</strong>: Data di creazione del lead (formato ISO 8601)</li>
+                    <li><code className="bg-gray-100 px-1 rounded">lead_score</code> - Punteggio lead (HOT, WARM, COLD)</li>
+                    <li><code className="bg-gray-100 px-1 rounded">market</code> - Mercato (IT, ES, FR, etc.) - Default: IT</li>
+                    <li><code className="bg-gray-100 px-1 rounded">venditore</code> - Nome completo venditore pre-assegnato</li>
+                    <li><code className="bg-gray-100 px-1 rounded">assignable</code> - <strong>false</strong> per evitare automazioni (se venditore è presente)</li>
+                    <li><code className="bg-gray-100 px-1 rounded">stato</code> - Stato del lead (nuovo, assegnato, contattato, etc.)</li>
+                    <li><code className="bg-gray-100 px-1 rounded">notes</code> - Note aggiuntive sul lead</li>
                   </ul>
                 </div>
               </div>
