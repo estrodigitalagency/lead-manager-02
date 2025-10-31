@@ -36,20 +36,20 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
 
-    const { nome, cognome, email, telefono, fonte, campagna, notes, lead_score, venditore, stato, market, ultima_fonte } = await req.json()
+    const { nome, cognome, email, telefono, fonte, campagna, notes, lead_score, venditore, stato, market, ultima_fonte, assignable } = await req.json()
 
     // Default market to 'IT' for backward compatibility
     const finalMarket = market || 'IT'
 
-    console.log('Received lead data:', { nome, cognome, email, telefono, fonte, campagna, notes, lead_score, venditore, stato, market: finalMarket, ultima_fonte })
+    console.log('Received lead data:', { nome, cognome, email, telefono, fonte, campagna, notes, lead_score, venditore, stato, market: finalMarket, ultima_fonte, assignable })
 
     // Use provided ultima_fonte if available, otherwise use fonte as fallback (no calculation)
     const finalUltimaFonte = ultima_fonte || fonte;
     
-    // Determine assignable status and data_assegnazione based on provided data
+    // Respect assignable value from payload if provided, otherwise calculate it
     const isAssigned = venditore && venditore.trim() !== '';
     const finalStato = stato || 'nuovo';
-    const finalAssignable = isAssigned ? true : false;
+    const finalAssignable = assignable !== undefined ? assignable : (isAssigned ? false : false);
     const dataAssegnazione = isAssigned ? new Date().toISOString() : null;
     
     const { data: newLead, error: insertError } = await supabase
@@ -81,9 +81,13 @@ serve(async (req) => {
 
     console.log('Successfully created new lead:', newLead);
     
-    // Controlla automazioni basate sulla configurazione
-    console.log('Checking automations for new lead:', newLead.id);
-    await checkAndApplyAutomations(newLead, supabase);
+    // Controlla automazioni solo se il lead NON ha già un venditore assegnato o se è assignable
+    if (!newLead.venditore || newLead.assignable) {
+      console.log('Checking automations for new lead:', newLead.id);
+      await checkAndApplyAutomations(newLead, supabase);
+    } else {
+      console.log('Skipping automations: lead already has assigned seller and assignable=false');
+    }
     
     return new Response(JSON.stringify({
       success: true,
