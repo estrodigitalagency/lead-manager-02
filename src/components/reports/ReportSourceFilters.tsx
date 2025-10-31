@@ -70,7 +70,7 @@ const ReportSourceFilters = ({
 
   const getAvailableForSelection = () => {
     const selectedFonti = getSelectedFonti();
-    return availableFonti.filter(fonte => !selectedFonti.includes(fonte));
+    return availableFonti.filter(fonte => !selectedFonti.includes(fonte)).sort();
   };
 
   const hasActiveFilters = fontiIncluse.length > 0 || fontiEscluse.length > 0;

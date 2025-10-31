@@ -232,6 +232,7 @@ const DatabaseAdvancedFilters = ({ onApplyFilters, tableName }: DatabaseAdvanced
                     const currentList = sourceMode === 'include' ? fontiIncluse : fontiEscluse;
                     return !currentList.includes(fonte);
                   })
+                  .sort()
                   .map((fonte) => (
                     <SelectItem key={fonte} value={fonte}>
                       {fonte}

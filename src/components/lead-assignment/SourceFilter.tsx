@@ -41,8 +41,8 @@ export function SourceFilter({
   const isMobile = useIsMobile();
 
   const currentSources = sourceMode === 'exclude' ? excludedSources : includedSources;
-  const availableSources = uniqueSources.filter(source => !currentSources.includes(source));
-  const availableForExclusion = uniqueSources.filter(source => !excludeFromIncluded.includes(source));
+  const availableSources = uniqueSources.filter(source => !currentSources.includes(source)).sort();
+  const availableForExclusion = uniqueSources.filter(source => !excludeFromIncluded.includes(source)).sort();
 
   const handleAddSource = (sourceName: string) => {
     if (sourceMode === 'exclude') {

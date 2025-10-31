@@ -31,6 +31,7 @@ export function ExcludedSources({
         <SelectContent className={`${isMobile ? 'max-h-[200px]' : ''} bg-background border border-border`} position="popper">
           {uniqueSources
             .filter(source => !excludedSources.includes(source))
+            .sort()
             .map((source) => (
             <SelectItem 
               key={source} 
