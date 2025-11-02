@@ -307,39 +307,65 @@ serve(async (req) => {
   }
 })
 
-// Funzione per trovare il venditore precedente (corretta)  
+// Funzione per trovare il venditore precedente - SENZA LIMITI
 async function findPreviousSeller(lead: any, supabase: any) {
   try {
     console.log(`Finding previous seller for lead: ${lead.email} / ${lead.telefono} in market: ${lead.market}`);
     
-    // Prima query: trova il nome del venditore precedente dai lead storici
-    const { data: previousLeads, error: leadsError } = await supabase
-      .from('lead_generation')
-      .select('venditore, data_assegnazione, created_at')
-      .or(`email.eq.${lead.email},telefono.eq.${lead.telefono}`)
-      .eq('market', lead.market)
-      .not('venditore', 'is', null)
-      .order('data_assegnazione', { ascending: false })
-      .limit(1);
-
-    if (leadsError) {
-      console.error('Error finding previous leads:', leadsError);
-      return null;
+    // STEP 1: Cerca per EMAIL (più affidabile) - SENZA LIMITE
+    if (lead.email) {
+      const { data: emailMatches, error: emailError } = await supabase
+        .from('lead_generation')
+        .select('venditore, data_assegnazione, id')
+        .eq('market', lead.market)
+        .ilike('email', lead.email)
+        .not('venditore', 'is', null)
+        .order('data_assegnazione', { ascending: false })
+        .limit(1);
+      
+      if (emailError) {
+        console.error('Error searching by email:', emailError);
+      } else if (emailMatches && emailMatches.length > 0) {
+        console.log(`✅ Found previous seller by EMAIL: ${emailMatches[0].venditore} (assigned: ${emailMatches[0].data_assegnazione})`);
+        return await fetchSellerDetailsByName(emailMatches[0].venditore, lead.market, supabase);
+      }
     }
-
-    if (!previousLeads || previousLeads.length === 0) {
-      console.log('No previous leads found with assigned seller');
-      return null;
+    
+    // STEP 2: Se non trova per email, cerca per TELEFONO - SENZA LIMITE
+    if (lead.telefono) {
+      const { data: phoneMatches, error: phoneError } = await supabase
+        .from('lead_generation')
+        .select('venditore, data_assegnazione, id')
+        .eq('market', lead.market)
+        .ilike('telefono', lead.telefono)
+        .not('venditore', 'is', null)
+        .order('data_assegnazione', { ascending: false })
+        .limit(1);
+      
+      if (phoneError) {
+        console.error('Error searching by phone:', phoneError);
+      } else if (phoneMatches && phoneMatches.length > 0) {
+        console.log(`✅ Found previous seller by PHONE: ${phoneMatches[0].venditore} (assigned: ${phoneMatches[0].data_assegnazione})`);
+        return await fetchSellerDetailsByName(phoneMatches[0].venditore, lead.market, supabase);
+      }
     }
+    
+    console.log('❌ No previous assignment found');
+    return null;
 
-    const previousSellerName = previousLeads[0].venditore;
-    console.log(`Found previous seller name: ${previousSellerName}`);
+  } catch (error) {
+    console.error('Error in findPreviousSeller:', error);
+    return null;
+  }
+}
 
-    // Seconda query: cerca i dettagli del venditore nella tabella venditori
+// Helper function per fetch dei dettagli venditore
+async function fetchSellerDetailsByName(sellerName: string, market: string, supabase: any) {
+  try {
     const { data: sellers, error: sellersError } = await supabase
       .from('venditori')
       .select('id, nome, cognome, sheets_file_id, sheets_tab_name, market, stato')
-      .eq('market', lead.market)
+      .eq('market', market)
       .eq('stato', 'attivo');
 
     if (sellersError) {
@@ -355,22 +381,22 @@ async function findPreviousSeller(lead: any, supabase: any) {
     // Cerca il venditore che corrisponde al nome
     const targetSeller = sellers.find(seller => {
       const fullName = `${seller.nome} ${seller.cognome}`.trim();
-      const normalizedTarget = previousSellerName.toLowerCase().trim();
+      const normalizedTarget = sellerName.toLowerCase().trim();
       const normalizedSeller = fullName.toLowerCase().trim();
       
       return normalizedSeller === normalizedTarget;
     });
 
     if (targetSeller) {
-      console.log(`Found matching seller:`, targetSeller);
+      console.log(`✅ Matched seller details:`, targetSeller);
       return targetSeller;
     } else {
-      console.log(`No matching seller found for name: ${previousSellerName}`);
+      console.log(`❌ No matching seller found for name: ${sellerName}`);
       return null;
     }
 
   } catch (error) {
-    console.error('Error in findPreviousSeller:', error);
+    console.error('Error in fetchSellerDetailsByName:', error);
     return null;
   }
 }
