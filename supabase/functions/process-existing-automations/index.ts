@@ -6,6 +6,14 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+// Utility function to calculate days since a date
+function calculateDaysSince(dateString: string): number {
+  const date = new Date(dateString);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  return Math.floor(diffMs / (1000 * 60 * 60 * 24));
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
@@ -125,25 +133,57 @@ serve(async (req) => {
           targetSeller = automation.venditori
           sheetsTabName = automation.sheets_tab_name || automation.venditori?.sheets_tab_name
         } else if (automation.action_type === 'assign_to_previous_seller') {
-          // Find previous seller using the corrected logic
-          targetSeller = await findPreviousSeller(lead, supabase)
+          // Find previous seller with data_assegnazione
+          const previousSellerResult = await findPreviousSeller(lead, supabase)
           
-          // Controlla se il venditore precedente è nella lista esclusi
-          if (targetSeller && automation.excluded_sellers && automation.excluded_sellers.length > 0) {
-            const previousSellerName = `${targetSeller.nome} ${targetSeller.cognome}`.trim();
+          if (previousSellerResult) {
+            targetSeller = previousSellerResult.seller;
+            const dataAssegnazione = previousSellerResult.dataAssegnazione;
             
-            if (automation.excluded_sellers.includes(previousSellerName)) {
-              console.log(`Previous seller ${previousSellerName} is excluded from automation: ${automation.nome}`);
-              await logAutomationExecution(lead, automation, null, 'seller_excluded', `Previous seller ${previousSellerName} is in excluded list`, executionSource, supabase);
-              continue; // Passa alla prossima automazione
+            // VERIFICA LOCK PERIOD
+            if (automation.lock_period_days !== null && automation.lock_period_days !== undefined) {
+              if (automation.lock_period_days === -1) {
+                // Sempre riassegna
+                console.log(`No lock period: always reassigning to ${targetSeller.nome} ${targetSeller.cognome}`);
+              } else if (automation.lock_period_days > 0 && dataAssegnazione) {
+                const daysSinceAssignment = calculateDaysSince(dataAssegnazione);
+                
+                console.log(`Lock period check: ${daysSinceAssignment} days since last assignment (limit: ${automation.lock_period_days})`);
+                
+                if (daysSinceAssignment >= automation.lock_period_days) {
+                  // OLTRE il lock period → NON assegnare
+                  console.log(`Beyond lock period (${daysSinceAssignment}/${automation.lock_period_days} days), lead remains assignable`);
+                  await logAutomationExecution(lead, automation, null, 'beyond_lock_period', 
+                    `${daysSinceAssignment} days since last assignment exceeds lock period of ${automation.lock_period_days} days`, 
+                    'manual_processing', supabase);
+                  targetSeller = null;
+                  continue;
+                } else {
+                  // ENTRO il lock period → riassegna
+                  console.log(`Within lock period, reassigning to ${targetSeller.nome} ${targetSeller.cognome}`);
+                }
+              }
             }
-          }
-          
-          sheetsTabName = automation.sheets_tab_name
-          if (targetSeller) {
-            console.log('Found previous seller:', targetSeller.nome)
+            
+            // Controlla se il venditore precedente è nella lista esclusi
+            if (targetSeller && automation.excluded_sellers && automation.excluded_sellers.length > 0) {
+              const previousSellerName = `${targetSeller.nome} ${targetSeller.cognome}`.trim();
+              
+              if (automation.excluded_sellers.includes(previousSellerName)) {
+                console.log(`Previous seller ${previousSellerName} is excluded from automation: ${automation.nome}`);
+                await logAutomationExecution(lead, automation, null, 'seller_excluded', `Previous seller ${previousSellerName} is in excluded list`, 'manual_processing', supabase);
+                targetSeller = null;
+                continue;
+              }
+            }
+            
+            sheetsTabName = automation.sheets_tab_name;
+            if (targetSeller) {
+              console.log('Found previous seller:', targetSeller.nome)
+            }
           } else {
             console.log('No previous seller found')
+            await logAutomationExecution(lead, automation, null, 'no_previous_assignment', 'No previous assignment found', 'manual_processing', supabase);
           }
         }
 
@@ -308,6 +348,7 @@ serve(async (req) => {
 })
 
 // Funzione per trovare il venditore precedente - SENZA LIMITI
+// Restituisce { seller, dataAssegnazione } per evitare query duplicate
 async function findPreviousSeller(lead: any, supabase: any) {
   try {
     console.log(`Finding previous seller for lead: ${lead.email} / ${lead.telefono} in market: ${lead.market}`);
@@ -320,14 +361,17 @@ async function findPreviousSeller(lead: any, supabase: any) {
         .eq('market', lead.market)
         .ilike('email', lead.email)
         .not('venditore', 'is', null)
+        .not('data_assegnazione', 'is', null)
         .order('data_assegnazione', { ascending: false })
         .limit(1);
       
       if (emailError) {
         console.error('Error searching by email:', emailError);
       } else if (emailMatches && emailMatches.length > 0) {
-        console.log(`✅ Found previous seller by EMAIL: ${emailMatches[0].venditore} (assigned: ${emailMatches[0].data_assegnazione})`);
-        return await fetchSellerDetailsByName(emailMatches[0].venditore, lead.market, supabase);
+        const match = emailMatches[0];
+        console.log(`✅ Found previous seller by EMAIL: ${match.venditore} (assigned: ${match.data_assegnazione})`);
+        const seller = await fetchSellerDetailsByName(match.venditore, lead.market, supabase);
+        return seller ? { seller, dataAssegnazione: match.data_assegnazione } : null;
       }
     }
     
@@ -339,14 +383,17 @@ async function findPreviousSeller(lead: any, supabase: any) {
         .eq('market', lead.market)
         .ilike('telefono', lead.telefono)
         .not('venditore', 'is', null)
+        .not('data_assegnazione', 'is', null)
         .order('data_assegnazione', { ascending: false })
         .limit(1);
       
       if (phoneError) {
         console.error('Error searching by phone:', phoneError);
       } else if (phoneMatches && phoneMatches.length > 0) {
-        console.log(`✅ Found previous seller by PHONE: ${phoneMatches[0].venditore} (assigned: ${phoneMatches[0].data_assegnazione})`);
-        return await fetchSellerDetailsByName(phoneMatches[0].venditore, lead.market, supabase);
+        const match = phoneMatches[0];
+        console.log(`✅ Found previous seller by PHONE: ${match.venditore} (assigned: ${match.data_assegnazione})`);
+        const seller = await fetchSellerDetailsByName(match.venditore, lead.market, supabase);
+        return seller ? { seller, dataAssegnazione: match.data_assegnazione } : null;
       }
     }
     

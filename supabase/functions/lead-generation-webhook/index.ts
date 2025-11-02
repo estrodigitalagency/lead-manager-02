@@ -237,22 +237,11 @@ async function checkAndApplyAutomations(lead: any, supabase: any) {
           
         } else if (automation.action_type === 'assign_to_previous_seller') {
           // Cerca sempre tra TUTTI i lead precedenti (qualsiasi fonte)
-          const previousSeller = await findPreviousSeller(lead, supabase);
+          const previousSellerResult = await findPreviousSeller(lead, supabase);
           
-          if (previousSeller) {
-            // Recupera la data_assegnazione dal lead precedente
-            const { data: previousLeadData } = await supabase
-              .from('lead_generation')
-              .select('data_assegnazione')
-              .eq('market', lead.market)
-              .not('venditore', 'is', null)
-              .not('data_assegnazione', 'is', null)
-              .or(`email.eq.${lead.email},telefono.eq.${lead.telefono}`)
-              .order('data_assegnazione', { ascending: false })
-              .limit(1)
-              .single();
-            
-            const dataAssegnazione = previousLeadData?.data_assegnazione;
+          if (previousSellerResult) {
+            const previousSeller = previousSellerResult.seller;
+            const dataAssegnazione = previousSellerResult.dataAssegnazione;
             
             if (automation.lock_period_days !== null && automation.lock_period_days !== undefined) {
               // lock_period_days = -1 significa "sempre riassegna" (no lock)
@@ -473,7 +462,8 @@ async function findPreviousSellerWithSourceCheck(lead: any, automationSources: s
   }
 }
 
-// Funzione per trovare il venditore precedente (versione semplice senza controllo fonte)
+// Funzione per trovare il venditore precedente - SENZA LIMITI
+// Restituisce { seller, dataAssegnazione } per evitare query duplicate
 async function findPreviousSeller(lead: any, supabase: any) {
   try {
     console.log(`Finding previous seller for lead: ${lead.email} / ${lead.telefono} in market: ${lead.market}`);
@@ -489,14 +479,17 @@ async function findPreviousSeller(lead: any, supabase: any) {
         .eq('market', lead.market)
         .ilike('email', normalizedEmail)
         .not('venditore', 'is', null)
+        .not('data_assegnazione', 'is', null)
         .order('data_assegnazione', { ascending: false })
         .limit(1);
       
       if (emailError) {
         console.error('Error searching by email:', emailError);
       } else if (emailMatches && emailMatches.length > 0) {
-        console.log(`✅ Found previous seller by EMAIL: ${emailMatches[0].venditore} (assigned: ${emailMatches[0].data_assegnazione})`);
-        return await fetchSellerDetails(emailMatches[0].venditore, lead.market, supabase);
+        const match = emailMatches[0];
+        console.log(`✅ Found previous seller by EMAIL: ${match.venditore} (assigned: ${match.data_assegnazione})`);
+        const seller = await fetchSellerDetails(match.venditore, lead.market, supabase);
+        return seller ? { seller, dataAssegnazione: match.data_assegnazione } : null;
       }
     }
     
@@ -508,14 +501,17 @@ async function findPreviousSeller(lead: any, supabase: any) {
         .eq('market', lead.market)
         .ilike('telefono', normalizedPhone)
         .not('venditore', 'is', null)
+        .not('data_assegnazione', 'is', null)
         .order('data_assegnazione', { ascending: false })
         .limit(1);
       
       if (phoneError) {
         console.error('Error searching by phone:', phoneError);
       } else if (phoneMatches && phoneMatches.length > 0) {
-        console.log(`✅ Found previous seller by PHONE: ${phoneMatches[0].venditore} (assigned: ${phoneMatches[0].data_assegnazione})`);
-        return await fetchSellerDetails(phoneMatches[0].venditore, lead.market, supabase);
+        const match = phoneMatches[0];
+        console.log(`✅ Found previous seller by PHONE: ${match.venditore} (assigned: ${match.data_assegnazione})`);
+        const seller = await fetchSellerDetails(match.venditore, lead.market, supabase);
+        return seller ? { seller, dataAssegnazione: match.data_assegnazione } : null;
       }
     }
     
