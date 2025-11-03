@@ -52,3 +52,6 @@ verify_jwt = false
 
 [functions.calendly-webhook]
 verify_jwt = false
+
+[functions.rebuild-assignment-history]
+verify_jwt = false
