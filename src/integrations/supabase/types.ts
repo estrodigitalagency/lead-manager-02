@@ -857,14 +857,8 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      check_leads_assignability: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
-      get_current_user_role: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
+      check_leads_assignability: { Args: never; Returns: undefined }
+      get_current_user_role: { Args: never; Returns: string }
     }
     Enums: {
       automation_action_type: "assign_to_seller" | "assign_to_previous_seller"
