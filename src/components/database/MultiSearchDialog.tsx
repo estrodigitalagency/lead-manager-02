@@ -28,6 +28,7 @@ interface SearchResult {
   cognome: string;
   email: string;
   telefono: string;
+  ultima_fonte?: string;
 }
 
 const MultiSearchDialog = ({
@@ -72,7 +73,7 @@ const MultiSearchDialog = ({
       // Cerca direttamente nel database tutti i lead che corrispondono ai termini
       const { data: matchedItems, error } = await supabase
         .from('lead_generation')
-        .select('id, email, telefono, nome, cognome')
+        .select('id, email, telefono, nome, cognome, ultima_fonte')
         .or(`${emailConditions},${phoneConditions}`);
 
       if (error) {

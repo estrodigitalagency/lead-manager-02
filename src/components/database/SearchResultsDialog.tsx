@@ -10,7 +10,8 @@ import {
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { CheckCircle2, User, Mail, Phone, AlertCircle } from "lucide-react";
+import { CheckCircle2, User, Mail, Phone, AlertCircle, Tag } from "lucide-react";
+import FonteDisplay from "./FonteDisplay";
 
 interface SearchResult {
   id: string;
@@ -18,6 +19,7 @@ interface SearchResult {
   cognome: string;
   email: string;
   telefono: string;
+  ultima_fonte?: string;
 }
 
 interface SearchResultsDialogProps {
@@ -127,6 +129,12 @@ const SearchResultsDialog = ({
                               <div className="flex items-center gap-1">
                                 <Phone className="h-3 w-3 flex-shrink-0" />
                                 <span>{result.telefono}</span>
+                              </div>
+                            )}
+                            {result.ultima_fonte && (
+                              <div className="flex items-center gap-1">
+                                <Tag className="h-3 w-3 flex-shrink-0" />
+                                <FonteDisplay fonte={result.ultima_fonte} />
                               </div>
                             )}
                           </div>
