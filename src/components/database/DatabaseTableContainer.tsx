@@ -13,9 +13,10 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   DropdownMenuSeparator,
+  DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { MoreHorizontal, FileDown, Users, UserPlus, Trash2, Search } from "lucide-react";
+import { MoreHorizontal, FileDown, Users, UserPlus, Trash2, Search, Filter, Eye } from "lucide-react";
 import { toast } from "sonner";
 import { deleteMultipleLeads } from "@/services/databaseService";
 import { supabase } from "@/integrations/supabase/client";
@@ -61,6 +62,8 @@ const DatabaseTableContainer = ({
   const [isAssigning, setIsAssigning] = useState(false);
   const [showManualAssignDialog, setShowManualAssignDialog] = useState(false);
   const [showMultiSearchDialog, setShowMultiSearchDialog] = useState(false);
+  const [showFiltersDialog, setShowFiltersDialog] = useState(false);
+  const [showColumnVisibilityMenu, setShowColumnVisibilityMenu] = useState(false);
 
   const handleSearch = (searchTerm: string) => {
     console.log('Search term:', searchTerm);
@@ -237,36 +240,59 @@ const DatabaseTableContainer = ({
             <CardDescription className={isMobile ? 'text-center' : ''}>{description}</CardDescription>
           </div>
           
-          {/* Riga unificata con tutti i controlli */}
+          {/* Riga unificata con ricerca e menu azioni */}
           <div className={`flex items-center gap-2 ${isMobile ? 'flex-wrap justify-center' : ''}`}>
-            <DatabaseFiltersResponsive 
-              onApplyFilters={handleAdvancedFilters} 
-              tableName={tableName}
-            />
-            
-            {columns && onToggleColumn && (
-              <ColumnVisibilityControls
-                columns={columns}
-                onToggleColumn={onToggleColumn}
-              />
-            )}
-            
             <SearchInput onSearch={handleSearch} />
             
-            {/* Menu dropdown sempre visibile */}
+            {/* Menu dropdown con tutte le azioni */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="sm">
                   <MoreHorizontal className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="z-50">
-                {selectedItems.length > 0 ? (
+              <DropdownMenuContent align="end" className="z-50 w-56 bg-background">
+                <DropdownMenuLabel>Azioni Tabella</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                
+                {/* Filtri e visualizzazione */}
+                <DropdownMenuItem onClick={() => setShowFiltersDialog(true)}>
+                  <Filter className="h-4 w-4 mr-2" />
+                  Filtri Avanzati
+                </DropdownMenuItem>
+                
+                {columns && onToggleColumn && (
+                  <DropdownMenuItem 
+                    onClick={() => setShowColumnVisibilityMenu(!showColumnVisibilityMenu)}
+                  >
+                    <Eye className="h-4 w-4 mr-2" />
+                    Visibilità Colonne
+                  </DropdownMenuItem>
+                )}
+                
+                {tableName === 'lead_generation' && (
                   <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => setShowMultiSearchDialog(true)}>
+                      <Search className="h-4 w-4 mr-2" />
+                      Ricerca Multipla
+                    </DropdownMenuItem>
+                  </>
+                )}
+                
+                {/* Azioni bulk se ci sono elementi selezionati */}
+                {selectedItems.length > 0 && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuLabel>
+                      Azioni Multiple ({selectedItems.length} selezionati)
+                    </DropdownMenuLabel>
+                    
                     <DropdownMenuItem onClick={handleExportCSV}>
                       <FileDown className="h-4 w-4 mr-2" />
-                      Esporta CSV ({selectedItems.length} selezionati)
+                      Esporta CSV
                     </DropdownMenuItem>
+                    
                     {tableName === 'lead_generation' && (
                       <>
                         <DropdownMenuItem 
@@ -282,16 +308,8 @@ const DatabaseTableContainer = ({
                         </DropdownMenuItem>
                       </>
                     )}
+                    
                     <DropdownMenuSeparator />
-                    {tableName === 'lead_generation' && (
-                      <>
-                        <DropdownMenuItem onClick={() => setShowMultiSearchDialog(true)}>
-                          <Search className="h-4 w-4 mr-2" />
-                          Ricerca Multipla
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                      </>
-                    )}
                     <DropdownMenuItem 
                       onClick={handleBulkDelete}
                       disabled={isDeleting}
@@ -301,25 +319,32 @@ const DatabaseTableContainer = ({
                       {isDeleting ? "Eliminazione..." : "Elimina"}
                     </DropdownMenuItem>
                   </>
-                ) : (
-                  <>
-                    <DropdownMenuItem disabled className="text-muted-foreground">
-                      Seleziona elementi per azioni multiple
-                    </DropdownMenuItem>
-                    {tableName === 'lead_generation' && (
-                      <>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={() => setShowMultiSearchDialog(true)}>
-                          <Search className="h-4 w-4 mr-2" />
-                          Ricerca Multipla
-                        </DropdownMenuItem>
-                      </>
-                    )}
-                  </>
                 )}
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
+          
+          {/* Dialog separati per filtri e visibilità colonne */}
+          {showFiltersDialog && (
+            <div className="absolute top-full right-0 mt-2 z-50">
+              <DatabaseFiltersResponsive 
+                onApplyFilters={(filters) => {
+                  handleAdvancedFilters(filters);
+                  setShowFiltersDialog(false);
+                }} 
+                tableName={tableName}
+              />
+            </div>
+          )}
+          
+          {showColumnVisibilityMenu && columns && onToggleColumn && (
+            <div className="absolute top-full right-0 mt-2 z-50">
+              <ColumnVisibilityControls
+                columns={columns}
+                onToggleColumn={onToggleColumn}
+              />
+            </div>
+          )}
         </div>
       </CardHeader>
       
