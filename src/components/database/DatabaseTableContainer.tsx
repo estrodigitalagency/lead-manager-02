@@ -359,18 +359,14 @@ const DatabaseTableContainer = ({
             </DropdownMenu>
           </div>
           
-          {/* Dialog separati per filtri e visibilità colonne */}
-          {showFiltersDialog && (
-            <div className="absolute top-full right-0 mt-2 z-50">
-              <DatabaseFiltersResponsive 
-                onApplyFilters={(filters) => {
-                  handleAdvancedFilters(filters);
-                  setShowFiltersDialog(false);
-                }} 
-                tableName={tableName}
-              />
-            </div>
-          )}
+          {/* Dialog per filtri senza button trigger */}
+          <DatabaseFiltersResponsive 
+            open={showFiltersDialog}
+            onOpenChange={setShowFiltersDialog}
+            onApplyFilters={handleAdvancedFilters} 
+            tableName={tableName}
+            hideButton={true}
+          />
           
           {showColumnVisibilityMenu && columns && onToggleColumn && (
             <div className="absolute top-full right-0 mt-2 z-50">

@@ -18,11 +18,24 @@ import { getAvailableFonti, getAvailableVenditori } from "@/services/reportsServ
 interface DatabaseFiltersResponsiveProps {
   onApplyFilters: (filters: Record<string, any>) => void;
   tableName: 'lead_generation' | 'booked_call' | 'lead_lavorati';
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  hideButton?: boolean;
 }
 
-const DatabaseFiltersResponsive = ({ onApplyFilters, tableName }: DatabaseFiltersResponsiveProps) => {
+const DatabaseFiltersResponsive = ({ 
+  onApplyFilters, 
+  tableName,
+  open: controlledOpen,
+  onOpenChange: controlledOnOpenChange,
+  hideButton = false
+}: DatabaseFiltersResponsiveProps) => {
   const [filters, setFilters] = useState<Record<string, any>>({});
-  const [isOpen, setIsOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
+  
+  // Usa controlled state se fornito, altrimenti usa internal state
+  const isOpen = controlledOpen !== undefined ? controlledOpen : internalOpen;
+  const setIsOpen = controlledOnOpenChange || setInternalOpen;
   const [venditori, setVenditori] = useState<string[]>([]);
   const [fonti, setFonti] = useState<string[]>([]);
   const [calendarView, setCalendarView] = useState<"from" | "to" | null>(null);
@@ -361,12 +374,14 @@ const DatabaseFiltersResponsive = ({ onApplyFilters, tableName }: DatabaseFilter
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogTrigger asChild>
-        <Button variant="outline" size="sm" className="flex items-center gap-1">
-          <Filter className="h-4 w-4" />
-          Filtri
-        </Button>
-      </DialogTrigger>
+      {!hideButton && (
+        <DialogTrigger asChild>
+          <Button variant="outline" size="sm" className="flex items-center gap-1">
+            <Filter className="h-4 w-4" />
+            Filtri
+          </Button>
+        </DialogTrigger>
+      )}
       <DialogContent className="max-w-lg max-h-[90vh] p-0">
         <DialogHeader className="p-6 pb-4">
           <DialogTitle>Filtri Database</DialogTitle>
