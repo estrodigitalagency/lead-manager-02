@@ -16,7 +16,7 @@ import {
   DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { MoreHorizontal, FileDown, Users, UserPlus, Trash2, Search, Filter, Eye } from "lucide-react";
+import { MoreHorizontal, FileDown, Users, UserPlus, Trash2, Search, Filter, Eye, Ban } from "lucide-react";
 import { toast } from "sonner";
 import { deleteMultipleLeads } from "@/services/databaseService";
 import { supabase } from "@/integrations/supabase/client";
@@ -188,6 +188,34 @@ const DatabaseTableContainer = ({
     }
   };
 
+  const handleBulkMakeUnassignable = async () => {
+    if (tableName !== 'lead_generation' || selectedItems.length === 0) {
+      toast.error("Nessun lead selezionato");
+      return;
+    }
+
+    setIsAssigning(true);
+    try {
+      const { error } = await supabase
+        .from('lead_generation')
+        .update({ 
+          manually_not_assignable: true
+        })
+        .in('id', selectedItems);
+
+      if (error) throw error;
+
+      toast.success(`${selectedItems.length} lead resi non assegnabili`);
+      onSelectionChange([]);
+      onRefresh();
+    } catch (error) {
+      console.error("Errore durante l'aggiornamento:", error);
+      toast.error("Errore durante l'aggiornamento dei lead");
+    } finally {
+      setIsAssigning(false);
+    }
+  };
+
   const handleManualAssignment = () => {
     if (selectedItems.length === 0) {
       toast.error("Nessun elemento selezionato per l'assegnazione");
@@ -301,6 +329,13 @@ const DatabaseTableContainer = ({
                         >
                           <Users className="h-4 w-4 mr-2" />
                           {isAssigning ? "Aggiornamento..." : "Rendi Assegnabili"}
+                        </DropdownMenuItem>
+                        <DropdownMenuItem 
+                          onClick={handleBulkMakeUnassignable}
+                          disabled={isAssigning}
+                        >
+                          <Ban className="h-4 w-4 mr-2" />
+                          {isAssigning ? "Aggiornamento..." : "Rendi Non Assegnabile"}
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={handleManualAssignment}>
                           <UserPlus className="h-4 w-4 mr-2" />
