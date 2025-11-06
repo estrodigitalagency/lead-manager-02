@@ -3,7 +3,13 @@ import { TableCell, TableRow } from "@/components/ui/table";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Trash2, Info } from "lucide-react";
+import { Trash2, Info, MoreVertical, Ban, CheckCircle } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Lead } from "@/types/lead";
 import FonteDisplay from "./FonteDisplay";
 import { useLeadStatus } from "@/hooks/useLeadStatus";
@@ -16,6 +22,7 @@ interface LeadTableRowProps {
   onSelect: (id: string, checked: boolean) => void;
   onDelete: (id: string) => void;
   onShowDetails: (lead: Lead) => void;
+  onToggleManuallyNotAssignable: (id: string, currentValue: boolean) => void;
 }
 
 const LeadTableRow = ({
@@ -24,7 +31,8 @@ const LeadTableRow = ({
   visibleColumns,
   onSelect,
   onDelete,
-  onShowDetails
+  onShowDetails,
+  onToggleManuallyNotAssignable
 }: LeadTableRowProps) => {
   const { getStatus } = useLeadStatus();
 
@@ -134,14 +142,42 @@ const LeadTableRow = ({
           >
             <Info className="h-4 w-4" />
           </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => onDelete(lead.id!)}
-            className="text-red-600 hover:text-red-800 hover:bg-red-100 p-2"
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="p-2 hover:bg-gray-100"
+              >
+                <MoreVertical className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem
+                onClick={() => onToggleManuallyNotAssignable(lead.id!, lead.manually_not_assignable || false)}
+                className="cursor-pointer"
+              >
+                {lead.manually_not_assignable ? (
+                  <>
+                    <CheckCircle className="h-4 w-4 mr-2 text-green-600" />
+                    Rendi assegnabile
+                  </>
+                ) : (
+                  <>
+                    <Ban className="h-4 w-4 mr-2 text-orange-600" />
+                    Rendi non assegnabile
+                  </>
+                )}
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => onDelete(lead.id!)}
+                className="cursor-pointer text-red-600 focus:text-red-600"
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Elimina lead
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </TableCell>
     </TableRow>

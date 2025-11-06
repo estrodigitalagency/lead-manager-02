@@ -288,6 +288,7 @@ export async function assignLeadsWithExclusions(data: LeadAssignmentData) {
       .select('id, nome, cognome, email, telefono, fonte, ultima_fonte, lead_score, created_at, booked_call, venditore')
       .is('venditore', null)
       .eq('booked_call', 'NO')
+      .eq('manually_not_assignable', false)
       .eq('market', market);
       
     // IMPORTANTE: Filtro per Lead Score = "Hot" SOLO se richiesto esplicitamente
@@ -467,6 +468,7 @@ export async function getAvailableLeadsCount(
       .select('id, nome, cognome, email, telefono, fonte, ultima_fonte, lead_score, created_at, booked_call, venditore')
       .is('venditore', null)
       .eq('booked_call', 'NO')
+      .eq('manually_not_assignable', false)
       .eq('market', market);
       
     // IMPORTANTE: Filtro per Lead Score = "Hot" SOLO se richiesto esplicitamente

@@ -585,6 +585,7 @@ export type Database = {
           fonte: string | null
           id: string
           lead_score: string | null
+          manually_not_assignable: boolean | null
           market: string
           nome: string
           stato: string | null
@@ -604,6 +605,7 @@ export type Database = {
           fonte?: string | null
           id?: string
           lead_score?: string | null
+          manually_not_assignable?: boolean | null
           market?: string
           nome: string
           stato?: string | null
@@ -623,6 +625,7 @@ export type Database = {
           fonte?: string | null
           id?: string
           lead_score?: string | null
+          manually_not_assignable?: boolean | null
           market?: string
           nome?: string
           stato?: string | null

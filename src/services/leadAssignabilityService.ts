@@ -90,6 +90,7 @@ export async function checkLeadsAssignability() {
       .update({ assignable: true })
       .eq('booked_call', 'NO')
       .is('venditore', null)
+      .eq('manually_not_assignable', false)
       .select('id');
 
     if (assignableError) {
@@ -105,7 +106,8 @@ export async function checkLeadsAssignability() {
       .select('*', { count: 'exact', head: true })
       .eq('assignable', true)
       .is('venditore', null)
-      .eq('booked_call', 'NO');
+      .eq('booked_call', 'NO')
+      .eq('manually_not_assignable', false);
 
     console.log(`✅ Optimized verification completed: ${updatedCount} leads updated`);
     console.log(`Available leads: ${availableLeads || 0}`);
@@ -133,7 +135,8 @@ export async function getOptimizedLeadCounts() {
       supabase.from('lead_generation').select('id', { count: 'exact', head: true })
         .eq('assignable', true)
         .is('venditore', null)
-        .eq('booked_call', 'NO'),
+        .eq('booked_call', 'NO')
+        .eq('manually_not_assignable', false),
       supabase.from('lead_generation').select('id', { count: 'exact', head: true })
         .not('venditore', 'is', null),
       supabase.from('booked_call').select('id', { count: 'exact', head: true })

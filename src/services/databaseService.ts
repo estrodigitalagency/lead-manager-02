@@ -167,6 +167,7 @@ export async function getUnassignedLeads(market: string = 'IT'): Promise<Lead[]>
       .eq('assignable', true)
       .is('venditore', null)
       .eq('booked_call', 'NO') // CRITICO: Solo lead senza call prenotate
+      .eq('manually_not_assignable', false) // Escludi lead marcati manualmente come non assegnabili
       .order('created_at', { ascending: false })
       .limit(500);
     
@@ -418,7 +419,8 @@ export async function getLeadsStats(market: string = 'IT') {
         .eq('market', market)
         .eq('assignable', true)
         .is('venditore', null)
-        .eq('booked_call', 'NO'),
+        .eq('booked_call', 'NO')
+        .eq('manually_not_assignable', false),
       supabase.from('lead_generation').select('id', { count: 'exact', head: true })
         .eq('market', market)
         .not('venditore', 'is', null),
@@ -492,6 +494,7 @@ export async function markLeadsAsAssigned(
       .eq('assignable', true)
       .is('venditore', null)
       .eq('booked_call', 'NO') // CRITICO: Solo lead senza call prenotate
+      .eq('manually_not_assignable', false) // Escludi lead marcati manualmente come non assegnabili
       .order('created_at', { ascending: true })
       .limit(numLead);
 

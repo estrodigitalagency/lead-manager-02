@@ -6,6 +6,14 @@ export const getLeadStatus = (lead: Lead, daysBeforeAssignable: number = 7) => {
   const leadCreatedAt = new Date(lead.created_at);
   const daysSinceCreation = (now.getTime() - leadCreatedAt.getTime()) / (1000 * 60 * 60 * 24);
 
+  // 0. Se è stato manualmente marcato come non assegnabile
+  if (lead.manually_not_assignable) {
+    return {
+      label: 'Non assegnabile (manuale)',
+      className: 'bg-gray-100 text-gray-800 border-gray-200'
+    };
+  }
+
   // 1. Se ha una call prenotata = SI -> ASSEGNATO (viene gestito dal trigger DB)
   if (lead.booked_call === 'SI') {
     return {

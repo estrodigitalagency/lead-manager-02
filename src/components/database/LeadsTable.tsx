@@ -9,6 +9,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { useTableSorting } from "@/hooks/useTableSorting";
 import { useColumnVisibility, ColumnConfig } from "@/hooks/useColumnVisibility";
 import { useServerPaginationWithMarket } from "@/hooks/useServerPaginationWithMarket";
+import { supabase } from "@/integrations/supabase/client";
 import MobileLeadsTable from "./MobileLeadsTable";
 import PaginationControls from "./PaginationControls";
 import LeadTableHeader from "./LeadTableHeader";
@@ -117,6 +118,22 @@ const LeadsTable = ({
     await refetch();
   };
 
+  const handleToggleManuallyNotAssignable = async (id: string, currentValue: boolean) => {
+    try {
+      const { error } = await supabase
+        .from('lead_generation')
+        .update({ manually_not_assignable: !currentValue })
+        .eq('id', id);
+
+      if (error) throw error;
+
+      // Ricarica i dati dopo l'aggiornamento
+      await refetch();
+    } catch (error) {
+      console.error('Errore nell\'aggiornamento del lead:', error);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="flex justify-center items-center h-40">
@@ -143,6 +160,7 @@ const LeadsTable = ({
           onSelectionChange={onSelectionChange}
           onDelete={handleDelete}
           onShowDetails={handleShowDetails}
+          onToggleManuallyNotAssignable={handleToggleManuallyNotAssignable}
         />
         <PaginationControls
           currentPage={currentPage}
@@ -198,6 +216,7 @@ const LeadsTable = ({
               onSelect={handleItemSelect}
               onDelete={handleDelete}
               onShowDetails={handleShowDetails}
+              onToggleManuallyNotAssignable={handleToggleManuallyNotAssignable}
             />
           ))}
         </TableBody>

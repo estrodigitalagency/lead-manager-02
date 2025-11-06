@@ -16,4 +16,6 @@ export interface Lead {
   stato?: string;
   updated_at?: string;
   data_assegnazione?: string;
+  manually_not_assignable?: boolean;
+  market?: string;
 }
