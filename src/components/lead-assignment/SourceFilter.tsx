@@ -39,6 +39,8 @@ export function SourceFilter({
   onToggleSourceMode
 }: SourceFilterProps) {
   const isMobile = useIsMobile();
+  const [selectedSource, setSelectedSource] = useState<string>("");
+  const [selectedExclusion, setSelectedExclusion] = useState<string>("");
 
   const currentSources = sourceMode === 'exclude' ? excludedSources : includedSources;
   const availableSources = uniqueSources.filter(source => !currentSources.includes(source)).sort();
@@ -50,6 +52,7 @@ export function SourceFilter({
     } else {
       onAddIncludedSource(sourceName);
     }
+    setSelectedSource(""); // Reset selection
   };
 
   const handleRemoveSource = (sourceName: string) => {
@@ -58,6 +61,11 @@ export function SourceFilter({
     } else {
       onRemoveIncludedSource(sourceName);
     }
+  };
+
+  const handleAddExclusion = (sourceName: string) => {
+    onAddExcludeFromIncluded(sourceName);
+    setSelectedExclusion(""); // Reset selection
   };
 
   return (
@@ -104,7 +112,7 @@ export function SourceFilter({
 
         {/* Source Selection */}
         <div className="space-y-3">
-          <Select onValueChange={handleAddSource}>
+          <Select value={selectedSource} onValueChange={handleAddSource}>
             <SelectTrigger className="w-full">
               <SelectValue placeholder={
                 sourceMode === 'exclude' 
@@ -203,7 +211,7 @@ export function SourceFilter({
           </div>
 
           <div className="space-y-3">
-            <Select onValueChange={onAddExcludeFromIncluded}>
+            <Select value={selectedExclusion} onValueChange={handleAddExclusion}>
               <SelectTrigger className="w-full">
                 <SelectValue placeholder="Seleziona tag/fonte da escludere dalle incluse..." />
               </SelectTrigger>
