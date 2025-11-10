@@ -358,19 +358,27 @@ export async function getUniqueSourcesFromLeads(market: string = 'IT'): Promise<
   try {
     const { data, error }: { data: any[] | null; error: any } = await supabase
       .from('lead_generation')
-      .select('fonte')
-      .eq('market', market) // Filter by market
-      .not('fonte', 'is', null)
-      .not('fonte', 'eq', '');
+      .select('fonte, ultima_fonte')
+      .eq('market', market); // Filter by market
     
     if (error) throw error;
     
-    // Extract and flatten all sources
+    // Extract and flatten all sources from both fonte and ultima_fonte
     const allSources = new Set<string>();
     data?.forEach(item => {
+      // Process fonte field
       if (item.fonte) {
-        // Split by comma and add each source
         item.fonte.split(',').forEach((source: string) => {
+          const trimmedSource = source.trim();
+          if (trimmedSource) {
+            allSources.add(trimmedSource);
+          }
+        });
+      }
+      
+      // Process ultima_fonte field
+      if (item.ultima_fonte) {
+        item.ultima_fonte.split(',').forEach((source: string) => {
           const trimmedSource = source.trim();
           if (trimmedSource) {
             allSources.add(trimmedSource);
