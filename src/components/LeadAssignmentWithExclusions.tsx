@@ -42,7 +42,8 @@ const LeadAssignmentWithExclusions = () => {
     toggleBypassTimeInterval,
     toggleOnlyHotLeads,
     handleAssign,
-    updateAvailableLeads
+    updateAvailableLeads,
+    refreshUniqueSources
   } = useLeadAssignment();
 
   // Refresh del conteggio quando cambiano gli stats globali
@@ -196,6 +197,7 @@ const LeadAssignmentWithExclusions = () => {
           onAddExcludeFromIncluded={addExcludeFromIncluded}
           onRemoveExcludeFromIncluded={removeExcludeFromIncluded}
           onToggleSourceMode={toggleSourceMode}
+          onRefreshSources={refreshUniqueSources}
         />
 
         {/* Assignment Button - at the bottom */}

@@ -245,6 +245,7 @@ const loadUniqueSources = async () => {
                           onAddExcludeFromIncluded={addEditExcludeFromIncluded}
                           onRemoveExcludeFromIncluded={removeEditExcludeFromIncluded}
                           onToggleSourceMode={toggleEditSourceMode}
+                          onRefreshSources={loadUniqueSources}
                         />
                         
                         <CampaignBypassConfig

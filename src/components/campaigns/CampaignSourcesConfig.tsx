@@ -15,6 +15,7 @@ interface CampaignSourcesConfigProps {
   onAddExcludeFromIncluded: (source: string) => void;
   onRemoveExcludeFromIncluded: (source: string) => void;
   onToggleSourceMode: (mode: 'exclude' | 'include') => void;
+  onRefreshSources?: () => void;
 }
 
 const CampaignSourcesConfig = ({
@@ -29,7 +30,8 @@ const CampaignSourcesConfig = ({
   onRemoveIncludedSource,
   onAddExcludeFromIncluded,
   onRemoveExcludeFromIncluded,
-  onToggleSourceMode
+  onToggleSourceMode,
+  onRefreshSources
 }: CampaignSourcesConfigProps) => {
   return (
     <div className="space-y-4">
@@ -51,6 +53,7 @@ const CampaignSourcesConfig = ({
         onAddExcludeFromIncluded={onAddExcludeFromIncluded}
         onRemoveExcludeFromIncluded={onRemoveExcludeFromIncluded}
         onToggleSourceMode={onToggleSourceMode}
+        onRefreshSources={onRefreshSources}
       />
     </div>
   );

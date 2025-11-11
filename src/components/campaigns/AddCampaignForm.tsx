@@ -154,6 +154,7 @@ const loadUniqueSources = async () => {
             onAddExcludeFromIncluded={addExcludeFromIncluded}
             onRemoveExcludeFromIncluded={removeExcludeFromIncluded}
             onToggleSourceMode={toggleSourceMode}
+            onRefreshSources={loadUniqueSources}
           />
           <CampaignBypassConfig
             bypassTimeInterval={bypassTimeInterval}

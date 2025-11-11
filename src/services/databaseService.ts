@@ -356,17 +356,23 @@ export async function getAllCampagne(market: string = 'IT') {
 
 export async function getUniqueSourcesFromLeads(market: string = 'IT'): Promise<string[]> {
   try {
+    console.log(`🔍 getUniqueSourcesFromLeads: Fetching for market "${market}"`);
+    
     const { data, error }: { data: any[] | null; error: any } = await supabase
       .from('lead_generation')
       .select('fonte, ultima_fonte, market')
-      // Include rows for the selected market and also rows with null market just in case
-      .or(`market.eq.${market},market.is.null`);
+      .eq('market', market); // Only fetch for exact market match
     
-    if (error) throw error;
+    if (error) {
+      console.error("❌ Error in getUniqueSourcesFromLeads query:", error);
+      throw error;
+    }
+
+    console.log(`📊 Retrieved ${data?.length || 0} lead records for market ${market}`);
 
     // Helper to extract tokens from CSV or JSON array formats and sanitize them
     const allTokens: string[] = [];
-    const addTokens = (raw?: string) => {
+    const addTokens = (raw?: string, fieldName?: string) => {
       if (!raw) return;
       const val = String(raw).trim();
       if (!val) return;
@@ -400,9 +406,11 @@ export async function getUniqueSourcesFromLeads(market: string = 'IT'): Promise<
     };
 
     data?.forEach(item => {
-      addTokens(item.fonte);
-      addTokens(item.ultima_fonte);
+      addTokens(item.fonte, 'fonte');
+      addTokens(item.ultima_fonte, 'ultima_fonte');
     });
+
+    console.log(`📋 Total tokens extracted: ${allTokens.length}`);
 
     // Dedupe case-insensitively while preserving first-seen casing
     const seen = new Set<string>();
@@ -415,9 +423,13 @@ export async function getUniqueSourcesFromLeads(market: string = 'IT'): Promise<
       }
     }
 
-    return unique.sort((a, b) => a.localeCompare(b));
+    const sorted = unique.sort((a, b) => a.localeCompare(b));
+    console.log(`✅ getUniqueSourcesFromLeads: Returning ${sorted.length} unique sources for market ${market}`);
+    console.log(`📝 Sample sources (first 10):`, sorted.slice(0, 10));
+
+    return sorted;
   } catch (error) {
-    console.error("Error fetching unique sources:", error);
+    console.error("❌ Error fetching unique sources:", error);
     return [];
   }
 }

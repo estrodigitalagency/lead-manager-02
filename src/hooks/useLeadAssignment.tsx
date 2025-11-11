@@ -326,6 +326,7 @@ const fetchUniqueSources = async () => {
     toggleBypassTimeInterval,
     toggleOnlyHotLeads,
     handleAssign,
-    updateAvailableLeads
+    updateAvailableLeads,
+    refreshUniqueSources: fetchUniqueSources
   };
 }

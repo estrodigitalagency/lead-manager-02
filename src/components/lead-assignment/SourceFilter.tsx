@@ -1,8 +1,9 @@
 
 import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { X, Filter, Plus, Info, Minus } from "lucide-react";
+import { X, Filter, Plus, Info, Minus, RefreshCw } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -22,6 +23,7 @@ interface SourceFilterProps {
   onAddExcludeFromIncluded: (source: string) => void;
   onRemoveExcludeFromIncluded: (source: string) => void;
   onToggleSourceMode: (mode: 'exclude' | 'include') => void;
+  onRefreshSources?: () => void;
 }
 
 export function SourceFilter({ 
@@ -36,7 +38,8 @@ export function SourceFilter({
   onRemoveIncludedSource,
   onAddExcludeFromIncluded,
   onRemoveExcludeFromIncluded,
-  onToggleSourceMode
+  onToggleSourceMode,
+  onRefreshSources
 }: SourceFilterProps) {
   const isMobile = useIsMobile();
   const [selectedSource, setSelectedSource] = useState<string>("");
@@ -73,9 +76,22 @@ export function SourceFilter({
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-2 mb-3">
-        <Filter className="h-5 w-5 text-primary" />
-        <h3 className="text-base font-semibold">Filtro per Fonti</h3>
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <Filter className="h-5 w-5 text-primary" />
+          <h3 className="text-base font-semibold">Filtro per Fonti</h3>
+        </div>
+        {onRefreshSources && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onRefreshSources}
+            className="gap-2"
+          >
+            <RefreshCw className="h-4 w-4" />
+            Aggiorna
+          </Button>
+        )}
       </div>
 
       {/* Mode Toggle */}
