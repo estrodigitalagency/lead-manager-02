@@ -9,6 +9,8 @@ import { Switch } from '@/components/ui/switch';
 import { Pencil, Trash2 } from 'lucide-react';
 import { Campaign } from '@/hooks/useCampaignsData';
 import { getUniqueSourcesFromLeads } from '@/services/databaseService';
+import { supabase } from '@/integrations/supabase/client';
+import { useMarket } from '@/contexts/MarketContext';
 import CampaignSourcesConfig from './CampaignSourcesConfig';
 import CampaignBypassConfig from './CampaignBypassConfig';
 
@@ -19,6 +21,7 @@ interface CampaignsListProps {
 }
 
 const CampaignsList = ({ campaigns, onUpdate, onDelete }: CampaignsListProps) => {
+  const { selectedMarket } = useMarket();
   const [editingCampaign, setEditingCampaign] = useState<Campaign | null>(null);
   const [editNome, setEditNome] = useState('');
   const [editDescrizione, setEditDescrizione] = useState('');
@@ -32,16 +35,28 @@ const CampaignsList = ({ campaigns, onUpdate, onDelete }: CampaignsListProps) =>
 
   useEffect(() => {
     loadUniqueSources();
-  }, []);
+  }, [selectedMarket]);
 
-  const loadUniqueSources = async () => {
-    try {
-      const sources = await getUniqueSourcesFromLeads();
-      setUniqueSources(sources);
-    } catch (error) {
-      console.error('Error loading sources:', error);
-    }
-  };
+  useEffect(() => {
+    const channel = supabase
+      .channel('rt-unique-sources-campaigns-list')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'lead_generation', filter: `market=eq.${selectedMarket}` }, () => {
+        loadUniqueSources();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [selectedMarket]);
+const loadUniqueSources = async () => {
+  try {
+    const sources = await getUniqueSourcesFromLeads(selectedMarket);
+    setUniqueSources(sources);
+  } catch (error) {
+    console.error('Error loading sources:', error);
+  }
+};
 
   const handleEdit = (campaign: Campaign) => {
     setEditingCampaign(campaign);

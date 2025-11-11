@@ -6,6 +6,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Plus } from 'lucide-react';
 import { getUniqueSourcesFromLeads } from '@/services/databaseService';
+import { supabase } from '@/integrations/supabase/client';
+import { useMarket } from '@/contexts/MarketContext';
 import CampaignSourcesConfig from './CampaignSourcesConfig';
 import CampaignBypassConfig from './CampaignBypassConfig';
 
@@ -22,6 +24,7 @@ interface AddCampaignFormProps {
 }
 
 const AddCampaignForm = ({ onSubmit }: AddCampaignFormProps) => {
+  const { selectedMarket } = useMarket();
   const [nome, setNome] = useState('');
   const [descrizione, setDescrizione] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -34,16 +37,28 @@ const AddCampaignForm = ({ onSubmit }: AddCampaignFormProps) => {
 
   useEffect(() => {
     loadUniqueSources();
-  }, []);
+  }, [selectedMarket]);
 
-  const loadUniqueSources = async () => {
-    try {
-      const sources = await getUniqueSourcesFromLeads();
-      setUniqueSources(sources);
-    } catch (error) {
-      console.error('Error loading sources:', error);
-    }
-  };
+  useEffect(() => {
+    const channel = supabase
+      .channel('rt-unique-sources-add-campaign')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'lead_generation', filter: `market=eq.${selectedMarket}` }, () => {
+        loadUniqueSources();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [selectedMarket]);
+const loadUniqueSources = async () => {
+  try {
+    const sources = await getUniqueSourcesFromLeads(selectedMarket);
+    setUniqueSources(sources);
+  } catch (error) {
+    console.error('Error loading sources:', error);
+  }
+};
 
   const handleSubmit = async () => {
     if (!nome.trim()) return;

@@ -50,6 +50,19 @@ export function useLeadAssignment() {
     }
   }, [selectedMarket]);
 
+  // Subscribe to realtime changes in lead_generation to refresh unique sources
+  useEffect(() => {
+    const channel = supabase
+      .channel('rt-unique-sources-assignment')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'lead_generation', filter: `market=eq.${selectedMarket}` }, () => {
+        fetchUniqueSources();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [selectedMarket]);
   const initializeData = async () => {
     try {
       console.log('🚀 Initializing lead assignment data...');
@@ -97,15 +110,15 @@ export function useLeadAssignment() {
     }
   };
 
-  const fetchUniqueSources = async () => {
-    try {
-      const sources = await getUniqueSourcesFromLeads();
-      setUniqueSources(sources);
-      console.log(`📊 Loaded ${sources.length} unique sources from leads`);
-    } catch (error) {
-      console.error("Error fetching unique sources:", error);
-    }
-  };
+const fetchUniqueSources = async () => {
+  try {
+    const sources = await getUniqueSourcesFromLeads(selectedMarket);
+    setUniqueSources(sources);
+    console.log(`📊 Loaded ${sources.length} unique sources from leads`);
+  } catch (error) {
+    console.error("Error fetching unique sources:", error);
+  }
+};
 
   const fetchCampagne = async () => {
     try {
