@@ -357,35 +357,51 @@ export async function getAllCampagne(market: string = 'IT') {
 export async function getUniqueSourcesFromLeads(market: string = 'IT'): Promise<string[]> {
   try {
     console.log(`🔍 getUniqueSourcesFromLeads: Fetching for market "${market}"`);
-    
-    let query = supabase
-      .from('lead_generation')
-      .select('fonte, ultima_fonte, market');
 
-    // Includi anche record legacy con market NULL per evitare di perdere fonti
-    if (market) {
-      query = query.or(`market.eq.${market},market.is.null`);
+    // Fetch ALL rows in chunks to avoid the 1000-rows default cap
+    const pageSize = 1000;
+    const maxRows = 50000; // safety cap
+    let from = 0;
+    const allRows: any[] = [];
+
+    while (from < maxRows) {
+      let query = supabase
+        .from('lead_generation')
+        .select('fonte, ultima_fonte, market, created_at')
+        .order('created_at', { ascending: false })
+        .range(from, from + pageSize - 1);
+
+      // Include legacy records without market to avoid missing sources
+      if (market) {
+        query = query.or(`market.eq.${market},market.is.null`);
+      }
+
+      const { data, error }: { data: any[] | null; error: any } = await query;
+      if (error) {
+        console.error("❌ Error in getUniqueSourcesFromLeads query:", error);
+        throw error;
+      }
+
+      const chunk = data || [];
+      allRows.push(...chunk);
+      console.log(`📥 Fetched chunk: ${chunk.length} rows (from ${from})`);
+
+      if (chunk.length < pageSize) break; // last page reached
+      from += pageSize;
     }
 
-    const { data, error }: { data: any[] | null; error: any } = await query;
-    
-    if (error) {
-      console.error("❌ Error in getUniqueSourcesFromLeads query:", error);
-      throw error;
-    }
-
-    console.log(`📊 Retrieved ${data?.length || 0} lead records for market ${market}`);
+    console.log(`📊 Retrieved ${allRows.length} lead records for market ${market}`);
 
     // Helper to extract tokens from CSV or JSON array formats and sanitize them
     const allTokens: string[] = [];
-    const addTokens = (raw?: string, fieldName?: string) => {
+    const addTokens = (raw?: string, _fieldName?: string) => {
       if (!raw) return;
       const val = String(raw).trim();
       if (!val) return;
 
       let tokens: string[] = [];
       // Try parsing as JSON array first
-      if ((val.startsWith('[') && val.endsWith(']')) || val.includes('","')) {
+      if ((val.startsWith('[') && val.endsWith(']')) || val.includes('\",\"')) {
         try {
           const parsed = JSON.parse(val);
           if (Array.isArray(parsed)) {
@@ -401,8 +417,8 @@ export async function getUniqueSourcesFromLeads(market: string = 'IT'): Promise<
       }
 
       for (let t of tokens) {
-        // Remove stray quotes/brackets and trim
-        let s = t.replace(/^["'\[]+|["'\]]+$/g, '').trim();
+        // Remove stray quotes/brackets (including typographic quotes) and trim
+        let s = t.replace(/^[\"'“”‘’\[\]]+|[\"'“”‘’\[\]]+$/g, '').trim();
         if (!s) continue;
         const normalized = s.toLowerCase();
         // Ignore generic placeholders
@@ -411,7 +427,7 @@ export async function getUniqueSourcesFromLeads(market: string = 'IT'): Promise<
       }
     };
 
-    data?.forEach(item => {
+    allRows.forEach(item => {
       addTokens(item.fonte, 'fonte');
       addTokens(item.ultima_fonte, 'ultima_fonte');
     });

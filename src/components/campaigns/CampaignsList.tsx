@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Switch } from '@/components/ui/switch';
 import { Pencil, Trash2 } from 'lucide-react';
 import { Campaign } from '@/hooks/useCampaignsData';
-import { getUniqueSourcesFromLeads } from '@/services/databaseService';
+import { getUniqueSourcesFromLeads, syncSourcesToDatabase } from '@/services/databaseService';
 import { supabase } from '@/integrations/supabase/client';
 import { useMarket } from '@/contexts/MarketContext';
 import CampaignSourcesConfig from './CampaignSourcesConfig';
