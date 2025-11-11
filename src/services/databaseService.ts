@@ -358,36 +358,64 @@ export async function getUniqueSourcesFromLeads(market: string = 'IT'): Promise<
   try {
     const { data, error }: { data: any[] | null; error: any } = await supabase
       .from('lead_generation')
-      .select('fonte, ultima_fonte')
-      .eq('market', market); // Filter by market
+      .select('fonte, ultima_fonte, market')
+      // Include rows for the selected market and also rows with null market just in case
+      .or(`market.eq.${market},market.is.null`);
     
     if (error) throw error;
-    
-    // Extract and flatten all sources from both fonte and ultima_fonte
-    const allSources = new Set<string>();
+
+    // Helper to extract tokens from CSV or JSON array formats and sanitize them
+    const allTokens: string[] = [];
+    const addTokens = (raw?: string) => {
+      if (!raw) return;
+      const val = String(raw).trim();
+      if (!val) return;
+
+      let tokens: string[] = [];
+      // Try parsing as JSON array first
+      if ((val.startsWith('[') && val.endsWith(']')) || val.includes('","')) {
+        try {
+          const parsed = JSON.parse(val);
+          if (Array.isArray(parsed)) {
+            tokens = parsed.map((v) => String(v));
+          }
+        } catch {
+          // Fallback to delimiter-based split below
+        }
+      }
+
+      if (tokens.length === 0) {
+        tokens = val.split(/[\,\|;]+/).map(t => t.trim()).filter(Boolean);
+      }
+
+      for (let t of tokens) {
+        // Remove stray quotes/brackets and trim
+        let s = t.replace(/^["'\[]+|["'\]]+$/g, '').trim();
+        if (!s) continue;
+        const normalized = s.toLowerCase();
+        // Ignore generic placeholders
+        if (["no", "si", "false", "true", "null", "undefined", "-"].includes(normalized)) continue;
+        allTokens.push(s);
+      }
+    };
+
     data?.forEach(item => {
-      // Process fonte field
-      if (item.fonte) {
-        item.fonte.split(',').forEach((source: string) => {
-          const trimmedSource = source.trim();
-          if (trimmedSource) {
-            allSources.add(trimmedSource);
-          }
-        });
-      }
-      
-      // Process ultima_fonte field
-      if (item.ultima_fonte) {
-        item.ultima_fonte.split(',').forEach((source: string) => {
-          const trimmedSource = source.trim();
-          if (trimmedSource) {
-            allSources.add(trimmedSource);
-          }
-        });
-      }
+      addTokens(item.fonte);
+      addTokens(item.ultima_fonte);
     });
-    
-    return Array.from(allSources).sort();
+
+    // Dedupe case-insensitively while preserving first-seen casing
+    const seen = new Set<string>();
+    const unique: string[] = [];
+    for (const s of allTokens) {
+      const k = s.toLowerCase();
+      if (!seen.has(k)) {
+        seen.add(k);
+        unique.push(s);
+      }
+    }
+
+    return unique.sort((a, b) => a.localeCompare(b));
   } catch (error) {
     console.error("Error fetching unique sources:", error);
     return [];
