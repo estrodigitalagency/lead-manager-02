@@ -43,8 +43,11 @@ export function SourceFilter({
   const [selectedExclusion, setSelectedExclusion] = useState<string>("");
 
   const currentSources = sourceMode === 'exclude' ? excludedSources : includedSources;
-  const availableSources = uniqueSources.filter(source => !currentSources.includes(source)).sort();
-  const availableForExclusion = uniqueSources.filter(source => !excludeFromIncluded.includes(source)).sort();
+  const availableSources = uniqueSources
+    .filter((source) => !currentSources.includes(source))
+    .filter((source) => (sourceMode === 'include' ? !excludeFromIncluded.includes(source) : true))
+    .sort();
+  const availableForExclusion = includedSources.filter(source => !excludeFromIncluded.includes(source)).sort();
 
   const handleAddSource = (sourceName: string) => {
     if (sourceMode === 'exclude') {
