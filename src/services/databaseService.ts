@@ -358,10 +358,16 @@ export async function getUniqueSourcesFromLeads(market: string = 'IT'): Promise<
   try {
     console.log(`🔍 getUniqueSourcesFromLeads: Fetching for market "${market}"`);
     
-    const { data, error }: { data: any[] | null; error: any } = await supabase
+    let query = supabase
       .from('lead_generation')
-      .select('fonte, ultima_fonte, market')
-      .eq('market', market); // Only fetch for exact market match
+      .select('fonte, ultima_fonte, market');
+
+    // Includi anche record legacy con market NULL per evitare di perdere fonti
+    if (market) {
+      query = query.or(`market.eq.${market},market.is.null`);
+    }
+
+    const { data, error }: { data: any[] | null; error: any } = await query;
     
     if (error) {
       console.error("❌ Error in getUniqueSourcesFromLeads query:", error);
