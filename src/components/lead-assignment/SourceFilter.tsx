@@ -46,11 +46,19 @@ export function SourceFilter({
   const [selectedExclusion, setSelectedExclusion] = useState<string>("");
 
   const currentSources = sourceMode === 'exclude' ? excludedSources : includedSources;
+  
+  // Normalizzazione per confronti robusti (case/whitespace insensitive)
+  const normalize = (s: string) => s?.trim().toLowerCase();
+  const currentNorm = new Set(currentSources.map(normalize));
+  const excludeFromIncludedNorm = new Set(excludeFromIncluded.map(normalize));
+
   const availableSources = uniqueSources
-    .filter((source) => !currentSources.includes(source))
-    .filter((source) => (sourceMode === 'include' ? !excludeFromIncluded.includes(source) : true))
-    .sort();
-  const availableForExclusion = includedSources.filter(source => !excludeFromIncluded.includes(source)).sort();
+    .filter((source) => !currentNorm.has(normalize(source)))
+    .filter((source) => (sourceMode === 'include' ? !excludeFromIncludedNorm.has(normalize(source)) : true))
+    .sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'accent', numeric: true }));
+  const availableForExclusion = includedSources
+    .filter(source => !excludeFromIncludedNorm.has(normalize(source)))
+    .sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'accent', numeric: true }));
 
   const handleAddSource = (sourceName: string) => {
     if (sourceMode === 'exclude') {
