@@ -89,7 +89,8 @@ const DatabasePage = () => {
         'booked_call',
         1,
         1000, // Carica molti record per ora, poi si può paginare anche questi
-        { ...activeFilters, market: selectedMarket }
+        { ...activeFilters },
+        selectedMarket
       );
       setBookings(result.data);
     } catch (error) {
@@ -106,7 +107,8 @@ const DatabasePage = () => {
         'lead_lavorati',
         1,
         1000, // Carica molti record per ora, poi si può paginare anche questi
-        { ...activeFilters, market: selectedMarket }
+        { ...activeFilters },
+        selectedMarket
       );
       setLeadLavorati(result.data);
     } catch (error) {

@@ -26,7 +26,12 @@ export async function getPaginatedData<T>(
     
     // Apply market filter for relevant tables
     if (['lead_generation', 'booked_call', 'venditori', 'lead_lavorati'].includes(tableName)) {
-      query = query.eq('market', market);
+      if (market === 'IT') {
+        // Include legacy records without market for IT
+        query = query.or('market.eq.IT,market.is.null');
+      } else {
+        query = query.eq('market', market);
+      }
     }
     
     // Applica filtri se presenti
@@ -142,7 +147,11 @@ export async function getRecentData(tableName: ValidTableName, limit: number = 1
     
     // Apply market filter for relevant tables
     if (['lead_generation', 'booked_call', 'venditori', 'lead_lavorati'].includes(tableName)) {
-      query = query.eq('market', market);
+      if (market === 'IT') {
+        query = query.or('market.eq.IT,market.is.null');
+      } else {
+        query = query.eq('market', market);
+      }
     }
     
     const { data, error }: { data: any[] | null; error: any } = await query
@@ -193,7 +202,11 @@ export async function filterLeads(tableName: ValidTableName, filters: Record<str
   
   // Apply market filter for relevant tables
   if (['lead_generation', 'booked_call', 'venditori', 'lead_lavorati'].includes(tableName)) {
-    query = query.eq('market', market);
+    if (market === 'IT') {
+      query = query.or('market.eq.IT,market.is.null');
+    } else {
+      query = query.eq('market', market);
+    }
   }
   
   // Filtro di ricerca generale - cerca in nome, email, telefono e cognome
