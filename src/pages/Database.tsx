@@ -168,7 +168,8 @@ const DatabasePage = () => {
 
   // Ricarica dati quando cambiano i filtri o il market
   useEffect(() => {
-    if (verification.status !== 'idle') {
+    // Skip initial load (handled by initializeDatabase)
+    if (isInitializedRef.current) {
       Promise.all([
         fetchBookings(),
         fetchLeadLavorati()
