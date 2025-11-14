@@ -40,7 +40,8 @@ export function AutomationExecutionHistory() {
     result: '',
     automation_name: '',
     seller: '',
-    execution_source: ''
+    execution_source: '',
+    lead_search: ''
   });
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 20;
@@ -71,6 +72,9 @@ export function AutomationExecutionHistory() {
       }
       if (filters.execution_source) {
         query = query.eq('execution_source', filters.execution_source);
+      }
+      if (filters.lead_search) {
+        query = query.or(`lead_name.ilike.%${filters.lead_search}%,lead_email.ilike.%${filters.lead_search}%`);
       }
 
       // Apply pagination
@@ -122,7 +126,8 @@ export function AutomationExecutionHistory() {
       result: '',
       automation_name: '',
       seller: '',
-      execution_source: ''
+      execution_source: '',
+      lead_search: ''
     });
     setCurrentPage(1);
   };
@@ -148,7 +153,7 @@ export function AutomationExecutionHistory() {
       </CardHeader>
       <CardContent>
         {/* Filtri */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
           <Select value={filters.result} onValueChange={(value) => setFilters({...filters, result: value})}>
             <SelectTrigger>
               <SelectValue placeholder="Risultato" />
@@ -164,6 +169,12 @@ export function AutomationExecutionHistory() {
             placeholder="Nome automazione..."
             value={filters.automation_name}
             onChange={(e) => setFilters({...filters, automation_name: e.target.value})}
+          />
+
+          <Input
+            placeholder="Nome o email lead..."
+            value={filters.lead_search}
+            onChange={(e) => setFilters({...filters, lead_search: e.target.value})}
           />
 
           <Input
