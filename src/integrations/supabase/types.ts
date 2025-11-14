@@ -326,31 +326,31 @@ export type Database = {
         Row: {
           cognome: string | null
           created_at: string
-          email: string
+          email: string | null
           fonte: string | null
           id: string
           market: string
-          nome: string
+          nome: string | null
           telefono: string | null
         }
         Insert: {
           cognome?: string | null
           created_at?: string
-          email: string
+          email?: string | null
           fonte?: string | null
           id?: string
           market?: string
-          nome: string
+          nome?: string | null
           telefono?: string | null
         }
         Update: {
           cognome?: string | null
           created_at?: string
-          email?: string
+          email?: string | null
           fonte?: string | null
           id?: string
           market?: string
-          nome?: string
+          nome?: string | null
           telefono?: string | null
         }
         Relationships: []
