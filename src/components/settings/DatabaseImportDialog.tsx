@@ -9,6 +9,14 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import CSVFileUploader from "./import/CSVFileUploader";
@@ -31,6 +39,7 @@ export default function DatabaseImportDialog({
   const [mappings, setMappings] = useState<Record<string, string>>({});
   const [headers, setHeaders] = useState<string[]>([]);
   const [step, setStep] = useState(1);
+  const [selectedMarket, setSelectedMarket] = useState<string>("IT");
   
   // Reset state when dialog closes
   const handleClose = () => {
@@ -38,6 +47,7 @@ export default function DatabaseImportDialog({
     setHeaders([]);
     setMappings({});
     setStep(1);
+    setSelectedMarket("IT");
     setIsOpen(false);
   };
   
@@ -69,6 +79,9 @@ export default function DatabaseImportDialog({
       // Add default values if needed and process special fields
       const processedRecords = records.map(record => {
         const processedRecord = { ...record };
+        
+        // Add market to all records
+        processedRecord.market = selectedMarket;
         
         if (tableName === 'lead_generation') {
           // Handle booked_call field - convert to proper format
@@ -122,12 +135,27 @@ export default function DatabaseImportDialog({
           )}
           
           {step === 2 && (
-            <CSVHeaderMapper 
-              tableName={tableName}
-              headers={headers}
-              initialMappings={mappings}
-              onMappingChange={setMappings}
-            />
+            <div className="space-y-6">
+              <div className="space-y-2">
+                <Label htmlFor="market-select">Mercato</Label>
+                <Select value={selectedMarket} onValueChange={setSelectedMarket}>
+                  <SelectTrigger id="market-select">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="IT">Italia (IT)</SelectItem>
+                    <SelectItem value="ES">Spagna (ES)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <CSVHeaderMapper 
+                tableName={tableName}
+                headers={headers}
+                initialMappings={mappings}
+                onMappingChange={setMappings}
+              />
+            </div>
           )}
         </div>
         
