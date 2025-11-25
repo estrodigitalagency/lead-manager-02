@@ -29,6 +29,7 @@ export default function CSVHeaderMapper({
           { name: "email", label: "Email" },
           { name: "telefono", label: "Telefono" },
           { name: "fonte", label: "Fonte" },
+          { name: "ultima_fonte", label: "Ultima Fonte" },
           { name: "booked_call", label: "Call Prenotata" },
           { name: "created_at", label: "Data Creazione" },
         ];
