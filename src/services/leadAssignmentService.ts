@@ -462,45 +462,113 @@ export async function getAvailableLeadsCount(
 
     const daysBeforeAssignable = settingsData?.value ? parseInt(settingsData.value) : 7;
 
-    // QUERY BASE: Recupera tutti i candidati filtrati per market
-    let query = supabase
-      .from('lead_generation')
-      .select('id, nome, cognome, email, telefono, fonte, ultima_fonte, lead_score, created_at, booked_call, venditore')
-      .is('venditore', null)
-      .eq('booked_call', 'NO')
-      .eq('manually_not_assignable', false)
-      .eq('market', market);
+    // Se non ci sono filtri complessi, usa una count query diretta per efficienza
+    const hasSourceExclusions = sourceMode === 'exclude' && excludedSources.length > 0;
+    const hasExcludeFromIncluded = excludeFromIncluded.length > 0 && includedSources.length > 0;
+    const needsClientFiltering = hasSourceExclusions || hasExcludeFromIncluded || !bypassTimeInterval;
+
+    if (!needsClientFiltering && sourceMode === 'include' && includedSources.length > 0) {
+      // Count query diretta per modalità include con bypass attivo
+      let countQuery = supabase
+        .from('lead_generation')
+        .select('id', { count: 'exact', head: true })
+        .is('venditore', null)
+        .eq('booked_call', 'NO')
+        .eq('manually_not_assignable', false)
+        .eq('market', market);
+
+      if (onlyHotLeads) {
+        countQuery = countQuery.eq('lead_score', 'Hot');
+      }
+
+      const includeFilters = includedSources.map(source => `ultima_fonte.like.%${source}%`).join(',');
+      countQuery = countQuery.or(includeFilters);
+
+      const { count, error } = await countQuery;
       
-    // IMPORTANTE: Filtro per Lead Score = "Hot" SOLO se richiesto esplicitamente
-    if (onlyHotLeads) {
-      query = query.eq('lead_score', 'Hot');
+      if (error) {
+        console.error('Error counting available leads:', error);
+        return 0;
+      }
+
+      console.log(`Direct count query result: ${count} leads`);
+      return count || 0;
     }
 
-    // Apply source filtering logic SOLO se ci sono fonti incluse specificate E siamo in modalità include
-    if (sourceMode === 'include') {
-      if (includedSources.length > 0) {
-        const includeFilters = includedSources.map(source => `ultima_fonte.like.%${source}%`).join(',');
-        query = query.or(includeFilters);
+    if (!needsClientFiltering && sourceMode === 'exclude' && excludedSources.length === 0) {
+      // Count query diretta senza filtri complessi
+      let countQuery = supabase
+        .from('lead_generation')
+        .select('id', { count: 'exact', head: true })
+        .is('venditore', null)
+        .eq('booked_call', 'NO')
+        .eq('manually_not_assignable', false)
+        .eq('market', market);
+
+      if (onlyHotLeads) {
+        countQuery = countQuery.eq('lead_score', 'Hot');
+      }
+
+      const { count, error } = await countQuery;
+      
+      if (error) {
+        console.error('Error counting available leads:', error);
+        return 0;
+      }
+
+      console.log(`Direct count query result: ${count} leads`);
+      return count || 0;
+    }
+
+    // Per filtri complessi, dobbiamo fare fetch dei dati con range per superare il limite di 1000
+    let allCandidates: any[] = [];
+    let page = 0;
+    const pageSize = 1000;
+    let hasMore = true;
+
+    while (hasMore) {
+      let query = supabase
+        .from('lead_generation')
+        .select('id, nome, cognome, email, telefono, fonte, ultima_fonte, lead_score, created_at, booked_call, venditore')
+        .is('venditore', null)
+        .eq('booked_call', 'NO')
+        .eq('manually_not_assignable', false)
+        .eq('market', market)
+        .range(page * pageSize, (page + 1) * pageSize - 1);
+        
+      if (onlyHotLeads) {
+        query = query.eq('lead_score', 'Hot');
+      }
+
+      if (sourceMode === 'include') {
+        if (includedSources.length > 0) {
+          const includeFilters = includedSources.map(source => `ultima_fonte.like.%${source}%`).join(',');
+          query = query.or(includeFilters);
+        } else {
+          return 0;
+        }
+      }
+
+      const { data: candidates, error } = await query;
+      
+      if (error) {
+        console.error('Error counting available leads:', error);
+        return 0;
+      }
+
+      if (!candidates || candidates.length === 0) {
+        hasMore = false;
       } else {
-        // Se siamo in modalità include ma non ci sono fonti specificate, non restituire nulla
-        // Questo comportamento preserva la logica che quando selezioni "include" devi specificare le fonti
-        query = query.eq('ultima_fonte', 'NON_EXISTENT_SOURCE_TO_RETURN_EMPTY');
+        allCandidates = [...allCandidates, ...candidates];
+        hasMore = candidates.length === pageSize;
+        page++;
       }
     }
 
-    const { data: candidates, error } = await query;
-    
-    if (error) {
-      console.error('Error counting available leads:', error);
-      return 0;
-    }
-
-    if (!candidates) return 0;
-
-    console.log(`Found ${candidates.length} candidates before filtering`);
+    console.log(`Found ${allCandidates.length} total candidates after pagination`);
 
     // Convert lead_score from string to number if needed for type compatibility
-    const convertedCandidates = candidates.map(lead => ({
+    const convertedCandidates = allCandidates.map(lead => ({
       ...lead,
       lead_score: lead.lead_score ? (typeof lead.lead_score === 'string' ? parseInt(lead.lead_score) : lead.lead_score) : undefined
     }));
