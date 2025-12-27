@@ -14,6 +14,22 @@ export interface LeadAssignmentData {
   onlyHotLeads?: boolean;
   market?: 'IT' | 'ES';
   specificLeadIds?: string[]; // For replay functionality
+  skipAlreadyAssignedCheck?: boolean; // Skip pre-assignment check
+}
+
+export interface AlreadyAssignedLeadInfo {
+  id: string;
+  nome: string;
+  cognome?: string;
+  email?: string;
+  venditore: string;
+}
+
+export interface PreAssignmentCheckResult {
+  canProceed: boolean;
+  alreadyAssignedLeads: AlreadyAssignedLeadInfo[];
+  newLeads: any[];
+  totalLeadsToAssign: number;
 }
 
 // Helper function to process assignment completion (webhook, history, counter update)
@@ -626,5 +642,159 @@ export async function getAvailableLeadsCount(
   } catch (error) {
     console.error('Error in getAvailableLeadsCount:', error);
     return 0;
+  }
+}
+
+// Pre-assignment check to identify leads already assigned to other salespeople
+export async function checkLeadsForPreviousAssignment(
+  data: LeadAssignmentData
+): Promise<PreAssignmentCheckResult> {
+  const { 
+    numLead, 
+    venditore,
+    excludedSources = [], 
+    includedSources = [], 
+    sourceMode = 'exclude',
+    bypassTimeInterval = false,
+    excludeFromIncluded = [], 
+    onlyHotLeads = false,
+    market = 'IT',
+  } = data;
+
+  try {
+    console.log(`🔍 Pre-assignment check: checking ${numLead} leads for previous assignments`);
+
+    // Get settings for lead status calculation
+    const { data: settingsData } = await supabase
+      .from('system_settings')
+      .select('value')
+      .eq('key', 'days_before_assignable')
+      .single();
+
+    const daysBeforeAssignable = settingsData?.value ? parseInt(settingsData.value) : 7;
+
+    // Build the query for candidate leads - same logic as assignLeadsWithExclusions
+    // but WITHOUT the venditore IS NULL filter to also get previously assigned leads
+    let query = supabase
+      .from('lead_generation')
+      .select('id, nome, cognome, email, telefono, fonte, ultima_fonte, lead_score, created_at, booked_call, venditore')
+      .eq('booked_call', 'NO')
+      .eq('manually_not_assignable', false)
+      .eq('market', market);
+      
+    if (onlyHotLeads) {
+      query = query.eq('lead_score', 'Hot');
+    }
+
+    // Apply source filtering logic
+    if (sourceMode === 'include' && includedSources.length > 0) {
+      const includeFilters = includedSources.map(source => `ultima_fonte.like.%${source}%`).join(',');
+      query = query.or(includeFilters);
+    }
+
+    // Get all candidate leads ordered from oldest to newest
+    const { data: candidateLeads, error: fetchError } = await query
+      .order('created_at', { ascending: true });
+
+    if (fetchError) {
+      console.error('Error fetching leads for pre-check:', fetchError);
+      throw new Error(`Errore nel recupero dei lead: ${fetchError.message}`);
+    }
+
+    if (!candidateLeads || candidateLeads.length === 0) {
+      return {
+        canProceed: true,
+        alreadyAssignedLeads: [],
+        newLeads: [],
+        totalLeadsToAssign: 0
+      };
+    }
+
+    // Convert lead_score
+    const convertedLeads = candidateLeads.map(lead => ({
+      ...lead,
+      lead_score: lead.lead_score ? (typeof lead.lead_score === 'string' ? parseInt(lead.lead_score) : lead.lead_score) : undefined
+    }));
+
+    // Apply exclusion filter
+    let filteredLeads = convertedLeads;
+    if (sourceMode === 'exclude' && excludedSources.length > 0) {
+      filteredLeads = convertedLeads.filter(lead => {
+        if (!lead.ultima_fonte) return true;
+        return !excludedSources.some(excludedSource => 
+          lead.ultima_fonte!.toLowerCase().includes(excludedSource.toLowerCase())
+        );
+      });
+    }
+
+    // Apply exclusions from included sources
+    if (excludeFromIncluded.length > 0 && includedSources.length > 0) {
+      filteredLeads = filteredLeads.filter(lead => {
+        if (!lead.ultima_fonte) return true;
+        
+        const isFromIncludedSource = includedSources.some(includedSource => 
+          lead.ultima_fonte!.toLowerCase().includes(includedSource.toLowerCase())
+        );
+        
+        if (isFromIncludedSource) {
+          const hasExcludedTag = excludeFromIncluded.some(excludedTag => 
+            lead.ultima_fonte!.toLowerCase().includes(excludedTag.toLowerCase())
+          );
+          return !hasExcludedTag;
+        }
+        
+        return true;
+      });
+    }
+
+    // Now filter for assignable status (or all if bypass is active)
+    let eligibleLeads;
+    if (bypassTimeInterval) {
+      eligibleLeads = filteredLeads;
+    } else {
+      eligibleLeads = filteredLeads.filter(lead => {
+        // For leads with no venditore, check their assignable status
+        if (!lead.venditore) {
+          const status = getLeadStatus(lead, daysBeforeAssignable);
+          return status.label === 'Assegnabile';
+        }
+        // For leads with venditore, include them to check later
+        return true;
+      });
+    }
+
+    // Take only the requested number of leads
+    const leadsToAssign = eligibleLeads.slice(0, numLead);
+
+    // Separate leads that are already assigned to another salesperson
+    const alreadyAssignedLeads: AlreadyAssignedLeadInfo[] = [];
+    const newLeads: any[] = [];
+
+    for (const lead of leadsToAssign) {
+      if (lead.venditore && lead.venditore !== venditore) {
+        alreadyAssignedLeads.push({
+          id: lead.id,
+          nome: lead.nome,
+          cognome: lead.cognome,
+          email: lead.email,
+          venditore: lead.venditore
+        });
+      } else {
+        newLeads.push(lead);
+      }
+    }
+
+    console.log(`🔍 Pre-check result: ${alreadyAssignedLeads.length} already assigned, ${newLeads.length} new leads`);
+
+    return {
+      canProceed: alreadyAssignedLeads.length === 0,
+      alreadyAssignedLeads,
+      newLeads,
+      totalLeadsToAssign: leadsToAssign.length
+    };
+
+  } catch (error) {
+    console.error('Pre-assignment check error:', error);
+    throw error;
   }
 }

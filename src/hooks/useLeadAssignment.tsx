@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { getAllFonti, getAllCampagne, getUniqueSourcesFromLeads, syncSourcesToDatabase } from "@/services/databaseService";
-import { assignLeadsWithExclusions, LeadAssignmentData } from "@/services/leadAssignmentService";
+import { assignLeadsWithExclusions, checkLeadsForPreviousAssignment, LeadAssignmentData, AlreadyAssignedLeadInfo } from "@/services/leadAssignmentService";
 import { Campaign } from '@/hooks/useCampaignsData';
 import { useRealTimeLeadCount } from "./useRealTimeLeadCount";
 import { useMarket } from "@/contexts/MarketContext";
@@ -23,6 +23,11 @@ export function useLeadAssignment() {
   const [uniqueSources, setUniqueSources] = useState<string[]>([]);
   const [bypassTimeInterval, setBypassTimeInterval] = useState(false);
   const [onlyHotLeads, setOnlyHotLeads] = useState(false);
+  
+  // State for already assigned leads conflict
+  const [showAlreadyAssignedDialog, setShowAlreadyAssignedDialog] = useState(false);
+  const [alreadyAssignedLeads, setAlreadyAssignedLeads] = useState<AlreadyAssignedLeadInfo[]>([]);
+  const [pendingAssignmentData, setPendingAssignmentData] = useState<LeadAssignmentData | null>(null);
 
   // Usa il nuovo hook per il conteggio in tempo reale con tutti i parametri
   const { 
@@ -258,8 +263,8 @@ const fetchUniqueSources = async () => {
         excludeFromIncluded: excludeFromIncluded.length,
         bypassTimeInterval
       });
-      
-      await assignLeadsWithExclusions({
+
+      const assignmentData: LeadAssignmentData = {
         numLead: numLeadInt,
         venditore,
         campagna,
@@ -270,9 +275,38 @@ const fetchUniqueSources = async () => {
         excludeFromIncluded,
         onlyHotLeads,
         market: selectedMarket
-      });
+      };
+
+      // Pre-check for already assigned leads
+      console.log(`🔍 Checking for previously assigned leads...`);
+      const preCheckResult = await checkLeadsForPreviousAssignment(assignmentData);
+
+      if (!preCheckResult.canProceed) {
+        // Show dialog with conflict
+        console.log(`⚠️ Found ${preCheckResult.alreadyAssignedLeads.length} already assigned leads`);
+        setAlreadyAssignedLeads(preCheckResult.alreadyAssignedLeads);
+        setPendingAssignmentData(assignmentData);
+        setShowAlreadyAssignedDialog(true);
+        setIsSubmitting(false);
+        return;
+      }
+
+      // No conflicts, proceed with assignment
+      await executeAssignment(assignmentData);
       
-      toast.success(`${numLeadInt} lead assegnati con successo a ${venditore}`);
+    } catch (error) {
+      console.error("❌ Error assigning leads:", error);
+      const errorMessage = error instanceof Error ? error.message : "Errore sconosciuto";
+      toast.error(`Errore nell'assegnazione dei lead: ${errorMessage}`);
+      setIsSubmitting(false);
+    }
+  };
+
+  const executeAssignment = async (assignmentData: LeadAssignmentData) => {
+    try {
+      await assignLeadsWithExclusions(assignmentData);
+      
+      toast.success(`Lead assegnati con successo a ${assignmentData.venditore}`);
       
       // Reset form
       setNumLead("");
@@ -285,12 +319,91 @@ const fetchUniqueSources = async () => {
       
       console.log(`✅ Assignment completed successfully`);
     } catch (error) {
-      console.error("❌ Error assigning leads:", error);
+      console.error("❌ Error executing assignment:", error);
       const errorMessage = error instanceof Error ? error.message : "Errore sconosciuto";
       toast.error(`Errore nell'assegnazione dei lead: ${errorMessage}`);
     } finally {
       setIsSubmitting(false);
+      setShowAlreadyAssignedDialog(false);
+      setAlreadyAssignedLeads([]);
+      setPendingAssignmentData(null);
     }
+  };
+
+  const handleContinueWithAll = async () => {
+    if (!pendingAssignmentData) return;
+    
+    setIsSubmitting(true);
+    console.log(`🎯 User chose to continue with all leads, assigning to ${pendingAssignmentData.venditore}`);
+    await executeAssignment(pendingAssignmentData);
+  };
+
+  const handleAssignToOriginal = async () => {
+    if (!pendingAssignmentData || alreadyAssignedLeads.length === 0) return;
+    
+    setIsSubmitting(true);
+    console.log(`🔄 User chose to assign already-assigned leads to their original salespeople`);
+
+    try {
+      // Group leads by original salesperson
+      const leadsByVenditore = alreadyAssignedLeads.reduce((acc, lead) => {
+        if (!acc[lead.venditore]) {
+          acc[lead.venditore] = [];
+        }
+        acc[lead.venditore].push(lead.id);
+        return acc;
+      }, {} as Record<string, string[]>);
+
+      // Assign leads to their original salespeople
+      for (const [originalVenditore, leadIds] of Object.entries(leadsByVenditore)) {
+        console.log(`📤 Re-assigning ${leadIds.length} leads to ${originalVenditore}`);
+        
+        await assignLeadsWithExclusions({
+          ...pendingAssignmentData,
+          numLead: leadIds.length,
+          venditore: originalVenditore,
+          specificLeadIds: leadIds,
+          skipAlreadyAssignedCheck: true
+        });
+      }
+
+      // Now assign the remaining new leads to the target salesperson
+      const newLeadCount = pendingAssignmentData.numLead - alreadyAssignedLeads.length;
+      if (newLeadCount > 0) {
+        console.log(`📤 Assigning ${newLeadCount} new leads to ${pendingAssignmentData.venditore}`);
+        await assignLeadsWithExclusions({
+          ...pendingAssignmentData,
+          numLead: newLeadCount
+        });
+      }
+
+      toast.success(`Lead riassegnati ai venditori originali`);
+      
+      // Reset form
+      setNumLead("");
+      setVenditore("");
+      setCampagna("");
+      
+      // Refresh data
+      fetchCampagne();
+      updateAvailableLeads();
+      
+    } catch (error) {
+      console.error("❌ Error in split assignment:", error);
+      const errorMessage = error instanceof Error ? error.message : "Errore sconosciuto";
+      toast.error(`Errore nella riassegnazione: ${errorMessage}`);
+    } finally {
+      setIsSubmitting(false);
+      setShowAlreadyAssignedDialog(false);
+      setAlreadyAssignedLeads([]);
+      setPendingAssignmentData(null);
+    }
+  };
+
+  const handleCloseAlreadyAssignedDialog = () => {
+    setShowAlreadyAssignedDialog(false);
+    setAlreadyAssignedLeads([]);
+    setPendingAssignmentData(null);
   };
 
   return {
@@ -327,6 +440,12 @@ const fetchUniqueSources = async () => {
     toggleOnlyHotLeads,
     handleAssign,
     updateAvailableLeads,
-    refreshUniqueSources: fetchUniqueSources
+    refreshUniqueSources: fetchUniqueSources,
+    // Already assigned leads dialog
+    showAlreadyAssignedDialog,
+    alreadyAssignedLeads,
+    handleContinueWithAll,
+    handleAssignToOriginal,
+    handleCloseAlreadyAssignedDialog
   };
 }
