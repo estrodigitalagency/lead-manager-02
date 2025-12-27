@@ -6,6 +6,7 @@ import { AssignmentForm } from "@/components/lead-assignment/AssignmentForm";
 import { BypassTimeIntervalControl } from "@/components/lead-assignment/BypassTimeIntervalControl";
 import { LeadScoreHotFilter } from "@/components/lead-assignment/LeadScoreHotFilter";
 import { AvailableLeadsCounter } from "@/components/lead-assignment/AvailableLeadsCounter";
+import { AlreadyAssignedLeadsDialog } from "@/components/lead-assignment/AlreadyAssignedLeadsDialog";
 import { useLeadAssignment } from "@/hooks/useLeadAssignment";
 import { useLeadSync } from "@/contexts/LeadSyncContext";
 import { Loader2, RefreshCcw, CheckCircle, AlertCircle } from "lucide-react";
@@ -43,7 +44,13 @@ const LeadAssignmentWithExclusions = () => {
     toggleOnlyHotLeads,
     handleAssign,
     updateAvailableLeads,
-    refreshUniqueSources
+    refreshUniqueSources,
+    // Already assigned leads dialog
+    showAlreadyAssignedDialog,
+    alreadyAssignedLeads,
+    handleContinueWithAll,
+    handleAssignToOriginal,
+    handleCloseAlreadyAssignedDialog
   } = useLeadAssignment();
 
   // Refresh del conteggio quando cambiano gli stats globali
@@ -216,6 +223,17 @@ const LeadAssignmentWithExclusions = () => {
           showOnlyButton={true}
         />
       </CardContent>
+
+      {/* Already Assigned Leads Dialog */}
+      <AlreadyAssignedLeadsDialog
+        open={showAlreadyAssignedDialog}
+        onOpenChange={handleCloseAlreadyAssignedDialog}
+        alreadyAssignedLeads={alreadyAssignedLeads}
+        targetVenditore={venditore}
+        onContinueWithAll={handleContinueWithAll}
+        onAssignToOriginal={handleAssignToOriginal}
+        isProcessing={isSubmitting}
+      />
     </Card>
   );
 };
