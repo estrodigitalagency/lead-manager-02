@@ -260,6 +260,8 @@ serve(async (req) => {
                       email: lead.email,
                       telefono: lead.telefono,
                       fonte: lead.fonte,
+                      lead_score: lead.lead_score || null,
+                      stato_del_lead: lead.stato_del_lead || '',
                       market: lead.market,
                       created_at: lead.created_at,
                       assigned_at: new Date().toISOString()
