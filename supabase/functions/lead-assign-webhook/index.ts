@@ -59,6 +59,7 @@ serve(async (req) => {
         telefono: lead.telefono || '',
         fonte: lead.fonte || '',
         lead_score: lead.lead_score || null,
+        stato_del_lead: lead.stato_del_lead || '',
         note: lead.note || '',
         market: lead.market || 'IT',
         created_at: lead.created_at,
