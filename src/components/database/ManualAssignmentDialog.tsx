@@ -179,8 +179,13 @@ const ManualAssignmentDialog = ({
               email: lead.email || '',
               telefono: lead.telefono || '',
               fonte: lead.fonte || '',
+              ultima_fonte: lead.ultima_fonte || '',
               lead_score: lead.lead_score || null,
+              stato: lead.stato || '',
               stato_del_lead: lead.stato_del_lead || '',
+              campagna: lead.campagna || '',
+              booked_call: lead.booked_call || '',
+              market: lead.market || 'IT',
               created_at: lead.created_at,
               assigned_at: new Date().toISOString()
             }))

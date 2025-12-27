@@ -132,8 +132,12 @@ async function processAssignmentCompletion(
         email: lead.email || '',
         telefono: lead.telefono || '',
         fonte: lead.fonte || '',
+        ultima_fonte: lead.ultima_fonte || '',
         lead_score: lead.lead_score || null,
+        stato: lead.stato || '',
         stato_del_lead: lead.stato_del_lead || '',
+        campagna: lead.campagna || '',
+        booked_call: lead.booked_call || '',
         market: market,
         created_at: lead.created_at,
         assigned_at: new Date().toISOString()
@@ -233,7 +237,7 @@ export async function assignLeadsWithExclusions(data: LeadAssignmentData) {
       
       const { data: specificLeads, error: fetchError } = await supabase
         .from('lead_generation')
-        .select('id, nome, cognome, email, telefono, fonte, ultima_fonte, lead_score, stato_del_lead, created_at, booked_call, venditore')
+        .select('id, nome, cognome, email, telefono, fonte, ultima_fonte, lead_score, stato, stato_del_lead, campagna, booked_call, created_at, venditore, market')
         .in('id', specificLeadIds)
         .eq('market', market);
 
@@ -303,7 +307,7 @@ export async function assignLeadsWithExclusions(data: LeadAssignmentData) {
     // QUERY BASE: Recupera tutti i lead candidati filtrati per market
     let query = supabase
       .from('lead_generation')
-      .select('id, nome, cognome, email, telefono, fonte, ultima_fonte, lead_score, stato_del_lead, created_at, booked_call, venditore')
+      .select('id, nome, cognome, email, telefono, fonte, ultima_fonte, lead_score, stato, stato_del_lead, campagna, booked_call, created_at, venditore, market')
       .is('venditore', null)
       .eq('booked_call', 'NO')
       .eq('manually_not_assignable', false)
