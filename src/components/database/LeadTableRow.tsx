@@ -119,6 +119,27 @@ const LeadTableRow = ({
           </Badge>
         </TableCell>
       )}
+
+      {visibleColumns.includes('stato_del_lead') && (
+        <TableCell className="text-sm">
+          {lead.stato_del_lead ? (
+            <Badge 
+              variant="outline" 
+              className={
+                lead.stato_del_lead.toLowerCase() === 'nuovo' 
+                  ? 'bg-green-100 text-green-800 border-green-300' 
+                  : lead.stato_del_lead.toLowerCase() === 'vecchio'
+                    ? 'bg-red-100 text-red-800 border-red-300'
+                    : 'bg-gray-100 text-gray-800 border-gray-300'
+              }
+            >
+              {lead.stato_del_lead}
+            </Badge>
+          ) : (
+            '-'
+          )}
+        </TableCell>
+      )}
       
       {visibleColumns.includes('venditore') && (
         <TableCell className="text-sm">
