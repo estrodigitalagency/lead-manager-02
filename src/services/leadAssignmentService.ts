@@ -662,7 +662,7 @@ export async function checkLeadsForPreviousAssignment(
   } = data;
 
   try {
-    console.log(`🔍 Pre-assignment check: checking ${numLead} leads for previous assignments`);
+    console.log(`🔍 Pre-assignment check: checking ${numLead} leads for previous assignments in history`);
 
     // Get settings for lead status calculation
     const { data: settingsData } = await supabase
@@ -673,11 +673,12 @@ export async function checkLeadsForPreviousAssignment(
 
     const daysBeforeAssignable = settingsData?.value ? parseInt(settingsData.value) : 7;
 
-    // Build the query for candidate leads - same logic as assignLeadsWithExclusions
-    // but WITHOUT the venditore IS NULL filter to also get previously assigned leads
+    // Build the query for candidate leads - SAME logic as assignLeadsWithExclusions
+    // Including venditore IS NULL to only get available leads
     let query = supabase
       .from('lead_generation')
       .select('id, nome, cognome, email, telefono, fonte, ultima_fonte, lead_score, created_at, booked_call, venditore')
+      .is('venditore', null)
       .eq('booked_call', 'NO')
       .eq('manually_not_assignable', false)
       .eq('market', market);
@@ -747,44 +748,86 @@ export async function checkLeadsForPreviousAssignment(
       });
     }
 
-    // Now filter for assignable status (or all if bypass is active)
+    // Filter for assignable status (or all if bypass is active)
     let eligibleLeads;
     if (bypassTimeInterval) {
       eligibleLeads = filteredLeads;
     } else {
       eligibleLeads = filteredLeads.filter(lead => {
-        // For leads with no venditore, check their assignable status
-        if (!lead.venditore) {
-          const status = getLeadStatus(lead, daysBeforeAssignable);
-          return status.label === 'Assegnabile';
-        }
-        // For leads with venditore, include them to check later
-        return true;
+        const status = getLeadStatus(lead, daysBeforeAssignable);
+        return status.label === 'Assegnabile';
       });
     }
 
     // Take only the requested number of leads
     const leadsToAssign = eligibleLeads.slice(0, numLead);
+    const leadIds = leadsToAssign.map(lead => lead.id);
 
-    // Separate leads that are already assigned to another salesperson
+    if (leadIds.length === 0) {
+      return {
+        canProceed: true,
+        alreadyAssignedLeads: [],
+        newLeads: [],
+        totalLeadsToAssign: 0
+      };
+    }
+
+    // Check assignment history for these lead IDs
+    console.log(`🔍 Checking assignment history for ${leadIds.length} leads...`);
+    
+    const { data: historyRecords, error: historyError } = await supabase
+      .from('assignment_history')
+      .select('lead_ids, venditore')
+      .eq('market', market)
+      .order('assigned_at', { ascending: false });
+
+    if (historyError) {
+      console.error('Error fetching assignment history:', historyError);
+      // Don't block assignment on history check error, just proceed
+      return {
+        canProceed: true,
+        alreadyAssignedLeads: [],
+        newLeads: leadsToAssign,
+        totalLeadsToAssign: leadsToAssign.length
+      };
+    }
+
+    // Build a map of lead_id -> previous venditore from history
+    const previousAssignments: Record<string, string> = {};
+    
+    if (historyRecords) {
+      for (const record of historyRecords) {
+        if (record.lead_ids && Array.isArray(record.lead_ids)) {
+          for (const leadId of record.lead_ids) {
+            // Only keep the most recent assignment (first one we encounter since ordered desc)
+            if (!previousAssignments[leadId] && record.venditore !== venditore) {
+              previousAssignments[leadId] = record.venditore;
+            }
+          }
+        }
+      }
+    }
+
+    // Separate leads that were previously assigned to a different salesperson
     const alreadyAssignedLeads: AlreadyAssignedLeadInfo[] = [];
     const newLeads: any[] = [];
 
     for (const lead of leadsToAssign) {
-      if (lead.venditore && lead.venditore !== venditore) {
+      const previousVenditore = previousAssignments[lead.id];
+      if (previousVenditore) {
         alreadyAssignedLeads.push({
           id: lead.id,
           nome: lead.nome,
           cognome: lead.cognome,
           email: lead.email,
-          venditore: lead.venditore
+          venditore: previousVenditore
         });
       } else {
         newLeads.push(lead);
       }
     }
 
-    console.log(`🔍 Pre-check result: ${alreadyAssignedLeads.length} already assigned, ${newLeads.length} new leads`);
+    console.log(`🔍 Pre-check result: ${alreadyAssignedLeads.length} previously assigned in history, ${newLeads.length} new leads`);
 
     return {
       canProceed: alreadyAssignedLeads.length === 0,
