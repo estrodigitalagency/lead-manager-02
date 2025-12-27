@@ -14,6 +14,7 @@ import { format } from "date-fns";
 import { it } from "date-fns/locale";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { getAvailableFonti, getAvailableVenditori } from "@/services/reportsService";
+import { SearchableSourceSelect } from "@/components/ui/searchable-source-select";
 
 interface DatabaseFiltersResponsiveProps {
   onApplyFilters: (filters: Record<string, any>) => void;
@@ -104,6 +105,11 @@ const DatabaseFiltersResponsive = ({
   const sourceMode = filters.sourceMode || 'exclude';
   const fontiIncluse = filters.fontiIncluse || [];
   const fontiEscluse = filters.fontiEscluse || [];
+
+  const getAvailableFontiForSelection = () => {
+    const currentList = sourceMode === 'include' ? fontiIncluse : fontiEscluse;
+    return fonti.filter(fonte => !currentList.includes(fonte)).sort();
+  };
 
   const FilterContent = () => (
     <div className="space-y-4 p-2">
@@ -247,25 +253,13 @@ const DatabaseFiltersResponsive = ({
             </Button>
           </div>
 
-          {/* Selezione fonte */}
-          <Select onValueChange={(fonte) => handleAddFonte(fonte, sourceMode)}>
-            <SelectTrigger>
-              <SelectValue placeholder={`Fonte da ${sourceMode === 'include' ? 'includere' : 'escludere'}`} />
-            </SelectTrigger>
-            <SelectContent>
-              {fonti
-                .filter(fonte => {
-                  const currentList = sourceMode === 'include' ? fontiIncluse : fontiEscluse;
-                  return !currentList.includes(fonte);
-                })
-                .sort()
-                .map((fonte) => (
-                  <SelectItem key={fonte} value={fonte}>
-                    {fonte}
-                  </SelectItem>
-                ))}
-            </SelectContent>
-          </Select>
+          {/* Selezione fonte con ricerca */}
+          <SearchableSourceSelect
+            sources={getAvailableFontiForSelection()}
+            onSelect={(fonte) => handleAddFonte(fonte, sourceMode)}
+            placeholder={`Cerca fonte da ${sourceMode === 'include' ? 'includere' : 'escludere'}...`}
+            emptyMessage="Nessuna fonte trovata"
+          />
 
           {/* Fonti selezionate */}
           {(fontiIncluse.length > 0 || fontiEscluse.length > 0) && (

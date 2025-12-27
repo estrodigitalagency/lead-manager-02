@@ -4,11 +4,9 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { X, Filter, Plus, Info, Minus, RefreshCw } from "lucide-react";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { useIsMobile } from "@/hooks/use-mobile";
+import { SearchableSourceSelect } from "@/components/ui/searchable-source-select";
 
 interface SourceFilterProps {
   uniqueSources: string[];
@@ -41,10 +39,6 @@ export function SourceFilter({
   onToggleSourceMode,
   onRefreshSources
 }: SourceFilterProps) {
-  const isMobile = useIsMobile();
-  const [selectedSource, setSelectedSource] = useState<string>("");
-  const [selectedExclusion, setSelectedExclusion] = useState<string>("");
-
   const currentSources = sourceMode === 'exclude' ? excludedSources : includedSources;
   
   // Normalizzazione per confronti robusti (case/whitespace insensitive)
@@ -66,7 +60,6 @@ export function SourceFilter({
     } else {
       onAddIncludedSource(sourceName);
     }
-    setSelectedSource(""); // Reset selection
   };
 
   const handleRemoveSource = (sourceName: string) => {
@@ -79,7 +72,6 @@ export function SourceFilter({
 
   const handleAddExclusion = (sourceName: string) => {
     onAddExcludeFromIncluded(sourceName);
-    setSelectedExclusion(""); // Reset selection
   };
 
   return (
@@ -139,43 +131,16 @@ export function SourceFilter({
 
         {/* Source Selection */}
         <div className="space-y-3">
-          <Select value={selectedSource} onValueChange={handleAddSource}>
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder={
-                sourceMode === 'exclude' 
-                  ? "Seleziona una fonte da escludere..." 
-                  : "Seleziona una fonte da includere..."
-              } />
-            </SelectTrigger>
-            <SelectContent 
-              className="bg-background border border-border z-[100]" 
-              position="popper"
-              sideOffset={4}
-              style={{ 
-                maxHeight: isMobile ? '200px' : '300px',
-                width: 'var(--radix-select-trigger-width)',
-                minWidth: '200px'
-              }}
-            >
-              <ScrollArea className={isMobile ? "h-[180px]" : "h-[280px]"}>
-                {availableSources.length > 0 ? (
-                  availableSources.map((source) => (
-                    <SelectItem 
-                      key={source} 
-                      value={source}
-                      className="hover:bg-accent hover:text-accent-foreground cursor-pointer"
-                    >
-                      <span className="truncate max-w-[250px]">{source}</span>
-                    </SelectItem>
-                  ))
-                ) : (
-                  <SelectItem disabled value="no-sources">
-                    {currentSources.length > 0 ? "Nessuna fonte disponibile" : "Nessuna fonte trovata"}
-                  </SelectItem>
-                )}
-              </ScrollArea>
-            </SelectContent>
-          </Select>
+          <SearchableSourceSelect
+            sources={availableSources}
+            onSelect={handleAddSource}
+            placeholder={
+              sourceMode === 'exclude' 
+                ? "Cerca e seleziona una fonte da escludere..." 
+                : "Cerca e seleziona una fonte da includere..."
+            }
+            emptyMessage={currentSources.length > 0 ? "Nessuna fonte disponibile" : "Nessuna fonte trovata"}
+          />
           
           {/* Selected Sources */}
           {currentSources.length > 0 && (
@@ -238,39 +203,12 @@ export function SourceFilter({
           </div>
 
           <div className="space-y-3">
-            <Select value={selectedExclusion} onValueChange={handleAddExclusion}>
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Seleziona tag/fonte da escludere dalle incluse..." />
-              </SelectTrigger>
-              <SelectContent 
-                className="bg-background border border-border z-[200]" 
-                position="popper"
-                sideOffset={4}
-                style={{ 
-                  maxHeight: isMobile ? '200px' : '300px',
-                  width: 'var(--radix-select-trigger-width)',
-                  minWidth: '250px'
-                }}
-              >
-                <ScrollArea className={isMobile ? "h-[180px]" : "h-[280px]"}>
-                  {availableForExclusion.length > 0 ? (
-                    availableForExclusion.map((source) => (
-                      <SelectItem 
-                        key={source} 
-                        value={source}
-                        className="hover:bg-accent hover:text-accent-foreground cursor-pointer"
-                      >
-                        <span className="truncate max-w-[200px]">{source}</span>
-                      </SelectItem>
-                    ))
-                  ) : (
-                    <SelectItem disabled value="no-sources-for-exclusion">
-                      Nessuna fonte disponibile per esclusione
-                    </SelectItem>
-                  )}
-                </ScrollArea>
-              </SelectContent>
-            </Select>
+            <SearchableSourceSelect
+              sources={availableForExclusion}
+              onSelect={handleAddExclusion}
+              placeholder="Cerca tag/fonte da escludere dalle incluse..."
+              emptyMessage="Nessuna fonte disponibile per esclusione"
+            />
 
             {/* Excluded from Included Sources */}
             {excludeFromIncluded.length > 0 && (

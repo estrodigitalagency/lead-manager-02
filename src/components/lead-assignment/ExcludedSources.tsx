@@ -1,10 +1,8 @@
 
-import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { X } from "lucide-react";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useIsMobile } from "@/hooks/use-mobile";
+import { SearchableSourceSelect } from "@/components/ui/searchable-source-select";
 
 interface ExcludedSourcesProps {
   uniqueSources: string[];
@@ -19,30 +17,19 @@ export function ExcludedSources({
   onAddExcludedSource, 
   onRemoveExcludedSource 
 }: ExcludedSourcesProps) {
-  const isMobile = useIsMobile();
+  const availableSources = uniqueSources
+    .filter(source => !excludedSources.includes(source))
+    .sort();
 
   return (
     <div className="space-y-2">
       <Label className="text-sm font-medium">Escludi Fonti</Label>
-      <Select onValueChange={onAddExcludedSource}>
-        <SelectTrigger className="w-full">
-          <SelectValue placeholder="Seleziona fonte da escludere" />
-        </SelectTrigger>
-        <SelectContent className={`${isMobile ? 'max-h-[200px]' : ''} bg-background border border-border`} position="popper">
-          {uniqueSources
-            .filter(source => !excludedSources.includes(source))
-            .sort()
-            .map((source) => (
-            <SelectItem 
-              key={source} 
-              value={source}
-              className="hover:bg-accent hover:text-accent-foreground"
-            >
-              <span className="truncate">{source}</span>
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+      <SearchableSourceSelect
+        sources={availableSources}
+        onSelect={onAddExcludedSource}
+        placeholder="Cerca fonte da escludere..."
+        emptyMessage="Nessuna fonte disponibile"
+      />
       
       {excludedSources.length > 0 && (
         <div className="flex flex-wrap gap-2 mt-3">
