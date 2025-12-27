@@ -589,6 +589,7 @@ export type Database = {
           market: string
           nome: string
           stato: string | null
+          stato_del_lead: string | null
           telefono: string | null
           ultima_fonte: string | null
           updated_at: string | null
@@ -609,6 +610,7 @@ export type Database = {
           market?: string
           nome: string
           stato?: string | null
+          stato_del_lead?: string | null
           telefono?: string | null
           ultima_fonte?: string | null
           updated_at?: string | null
@@ -629,6 +631,7 @@ export type Database = {
           market?: string
           nome?: string
           stato?: string | null
+          stato_del_lead?: string | null
           telefono?: string | null
           ultima_fonte?: string | null
           updated_at?: string | null

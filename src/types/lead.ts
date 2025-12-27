@@ -14,6 +14,7 @@ export interface Lead {
   ultima_fonte?: string;
   lead_score?: number;
   stato?: string;
+  stato_del_lead?: string;
   updated_at?: string;
   data_assegnazione?: string;
   manually_not_assignable?: boolean;

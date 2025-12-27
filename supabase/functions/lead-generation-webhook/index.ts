@@ -36,12 +36,12 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
 
-    const { nome, cognome, email, telefono, fonte, campagna, notes, lead_score, venditore, stato, market, ultima_fonte, assignable } = await req.json()
+    const { nome, cognome, email, telefono, fonte, campagna, notes, lead_score, venditore, stato, market, ultima_fonte, assignable, stato_del_lead } = await req.json()
 
     // Default market to 'IT' for backward compatibility
     const finalMarket = market || 'IT'
 
-    console.log('Received lead data:', { nome, cognome, email, telefono, fonte, campagna, notes, lead_score, venditore, stato, market: finalMarket, ultima_fonte, assignable })
+    console.log('Received lead data:', { nome, cognome, email, telefono, fonte, campagna, notes, lead_score, venditore, stato, market: finalMarket, ultima_fonte, assignable, stato_del_lead })
 
     // Use provided ultima_fonte if available, otherwise use fonte as fallback (no calculation)
     const finalUltimaFonte = ultima_fonte || fonte;
@@ -69,7 +69,8 @@ serve(async (req) => {
         booked_call: 'NO',
         data_assegnazione: dataAssegnazione,
         ultima_fonte: finalUltimaFonte,
-        market: finalMarket
+        market: finalMarket,
+        stato_del_lead: stato_del_lead || null
       })
       .select()
       .single()
