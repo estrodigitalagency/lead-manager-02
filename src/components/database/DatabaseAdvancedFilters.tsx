@@ -12,6 +12,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
 import { it } from "date-fns/locale";
 import { getAvailableFonti, getAvailableVenditori } from "@/services/reportsService";
+import { SearchableSourceSelect } from "@/components/ui/searchable-source-select";
 
 interface DatabaseAdvancedFiltersProps {
   onApplyFilters: (filters: Record<string, any>) => void;
@@ -85,6 +86,11 @@ const DatabaseAdvancedFilters = ({ onApplyFilters, tableName }: DatabaseAdvanced
   const sourceMode = filters.sourceMode || 'exclude';
   const fontiIncluse = filters.fontiIncluse || [];
   const fontiEscluse = filters.fontiEscluse || [];
+
+  const getAvailableFontiForSelection = () => {
+    const currentList = sourceMode === 'include' ? fontiIncluse : fontiEscluse;
+    return fonti.filter(fonte => !currentList.includes(fonte)).sort();
+  };
 
   return (
     <Card>
@@ -220,26 +226,14 @@ const DatabaseAdvancedFilters = ({ onApplyFilters, tableName }: DatabaseAdvanced
             </div>
           </div>
 
-          {/* Selezione fonte */}
+          {/* Selezione fonte con ricerca */}
           <div className="mb-3">
-            <Select onValueChange={(fonte) => handleAddFonte(fonte, sourceMode)}>
-              <SelectTrigger>
-                <SelectValue placeholder={`Seleziona fonte da ${sourceMode === 'include' ? 'includere' : 'escludere'}`} />
-              </SelectTrigger>
-              <SelectContent>
-                {fonti
-                  .filter(fonte => {
-                    const currentList = sourceMode === 'include' ? fontiIncluse : fontiEscluse;
-                    return !currentList.includes(fonte);
-                  })
-                  .sort()
-                  .map((fonte) => (
-                    <SelectItem key={fonte} value={fonte}>
-                      {fonte}
-                    </SelectItem>
-                  ))}
-              </SelectContent>
-            </Select>
+            <SearchableSourceSelect
+              sources={getAvailableFontiForSelection()}
+              onSelect={(fonte) => handleAddFonte(fonte, sourceMode)}
+              placeholder={`Cerca fonte da ${sourceMode === 'include' ? 'includere' : 'escludere'}...`}
+              emptyMessage="Nessuna fonte trovata"
+            />
           </div>
 
           {/* Fonti selezionate */}

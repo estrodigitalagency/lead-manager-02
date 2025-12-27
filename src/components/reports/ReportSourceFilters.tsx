@@ -3,12 +3,11 @@ import { useState, useEffect } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { X, Filter } from "lucide-react";
 import { useMarket } from "@/contexts/MarketContext";
 import { getAvailableFonti } from "@/services/reportsService";
+import { SearchableSourceSelect } from "@/components/ui/searchable-source-select";
 
 interface ReportSourceFiltersProps {
   sourceMode: 'include' | 'exclude';
@@ -31,7 +30,6 @@ const ReportSourceFilters = ({
 }: ReportSourceFiltersProps) => {
   const { selectedMarket } = useMarket();
   const [availableFonti, setAvailableFonti] = useState<string[]>([]);
-  const [selectedFonte, setSelectedFonte] = useState<string>('');
 
   useEffect(() => {
     const loadFonti = async () => {
@@ -41,19 +39,18 @@ const ReportSourceFilters = ({
     loadFonti();
   }, [selectedMarket]);
 
-  const handleAddFonte = () => {
-    if (!selectedFonte) return;
+  const handleAddFonte = (fonte: string) => {
+    if (!fonte) return;
 
     if (sourceMode === 'include') {
-      if (!fontiIncluse.includes(selectedFonte)) {
-        onFontiIncluseChange([...fontiIncluse, selectedFonte]);
+      if (!fontiIncluse.includes(fonte)) {
+        onFontiIncluseChange([...fontiIncluse, fonte]);
       }
     } else {
-      if (!fontiEscluse.includes(selectedFonte)) {
-        onFontiEscluseChange([...fontiEscluse, selectedFonte]);
+      if (!fontiEscluse.includes(fonte)) {
+        onFontiEscluseChange([...fontiEscluse, fonte]);
       }
     }
-    setSelectedFonte('');
   };
 
   const handleRemoveFonte = (fonte: string) => {
@@ -120,27 +117,12 @@ const ReportSourceFilters = ({
           <Label className="text-sm font-medium mb-2 block">
             {sourceMode === 'include' ? 'Aggiungi Fonte da Includere' : 'Aggiungi Fonte da Escludere'}
           </Label>
-          <div className="flex gap-2">
-            <Select value={selectedFonte} onValueChange={setSelectedFonte}>
-              <SelectTrigger className="flex-1">
-                <SelectValue placeholder="Seleziona una fonte" />
-              </SelectTrigger>
-              <SelectContent>
-                {getAvailableForSelection().map((fonte) => (
-                  <SelectItem key={fonte} value={fonte}>
-                    {fonte}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Button
-              onClick={handleAddFonte}
-              disabled={!selectedFonte}
-              size="sm"
-            >
-              Aggiungi
-            </Button>
-          </div>
+          <SearchableSourceSelect
+            sources={getAvailableForSelection()}
+            onSelect={handleAddFonte}
+            placeholder="Cerca e seleziona una fonte..."
+            emptyMessage="Nessuna fonte trovata"
+          />
         </div>
 
         {/* Fonti selezionate */}
