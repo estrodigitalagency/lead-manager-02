@@ -131,6 +131,7 @@ const fetchUniqueSources = async () => {
         .from('database_campagne')
         .select('*')
         .eq('market', selectedMarket)
+        .eq('attivo', true)
         .order('nome', { ascending: true });
 
       if (error) throw error;
