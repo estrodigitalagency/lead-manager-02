@@ -1,4 +1,4 @@
-import * as React from "react";
+import { useState, useMemo } from "react";
 import { Check, ChevronsUpDown, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -36,11 +36,11 @@ export function SearchableSourceSelect({
   className,
   disabled = false,
 }: SearchableSourceSelectProps) {
-  const [open, setOpen] = React.useState(false);
-  const [searchQuery, setSearchQuery] = React.useState("");
+  const [open, setOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
   const isMobile = useIsMobile();
 
-  const filteredSources = React.useMemo(() => {
+  const filteredSources = useMemo(() => {
     if (!searchQuery) return sources;
     const query = searchQuery.toLowerCase();
     return sources.filter((source) =>
