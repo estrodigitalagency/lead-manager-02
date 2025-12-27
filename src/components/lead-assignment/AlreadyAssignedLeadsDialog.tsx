@@ -102,24 +102,26 @@ export function AlreadyAssignedLeadsDialog({
             </div>
           </AlertDialogDescription>
         </AlertDialogHeader>
-        <AlertDialogFooter className="flex-col sm:flex-row gap-2">
-          <AlertDialogCancel disabled={isProcessing}>
+        <AlertDialogFooter className="flex-col gap-2 sm:flex-col">
+          <div className="flex flex-col sm:flex-row gap-2 w-full">
+            <AlertDialogAction
+              onClick={onContinueWithAll}
+              disabled={isProcessing}
+              className="flex-1 bg-primary hover:bg-primary/90"
+            >
+              {isProcessing ? "Elaborazione..." : `Assegna tutti a ${targetVenditore.split(' ')[0]}`}
+            </AlertDialogAction>
+            <AlertDialogAction
+              onClick={onAssignToOriginal}
+              disabled={isProcessing}
+              className="flex-1 bg-amber-600 hover:bg-amber-700"
+            >
+              {isProcessing ? "Elaborazione..." : "Riassegna al venditore originale"}
+            </AlertDialogAction>
+          </div>
+          <AlertDialogCancel disabled={isProcessing} className="w-full sm:w-auto mt-0">
             Annulla
           </AlertDialogCancel>
-          <AlertDialogAction
-            onClick={onAssignToOriginal}
-            disabled={isProcessing}
-            className="bg-amber-600 hover:bg-amber-700"
-          >
-            {isProcessing ? "Elaborazione..." : "Riassegna al venditore originale"}
-          </AlertDialogAction>
-          <AlertDialogAction
-            onClick={onContinueWithAll}
-            disabled={isProcessing}
-            className="bg-primary hover:bg-primary/90"
-          >
-            {isProcessing ? "Elaborazione..." : `Assegna tutti a ${targetVenditore.split(' ')[0]}`}
-          </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
