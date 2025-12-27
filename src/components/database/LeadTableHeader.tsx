@@ -109,6 +109,9 @@ const LeadTableHeader = ({
         {isColumnVisible('stato') && (
           <TableHead className="table-header-cell">Stato</TableHead>
         )}
+        {isColumnVisible('stato_del_lead') && (
+          <TableHead className="table-header-cell">Stato del Lead</TableHead>
+        )}
         {isColumnVisible('venditore') && (
           <SortableTableHead
             sortKey="venditore"
