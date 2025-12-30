@@ -778,40 +778,65 @@ export async function checkLeadsForPreviousAssignment(
       };
     }
 
-    // Check assignment history for these lead IDs
-    console.log(`🔍 Checking assignment history for ${leadIds.length} leads...`);
+    // Check assignment history for these lead IDs using PAGINATION with early exit
+    console.log(`🔍 Checking assignment history for ${leadIds.length} leads (with full pagination)...`);
     
-    const { data: historyRecords, error: historyError } = await supabase
-      .from('assignment_history')
-      .select('lead_ids, venditore')
-      .eq('market', market)
-      .order('assigned_at', { ascending: false });
-
-    if (historyError) {
-      console.error('Error fetching assignment history:', historyError);
-      // Don't block assignment on history check error, just proceed
-      return {
-        canProceed: true,
-        alreadyAssignedLeads: [],
-        newLeads: leadsToAssign,
-        totalLeadsToAssign: leadsToAssign.length
-      };
-    }
-
-    // Build a map of lead_id -> previous venditore from history
+    // Build a map of lead_id -> previous venditore from history using pagination
     const previousAssignments: Record<string, string> = {};
-    
-    if (historyRecords) {
-      for (const record of historyRecords) {
-        if (record.lead_ids && Array.isArray(record.lead_ids)) {
-          for (const leadId of record.lead_ids) {
-            // Only keep the most recent assignment (first one we encounter since ordered desc)
-            if (!previousAssignments[leadId] && record.venditore !== venditore) {
-              previousAssignments[leadId] = record.venditore;
+    const leadIdsSet = new Set(leadIds);
+    let foundCount = 0;
+    const PAGE_SIZE = 1000;
+    let offset = 0;
+    let hasMore = true;
+    let totalScanned = 0;
+
+    try {
+      // Paginate through ALL assignment_history until we find all leads or exhaust records
+      while (hasMore && foundCount < leadIds.length) {
+        const { data: historyPage, error: historyError } = await supabase
+          .from('assignment_history')
+          .select('lead_ids, venditore')
+          .eq('market', market)
+          .order('assigned_at', { ascending: false })
+          .range(offset, offset + PAGE_SIZE - 1);
+
+        if (historyError) {
+          console.error('Error fetching assignment history page:', historyError);
+          break;
+        }
+
+        if (!historyPage || historyPage.length === 0) {
+          hasMore = false;
+          break;
+        }
+
+        // Process this page
+        for (const record of historyPage) {
+          if (record.lead_ids && Array.isArray(record.lead_ids)) {
+            for (const leadId of record.lead_ids) {
+              // Only track leads we're looking for, keep most recent (first encountered)
+              if (leadIdsSet.has(leadId) && !previousAssignments[leadId] && record.venditore !== venditore) {
+                previousAssignments[leadId] = record.venditore;
+                foundCount++;
+              }
             }
           }
         }
+
+        totalScanned += historyPage.length;
+        offset += PAGE_SIZE;
+        hasMore = historyPage.length === PAGE_SIZE;
+        
+        // Early exit log
+        if (foundCount === leadIds.length) {
+          console.log(`✅ Early exit: found all ${foundCount} previous assignments after scanning ${totalScanned} records`);
+        }
       }
+
+      console.log(`📊 Assignment history scan complete: ${totalScanned} records scanned, ${foundCount} previous assignments found`);
+    } catch (paginationError) {
+      console.error('Pagination error in assignment history check:', paginationError);
+      // Don't block assignment on history check error, just proceed with what we found
     }
 
     // Separate leads that were previously assigned to a different salesperson
