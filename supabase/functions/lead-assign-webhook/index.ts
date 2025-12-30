@@ -39,7 +39,7 @@ serve(async (req) => {
       )
     }
     
-    // Payload completo per webhook esterno con TUTTI i dati richiesti
+    // Payload completo per webhook esterno - PASS-THROUGH di tutti i campi lead
     const webhookPayload = {
       venditore: assignmentData.venditore,
       venditore_cognome: assignmentData.venditore_cognome || '',
@@ -52,17 +52,28 @@ serve(async (req) => {
       leads_count: assignmentData.leads_count,
       timestamp: assignmentData.timestamp,
       leads: assignmentData.leads.map(lead => ({
+        // Pass-through ALL fields from upstream, with defaults for essential ones
+        ...lead,
         id: lead.id,
-        nome: lead.nome,
+        nome: lead.nome || '',
         cognome: lead.cognome || '',
         email: lead.email || '',
         telefono: lead.telefono || '',
         fonte: lead.fonte || '',
         lead_score: lead.lead_score || null,
         stato_del_lead: lead.stato_del_lead || '',
+        stato: lead.stato || '',
+        ultima_fonte: lead.ultima_fonte || '',
         note: lead.note || '',
         market: lead.market || 'IT',
+        campagna: lead.campagna || '',
+        booked_call: lead.booked_call || '',
+        assignable: lead.assignable ?? false,
+        manually_not_assignable: lead.manually_not_assignable ?? false,
+        venditore: lead.venditore || '',
         created_at: lead.created_at,
+        updated_at: lead.updated_at || '',
+        data_assegnazione: lead.data_assegnazione || '',
         assigned_at: lead.assigned_at
       }))
     }
