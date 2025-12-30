@@ -358,25 +358,26 @@ function checkCondition(
   
   const field = fieldValue.toLowerCase();
   
-  // Check if any of the condition values match
-  return conditionValues.some(conditionValue => {
-    const value = conditionValue.toLowerCase();
-    
-    switch (conditionType) {
-      case 'contains':
-        return field.includes(value);
-      case 'equals':
-        return field === value;
-      case 'starts_with':
-        return field.startsWith(value);
-      case 'ends_with':
-        return field.endsWith(value);
-      case 'not_contains':
-        return !field.includes(value);
-      default:
-        return false;
-    }
-  });
+  // Check conditions based on type
+  switch (conditionType) {
+    case 'contains':
+      // TRUE se il campo contiene ALMENO UNO dei valori
+      return conditionValues.some(val => field.includes(val.toLowerCase()));
+    case 'equals':
+      // TRUE se il campo è UGUALE ad ALMENO UNO dei valori
+      return conditionValues.some(val => field === val.toLowerCase());
+    case 'starts_with':
+      // TRUE se il campo inizia con ALMENO UNO dei valori
+      return conditionValues.some(val => field.startsWith(val.toLowerCase()));
+    case 'ends_with':
+      // TRUE se il campo finisce con ALMENO UNO dei valori
+      return conditionValues.some(val => field.endsWith(val.toLowerCase()));
+    case 'not_contains':
+      // TRUE se il campo NON contiene NESSUNO dei valori (TUTTI devono non matchare)
+      return conditionValues.every(val => !field.includes(val.toLowerCase()));
+    default:
+      return false;
+  }
 }
 
 // Funzione per trovare il venditore precedente con controllo fonte
