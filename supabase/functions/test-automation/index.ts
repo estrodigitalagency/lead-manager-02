@@ -68,29 +68,34 @@ serve(async (req) => {
         continue;
       }
       
-      // Check field condition
+      // Check field condition - condition_value is an ARRAY
       const fieldValue = lead[automation.trigger_field] || '';
-      const conditionValue = automation.condition_value.toLowerCase();
       const field = fieldValue.toLowerCase();
+      const conditionValues = automation.condition_value || [];
       
-      console.log(`Checking condition: ${field} ${automation.condition_type} ${conditionValue}`)
+      console.log(`Checking condition: ${field} ${automation.condition_type} [${conditionValues.join(', ')}]`)
       
       let conditionMet = false;
       switch (automation.condition_type) {
         case 'contains':
-          conditionMet = field.includes(conditionValue);
+          // TRUE se il campo contiene ALMENO UNO dei valori
+          conditionMet = conditionValues.some(val => field.includes(val.toLowerCase()));
           break;
         case 'equals':
-          conditionMet = field === conditionValue;
+          // TRUE se il campo è UGUALE ad ALMENO UNO dei valori
+          conditionMet = conditionValues.some(val => field === val.toLowerCase());
           break;
         case 'starts_with':
-          conditionMet = field.startsWith(conditionValue);
+          // TRUE se il campo inizia con ALMENO UNO dei valori
+          conditionMet = conditionValues.some(val => field.startsWith(val.toLowerCase()));
           break;
         case 'ends_with':
-          conditionMet = field.endsWith(conditionValue);
+          // TRUE se il campo finisce con ALMENO UNO dei valori
+          conditionMet = conditionValues.some(val => field.endsWith(val.toLowerCase()));
           break;
         case 'not_contains':
-          conditionMet = !field.includes(conditionValue);
+          // TRUE se il campo NON contiene NESSUNO dei valori (TUTTI devono non matchare)
+          conditionMet = conditionValues.every(val => !field.includes(val.toLowerCase()));
           break;
         default:
           conditionMet = false;
