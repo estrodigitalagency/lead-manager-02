@@ -778,65 +778,86 @@ export async function checkLeadsForPreviousAssignment(
       };
     }
 
-    // Check assignment history for these lead IDs using PAGINATION with early exit
-    console.log(`🔍 Checking assignment history for ${leadIds.length} leads (with full pagination)...`);
+    // Check for previous assignments by EMAIL or PHONE (not by UUID)
+    // This ensures we find leads even if they have different UUIDs
+    console.log(`🔍 Checking previous assignments by email/phone for ${leadsToAssign.length} leads...`);
     
-    // Build a map of lead_id -> previous venditore from history using pagination
     const previousAssignments: Record<string, string> = {};
-    const leadIdsSet = new Set(leadIds);
     let foundCount = 0;
-    const PAGE_SIZE = 1000;
-    let offset = 0;
-    let hasMore = true;
-    let totalScanned = 0;
+
+    // Helper functions for normalization
+    const normalizeEmail = (email: string | null): string => {
+      if (!email) return '';
+      return email.toLowerCase().trim();
+    };
+
+    const normalizePhone = (phone: string | null): string => {
+      if (!phone) return '';
+      return phone.replace(/[^0-9+]/g, '');
+    };
 
     try {
-      // Paginate through ALL assignment_history until we find all leads or exhaust records
-      while (hasMore && foundCount < leadIds.length) {
-        const { data: historyPage, error: historyError } = await supabase
-          .from('assignment_history')
-          .select('lead_ids, venditore')
-          .eq('market', market)
-          .order('assigned_at', { ascending: false })
-          .range(offset, offset + PAGE_SIZE - 1);
-
-        if (historyError) {
-          console.error('Error fetching assignment history page:', historyError);
-          break;
-        }
-
-        if (!historyPage || historyPage.length === 0) {
-          hasMore = false;
-          break;
-        }
-
-        // Process this page
-        for (const record of historyPage) {
-          if (record.lead_ids && Array.isArray(record.lead_ids)) {
-            for (const leadId of record.lead_ids) {
-              // Only track leads we're looking for, keep most recent (first encountered)
-              if (leadIdsSet.has(leadId) && !previousAssignments[leadId] && record.venditore !== venditore) {
-                previousAssignments[leadId] = record.venditore;
-                foundCount++;
-              }
+      // Process each lead to find previous assignments by email/phone
+      for (const lead of leadsToAssign) {
+        const normalizedEmail = normalizeEmail(lead.email);
+        const normalizedPhone = normalizePhone(lead.telefono);
+        
+        // Skip if already found
+        if (previousAssignments[lead.id]) continue;
+        
+        // STEP 1: Search by EMAIL first (more reliable)
+        if (normalizedEmail) {
+          const { data: emailMatches, error: emailError } = await supabase
+            .from('lead_generation')
+            .select('venditore, id')
+            .eq('market', market)
+            .ilike('email', normalizedEmail)
+            .not('venditore', 'is', null)
+            .neq('id', lead.id) // Exclude current lead
+            .order('data_assegnazione', { ascending: false })
+            .limit(1);
+          
+          if (!emailError && emailMatches && emailMatches.length > 0) {
+            const match = emailMatches[0];
+            // Only track if assigned to a DIFFERENT salesperson
+            if (match.venditore !== venditore) {
+              previousAssignments[lead.id] = match.venditore;
+              foundCount++;
+              console.log(`✅ Found previous seller by EMAIL for ${lead.email}: ${match.venditore}`);
+              continue;
             }
           }
         }
-
-        totalScanned += historyPage.length;
-        offset += PAGE_SIZE;
-        hasMore = historyPage.length === PAGE_SIZE;
         
-        // Early exit log
-        if (foundCount === leadIds.length) {
-          console.log(`✅ Early exit: found all ${foundCount} previous assignments after scanning ${totalScanned} records`);
+        // STEP 2: If not found by email, search by PHONE
+        if (normalizedPhone) {
+          const { data: phoneMatches, error: phoneError } = await supabase
+            .from('lead_generation')
+            .select('venditore, id')
+            .eq('market', market)
+            .ilike('telefono', normalizedPhone)
+            .not('venditore', 'is', null)
+            .neq('id', lead.id) // Exclude current lead
+            .order('data_assegnazione', { ascending: false })
+            .limit(1);
+          
+          if (!phoneError && phoneMatches && phoneMatches.length > 0) {
+            const match = phoneMatches[0];
+            // Only track if assigned to a DIFFERENT salesperson
+            if (match.venditore !== venditore) {
+              previousAssignments[lead.id] = match.venditore;
+              foundCount++;
+              console.log(`✅ Found previous seller by PHONE for ${lead.telefono}: ${match.venditore}`);
+              continue;
+            }
+          }
         }
       }
 
-      console.log(`📊 Assignment history scan complete: ${totalScanned} records scanned, ${foundCount} previous assignments found`);
-    } catch (paginationError) {
-      console.error('Pagination error in assignment history check:', paginationError);
-      // Don't block assignment on history check error, just proceed with what we found
+      console.log(`📊 Previous assignment check complete: ${foundCount} leads have previous assignments to different salespeople`);
+    } catch (searchError) {
+      console.error('Error checking previous assignments:', searchError);
+      // Don't block assignment on error, just proceed with what we found
     }
 
     // Separate leads that were previously assigned to a different salesperson
