@@ -695,7 +695,10 @@ async function assignLeadAutomatically(lead: any, seller: any, sheetsTabName: st
         } else {
           const webhookUrl = webhookSettings.value;
           
-          // Format payload as expected by lead-assign-webhook
+          // Format payload as expected by lead-assign-webhook - INCLUDE ALL FIELDS
+          const assignedAt = new Date().toISOString();
+          const finalCampagna = automation.campagna || sheetsTabName || lead.campagna || '';
+          
           const assignmentData = {
             venditore: seller.nome,
             venditore_cognome: seller.cognome,
@@ -703,20 +706,32 @@ async function assignLeadAutomatically(lead: any, seller: any, sheetsTabName: st
             venditore_telefono: '',
             google_sheets_file_id: seller.sheets_file_id || '',
             google_sheets_tab_name: sheetsTabName || seller.sheets_tab_name || '',
-            campagna: automation.campagna || sheetsTabName || lead.campagna || '',
+            campagna: finalCampagna,
             market: lead.market,
             leads_count: 1,
-            timestamp: new Date().toISOString(),
+            timestamp: assignedAt,
             leads: [{
               id: lead.id,
               nome: lead.nome,
               cognome: lead.cognome || '',
-              email: lead.email,
-              telefono: lead.telefono,
-              fonte: lead.fonte,
-              market: lead.market,
+              email: lead.email || '',
+              telefono: lead.telefono || '',
+              fonte: lead.fonte || '',
+              lead_score: lead.lead_score || null,
+              stato_del_lead: lead.stato_del_lead || '',
+              stato: 'assegnato',
+              ultima_fonte: lead.ultima_fonte || '',
+              note: lead.note || '',
+              market: lead.market || 'IT',
+              campagna: finalCampagna,
+              booked_call: lead.booked_call || 'NO',
+              assignable: false,
+              manually_not_assignable: lead.manually_not_assignable || false,
+              venditore: `${seller.nome} ${seller.cognome}`,
               created_at: lead.created_at,
-              assigned_at: new Date().toISOString()
+              updated_at: assignedAt,
+              data_assegnazione: updateData.data_assegnazione,
+              assigned_at: assignedAt
             }]
           };
 
