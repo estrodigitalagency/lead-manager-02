@@ -6,6 +6,7 @@ import { assignLeadsWithExclusions, checkLeadsForPreviousAssignment, LeadAssignm
 import { Campaign } from '@/hooks/useCampaignsData';
 import { useRealTimeLeadCount } from "./useRealTimeLeadCount";
 import { useMarket } from "@/contexts/MarketContext";
+import { GroupAssignmentDecisions } from "@/components/lead-assignment/AlreadyAssignedLeadsDialog";
 
 export function useLeadAssignment() {
   const { selectedMarket } = useMarket();
@@ -331,19 +332,11 @@ const fetchUniqueSources = async () => {
     }
   };
 
-  const handleContinueWithAll = async () => {
-    if (!pendingAssignmentData) return;
-    
-    setIsSubmitting(true);
-    console.log(`🎯 User chose to continue with all leads, assigning to ${pendingAssignmentData.venditore}`);
-    await executeAssignment(pendingAssignmentData);
-  };
-
-  const handleAssignToOriginal = async () => {
+  const handleConfirmAssignments = async (decisions: GroupAssignmentDecisions) => {
     if (!pendingAssignmentData || alreadyAssignedLeads.length === 0) return;
     
     setIsSubmitting(true);
-    console.log(`🔄 User chose to assign already-assigned leads to their original salespeople`);
+    console.log(`🎯 User confirmed assignment decisions:`, decisions);
 
     try {
       // Group leads by original salesperson
@@ -355,14 +348,17 @@ const fetchUniqueSources = async () => {
         return acc;
       }, {} as Record<string, string[]>);
 
-      // Assign leads to their original salespeople
+      // Process each group based on the decision
       for (const [originalVenditore, leadIds] of Object.entries(leadsByVenditore)) {
-        console.log(`📤 Re-assigning ${leadIds.length} leads to ${originalVenditore}`);
+        const decision = decisions[originalVenditore] || 'original';
+        const targetForGroup = decision === 'target' ? pendingAssignmentData.venditore : originalVenditore;
+        
+        console.log(`📤 Assigning ${leadIds.length} leads to ${targetForGroup} (decision: ${decision})`);
         
         await assignLeadsWithExclusions({
           ...pendingAssignmentData,
           numLead: leadIds.length,
-          venditore: originalVenditore,
+          venditore: targetForGroup,
           specificLeadIds: leadIds,
           skipAlreadyAssignedCheck: true
         });
@@ -378,7 +374,7 @@ const fetchUniqueSources = async () => {
         });
       }
 
-      toast.success(`Lead riassegnati ai venditori originali`);
+      toast.success(`Lead assegnati con successo`);
       
       // Reset form
       setNumLead("");
@@ -390,9 +386,9 @@ const fetchUniqueSources = async () => {
       updateAvailableLeads();
       
     } catch (error) {
-      console.error("❌ Error in split assignment:", error);
+      console.error("❌ Error in assignment:", error);
       const errorMessage = error instanceof Error ? error.message : "Errore sconosciuto";
-      toast.error(`Errore nella riassegnazione: ${errorMessage}`);
+      toast.error(`Errore nell'assegnazione: ${errorMessage}`);
     } finally {
       setIsSubmitting(false);
       setShowAlreadyAssignedDialog(false);
@@ -445,8 +441,7 @@ const fetchUniqueSources = async () => {
     // Already assigned leads dialog
     showAlreadyAssignedDialog,
     alreadyAssignedLeads,
-    handleContinueWithAll,
-    handleAssignToOriginal,
+    handleConfirmAssignments,
     handleCloseAlreadyAssignedDialog
   };
 }

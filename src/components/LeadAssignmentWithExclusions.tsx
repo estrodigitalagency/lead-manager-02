@@ -48,8 +48,7 @@ const LeadAssignmentWithExclusions = () => {
     // Already assigned leads dialog
     showAlreadyAssignedDialog,
     alreadyAssignedLeads,
-    handleContinueWithAll,
-    handleAssignToOriginal,
+    handleConfirmAssignments,
     handleCloseAlreadyAssignedDialog
   } = useLeadAssignment();
 
@@ -230,8 +229,7 @@ const LeadAssignmentWithExclusions = () => {
         onOpenChange={handleCloseAlreadyAssignedDialog}
         alreadyAssignedLeads={alreadyAssignedLeads}
         targetVenditore={venditore}
-        onContinueWithAll={handleContinueWithAll}
-        onAssignToOriginal={handleAssignToOriginal}
+        onConfirmAssignments={handleConfirmAssignments}
         isProcessing={isSubmitting}
       />
     </Card>
