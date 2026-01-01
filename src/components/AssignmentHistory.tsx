@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import {
   Table,
   TableBody,
@@ -10,12 +10,11 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, Clock, Filter, Info, Play, RotateCcw, Bot, User } from "lucide-react";
+import { Loader2, Clock, Filter, Info, Play, Bot, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useMarket } from "@/contexts/MarketContext";
 import AssignedLeadsDialog from "@/components/database/AssignedLeadsDialog";
 import ReplayAssignmentDialog from "@/components/database/ReplayAssignmentDialog";
-import { toast } from "sonner";
 
 interface AssignmentRecord {
   id: string;
@@ -39,82 +38,32 @@ const AssignmentHistory = () => {
   const [selectedAssignment, setSelectedAssignment] = useState<AssignmentRecord | null>(null);
   const [leadsDialogOpen, setLeadsDialogOpen] = useState(false);
   const [replayDialogOpen, setReplayDialogOpen] = useState(false);
-  const [makingAssignable, setMakingAssignable] = useState<string | null>(null);
 
-  const handleMakeAssignable = async (record: AssignmentRecord) => {
-    if (!record.lead_ids || record.lead_ids.length === 0) {
-      toast.error("Nessun lead ID disponibile per questa assegnazione");
-      return;
-    }
-
-    setMakingAssignable(record.id);
+  const loadHistory = useCallback(async () => {
+    setLoading(true);
     try {
-      // Update leads to be assignable again
-      const { error } = await supabase
-        .from('lead_generation')
-        .update({ 
-          assignable: true, 
-          venditore: null, 
-          data_assegnazione: null, 
-          stato: 'nuovo' 
-        })
-        .in('id', record.lead_ids);
+      const { data, error } = await supabase
+        .from('assignment_history')
+        .select('*')
+        .eq('market', selectedMarket)
+        .order('assigned_at', { ascending: false })
+        .limit(100);
 
-      if (error) throw error;
-
-      // Log this action for traceability
-      const { error: logError } = await supabase
-        .from('lead_actions_log')
-        .insert({
-          action_type: 'made_assignable',
-          lead_ids: record.lead_ids,
-          leads_count: record.lead_ids.length,
-          previous_venditore: record.venditore,
-          new_venditore: null,
-          source_assignment_id: record.id,
-          performed_by: 'user',
-          notes: `Lead resi assegnabili dalla cronologia (assegnazione originale del ${new Date(record.assigned_at).toLocaleString('it-IT')})`,
-          market: selectedMarket
-        });
-
-      if (logError) {
-        console.error("Error logging action:", logError);
+      if (error) {
+        console.error("Failed to fetch assignment history:", error);
+      } else {
+        setHistory(data || []);
       }
-
-      toast.success(`${record.lead_ids.length} lead resi nuovamente assegnabili`);
     } catch (error) {
-      console.error("Error making leads assignable:", error);
-      toast.error("Errore nel rendere i lead assegnabili");
+      console.error("Failed to fetch assignment history:", error);
     } finally {
-      setMakingAssignable(null);
+      setLoading(false);
     }
-  };
+  }, [selectedMarket]);
 
   useEffect(() => {
-    const loadHistory = async () => {
-      setLoading(true);
-      try {
-        const { data, error } = await supabase
-          .from('assignment_history')
-          .select('*')
-          .eq('market', selectedMarket)
-          .order('assigned_at', { ascending: false })
-          .limit(100);
-
-        if (error) {
-          console.error("Failed to fetch assignment history:", error);
-        } else {
-          setHistory(data || []);
-        }
-      } catch (error) {
-        console.error("Failed to fetch assignment history:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     loadHistory();
-  }, [selectedMarket]);
+  }, [loadHistory]);
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleString('it-IT', {
@@ -274,7 +223,7 @@ const AssignmentHistory = () => {
                         setLeadsDialogOpen(true);
                       }}
                       className="h-8 w-8 p-0"
-                      title="Visualizza dettagli"
+                      title="Visualizza dettagli e azioni"
                     >
                       <Info className="h-4 w-4" />
                     </Button>
@@ -290,20 +239,6 @@ const AssignmentHistory = () => {
                     >
                       <Play className="h-4 w-4" />
                     </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleMakeAssignable(record)}
-                      disabled={makingAssignable === record.id || !record.lead_ids || record.lead_ids.length === 0}
-                      className="h-8 w-8 p-0"
-                      title="Rendi lead assegnabili"
-                    >
-                      {makingAssignable === record.id ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <RotateCcw className="h-4 w-4" />
-                      )}
-                    </Button>
                   </div>
                 </TableCell>
               </TableRow>
@@ -316,37 +251,14 @@ const AssignmentHistory = () => {
         open={leadsDialogOpen}
         onOpenChange={setLeadsDialogOpen}
         assignmentRecord={selectedAssignment}
+        onRefresh={loadHistory}
       />
       
       <ReplayAssignmentDialog
         open={replayDialogOpen}
         onOpenChange={setReplayDialogOpen}
         assignmentRecord={selectedAssignment}
-        onSuccess={() => {
-          // Reload history after successful replay
-          setLoading(true);
-          const loadHistory = async () => {
-            try {
-              const { data, error } = await supabase
-                .from('assignment_history')
-                .select('*')
-                .eq('market', selectedMarket)
-                .order('assigned_at', { ascending: false })
-                .limit(100);
-
-              if (error) {
-                console.error("Failed to fetch assignment history:", error);
-              } else {
-                setHistory(data || []);
-              }
-            } catch (error) {
-              console.error("Failed to fetch assignment history:", error);
-            } finally {
-              setLoading(false);
-            }
-          };
-          loadHistory();
-        }}
+        onSuccess={loadHistory}
       />
     </>
   );
