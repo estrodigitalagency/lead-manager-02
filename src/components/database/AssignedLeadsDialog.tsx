@@ -1,12 +1,15 @@
 import { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, RotateCcw, UserPlus, Clock, Bot, User, AlertCircle } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
+import { Loader2, Clock, Bot, User, UserPlus, RotateCcw, Send, Users, History, Settings } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useMarket } from "@/contexts/MarketContext";
 import { toast } from "sonner";
@@ -41,6 +44,12 @@ interface Venditore {
   id: string;
   nome: string;
   cognome: string;
+  webhook_url: string | null;
+}
+
+interface Campagna {
+  id: string;
+  nome: string;
 }
 
 interface AssignedLeadsDialogProps {
@@ -67,10 +76,15 @@ const AssignedLeadsDialog = ({ open, onOpenChange, assignmentRecord, onRefresh }
   const [leads, setLeads] = useState<AssignedLead[]>([]);
   const [actionLogs, setActionLogs] = useState<ActionLog[]>([]);
   const [venditori, setVenditori] = useState<Venditore[]>([]);
+  const [campagne, setCampagne] = useState<Campagna[]>([]);
   const [loading, setLoading] = useState(false);
   const [loadingLogs, setLoadingLogs] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
+  
+  // Form state for reassignment
   const [selectedVenditore, setSelectedVenditore] = useState<string>("");
+  const [selectedCampagna, setSelectedCampagna] = useState<string>("");
+  const [sendWebhook, setSendWebhook] = useState(true);
   const [selectedLeadIds, setSelectedLeadIds] = useState<string[]>([]);
 
   useEffect(() => {
@@ -78,20 +92,35 @@ const AssignedLeadsDialog = ({ open, onOpenChange, assignmentRecord, onRefresh }
       loadAssignedLeads();
       loadActionLogs();
       loadVenditori();
+      loadCampagne();
+      // Reset form
       setSelectedLeadIds([]);
       setSelectedVenditore("");
+      setSelectedCampagna("");
+      setSendWebhook(true);
     }
   }, [open, assignmentRecord]);
 
   const loadVenditori = async () => {
     const { data } = await supabase
       .from('venditori')
-      .select('id, nome, cognome')
+      .select('id, nome, cognome, webhook_url')
       .eq('market', selectedMarket)
       .eq('stato', 'attivo')
       .order('nome');
     
     if (data) setVenditori(data);
+  };
+
+  const loadCampagne = async () => {
+    const { data } = await supabase
+      .from('database_campagne')
+      .select('id, nome')
+      .eq('market', selectedMarket)
+      .eq('attivo', true)
+      .order('nome');
+    
+    if (data) setCampagne(data);
   };
 
   const loadActionLogs = async () => {
@@ -163,11 +192,15 @@ const AssignedLeadsDialog = ({ open, onOpenChange, assignmentRecord, onRefresh }
     }
   };
 
+  const getLeadsToModify = () => {
+    return selectedLeadIds.length > 0 ? selectedLeadIds : leads.map(l => l.id);
+  };
+
   const handleMakeAssignable = async () => {
-    const idsToUpdate = selectedLeadIds.length > 0 ? selectedLeadIds : leads.map(l => l.id);
+    const idsToUpdate = getLeadsToModify();
     
     if (idsToUpdate.length === 0) {
-      toast.error("Nessun lead selezionato");
+      toast.error("Nessun lead da modificare");
       return;
     }
 
@@ -179,7 +212,8 @@ const AssignedLeadsDialog = ({ open, onOpenChange, assignmentRecord, onRefresh }
           assignable: true, 
           venditore: null, 
           data_assegnazione: null, 
-          stato: 'nuovo' 
+          stato: 'nuovo',
+          campagna: null
         })
         .in('id', idsToUpdate);
 
@@ -219,10 +253,10 @@ const AssignedLeadsDialog = ({ open, onOpenChange, assignmentRecord, onRefresh }
       return;
     }
 
-    const idsToUpdate = selectedLeadIds.length > 0 ? selectedLeadIds : leads.map(l => l.id);
+    const idsToUpdate = getLeadsToModify();
     
     if (idsToUpdate.length === 0) {
-      toast.error("Nessun lead selezionato");
+      toast.error("Nessun lead da riassegnare");
       return;
     }
 
@@ -230,13 +264,16 @@ const AssignedLeadsDialog = ({ open, onOpenChange, assignmentRecord, onRefresh }
     if (!venditore) return;
 
     const venditoreName = `${venditore.nome} ${venditore.cognome}`;
+    const campagnaName = campagne.find(c => c.id === selectedCampagna)?.nome || null;
 
     setActionLoading(true);
     try {
+      // Update leads
       const { error } = await supabase
         .from('lead_generation')
         .update({ 
           venditore: venditoreName,
+          campagna: campagnaName,
           data_assegnazione: new Date().toISOString(),
           stato: 'assegnato',
           assignable: false
@@ -256,7 +293,7 @@ const AssignedLeadsDialog = ({ open, onOpenChange, assignmentRecord, onRefresh }
           new_venditore: venditoreName,
           source_assignment_id: assignmentRecord?.id,
           performed_by: 'user',
-          notes: `${idsToUpdate.length} lead riassegnati da ${assignmentRecord?.venditore} a ${venditoreName}`,
+          notes: `${idsToUpdate.length} lead riassegnati a ${venditoreName}${campagnaName ? ` (campagna: ${campagnaName})` : ''}`,
           market: selectedMarket
         });
 
@@ -266,17 +303,54 @@ const AssignedLeadsDialog = ({ open, onOpenChange, assignmentRecord, onRefresh }
         .insert({
           venditore: venditoreName,
           leads_count: idsToUpdate.length,
-          campagna: assignmentRecord?.campagna || null,
+          campagna: campagnaName,
           lead_ids: idsToUpdate,
           assignment_type: 'manual',
           market: selectedMarket
         });
 
-      toast.success(`${idsToUpdate.length} lead riassegnati a ${venditoreName}`);
+      // Send webhook if enabled and venditore has webhook URL
+      if (sendWebhook && venditore.webhook_url) {
+        try {
+          // Get lead data for webhook
+          const { data: leadsData } = await supabase
+            .from('lead_generation')
+            .select('*')
+            .in('id', idsToUpdate);
+
+          if (leadsData) {
+            for (const lead of leadsData) {
+              await fetch(venditore.webhook_url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  lead_id: lead.id,
+                  nome: lead.nome,
+                  cognome: lead.cognome,
+                  email: lead.email,
+                  telefono: lead.telefono,
+                  fonte: lead.fonte,
+                  campagna: campagnaName,
+                  venditore: venditoreName,
+                  data_assegnazione: new Date().toISOString()
+                })
+              });
+            }
+          }
+          toast.success(`${idsToUpdate.length} lead riassegnati a ${venditoreName} (webhook inviato)`);
+        } catch (webhookError) {
+          console.error('Webhook error:', webhookError);
+          toast.success(`${idsToUpdate.length} lead riassegnati a ${venditoreName} (webhook fallito)`);
+        }
+      } else {
+        toast.success(`${idsToUpdate.length} lead riassegnati a ${venditoreName}`);
+      }
+
       await loadAssignedLeads();
       await loadActionLogs();
       setSelectedLeadIds([]);
       setSelectedVenditore("");
+      setSelectedCampagna("");
       onRefresh?.();
     } catch (error) {
       console.error("Error:", error);
@@ -330,6 +404,9 @@ const AssignedLeadsDialog = ({ open, onOpenChange, assignmentRecord, onRefresh }
   const currentLeadsCount = leads.filter(l => l.venditore === assignmentRecord?.venditore).length;
   const reassignedCount = leads.filter(l => l.venditore && l.venditore !== assignmentRecord?.venditore).length;
   const madeAssignableCount = leads.filter(l => l.assignable && !l.venditore).length;
+  const leadsToModifyCount = selectedLeadIds.length > 0 ? selectedLeadIds.length : leads.length;
+
+  const selectedVenditoreData = venditori.find(v => v.id === selectedVenditore);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -373,57 +450,35 @@ const AssignedLeadsDialog = ({ open, onOpenChange, assignmentRecord, onRefresh }
         </div>
         
         <Tabs defaultValue="leads" className="flex-1 flex flex-col overflow-hidden">
-          <TabsList className="flex-shrink-0">
-            <TabsTrigger value="leads">Lead ({leads.length})</TabsTrigger>
-            <TabsTrigger value="logs">Log Azioni ({actionLogs.length})</TabsTrigger>
+          <TabsList className="flex-shrink-0 grid w-full grid-cols-3">
+            <TabsTrigger value="leads" className="flex items-center gap-2">
+              <Users className="h-4 w-4" />
+              Lead ({leads.length})
+            </TabsTrigger>
+            <TabsTrigger value="modify" className="flex items-center gap-2">
+              <Settings className="h-4 w-4" />
+              Modifica Assegnazione
+            </TabsTrigger>
+            <TabsTrigger value="logs" className="flex items-center gap-2">
+              <History className="h-4 w-4" />
+              Log Azioni ({actionLogs.length})
+            </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="leads" className="flex-1 overflow-hidden flex flex-col mt-0">
-            {/* Actions Bar */}
-            <div className="flex items-center gap-4 py-3 border-b flex-shrink-0">
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-muted-foreground">
-                  {selectedLeadIds.length > 0 ? `${selectedLeadIds.length} selezionati` : 'Tutti i lead'}
-                </span>
-              </div>
-              
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleMakeAssignable}
-                disabled={actionLoading || leads.length === 0}
-              >
-                {actionLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <RotateCcw className="h-4 w-4 mr-2" />}
-                Rendi Assegnabili
+          {/* TAB: LEAD */}
+          <TabsContent value="leads" className="flex-1 overflow-hidden flex flex-col mt-4">
+            <div className="flex items-center justify-between mb-3 flex-shrink-0">
+              <span className="text-sm text-muted-foreground">
+                {selectedLeadIds.length > 0 
+                  ? `${selectedLeadIds.length} lead selezionati` 
+                  : 'Seleziona i lead da modificare nella tab "Modifica Assegnazione"'}
+              </span>
+              <Button variant="outline" size="sm" onClick={toggleAllLeads}>
+                {selectedLeadIds.length === leads.length ? 'Deseleziona tutti' : 'Seleziona tutti'}
               </Button>
-
-              <div className="flex items-center gap-2">
-                <Select value={selectedVenditore} onValueChange={setSelectedVenditore}>
-                  <SelectTrigger className="w-[200px]">
-                    <SelectValue placeholder="Seleziona venditore..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {venditori.map(v => (
-                      <SelectItem key={v.id} value={v.id}>
-                        {v.nome} {v.cognome}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Button
-                  variant="default"
-                  size="sm"
-                  onClick={handleReassign}
-                  disabled={actionLoading || !selectedVenditore || leads.length === 0}
-                >
-                  {actionLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <UserPlus className="h-4 w-4 mr-2" />}
-                  Riassegna
-                </Button>
-              </div>
             </div>
 
-            {/* Leads Table */}
-            <div className="flex-1 overflow-auto">
+            <div className="flex-1 overflow-auto border rounded-md">
               {loading ? (
                 <div className="flex justify-center items-center h-40">
                   <Loader2 className="h-6 w-6 animate-spin mr-2" />
@@ -455,8 +510,12 @@ const AssignedLeadsDialog = ({ open, onOpenChange, assignmentRecord, onRefresh }
                   </TableHeader>
                   <TableBody>
                     {leads.map((lead) => (
-                      <TableRow key={lead.id} className={selectedLeadIds.includes(lead.id) ? 'bg-muted/50' : ''}>
-                        <TableCell>
+                      <TableRow 
+                        key={lead.id} 
+                        className={`cursor-pointer ${selectedLeadIds.includes(lead.id) ? 'bg-muted/50' : ''}`}
+                        onClick={() => toggleLeadSelection(lead.id)}
+                      >
+                        <TableCell onClick={(e) => e.stopPropagation()}>
                           <input 
                             type="checkbox" 
                             checked={selectedLeadIds.includes(lead.id)}
@@ -467,8 +526,8 @@ const AssignedLeadsDialog = ({ open, onOpenChange, assignmentRecord, onRefresh }
                         <TableCell className="font-medium">
                           {lead.nome} {lead.cognome}
                         </TableCell>
-                        <TableCell>{lead.email}</TableCell>
-                        <TableCell>{lead.telefono}</TableCell>
+                        <TableCell className="text-sm">{lead.email}</TableCell>
+                        <TableCell className="text-sm">{lead.telefono}</TableCell>
                         <TableCell>
                           {lead.assignable && !lead.venditore ? (
                             <Badge variant="outline" className="text-green-600 border-green-600">Assegnabile</Badge>
@@ -481,9 +540,9 @@ const AssignedLeadsDialog = ({ open, onOpenChange, assignmentRecord, onRefresh }
                           )}
                         </TableCell>
                         <TableCell>
-                          {lead.fonte && <Badge variant="outline">{lead.fonte}</Badge>}
+                          {lead.fonte && <Badge variant="outline" className="text-xs">{lead.fonte}</Badge>}
                         </TableCell>
-                        <TableCell className="text-sm">
+                        <TableCell className="text-sm text-muted-foreground">
                           {lead.data_assegnazione && formatDate(lead.data_assegnazione)}
                         </TableCell>
                       </TableRow>
@@ -494,7 +553,142 @@ const AssignedLeadsDialog = ({ open, onOpenChange, assignmentRecord, onRefresh }
             </div>
           </TabsContent>
 
-          <TabsContent value="logs" className="flex-1 overflow-auto mt-0">
+          {/* TAB: MODIFICA ASSEGNAZIONE */}
+          <TabsContent value="modify" className="flex-1 overflow-auto mt-4">
+            <div className="grid gap-6">
+              {/* Info sui lead da modificare */}
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <Users className="h-4 w-4" />
+                    Lead da modificare
+                  </CardTitle>
+                  <CardDescription>
+                    {selectedLeadIds.length > 0 
+                      ? `Hai selezionato ${selectedLeadIds.length} lead specifici`
+                      : `Verranno modificati tutti i ${leads.length} lead di questa assegnazione`
+                    }
+                  </CardDescription>
+                </CardHeader>
+              </Card>
+
+              {/* Opzione 1: Riassegna */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <UserPlus className="h-4 w-4" />
+                    Riassegna a nuovo venditore
+                  </CardTitle>
+                  <CardDescription>
+                    Assegna i lead selezionati a un altro venditore
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Venditore *</Label>
+                      <Select value={selectedVenditore} onValueChange={setSelectedVenditore}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Seleziona venditore..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {venditori.map(v => (
+                            <SelectItem key={v.id} value={v.id}>
+                              {v.nome} {v.cognome}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Campagna (opzionale)</Label>
+                      <Select value={selectedCampagna} onValueChange={setSelectedCampagna}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Nessuna campagna" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="">Nessuna campagna</SelectItem>
+                          {campagne.map(c => (
+                            <SelectItem key={c.id} value={c.id}>
+                              {c.nome}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      <Switch 
+                        id="webhook" 
+                        checked={sendWebhook} 
+                        onCheckedChange={setSendWebhook}
+                        disabled={!selectedVenditoreData?.webhook_url}
+                      />
+                      <Label htmlFor="webhook" className="flex items-center gap-2">
+                        <Send className="h-4 w-4" />
+                        Invia webhook
+                        {selectedVenditoreData && !selectedVenditoreData.webhook_url && (
+                          <span className="text-xs text-muted-foreground">(venditore senza webhook)</span>
+                        )}
+                      </Label>
+                    </div>
+
+                    <Button 
+                      onClick={handleReassign} 
+                      disabled={actionLoading || !selectedVenditore || leads.length === 0}
+                    >
+                      {actionLoading ? (
+                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                      ) : (
+                        <UserPlus className="h-4 w-4 mr-2" />
+                      )}
+                      Riassegna {leadsToModifyCount} lead
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Separator />
+
+              {/* Opzione 2: Rendi assegnabili */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <RotateCcw className="h-4 w-4" />
+                    Rendi assegnabili
+                  </CardTitle>
+                  <CardDescription>
+                    Rimuovi l'assegnazione corrente e rendi i lead nuovamente disponibili per l'assegnazione
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm text-muted-foreground">
+                      I lead verranno sganciati da "{assignmentRecord?.venditore}" e tornati allo stato "assegnabile"
+                    </p>
+                    <Button 
+                      variant="outline"
+                      onClick={handleMakeAssignable} 
+                      disabled={actionLoading || leads.length === 0}
+                    >
+                      {actionLoading ? (
+                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                      ) : (
+                        <RotateCcw className="h-4 w-4 mr-2" />
+                      )}
+                      Rendi assegnabili {leadsToModifyCount} lead
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+
+          {/* TAB: LOG AZIONI */}
+          <TabsContent value="logs" className="flex-1 overflow-auto mt-4">
             {loadingLogs ? (
               <div className="flex justify-center items-center h-40">
                 <Loader2 className="h-6 w-6 animate-spin mr-2" />
@@ -504,44 +698,47 @@ const AssignedLeadsDialog = ({ open, onOpenChange, assignmentRecord, onRefresh }
               <div className="text-center py-10 text-muted-foreground flex flex-col items-center gap-2">
                 <Clock className="h-8 w-8" />
                 <span>Nessuna azione registrata per questa assegnazione.</span>
+                <span className="text-xs">Le azioni future (riassegnazioni, reset) verranno tracciate qui.</span>
               </div>
             ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Data</TableHead>
-                    <TableHead>Azione</TableHead>
-                    <TableHead>Lead</TableHead>
-                    <TableHead>Da</TableHead>
-                    <TableHead>A</TableHead>
-                    <TableHead>Eseguito da</TableHead>
-                    <TableHead>Note</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {actionLogs.map((log) => (
-                    <TableRow key={log.id}>
-                      <TableCell className="text-sm">{formatDate(log.created_at)}</TableCell>
-                      <TableCell>{getActionBadge(log.action_type)}</TableCell>
-                      <TableCell>
-                        <Badge variant="outline">{log.leads_count} lead</Badge>
-                      </TableCell>
-                      <TableCell>{log.previous_venditore || '-'}</TableCell>
-                      <TableCell>{log.new_venditore || '-'}</TableCell>
-                      <TableCell>
-                        {log.performed_by === 'user' ? (
-                          <Badge variant="outline"><User className="h-3 w-3 mr-1" />Utente</Badge>
-                        ) : (
-                          <Badge variant="secondary"><Bot className="h-3 w-3 mr-1" />Sistema</Badge>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-sm text-muted-foreground max-w-[200px] truncate">
-                        {log.notes}
-                      </TableCell>
+              <div className="border rounded-md">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Data</TableHead>
+                      <TableHead>Azione</TableHead>
+                      <TableHead>Lead</TableHead>
+                      <TableHead>Da</TableHead>
+                      <TableHead>A</TableHead>
+                      <TableHead>Eseguito da</TableHead>
+                      <TableHead>Note</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {actionLogs.map((log) => (
+                      <TableRow key={log.id}>
+                        <TableCell className="text-sm">{formatDate(log.created_at)}</TableCell>
+                        <TableCell>{getActionBadge(log.action_type)}</TableCell>
+                        <TableCell>
+                          <Badge variant="outline">{log.leads_count} lead</Badge>
+                        </TableCell>
+                        <TableCell className="text-sm">{log.previous_venditore || '-'}</TableCell>
+                        <TableCell className="text-sm">{log.new_venditore || '-'}</TableCell>
+                        <TableCell>
+                          {log.performed_by === 'user' ? (
+                            <Badge variant="outline"><User className="h-3 w-3 mr-1" />Utente</Badge>
+                          ) : (
+                            <Badge variant="secondary"><Bot className="h-3 w-3 mr-1" />Sistema</Badge>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-sm text-muted-foreground max-w-[200px] truncate" title={log.notes || ''}>
+                          {log.notes}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
             )}
           </TabsContent>
         </Tabs>
