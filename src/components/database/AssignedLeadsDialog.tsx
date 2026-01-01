@@ -603,12 +603,12 @@ const AssignedLeadsDialog = ({ open, onOpenChange, assignmentRecord, onRefresh }
 
                     <div className="space-y-2">
                       <Label>Campagna (opzionale)</Label>
-                      <Select value={selectedCampagna} onValueChange={setSelectedCampagna}>
+                      <Select value={selectedCampagna || "none"} onValueChange={(val) => setSelectedCampagna(val === "none" ? "" : val)}>
                         <SelectTrigger>
                           <SelectValue placeholder="Nessuna campagna" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="">Nessuna campagna</SelectItem>
+                          <SelectItem value="none">Nessuna campagna</SelectItem>
                           {campagne.map(c => (
                             <SelectItem key={c.id} value={c.id}>
                               {c.nome}
