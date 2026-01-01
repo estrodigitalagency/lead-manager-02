@@ -49,6 +49,7 @@ const AssignmentHistory = () => {
 
     setMakingAssignable(record.id);
     try {
+      // Update leads to be assignable again
       const { error } = await supabase
         .from('lead_generation')
         .update({ 
@@ -60,6 +61,25 @@ const AssignmentHistory = () => {
         .in('id', record.lead_ids);
 
       if (error) throw error;
+
+      // Log this action for traceability
+      const { error: logError } = await supabase
+        .from('lead_actions_log')
+        .insert({
+          action_type: 'made_assignable',
+          lead_ids: record.lead_ids,
+          leads_count: record.lead_ids.length,
+          previous_venditore: record.venditore,
+          new_venditore: null,
+          source_assignment_id: record.id,
+          performed_by: 'user',
+          notes: `Lead resi assegnabili dalla cronologia (assegnazione originale del ${new Date(record.assigned_at).toLocaleString('it-IT')})`,
+          market: selectedMarket
+        });
+
+      if (logError) {
+        console.error("Error logging action:", logError);
+      }
 
       toast.success(`${record.lead_ids.length} lead resi nuovamente assegnabili`);
     } catch (error) {
