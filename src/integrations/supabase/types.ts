@@ -17,6 +17,7 @@ export type Database = {
       assignment_history: {
         Row: {
           assigned_at: string
+          assignment_type: string
           bypass_time_interval: boolean | null
           campagna: string | null
           created_at: string
@@ -32,6 +33,7 @@ export type Database = {
         }
         Insert: {
           assigned_at?: string
+          assignment_type?: string
           bypass_time_interval?: boolean | null
           campagna?: string | null
           created_at?: string
@@ -47,6 +49,7 @@ export type Database = {
         }
         Update: {
           assigned_at?: string
+          assignment_type?: string
           bypass_time_interval?: boolean | null
           campagna?: string | null
           created_at?: string

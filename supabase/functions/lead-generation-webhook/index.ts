@@ -665,7 +665,8 @@ async function assignLeadAutomatically(lead: any, seller: any, sheetsTabName: st
         source_mode: 'exclude',
         bypass_time_interval: false,
         market: lead.market,
-        lead_ids: [lead.id]
+        lead_ids: [lead.id],
+        assignment_type: 'automation'
       });
 
     if (historyError) {

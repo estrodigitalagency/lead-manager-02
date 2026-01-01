@@ -194,7 +194,8 @@ async function processAssignmentCompletion(
       source_mode: sourceMode,
       bypass_time_interval: bypassTimeInterval,
       market: market,
-      lead_ids: leadIds // Save the specific lead IDs for replay
+      lead_ids: leadIds, // Save the specific lead IDs for replay
+      assignment_type: 'manual'
     });
 
   if (historyError) {
