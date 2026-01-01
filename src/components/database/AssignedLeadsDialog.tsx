@@ -487,8 +487,14 @@ const AssignedLeadsDialog = ({ open, onOpenChange, assignmentRecord, onRefresh }
                   <span>Caricamento lead...</span>
                 </div>
               ) : leads.length === 0 ? (
-                <div className="text-center py-10 text-muted-foreground">
-                  Nessun lead trovato per questa assegnazione.
+                <div className="text-center py-10 text-muted-foreground space-y-2">
+                  <p>Nessun lead trovato per questa assegnazione.</p>
+                  {(!assignmentRecord?.lead_ids || assignmentRecord.lead_ids.length === 0) && (
+                    <p className="text-xs text-orange-600">
+                      ⚠️ Questo record è stato creato prima che il sistema tracciasse i lead_ids. 
+                      Usa "Ricostruisci Storico" nella pagina Cronologia per tentare il recupero.
+                    </p>
+                  )}
                 </div>
               ) : (
                 <Table>
