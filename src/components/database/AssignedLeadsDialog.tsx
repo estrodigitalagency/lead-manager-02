@@ -86,6 +86,7 @@ const AssignedLeadsDialog = ({ open, onOpenChange, assignmentRecord, onRefresh }
   const [selectedCampagna, setSelectedCampagna] = useState<string>("");
   const [sendWebhook, setSendWebhook] = useState(true);
   const [selectedLeadIds, setSelectedLeadIds] = useState<string[]>([]);
+  const [modifyAction, setModifyAction] = useState<'reassign' | 'make_assignable' | null>(null);
 
   useEffect(() => {
     if (open && assignmentRecord) {
@@ -98,6 +99,7 @@ const AssignedLeadsDialog = ({ open, onOpenChange, assignmentRecord, onRefresh }
       setSelectedVenditore("");
       setSelectedCampagna("");
       setSendWebhook(true);
+      setModifyAction(null);
     }
   }, [open, assignmentRecord]);
 
@@ -555,71 +557,111 @@ const AssignedLeadsDialog = ({ open, onOpenChange, assignmentRecord, onRefresh }
 
           {/* TAB: MODIFICA ASSEGNAZIONE */}
           <TabsContent value="modify" className="flex-1 overflow-auto mt-4">
-            <div className="grid gap-6">
+            <div className="space-y-4">
               {/* Info sui lead da modificare */}
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-base flex items-center gap-2">
-                    <Users className="h-4 w-4" />
-                    Lead da modificare
-                  </CardTitle>
-                  <CardDescription>
+              <div className="p-3 bg-muted/50 rounded-lg">
+                <p className="text-sm">
+                  <span className="text-muted-foreground">Lead da modificare: </span>
+                  <span className="font-medium">
                     {selectedLeadIds.length > 0 
-                      ? `Hai selezionato ${selectedLeadIds.length} lead specifici`
-                      : `Verranno modificati tutti i ${leads.length} lead di questa assegnazione`
+                      ? `${selectedLeadIds.length} lead selezionati`
+                      : `Tutti i ${leads.length} lead`
                     }
-                  </CardDescription>
-                </CardHeader>
-              </Card>
+                  </span>
+                  {selectedLeadIds.length === 0 && (
+                    <span className="text-xs text-muted-foreground ml-2">
+                      (seleziona dalla tab Lead per modificarne solo alcuni)
+                    </span>
+                  )}
+                </p>
+              </div>
 
-              {/* Opzione 1: Riassegna */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-base flex items-center gap-2">
-                    <UserPlus className="h-4 w-4" />
-                    Riassegna a nuovo venditore
-                  </CardTitle>
-                  <CardDescription>
-                    Assegna i lead selezionati a un altro venditore
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label>Venditore *</Label>
-                      <Select value={selectedVenditore} onValueChange={setSelectedVenditore}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Seleziona venditore..." />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {venditori.map(v => (
-                            <SelectItem key={v.id} value={v.id}>
-                              {v.nome} {v.cognome}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+              {/* Scelta azione */}
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  onClick={() => setModifyAction('reassign')}
+                  className={`p-4 rounded-lg border-2 text-left transition-all ${
+                    modifyAction === 'reassign' 
+                      ? 'border-primary bg-primary/10' 
+                      : 'border-border hover:border-primary/50 hover:bg-muted/50'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className={`p-2 rounded-full ${modifyAction === 'reassign' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
+                      <UserPlus className="h-5 w-5" />
                     </div>
-
-                    <div className="space-y-2">
-                      <Label>Campagna (opzionale)</Label>
-                      <Select value={selectedCampagna || "none"} onValueChange={(val) => setSelectedCampagna(val === "none" ? "" : val)}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Nessuna campagna" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="none">Nessuna campagna</SelectItem>
-                          {campagne.map(c => (
-                            <SelectItem key={c.id} value={c.id}>
-                              {c.nome}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                    <div>
+                      <p className="font-medium">Riassegna a nuovo venditore</p>
+                      <p className="text-xs text-muted-foreground">Assegna i lead a un altro venditore</p>
                     </div>
                   </div>
+                </button>
 
-                  <div className="flex items-center justify-between">
+                <button
+                  onClick={() => setModifyAction('make_assignable')}
+                  className={`p-4 rounded-lg border-2 text-left transition-all ${
+                    modifyAction === 'make_assignable' 
+                      ? 'border-primary bg-primary/10' 
+                      : 'border-border hover:border-primary/50 hover:bg-muted/50'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className={`p-2 rounded-full ${modifyAction === 'make_assignable' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
+                      <RotateCcw className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <p className="font-medium">Rendi assegnabili</p>
+                      <p className="text-xs text-muted-foreground">Rimuovi assegnazione corrente</p>
+                    </div>
+                  </div>
+                </button>
+              </div>
+
+              {/* Sottosezione Riassegna */}
+              {modifyAction === 'reassign' && (
+                <Card className="border-primary/30">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <UserPlus className="h-4 w-4" />
+                      Riassegna a nuovo venditore
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>Venditore *</Label>
+                        <Select value={selectedVenditore} onValueChange={setSelectedVenditore}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Seleziona venditore..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {venditori.map(v => (
+                              <SelectItem key={v.id} value={v.id}>
+                                {v.nome} {v.cognome}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>Campagna (opzionale)</Label>
+                        <Select value={selectedCampagna || "none"} onValueChange={(val) => setSelectedCampagna(val === "none" ? "" : val)}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Nessuna campagna" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">Nessuna campagna</SelectItem>
+                            {campagne.map(c => (
+                              <SelectItem key={c.id} value={c.id}>
+                                {c.nome}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+
                     <div className="flex items-center space-x-2">
                       <Switch 
                         id="webhook" 
@@ -637,6 +679,7 @@ const AssignedLeadsDialog = ({ open, onOpenChange, assignmentRecord, onRefresh }
                     </div>
 
                     <Button 
+                      className="w-full"
                       onClick={handleReassign} 
                       disabled={actionLoading || !selectedVenditore || leads.length === 0}
                     >
@@ -647,29 +690,27 @@ const AssignedLeadsDialog = ({ open, onOpenChange, assignmentRecord, onRefresh }
                       )}
                       Riassegna {leadsToModifyCount} lead
                     </Button>
-                  </div>
-                </CardContent>
-              </Card>
+                  </CardContent>
+                </Card>
+              )}
 
-              <Separator />
-
-              {/* Opzione 2: Rendi assegnabili */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-base flex items-center gap-2">
-                    <RotateCcw className="h-4 w-4" />
-                    Rendi assegnabili
-                  </CardTitle>
-                  <CardDescription>
-                    Rimuovi l'assegnazione corrente e rendi i lead nuovamente disponibili per l'assegnazione
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex items-center justify-between">
+              {/* Sottosezione Rendi assegnabili */}
+              {modifyAction === 'make_assignable' && (
+                <Card className="border-primary/30">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <RotateCcw className="h-4 w-4" />
+                      Rendi assegnabili
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
                     <p className="text-sm text-muted-foreground">
-                      I lead verranno sganciati da "{assignmentRecord?.venditore}" e tornati allo stato "assegnabile"
+                      I lead verranno sganciati da "<span className="font-medium">{assignmentRecord?.venditore}</span>" e tornati allo stato "assegnabile". 
+                      Potranno essere nuovamente assegnati dalla pagina di assegnazione lead.
                     </p>
+                    
                     <Button 
+                      className="w-full"
                       variant="outline"
                       onClick={handleMakeAssignable} 
                       disabled={actionLoading || leads.length === 0}
@@ -681,9 +722,17 @@ const AssignedLeadsDialog = ({ open, onOpenChange, assignmentRecord, onRefresh }
                       )}
                       Rendi assegnabili {leadsToModifyCount} lead
                     </Button>
-                  </div>
-                </CardContent>
-              </Card>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Placeholder quando nessuna azione selezionata */}
+              {!modifyAction && (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Settings className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                  <p>Seleziona un'azione da eseguire</p>
+                </div>
+              )}
             </div>
           </TabsContent>
 
