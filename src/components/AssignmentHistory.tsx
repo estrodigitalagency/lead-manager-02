@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import {
   Table,
@@ -11,11 +10,12 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, Clock, Filter, Info, Play } from "lucide-react";
+import { Loader2, Clock, Filter, Info, Play, RotateCcw, Bot, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useMarket } from "@/contexts/MarketContext";
 import AssignedLeadsDialog from "@/components/database/AssignedLeadsDialog";
 import ReplayAssignmentDialog from "@/components/database/ReplayAssignmentDialog";
+import { toast } from "sonner";
 
 interface AssignmentRecord {
   id: string;
@@ -28,6 +28,8 @@ interface AssignmentRecord {
   exclude_from_included: string[] | null;
   source_mode: string | null;
   bypass_time_interval: boolean | null;
+  assignment_type: string | null;
+  lead_ids: string[] | null;
 }
 
 const AssignmentHistory = () => {
@@ -37,6 +39,36 @@ const AssignmentHistory = () => {
   const [selectedAssignment, setSelectedAssignment] = useState<AssignmentRecord | null>(null);
   const [leadsDialogOpen, setLeadsDialogOpen] = useState(false);
   const [replayDialogOpen, setReplayDialogOpen] = useState(false);
+  const [makingAssignable, setMakingAssignable] = useState<string | null>(null);
+
+  const handleMakeAssignable = async (record: AssignmentRecord) => {
+    if (!record.lead_ids || record.lead_ids.length === 0) {
+      toast.error("Nessun lead ID disponibile per questa assegnazione");
+      return;
+    }
+
+    setMakingAssignable(record.id);
+    try {
+      const { error } = await supabase
+        .from('lead_generation')
+        .update({ 
+          assignable: true, 
+          venditore: null, 
+          data_assegnazione: null, 
+          stato: 'nuovo' 
+        })
+        .in('id', record.lead_ids);
+
+      if (error) throw error;
+
+      toast.success(`${record.lead_ids.length} lead resi nuovamente assegnabili`);
+    } catch (error) {
+      console.error("Error making leads assignable:", error);
+      toast.error("Errore nel rendere i lead assegnabili");
+    } finally {
+      setMakingAssignable(null);
+    }
+  };
 
   useEffect(() => {
     const loadHistory = async () => {
@@ -98,6 +130,7 @@ const AssignmentHistory = () => {
           <TableHeader>
             <TableRow>
               <TableHead>Data e Ora</TableHead>
+              <TableHead>Tipo</TableHead>
               <TableHead>Lead</TableHead>
               <TableHead>Venditore</TableHead>
               <TableHead>Campagna</TableHead>
@@ -111,6 +144,19 @@ const AssignmentHistory = () => {
               <TableRow key={record.id}>
                 <TableCell className="text-sm">
                   {formatDate(record.assigned_at)}
+                </TableCell>
+                <TableCell>
+                  {record.assignment_type === 'automation' ? (
+                    <Badge variant="secondary" className="flex items-center gap-1 w-fit">
+                      <Bot className="h-3 w-3" />
+                      Auto
+                    </Badge>
+                  ) : (
+                    <Badge variant="outline" className="flex items-center gap-1 w-fit">
+                      <User className="h-3 w-3" />
+                      Manuale
+                    </Badge>
+                  )}
                 </TableCell>
                 <TableCell>
                   <Badge variant="outline">
@@ -223,6 +269,20 @@ const AssignmentHistory = () => {
                       title="Replay assegnazione"
                     >
                       <Play className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleMakeAssignable(record)}
+                      disabled={makingAssignable === record.id || !record.lead_ids || record.lead_ids.length === 0}
+                      className="h-8 w-8 p-0"
+                      title="Rendi lead assegnabili"
+                    >
+                      {makingAssignable === record.id ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <RotateCcw className="h-4 w-4" />
+                      )}
                     </Button>
                   </div>
                 </TableCell>

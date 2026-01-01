@@ -144,7 +144,9 @@ const ManualAssignmentDialog = ({
           venditore: venditoreName,
           leads_count: selectedLeadIds.length,
           campagna: (selectedCampaign && selectedCampaign !== 'none') ? selectedCampaign : null,
-          fonti_escluse: null
+          fonti_escluse: null,
+          lead_ids: selectedLeadIds,
+          assignment_type: 'manual'
         });
 
       if (historyError) {

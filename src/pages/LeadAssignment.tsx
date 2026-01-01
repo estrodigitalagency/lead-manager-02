@@ -120,7 +120,9 @@ const LeadAssignment = () => {
           venditore: venditoreName,
           leads_count: 1,
           campagna: selectedCampagna || null,
-          fonti_escluse: null
+          fonti_escluse: null,
+          lead_ids: [selectedLead.id],
+          assignment_type: 'manual'
         });
 
       if (historyError) {
