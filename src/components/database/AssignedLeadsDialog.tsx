@@ -451,7 +451,7 @@ const AssignedLeadsDialog = ({ open, onOpenChange, assignmentRecord, onRefresh }
           )}
         </div>
         
-        <Tabs defaultValue="leads" className="flex-1 flex flex-col overflow-hidden">
+        <Tabs defaultValue="leads" className="flex-1 flex flex-col min-h-0">
           <TabsList className="flex-shrink-0 grid w-full grid-cols-3">
             <TabsTrigger value="leads" className="flex items-center gap-2">
               <Users className="h-4 w-4" />
@@ -468,7 +468,7 @@ const AssignedLeadsDialog = ({ open, onOpenChange, assignmentRecord, onRefresh }
           </TabsList>
 
           {/* TAB: LEAD */}
-          <TabsContent value="leads" className="flex-1 overflow-hidden flex flex-col mt-4">
+          <TabsContent value="leads" className="flex-1 overflow-auto mt-4 data-[state=inactive]:hidden">
             <div className="flex items-center justify-between mb-3 flex-shrink-0">
               <span className="text-sm text-muted-foreground">
                 {selectedLeadIds.length > 0 
@@ -556,7 +556,7 @@ const AssignedLeadsDialog = ({ open, onOpenChange, assignmentRecord, onRefresh }
           </TabsContent>
 
           {/* TAB: MODIFICA ASSEGNAZIONE */}
-          <TabsContent value="modify" className="flex-1 overflow-auto mt-4">
+          <TabsContent value="modify" className="flex-1 overflow-auto mt-4 data-[state=inactive]:hidden">
             <div className="space-y-4">
               {/* Info sui lead da modificare */}
               <div className="p-3 bg-muted/50 rounded-lg">
@@ -737,7 +737,7 @@ const AssignedLeadsDialog = ({ open, onOpenChange, assignmentRecord, onRefresh }
           </TabsContent>
 
           {/* TAB: LOG AZIONI */}
-          <TabsContent value="logs" className="flex-1 overflow-auto mt-4">
+          <TabsContent value="logs" className="flex-1 overflow-auto mt-4 data-[state=inactive]:hidden">
             {loadingLogs ? (
               <div className="flex justify-center items-center h-40">
                 <Loader2 className="h-6 w-6 animate-spin mr-2" />
