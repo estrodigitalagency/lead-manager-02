@@ -51,14 +51,21 @@ export async function getReportMetrics(filters: ReportFilters): Promise<ReportMe
   }
 }
 
-// Helper function to convert date to start of day
+// Helper function to convert date to start of day in Italian timezone
+// Italy is UTC+1 (winter) / UTC+2 (summer), so we subtract the offset
 function getStartOfDay(dateString: string): string {
-  return `${dateString}T00:00:00.000Z`;
+  // Create date at midnight in Italy, then convert to UTC
+  // For simplicity, we use a fixed offset approach
+  // Midnight in Italy (UTC+1) = 23:00 previous day in UTC
+  const date = new Date(`${dateString}T00:00:00+01:00`);
+  return date.toISOString();
 }
 
-// Helper function to convert date to end of day
+// Helper function to convert date to end of day in Italian timezone
 function getEndOfDay(dateString: string): string {
-  return `${dateString}T23:59:59.999Z`;
+  // 23:59:59 in Italy (UTC+1) = 22:59:59 same day in UTC
+  const date = new Date(`${dateString}T23:59:59.999+01:00`);
+  return date.toISOString();
 }
 
 // Helper function to apply fonte filters
