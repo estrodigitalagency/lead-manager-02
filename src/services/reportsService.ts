@@ -51,20 +51,56 @@ export async function getReportMetrics(filters: ReportFilters): Promise<ReportMe
   }
 }
 
+// Helper function to get Italian timezone offset dynamically (handles DST)
+function getItalianTimezoneOffset(date: Date): string {
+  // Create a formatter for Italian timezone to detect the offset
+  const formatter = new Intl.DateTimeFormat('it-IT', {
+    timeZone: 'Europe/Rome',
+    timeZoneName: 'shortOffset'
+  });
+  
+  const parts = formatter.formatToParts(date);
+  const offsetPart = parts.find(p => p.type === 'timeZoneName');
+  
+  // Parse offset like "GMT+1" or "GMT+2"
+  if (offsetPart?.value) {
+    const match = offsetPart.value.match(/GMT([+-])(\d+)/);
+    if (match) {
+      const sign = match[1];
+      const hours = match[2].padStart(2, '0');
+      return `${sign}${hours}:00`;
+    }
+  }
+  
+  // Fallback: calculate offset manually
+  const testDate = new Date(date.toLocaleString('en-US', { timeZone: 'Europe/Rome' }));
+  const utcDate = new Date(date.toLocaleString('en-US', { timeZone: 'UTC' }));
+  const diffHours = Math.round((testDate.getTime() - utcDate.getTime()) / (1000 * 60 * 60));
+  const sign = diffHours >= 0 ? '+' : '-';
+  return `${sign}${Math.abs(diffHours).toString().padStart(2, '0')}:00`;
+}
+
 // Helper function to convert date to start of day in Italian timezone
-// Italy is UTC+1 (winter) / UTC+2 (summer), so we subtract the offset
 function getStartOfDay(dateString: string): string {
-  // Create date at midnight in Italy, then convert to UTC
-  // For simplicity, we use a fixed offset approach
-  // Midnight in Italy (UTC+1) = 23:00 previous day in UTC
-  const date = new Date(`${dateString}T00:00:00+01:00`);
+  // Parse the date string and determine the correct offset for that specific date
+  const [year, month, day] = dateString.split('-').map(Number);
+  const tempDate = new Date(year, month - 1, day, 12, 0, 0); // Use noon to avoid DST edge cases
+  const offset = getItalianTimezoneOffset(tempDate);
+  
+  // Create date at midnight in Italy with the correct offset
+  const date = new Date(`${dateString}T00:00:00${offset}`);
   return date.toISOString();
 }
 
 // Helper function to convert date to end of day in Italian timezone
 function getEndOfDay(dateString: string): string {
-  // 23:59:59 in Italy (UTC+1) = 22:59:59 same day in UTC
-  const date = new Date(`${dateString}T23:59:59.999+01:00`);
+  // Parse the date string and determine the correct offset for that specific date
+  const [year, month, day] = dateString.split('-').map(Number);
+  const tempDate = new Date(year, month - 1, day, 12, 0, 0); // Use noon to avoid DST edge cases
+  const offset = getItalianTimezoneOffset(tempDate);
+  
+  // Create date at 23:59:59 in Italy with the correct offset
+  const date = new Date(`${dateString}T23:59:59.999${offset}`);
   return date.toISOString();
 }
 
@@ -296,36 +332,61 @@ export async function getAvailableVenditori(market?: 'IT' | 'ES'): Promise<strin
   }
 }
 
-// Periodi predefiniti
+// Helper function to get today's date in Italian timezone
+function getItalianDate(daysOffset: number = 0): string {
+  const now = new Date();
+  now.setDate(now.getDate() + daysOffset);
+  return now.toLocaleDateString('sv-SE', { timeZone: 'Europe/Rome' }); // sv-SE gives YYYY-MM-DD format
+}
+
+// Helper function to get first day of month in Italian timezone
+function getItalianMonthStart(monthOffset: number = 0): string {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth() + monthOffset;
+  const date = new Date(year, month, 1);
+  return date.toLocaleDateString('sv-SE', { timeZone: 'Europe/Rome' });
+}
+
+// Helper function to get last day of month in Italian timezone  
+function getItalianMonthEnd(monthOffset: number = 0): string {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth() + monthOffset + 1; // Next month
+  const date = new Date(year, month, 0); // Day 0 = last day of previous month
+  return date.toLocaleDateString('sv-SE', { timeZone: 'Europe/Rome' });
+}
+
+// Periodi predefiniti - calcolati dinamicamente nel fuso orario italiano
 export const PRESET_PERIODS = {
   today: {
     label: 'Oggi',
-    startDate: new Date().toISOString().split('T')[0],
-    endDate: new Date().toISOString().split('T')[0]
+    get startDate() { return getItalianDate(0); },
+    get endDate() { return getItalianDate(0); }
   },
   yesterday: {
     label: 'Ieri',
-    startDate: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-    endDate: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+    get startDate() { return getItalianDate(-1); },
+    get endDate() { return getItalianDate(-1); }
   },
   last7days: {
     label: 'Ultimi 7 giorni',
-    startDate: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-    endDate: new Date().toISOString().split('T')[0]
+    get startDate() { return getItalianDate(-6); },
+    get endDate() { return getItalianDate(0); }
   },
   last30days: {
     label: 'Ultimi 30 giorni',
-    startDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-    endDate: new Date().toISOString().split('T')[0]
+    get startDate() { return getItalianDate(-29); },
+    get endDate() { return getItalianDate(0); }
   },
   thisMonth: {
     label: 'Questo mese',
-    startDate: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0],
-    endDate: new Date().toISOString().split('T')[0]
+    get startDate() { return getItalianMonthStart(0); },
+    get endDate() { return getItalianDate(0); }
   },
   lastMonth: {
     label: 'Mese scorso',
-    startDate: new Date(new Date().getFullYear(), new Date().getMonth() - 1, 1).toISOString().split('T')[0],
-    endDate: new Date(new Date().getFullYear(), new Date().getMonth(), 0).toISOString().split('T')[0]
+    get startDate() { return getItalianMonthStart(-1); },
+    get endDate() { return getItalianMonthEnd(-1); }
   }
 };
