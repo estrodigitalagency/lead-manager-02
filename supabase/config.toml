@@ -1,4 +1,3 @@
-
 project_id = "btcwmuyemmkiteqlopce"
 
 [api]
@@ -54,4 +53,7 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.rebuild-assignment-history]
+verify_jwt = false
+
+[functions.sale-webhook]
 verify_jwt = false

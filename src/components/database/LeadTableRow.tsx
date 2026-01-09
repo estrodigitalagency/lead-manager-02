@@ -3,7 +3,7 @@ import { TableCell, TableRow } from "@/components/ui/table";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Trash2, Info } from "lucide-react";
+import { Trash2, Info, ShoppingCart } from "lucide-react";
 import { Lead } from "@/types/lead";
 import FonteDisplay from "./FonteDisplay";
 import { useLeadStatus } from "@/hooks/useLeadStatus";
@@ -144,6 +144,19 @@ const LeadTableRow = ({
       {visibleColumns.includes('venditore') && (
         <TableCell className="text-sm">
           {lead.venditore || '-'}
+        </TableCell>
+      )}
+
+      {visibleColumns.includes('vendita') && (
+        <TableCell className="text-sm">
+          {lead.vendita_chiusa ? (
+            <Badge variant="outline" className="bg-green-100 text-green-800 border-green-200">
+              <ShoppingCart className="h-3 w-3 mr-1" />
+              Venduto
+            </Badge>
+          ) : (
+            '-'
+          )}
         </TableCell>
       )}
       

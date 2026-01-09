@@ -19,4 +19,11 @@ export interface Lead {
   data_assegnazione?: string;
   manually_not_assignable?: boolean;
   market?: string;
+  // Campi vendita
+  vendita_chiusa?: boolean;
+  data_chiusura?: string;
+  importo_vendita?: number;
+  percorso_venduto?: string;
+  fonte_vendita?: string;
+  note_vendita?: string;
 }
