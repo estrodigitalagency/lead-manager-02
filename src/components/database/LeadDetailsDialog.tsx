@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Lead } from "@/types/lead";
 import { format } from "date-fns";
 import { it } from "date-fns/locale";
-import { Calendar, Mail, Phone, User, Tag, Users, CheckCircle, History, Clock } from "lucide-react";
+import { Calendar, Mail, Phone, User, Tag, Users, CheckCircle, History, Clock, DollarSign, ShoppingCart } from "lucide-react";
 import { getLeadStatus } from "@/utils/leadStatus";
 import { useLeadHistory } from "@/hooks/useLeadHistory";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -201,6 +201,60 @@ const LeadDetailsDialog = ({ lead, open, onOpenChange }: LeadDetailsDialogProps)
             </div>
           )}
 
+          {/* Vendita */}
+          {lead.vendita_chiusa && (
+            <div className="space-y-3">
+              <h3 className="text-sm font-semibold text-muted-foreground border-b pb-1 flex items-center gap-2">
+                <ShoppingCart className="h-4 w-4 text-green-600" />
+                VENDITA CHIUSA
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 p-3 bg-green-50 dark:bg-green-950/30 rounded-lg border border-green-200 dark:border-green-800">
+                {lead.data_chiusura && (
+                  <div className="flex items-center gap-2">
+                    <Calendar className="h-4 w-4 text-green-600" />
+                    <span className="text-sm">
+                      <strong>Data chiusura:</strong> {formatDate(lead.data_chiusura)}
+                    </span>
+                  </div>
+                )}
+                {lead.importo_vendita && (
+                  <div className="flex items-center gap-2">
+                    <DollarSign className="h-4 w-4 text-green-600" />
+                    <span className="text-sm">
+                      <strong>Importo:</strong> €{lead.importo_vendita.toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </span>
+                  </div>
+                )}
+                {lead.percorso_venduto && (
+                  <div className="flex items-center gap-2">
+                    <Tag className="h-4 w-4 text-green-600" />
+                    <span className="text-sm">
+                      <strong>Percorso:</strong> {lead.percorso_venduto}
+                    </span>
+                  </div>
+                )}
+                {lead.fonte_vendita && (
+                  <div className="flex items-center gap-2">
+                    <Tag className="h-4 w-4 text-green-600" />
+                    <span className="text-sm">
+                      <strong>Fonte vendita:</strong> 
+                      <Badge variant="outline" className="ml-2 bg-green-100 text-green-800 border-green-200 text-xs">
+                        {lead.fonte_vendita}
+                      </Badge>
+                    </span>
+                  </div>
+                )}
+                {lead.note_vendita && (
+                  <div className="col-span-2 flex items-start gap-2">
+                    <span className="text-sm">
+                      <strong>Note:</strong> {lead.note_vendita}
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* Storico Lead */}
           <div className="space-y-3">
             <h3 className="text-sm font-semibold text-muted-foreground border-b pb-1 flex items-center gap-2">
@@ -272,20 +326,26 @@ const LeadDetailsDialog = ({ lead, open, onOpenChange }: LeadDetailsDialogProps)
                           </div>
                         )}
                         
-                        {/* Fonti */}
-                        {historiFonti.length > 0 && (
+                        {/* Ultima Fonte */}
+                        {historyItem.ultima_fonte && (
                           <div className="flex items-center gap-2">
                             <Tag className="h-3 w-3 text-muted-foreground" />
                             <div className="flex items-center gap-1">
-                              <span className="text-xs">Fonti:</span>
-                              <div className="flex flex-wrap gap-1">
-                                {historiFonti.map((fonte, fonteIndex) => (
-                                  <Badge key={fonteIndex} variant="outline" className="text-xs">
-                                    {fonte}
-                                  </Badge>
-                                ))}
-                              </div>
+                              <span className="text-xs">Ultima fonte:</span>
+                              <Badge variant="outline" className="text-xs bg-primary/10 border-primary/30">
+                                {historyItem.ultima_fonte}
+                              </Badge>
                             </div>
+                          </div>
+                        )}
+                        
+                        {/* Vendita badge */}
+                        {historyItem.vendita_chiusa && (
+                          <div className="flex items-center gap-2">
+                            <ShoppingCart className="h-3 w-3 text-green-600" />
+                            <Badge variant="outline" className="text-xs bg-green-100 text-green-800 border-green-200">
+                              Venduto {historyItem.fonte_vendita ? `(${historyItem.fonte_vendita})` : ''}
+                            </Badge>
                           </div>
                         )}
                       </div>

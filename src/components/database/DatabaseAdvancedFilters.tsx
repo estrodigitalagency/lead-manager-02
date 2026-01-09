@@ -13,6 +13,7 @@ import { format } from "date-fns";
 import { it } from "date-fns/locale";
 import { getAvailableFonti, getAvailableVenditori } from "@/services/reportsService";
 import { SearchableSourceSelect } from "@/components/ui/searchable-source-select";
+import { Checkbox } from "@/components/ui/checkbox";
 
 interface DatabaseAdvancedFiltersProps {
   onApplyFilters: (filters: Record<string, any>) => void;
@@ -283,6 +284,20 @@ const DatabaseAdvancedFilters = ({ onApplyFilters, tableName }: DatabaseAdvanced
             </div>
           )}
         </div>
+
+        {/* Filtro Vendite Chiuse - solo per lead_generation */}
+        {tableName === 'lead_generation' && (
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="venditaChiusa"
+              checked={filters.venditaChiusa || false}
+              onCheckedChange={(checked) => handleFilterChange('venditaChiusa', checked)}
+            />
+            <Label htmlFor="venditaChiusa" className="text-sm font-medium cursor-pointer">
+              Solo vendite chiuse
+            </Label>
+          </div>
+        )}
 
         {/* Filtri specifici per tabella */}
         {tableName === 'lead_lavorati' && (

@@ -626,18 +626,24 @@ export type Database = {
           cognome: string | null
           created_at: string | null
           data_assegnazione: string | null
+          data_chiusura: string | null
           email: string | null
           fonte: string | null
+          fonte_vendita: string | null
           id: string
+          importo_vendita: number | null
           lead_score: string | null
           manually_not_assignable: boolean | null
           market: string
           nome: string
+          note_vendita: string | null
+          percorso_venduto: string | null
           stato: string | null
           stato_del_lead: string | null
           telefono: string | null
           ultima_fonte: string | null
           updated_at: string | null
+          vendita_chiusa: boolean | null
           venditore: string | null
         }
         Insert: {
@@ -647,18 +653,24 @@ export type Database = {
           cognome?: string | null
           created_at?: string | null
           data_assegnazione?: string | null
+          data_chiusura?: string | null
           email?: string | null
           fonte?: string | null
+          fonte_vendita?: string | null
           id?: string
+          importo_vendita?: number | null
           lead_score?: string | null
           manually_not_assignable?: boolean | null
           market?: string
           nome: string
+          note_vendita?: string | null
+          percorso_venduto?: string | null
           stato?: string | null
           stato_del_lead?: string | null
           telefono?: string | null
           ultima_fonte?: string | null
           updated_at?: string | null
+          vendita_chiusa?: boolean | null
           venditore?: string | null
         }
         Update: {
@@ -668,18 +680,24 @@ export type Database = {
           cognome?: string | null
           created_at?: string | null
           data_assegnazione?: string | null
+          data_chiusura?: string | null
           email?: string | null
           fonte?: string | null
+          fonte_vendita?: string | null
           id?: string
+          importo_vendita?: number | null
           lead_score?: string | null
           manually_not_assignable?: boolean | null
           market?: string
           nome?: string
+          note_vendita?: string | null
+          percorso_venduto?: string | null
           stato?: string | null
           stato_del_lead?: string | null
           telefono?: string | null
           ultima_fonte?: string | null
           updated_at?: string | null
+          vendita_chiusa?: boolean | null
           venditore?: string | null
         }
         Relationships: []

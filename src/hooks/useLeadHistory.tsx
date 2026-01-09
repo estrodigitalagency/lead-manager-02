@@ -6,12 +6,15 @@ interface LeadHistoryItem {
   id: string;
   created_at: string;
   fonte: string | null;
+  ultima_fonte: string | null;
   venditore: string | null;
   data_assegnazione: string | null;
   nome: string;
   cognome: string | null;
   email: string | null;
   telefono: string | null;
+  vendita_chiusa: boolean | null;
+  fonte_vendita: string | null;
 }
 
 export const useLeadHistory = (lead: Lead | null) => {
@@ -32,7 +35,7 @@ export const useLeadHistory = (lead: Lead | null) => {
       try {
         let query = supabase
           .from('lead_generation')
-          .select('id, created_at, fonte, venditore, data_assegnazione, nome, cognome, email, telefono')
+          .select('id, created_at, fonte, ultima_fonte, venditore, data_assegnazione, nome, cognome, email, telefono, vendita_chiusa, fonte_vendita')
           .order('created_at', { ascending: false });
 
         // Build the condition for email or phone match

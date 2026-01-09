@@ -109,6 +109,11 @@ export async function getPaginatedData<T>(
           query = query.not('fonte', 'ilike', `%${fonte}%`);
         });
       }
+
+      // Filtro vendite chiuse
+      if (filters.venditaChiusa === true) {
+        query = query.eq('vendita_chiusa', true);
+      }
     }
     
     // Ordina per data di creazione
