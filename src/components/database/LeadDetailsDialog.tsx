@@ -305,17 +305,17 @@ const LeadDetailsDialog = ({ lead, open, onOpenChange }: LeadDetailsDialogProps)
               
               {lead.vendita_chiusa ? (
                 <div className="space-y-4">
-                  <div className="p-4 bg-green-50 dark:bg-green-950/30 rounded-lg border border-green-200 dark:border-green-800">
+                  <div className="p-4 bg-muted/50 rounded-lg border border-border">
                     <div className="flex items-center gap-2 mb-3">
-                      <CheckCircle className="h-5 w-5 text-green-600" />
-                      <span className="font-semibold text-green-700 dark:text-green-400">Vendita Chiusa</span>
+                      <CheckCircle className="h-5 w-5 text-green-500" />
+                      <span className="font-semibold text-foreground">Vendita Chiusa</span>
                     </div>
                     
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       {lead.data_chiusura && (
                         <div className="flex items-center gap-2">
-                          <Calendar className="h-4 w-4 text-green-600" />
-                          <span className="text-sm">
+                          <Calendar className="h-4 w-4 text-muted-foreground" />
+                          <span className="text-sm text-foreground">
                             <strong>Data chiusura:</strong> {formatDate(lead.data_chiusura)}
                           </span>
                         </div>
@@ -323,8 +323,8 @@ const LeadDetailsDialog = ({ lead, open, onOpenChange }: LeadDetailsDialogProps)
                       
                       {lead.importo_vendita && (
                         <div className="flex items-center gap-2">
-                          <DollarSign className="h-4 w-4 text-green-600" />
-                          <span className="text-sm">
+                          <DollarSign className="h-4 w-4 text-muted-foreground" />
+                          <span className="text-sm text-foreground">
                             <strong>Importo:</strong> €{lead.importo_vendita.toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                           </span>
                         </div>
@@ -332,8 +332,8 @@ const LeadDetailsDialog = ({ lead, open, onOpenChange }: LeadDetailsDialogProps)
                       
                       {lead.percorso_venduto && (
                         <div className="flex items-center gap-2">
-                          <Tag className="h-4 w-4 text-green-600" />
-                          <span className="text-sm">
+                          <Tag className="h-4 w-4 text-muted-foreground" />
+                          <span className="text-sm text-foreground">
                             <strong>Percorso venduto:</strong> {lead.percorso_venduto}
                           </span>
                         </div>
@@ -341,10 +341,10 @@ const LeadDetailsDialog = ({ lead, open, onOpenChange }: LeadDetailsDialogProps)
                       
                       {lead.fonte_vendita && (
                         <div className="flex items-center gap-2">
-                          <Tag className="h-4 w-4 text-green-600" />
-                          <span className="text-sm">
+                          <Tag className="h-4 w-4 text-muted-foreground" />
+                          <span className="text-sm text-foreground">
                             <strong>Fonte vendita:</strong> 
-                            <Badge variant="outline" className="ml-2 bg-green-100 text-green-800 border-green-200 text-xs">
+                            <Badge variant="outline" className="ml-2 text-xs">
                               {lead.fonte_vendita}
                             </Badge>
                           </span>
@@ -353,8 +353,8 @@ const LeadDetailsDialog = ({ lead, open, onOpenChange }: LeadDetailsDialogProps)
                       
                       {lead.venditore && (
                         <div className="flex items-center gap-2">
-                          <Users className="h-4 w-4 text-green-600" />
-                          <span className="text-sm">
+                          <Users className="h-4 w-4 text-muted-foreground" />
+                          <span className="text-sm text-foreground">
                             <strong>Venduto da:</strong> {lead.venditore}
                           </span>
                         </div>
@@ -362,10 +362,10 @@ const LeadDetailsDialog = ({ lead, open, onOpenChange }: LeadDetailsDialogProps)
                       
                       {lead.ultima_fonte && (
                         <div className="flex items-center gap-2">
-                          <Tag className="h-4 w-4 text-green-600" />
-                          <span className="text-sm">
+                          <Tag className="h-4 w-4 text-muted-foreground" />
+                          <span className="text-sm text-foreground">
                             <strong>Ultima fonte:</strong> 
-                            <Badge variant="outline" className="ml-2 bg-primary/10 border-primary/30 text-xs">
+                            <Badge variant="outline" className="ml-2 text-xs">
                               {lead.ultima_fonte}
                             </Badge>
                           </span>
@@ -374,9 +374,9 @@ const LeadDetailsDialog = ({ lead, open, onOpenChange }: LeadDetailsDialogProps)
                     </div>
                     
                     {lead.note_vendita && (
-                      <div className="mt-4 pt-3 border-t border-green-200 dark:border-green-800">
+                      <div className="mt-4 pt-3 border-t border-border">
                         <div className="flex items-start gap-2">
-                          <span className="text-sm">
+                          <span className="text-sm text-foreground">
                             <strong>Note:</strong> {lead.note_vendita}
                           </span>
                         </div>
