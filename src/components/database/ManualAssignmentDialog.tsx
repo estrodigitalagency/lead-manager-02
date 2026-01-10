@@ -17,8 +17,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { useMarket } from "@/contexts/MarketContext";
 
 interface Campaign {
   id: string;
@@ -50,6 +53,7 @@ const ManualAssignmentDialog = ({
   selectedLeadIds,
   onAssignmentComplete
 }: ManualAssignmentDialogProps) => {
+  const { selectedMarket } = useMarket();
   const [selectedVenditore, setSelectedVenditore] = useState("");
   const [selectedCampaign, setSelectedCampaign] = useState("");
   const [venditori, setVenditori] = useState<Venditore[]>([]);
@@ -57,6 +61,7 @@ const ManualAssignmentDialog = ({
   const [isLoading, setIsLoading] = useState(false);
   const [isAssigning, setIsAssigning] = useState(false);
   const [sendWebhook, setSendWebhook] = useState(false);
+  const [assignmentNote, setAssignmentNote] = useState("");
 
   useEffect(() => {
     if (open) {
@@ -116,13 +121,16 @@ const ManualAssignmentDialog = ({
     try {
       const venditoreName = `${venditoreData.nome} ${venditoreData.cognome}`.trim();
       
-      // Recupera i dati dei lead selezionati prima dell'aggiornamento
+      // Recupera i dati dei lead selezionati prima dell'aggiornamento (per ottenere il venditore precedente)
       const { data: leadsData, error: fetchError } = await supabase
         .from('lead_generation')
         .select('*')
         .in('id', selectedLeadIds);
 
       if (fetchError) throw fetchError;
+
+      // Trova il venditore precedente (se esiste e se è diverso dal nuovo)
+      const previousVenditore = leadsData?.[0]?.venditore || null;
 
       // Aggiorna i lead con l'assegnazione
       const { error } = await supabase
@@ -137,8 +145,8 @@ const ManualAssignmentDialog = ({
 
       if (error) throw error;
 
-      // Registra in cronologia
-      const { error: historyError } = await supabase
+      // Registra in cronologia assegnazioni
+      const { data: historyData, error: historyError } = await supabase
         .from('assignment_history')
         .insert({
           venditore: venditoreName,
@@ -146,11 +154,33 @@ const ManualAssignmentDialog = ({
           campagna: (selectedCampaign && selectedCampaign !== 'none') ? selectedCampaign : null,
           fonti_escluse: null,
           lead_ids: selectedLeadIds,
-          assignment_type: 'manual'
-        });
+          assignment_type: 'manual',
+          market: selectedMarket
+        })
+        .select()
+        .single();
 
       if (historyError) {
         console.error('Errore nella registrazione cronologia:', historyError);
+      }
+
+      // Registra in lead_actions_log per il customer journey
+      const { error: actionLogError } = await supabase
+        .from('lead_actions_log')
+        .insert({
+          action_type: 'manual_assignment',
+          lead_ids: selectedLeadIds,
+          leads_count: selectedLeadIds.length,
+          previous_venditore: previousVenditore,
+          new_venditore: venditoreName,
+          source_assignment_id: historyData?.id || null,
+          performed_by: 'user',
+          notes: assignmentNote.trim() || null,
+          market: selectedMarket
+        });
+
+      if (actionLogError) {
+        console.error('Errore nella registrazione action log:', actionLogError);
       }
 
       // Invia webhook solo se l'opzione è abilitata
@@ -245,6 +275,7 @@ const ManualAssignmentDialog = ({
       setSelectedVenditore("");
       setSelectedCampaign("");
       setSendWebhook(false);
+      setAssignmentNote("");
     } catch (error) {
       console.error("Errore nell'assegnazione:", error);
       toast.error("Errore nell'assegnazione dei lead");
@@ -307,6 +338,18 @@ const ManualAssignmentDialog = ({
                 ))}
               </SelectContent>
             </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="assignment-note">Nota (facoltativa)</Label>
+            <Textarea
+              id="assignment-note"
+              placeholder="Es: Richiesta specifica del cliente..."
+              value={assignmentNote}
+              onChange={(e) => setAssignmentNote(e.target.value)}
+              className="resize-none"
+              rows={2}
+            />
           </div>
 
           <div className="flex items-center space-x-2">
