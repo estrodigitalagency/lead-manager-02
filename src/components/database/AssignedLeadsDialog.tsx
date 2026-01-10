@@ -9,6 +9,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import { Textarea } from "@/components/ui/textarea";
 import { Loader2, Clock, Bot, User, UserPlus, RotateCcw, Send, Users, History, Settings } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useMarket } from "@/contexts/MarketContext";
@@ -87,6 +88,7 @@ const AssignedLeadsDialog = ({ open, onOpenChange, assignmentRecord, onRefresh }
   const [sendWebhook, setSendWebhook] = useState(true);
   const [selectedLeadIds, setSelectedLeadIds] = useState<string[]>([]);
   const [modifyAction, setModifyAction] = useState<'reassign' | 'make_assignable' | null>(null);
+  const [reassignmentNote, setReassignmentNote] = useState<string>("");
 
   useEffect(() => {
     if (open && assignmentRecord) {
@@ -100,6 +102,7 @@ const AssignedLeadsDialog = ({ open, onOpenChange, assignmentRecord, onRefresh }
       setSelectedCampagna("");
       setSendWebhook(true);
       setModifyAction(null);
+      setReassignmentNote("");
     }
   }, [open, assignmentRecord]);
 
@@ -295,7 +298,7 @@ const AssignedLeadsDialog = ({ open, onOpenChange, assignmentRecord, onRefresh }
           new_venditore: venditoreName,
           source_assignment_id: assignmentRecord?.id,
           performed_by: 'user',
-          notes: `${idsToUpdate.length} lead riassegnati a ${venditoreName}${campagnaName ? ` (campagna: ${campagnaName})` : ''}`,
+          notes: reassignmentNote.trim() || `${idsToUpdate.length} lead riassegnati a ${venditoreName}${campagnaName ? ` (campagna: ${campagnaName})` : ''}`,
           market: selectedMarket
         });
 
@@ -353,6 +356,7 @@ const AssignedLeadsDialog = ({ open, onOpenChange, assignmentRecord, onRefresh }
       setSelectedLeadIds([]);
       setSelectedVenditore("");
       setSelectedCampagna("");
+      setReassignmentNote("");
       onRefresh?.();
     } catch (error) {
       console.error("Error:", error);
@@ -682,6 +686,18 @@ const AssignedLeadsDialog = ({ open, onOpenChange, assignmentRecord, onRefresh }
                           <span className="text-xs text-muted-foreground">(venditore senza webhook)</span>
                         )}
                       </Label>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="reassignment-note">Nota (facoltativa)</Label>
+                      <Textarea
+                        id="reassignment-note"
+                        placeholder="Es: Cliente richiede venditore specifico..."
+                        value={reassignmentNote}
+                        onChange={(e) => setReassignmentNote(e.target.value)}
+                        className="resize-none"
+                        rows={2}
+                      />
                     </div>
 
                     <Button 

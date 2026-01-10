@@ -17,8 +17,20 @@ interface LeadHistoryItem {
   fonte_vendita: string | null;
 }
 
+export interface LeadActionLogItem {
+  id: string;
+  created_at: string;
+  action_type: string;
+  leads_count: number;
+  previous_venditore: string | null;
+  new_venditore: string | null;
+  performed_by: string | null;
+  notes: string | null;
+}
+
 export const useLeadHistory = (lead: Lead | null) => {
   const [history, setHistory] = useState<LeadHistoryItem[]>([]);
+  const [actionLogs, setActionLogs] = useState<LeadActionLogItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -26,6 +38,7 @@ export const useLeadHistory = (lead: Lead | null) => {
     const fetchLeadHistory = async () => {
       if (!lead || (!lead.email && !lead.telefono)) {
         setHistory([]);
+        setActionLogs([]);
         return;
       }
 
@@ -33,6 +46,7 @@ export const useLeadHistory = (lead: Lead | null) => {
       setError(null);
 
       try {
+        // Fetch lead generation history
         let query = supabase
           .from('lead_generation')
           .select('id, created_at, fonte, ultima_fonte, venditore, data_assegnazione, nome, cognome, email, telefono, vendita_chiusa, fonte_vendita')
@@ -60,10 +74,24 @@ export const useLeadHistory = (lead: Lead | null) => {
         }
 
         setHistory(data || []);
+
+        // Fetch action logs for this lead
+        const { data: logsData, error: logsError } = await supabase
+          .from('lead_actions_log')
+          .select('id, created_at, action_type, leads_count, previous_venditore, new_venditore, performed_by, notes')
+          .contains('lead_ids', [lead.id])
+          .order('created_at', { ascending: false });
+
+        if (logsError) {
+          console.error('Error fetching action logs:', logsError);
+        } else {
+          setActionLogs(logsData || []);
+        }
       } catch (err) {
         console.error('Error fetching lead history:', err);
         setError(err instanceof Error ? err.message : 'Errore nel caricamento dello storico');
         setHistory([]);
+        setActionLogs([]);
       } finally {
         setIsLoading(false);
       }
@@ -72,5 +100,5 @@ export const useLeadHistory = (lead: Lead | null) => {
     fetchLeadHistory();
   }, [lead?.email, lead?.telefono, lead?.id]);
 
-  return { history, isLoading, error };
+  return { history, actionLogs, isLoading, error };
 };

@@ -11,9 +11,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Lead } from "@/types/lead";
 import { format } from "date-fns";
 import { it } from "date-fns/locale";
-import { Calendar, Mail, Phone, User, Tag, Users, CheckCircle, History, Clock, DollarSign, ShoppingCart } from "lucide-react";
+import { Calendar, Mail, Phone, User, Tag, Users, CheckCircle, History, Clock, DollarSign, ShoppingCart, UserPlus, RotateCcw, Bot, MessageSquare } from "lucide-react";
 import { getLeadStatus } from "@/utils/leadStatus";
-import { useLeadHistory } from "@/hooks/useLeadHistory";
+import { useLeadHistory, LeadActionLogItem } from "@/hooks/useLeadHistory";
 import { Skeleton } from "@/components/ui/skeleton";
 
 interface LeadDetailsDialogProps {
@@ -23,7 +23,22 @@ interface LeadDetailsDialogProps {
 }
 
 const LeadDetailsDialog = ({ lead, open, onOpenChange }: LeadDetailsDialogProps) => {
-  const { history, isLoading: historyLoading, error: historyError } = useLeadHistory(lead);
+  const { history, actionLogs, isLoading: historyLoading, error: historyError } = useLeadHistory(lead);
+
+  const getActionBadge = (actionType: string) => {
+    switch (actionType) {
+      case 'made_assignable':
+        return <Badge variant="outline" className="flex items-center gap-1 text-xs"><RotateCcw className="h-3 w-3" />Reso Assegnabile</Badge>;
+      case 'reassigned':
+        return <Badge variant="secondary" className="flex items-center gap-1 text-xs"><UserPlus className="h-3 w-3" />Riassegnato</Badge>;
+      case 'manual_assignment':
+        return <Badge variant="default" className="flex items-center gap-1 text-xs"><User className="h-3 w-3" />Assegnazione Manuale</Badge>;
+      case 'automation_assignment':
+        return <Badge className="flex items-center gap-1 bg-blue-500 text-xs"><Bot className="h-3 w-3" />Automazione</Badge>;
+      default:
+        return <Badge variant="outline" className="text-xs">{actionType}</Badge>;
+    }
+  };
   
   if (!lead) return null;
 
@@ -212,7 +227,8 @@ const LeadDetailsDialog = ({ lead, open, onOpenChange }: LeadDetailsDialogProps)
           </TabsContent>
 
           {/* TAB CUSTOMER JOURNEY */}
-          <TabsContent value="customer-journey" className="space-y-4 mt-4">
+          <TabsContent value="customer-journey" className="space-y-6 mt-4">
+            {/* STORICO LEAD GENERATION */}
             <div className="space-y-3">
               <h3 className="text-sm font-semibold text-muted-foreground border-b pb-1 flex items-center gap-2">
                 <History className="h-4 w-4" />
@@ -234,7 +250,7 @@ const LeadDetailsDialog = ({ lead, open, onOpenChange }: LeadDetailsDialogProps)
                   Nessuno storico trovato per questo lead.
                 </div>
               ) : (
-                <div className="space-y-3 max-h-[400px] overflow-y-auto">
+                <div className="space-y-3 max-h-[250px] overflow-y-auto">
                   {history.map((historyItem) => {
                     const isCurrentLead = historyItem.id === lead.id;
                     
@@ -290,6 +306,79 @@ const LeadDetailsDialog = ({ lead, open, onOpenChange }: LeadDetailsDialogProps)
                       </div>
                     );
                   })}
+                </div>
+              )}
+            </div>
+
+            {/* AZIONI MANUALI */}
+            <div className="space-y-3">
+              <h3 className="text-sm font-semibold text-muted-foreground border-b pb-1 flex items-center gap-2">
+                <UserPlus className="h-4 w-4" />
+                AZIONI MANUALI
+              </h3>
+              
+              {historyLoading ? (
+                <div className="space-y-2">
+                  <Skeleton className="h-4 w-full" />
+                  <Skeleton className="h-4 w-3/4" />
+                </div>
+              ) : actionLogs.length === 0 ? (
+                <div className="text-sm text-muted-foreground">
+                  Nessuna azione manuale registrata per questo lead.
+                </div>
+              ) : (
+                <div className="space-y-3 max-h-[200px] overflow-y-auto">
+                  {actionLogs.map((actionLog) => (
+                    <div 
+                      key={actionLog.id} 
+                      className="p-3 rounded-lg border bg-muted/30"
+                    >
+                      <div className="flex flex-col space-y-2">
+                        {/* Header con data e tipo azione */}
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <Clock className="h-3 w-3 text-muted-foreground" />
+                            <span className="text-xs font-medium">
+                              {formatDate(actionLog.created_at)}
+                            </span>
+                            {getActionBadge(actionLog.action_type)}
+                          </div>
+                        </div>
+                        
+                        {/* Dettagli riassegnazione */}
+                        {(actionLog.previous_venditore || actionLog.new_venditore) && (
+                          <div className="flex items-center gap-2">
+                            <Users className="h-3 w-3 text-muted-foreground" />
+                            <span className="text-xs">
+                              {actionLog.previous_venditore && (
+                                <>
+                                  <span className="text-muted-foreground">Da:</span> <strong>{actionLog.previous_venditore}</strong>
+                                </>
+                              )}
+                              {actionLog.previous_venditore && actionLog.new_venditore && (
+                                <span className="mx-1">→</span>
+                              )}
+                              {actionLog.new_venditore && (
+                                <>
+                                  <span className="text-muted-foreground">A:</span> <strong>{actionLog.new_venditore}</strong>
+                                </>
+                              )}
+                            </span>
+                          </div>
+                        )}
+                        
+                        {/* Nota */}
+                        {actionLog.notes && (
+                          <div className="flex items-start gap-2 mt-1">
+                            <MessageSquare className="h-3 w-3 text-muted-foreground mt-0.5" />
+                            <span className="text-xs text-muted-foreground italic">
+                              "{actionLog.notes}"
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
                 </div>
               )}
             </div>
