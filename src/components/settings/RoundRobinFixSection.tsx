@@ -94,6 +94,7 @@ export function RoundRobinFixSection() {
     setSelectedLeadIds(new Set());
     
     try {
+      console.log('Fetching Round Robin analysis for market:', selectedMarket);
       const { data, error } = await supabase.functions.invoke('get-round-robin-analysis', {
         body: {
           market: selectedMarket,
@@ -102,11 +103,23 @@ export function RoundRobinFixSection() {
         }
       });
 
-      if (error) throw error;
+      console.log('Analysis response:', data, 'Error:', error);
+
+      if (error) {
+        console.error('Supabase function error:', error);
+        throw error;
+      }
+      
+      if (data?.error) {
+        console.error('Function returned error:', data.error);
+        throw new Error(data.error);
+      }
+      
       setAnalysisData(data);
-    } catch (error) {
+      toast.success(`Analisi completata: ${data?.summary?.withPreviousSeller || 0} lead con venditore precedente`);
+    } catch (error: any) {
       console.error('Error fetching analysis:', error);
-      toast.error('Errore nel caricamento analisi');
+      toast.error(`Errore nel caricamento: ${error.message || 'Errore sconosciuto'}`);
     } finally {
       setLoading(false);
     }
