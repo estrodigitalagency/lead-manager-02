@@ -85,27 +85,34 @@ Deno.serve(async (req) => {
 
     console.log('Total Round Robin leads found:', allRoundRobinLeads.length);
 
-    // Collect unique emails and phones for batch lookup
-    const uniqueEmails = new Set<string>();
-    const uniquePhones = new Set<string>();
+    // Collect ALL unique emails and phones
+    const allEmails: string[] = [];
+    const allPhones: string[] = [];
 
     for (const lead of allRoundRobinLeads) {
-      if (lead.email) uniqueEmails.add(lead.email.toLowerCase());
-      if (lead.telefono) uniquePhones.add(lead.telefono);
+      if (lead.email) allEmails.push(lead.email);
+      if (lead.telefono) allPhones.push(lead.telefono);
     }
 
-    console.log('Unique emails:', uniqueEmails.size, '- Unique phones:', uniquePhones.size);
+    const uniqueEmailsSet = new Set(allEmails.map(e => e.toLowerCase()));
+    const uniquePhonesSet = new Set(allPhones);
 
-    // Batch fetch previous assignments by email
+    console.log('Unique emails:', uniqueEmailsSet.size, '- Unique phones:', uniquePhonesSet.size);
+
+    // Batch fetch ALL previous assignments by email (case-insensitive via raw SQL)
+    // We need to get records with venditore != 'Round Robin' that match our emails
     const emailToPreviousAssignment: Record<string, { venditore: string; data_assegnazione: string; ultima_fonte: string | null }> = {};
     
-    if (uniqueEmails.size > 0) {
-      const emailArray = Array.from(uniqueEmails);
-      // Process in batches of 500 to avoid query limits
+    // Use original emails for the query to handle case-sensitivity
+    const uniqueEmailsArray = [...new Set(allEmails)]; // Original case
+    
+    if (uniqueEmailsArray.length > 0) {
       const batchSize = 500;
-      for (let i = 0; i < emailArray.length; i += batchSize) {
-        const batch = emailArray.slice(i, i + batchSize);
-        const { data: emailMatches } = await supabase
+      for (let i = 0; i < uniqueEmailsArray.length; i += batchSize) {
+        const batch = uniqueEmailsArray.slice(i, i + batchSize);
+        
+        // Query with original case - PostgreSQL stores emails as-is
+        const { data: emailMatches, error } = await supabase
           .from('lead_generation')
           .select('email, venditore, data_assegnazione, ultima_fonte')
           .in('email', batch)
@@ -114,6 +121,10 @@ Deno.serve(async (req) => {
           .not('venditore', 'is', null)
           .not('data_assegnazione', 'is', null)
           .order('data_assegnazione', { ascending: false });
+
+        if (error) {
+          console.error('Error fetching email matches batch', i, ':', error);
+        }
 
         if (emailMatches) {
           for (const match of emailMatches) {
@@ -132,23 +143,16 @@ Deno.serve(async (req) => {
 
     console.log('Email matches found:', Object.keys(emailToPreviousAssignment).length);
 
-    // Batch fetch previous assignments by phone (for those without email match)
+    // Batch fetch ALL previous assignments by phone
     const phoneToPreviousAssignment: Record<string, { venditore: string; data_assegnazione: string; ultima_fonte: string | null }> = {};
     
-    // Only look up phones for leads that don't have an email match
-    const phonesToLookup = new Set<string>();
-    for (const lead of allRoundRobinLeads) {
-      if (lead.telefono && !lead.email || (lead.email && !emailToPreviousAssignment[lead.email.toLowerCase()])) {
-        if (lead.telefono) phonesToLookup.add(lead.telefono);
-      }
-    }
-
-    if (phonesToLookup.size > 0) {
-      const phoneArray = Array.from(phonesToLookup);
+    const uniquePhonesArray = [...uniquePhonesSet];
+    
+    if (uniquePhonesArray.length > 0) {
       const batchSize = 500;
-      for (let i = 0; i < phoneArray.length; i += batchSize) {
-        const batch = phoneArray.slice(i, i + batchSize);
-        const { data: phoneMatches } = await supabase
+      for (let i = 0; i < uniquePhonesArray.length; i += batchSize) {
+        const batch = uniquePhonesArray.slice(i, i + batchSize);
+        const { data: phoneMatches, error } = await supabase
           .from('lead_generation')
           .select('telefono, venditore, data_assegnazione, ultima_fonte')
           .in('telefono', batch)
@@ -157,6 +161,10 @@ Deno.serve(async (req) => {
           .not('venditore', 'is', null)
           .not('data_assegnazione', 'is', null)
           .order('data_assegnazione', { ascending: false });
+
+        if (error) {
+          console.error('Error fetching phone matches batch', i, ':', error);
+        }
 
         if (phoneMatches) {
           for (const match of phoneMatches) {
@@ -175,18 +183,19 @@ Deno.serve(async (req) => {
     console.log('Phone matches found:', Object.keys(phoneToPreviousAssignment).length);
 
     // Now process leads using the cached lookups
+    // Priority: email match first, then phone match
     const analyzedLeads: AnalyzedLead[] = [];
     let leadsWithoutPrevious = 0;
 
     for (const lead of allRoundRobinLeads) {
       let previousAssignment = null;
 
-      // Try email first
+      // Try email first (case-insensitive lookup)
       if (lead.email) {
         previousAssignment = emailToPreviousAssignment[lead.email.toLowerCase()];
       }
 
-      // Then try phone
+      // Then try phone if no email match
       if (!previousAssignment && lead.telefono) {
         previousAssignment = phoneToPreviousAssignment[lead.telefono];
       }
@@ -222,7 +231,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    console.log('Leads with previous seller:', analyzedLeads.length);
+    console.log('Leads with previous seller (after day filter):', analyzedLeads.length);
     console.log('Leads without previous seller:', leadsWithoutPrevious);
 
     // Group by venditore
@@ -260,17 +269,25 @@ Deno.serve(async (req) => {
       group.leads.sort((a, b) => a.giorni_da_assegnazione - b.giorni_da_assegnazione);
     }
 
+    // Calculate total with previous BEFORE day filter (for accurate stats)
+    const totalWithPrevious = allRoundRobinLeads.filter(lead => {
+      if (lead.email && emailToPreviousAssignment[lead.email.toLowerCase()]) return true;
+      if (lead.telefono && phoneToPreviousAssignment[lead.telefono]) return true;
+      return false;
+    }).length;
+
     const response = {
       summary: {
         totalRoundRobinLeads: allRoundRobinLeads.length,
-        withPreviousSeller: analyzedLeads.length,
-        withoutPreviousSeller: leadsWithoutPrevious,
+        withPreviousSeller: totalWithPrevious, // Total BEFORE day filter
+        withPreviousSellerFiltered: analyzedLeads.length, // After day filter
+        withoutPreviousSeller: allRoundRobinLeads.length - totalWithPrevious,
         uniqueVenditori: sortedGroups.length,
       },
       byVenditore: sortedGroups,
     };
 
-    console.log('Analysis complete. Sending response with', sortedGroups.length, 'groups');
+    console.log('Analysis complete. Total with previous:', totalWithPrevious, '- Filtered:', analyzedLeads.length, '- Groups:', sortedGroups.length);
 
     return new Response(JSON.stringify(response), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

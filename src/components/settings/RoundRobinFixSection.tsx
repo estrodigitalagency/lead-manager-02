@@ -44,6 +44,7 @@ interface AnalysisData {
   summary: {
     totalRoundRobinLeads: number;
     withPreviousSeller: number;
+    withPreviousSellerFiltered?: number;
     withoutPreviousSeller: number;
     uniqueVenditori: number;
   };
@@ -284,7 +285,7 @@ export function RoundRobinFixSection() {
         <CardContent className="space-y-4">
           {/* Stats */}
           {analysisData && (
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
               <div className="p-3 bg-muted rounded-lg">
                 <p className="text-2xl font-bold">{analysisData.summary.totalRoundRobinLeads}</p>
                 <p className="text-sm text-muted-foreground">Lead Round Robin totali</p>
@@ -293,12 +294,16 @@ export function RoundRobinFixSection() {
                 <p className="text-2xl font-bold text-green-600">{analysisData.summary.withPreviousSeller}</p>
                 <p className="text-sm text-muted-foreground">Con venditore precedente</p>
               </div>
+              <div className="p-3 bg-blue-100 dark:bg-blue-900/20 rounded-lg">
+                <p className="text-2xl font-bold text-blue-600">{analysisData.summary.withPreviousSellerFiltered || analysisData.summary.withPreviousSeller}</p>
+                <p className="text-sm text-muted-foreground">Filtrati (intervallo giorni)</p>
+              </div>
               <div className="p-3 bg-orange-100 dark:bg-orange-900/20 rounded-lg">
                 <p className="text-2xl font-bold text-orange-600">{analysisData.summary.withoutPreviousSeller}</p>
                 <p className="text-sm text-muted-foreground">Senza venditore precedente</p>
               </div>
-              <div className="p-3 bg-blue-100 dark:bg-blue-900/20 rounded-lg">
-                <p className="text-2xl font-bold text-blue-600">{analysisData.summary.uniqueVenditori}</p>
+              <div className="p-3 bg-purple-100 dark:bg-purple-900/20 rounded-lg">
+                <p className="text-2xl font-bold text-purple-600">{analysisData.summary.uniqueVenditori}</p>
                 <p className="text-sm text-muted-foreground">Venditori unici</p>
               </div>
             </div>
