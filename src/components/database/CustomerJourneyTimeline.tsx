@@ -120,10 +120,10 @@ const CustomerJourneyTimeline = ({ timeline, currentLeadId }: CustomerJourneyTim
               {/* Event card */}
               <div 
                 className={`p-3 rounded-lg border transition-colors ${
-                  isCurrentLead 
+                  event.type === 'vendita'
+                    ? 'bg-emerald-500/10 border-emerald-500/40'
+                    : isCurrentLead 
                     ? 'bg-primary/5 border-primary/30' 
-                    : event.type === 'vendita'
-                    ? 'bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800'
                     : 'bg-muted/30 border-border'
                 }`}
               >
@@ -225,24 +225,32 @@ const CustomerJourneyTimeline = ({ timeline, currentLeadId }: CustomerJourneyTim
 
                   {/* Sale details */}
                   {event.type === 'vendita' && (
-                    <>
+                    <div className="mt-2 p-2 bg-emerald-500/10 rounded-md border border-emerald-500/20">
                       {event.details?.importo && (
-                        <div className="flex items-center gap-2">
-                          <DollarSign className="h-3 w-3 text-emerald-600" />
-                          <span className="text-xs font-semibold text-emerald-600">
+                        <div className="flex items-center gap-2 mb-1.5">
+                          <DollarSign className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                          <span className="text-sm font-bold text-emerald-700 dark:text-emerald-300">
                             €{Number(event.details.importo).toLocaleString('it-IT', { minimumFractionDigits: 2 })}
                           </span>
                         </div>
                       )}
                       {event.details?.percorso && (
                         <div className="flex items-center gap-2">
-                          <Tag className="h-3 w-3 text-muted-foreground" />
-                          <span className="text-xs text-muted-foreground">
-                            Percorso: <strong className="text-foreground">{event.details.percorso}</strong>
+                          <Tag className="h-3 w-3 text-foreground/70" />
+                          <span className="text-xs text-foreground">
+                            <span className="text-muted-foreground">Percorso:</span> <strong>{event.details.percorso}</strong>
                           </span>
                         </div>
                       )}
-                    </>
+                      {event.details?.fonte_vendita && (
+                        <div className="flex items-center gap-2 mt-1">
+                          <Tag className="h-3 w-3 text-foreground/70" />
+                          <span className="text-xs text-foreground">
+                            <span className="text-muted-foreground">Fonte vendita:</span> <strong>{event.details.fonte_vendita}</strong>
+                          </span>
+                        </div>
+                      )}
+                    </div>
                   )}
 
                   {/* Error message for automations */}

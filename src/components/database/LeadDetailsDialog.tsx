@@ -250,81 +250,82 @@ const LeadDetailsDialog = ({ lead, open, onOpenChange }: LeadDetailsDialogProps)
               
               {lead.vendita_chiusa ? (
                 <div className="space-y-4">
-                  <div className="p-4 bg-muted/50 rounded-lg border border-border">
-                    <div className="flex items-center gap-2 mb-3">
-                      <CheckCircle className="h-5 w-5 text-green-500" />
-                      <span className="font-semibold text-foreground">Vendita Chiusa</span>
-                    </div>
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {lead.data_chiusura && (
+                  {/* Importo in evidenza */}
+                  {lead.importo_vendita && (
+                    <div className="p-4 bg-emerald-500/10 rounded-lg border border-emerald-500/30">
+                      <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
-                          <Calendar className="h-4 w-4 text-muted-foreground" />
-                          <span className="text-sm text-foreground">
-                            <strong>Data chiusura:</strong> {formatDate(lead.data_chiusura)}
+                          <DollarSign className="h-6 w-6 text-emerald-600 dark:text-emerald-400" />
+                          <span className="text-2xl font-bold text-emerald-700 dark:text-emerald-300">
+                            €{lead.importo_vendita.toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                           </span>
                         </div>
-                      )}
-                      
-                      {lead.importo_vendita && (
-                        <div className="flex items-center gap-2">
-                          <DollarSign className="h-4 w-4 text-muted-foreground" />
-                          <span className="text-sm text-foreground">
-                            <strong>Importo:</strong> €{lead.importo_vendita.toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                          </span>
+                        <Badge className="bg-emerald-600 text-white">
+                          <CheckCircle className="h-3 w-3 mr-1" />
+                          Vendita Chiusa
+                        </Badge>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Dettagli vendita */}
+                  <div className="p-4 bg-muted/30 rounded-lg border border-border space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {lead.data_chiusura && (
+                        <div className="space-y-1">
+                          <div className="text-xs text-muted-foreground uppercase tracking-wide">Data Chiusura</div>
+                          <div className="flex items-center gap-2">
+                            <Calendar className="h-4 w-4 text-primary" />
+                            <span className="text-sm font-medium text-foreground">{formatDate(lead.data_chiusura)}</span>
+                          </div>
                         </div>
                       )}
                       
                       {lead.percorso_venduto && (
-                        <div className="flex items-center gap-2">
-                          <Tag className="h-4 w-4 text-muted-foreground" />
-                          <span className="text-sm text-foreground">
-                            <strong>Percorso venduto:</strong> {lead.percorso_venduto}
-                          </span>
-                        </div>
-                      )}
-                      
-                      {lead.fonte_vendita && (
-                        <div className="flex items-center gap-2">
-                          <Tag className="h-4 w-4 text-muted-foreground" />
-                          <span className="text-sm text-foreground">
-                            <strong>Fonte vendita:</strong> 
-                            <Badge variant="outline" className="ml-2 text-xs">
-                              {lead.fonte_vendita}
-                            </Badge>
-                          </span>
+                        <div className="space-y-1">
+                          <div className="text-xs text-muted-foreground uppercase tracking-wide">Percorso Venduto</div>
+                          <div className="flex items-center gap-2">
+                            <Tag className="h-4 w-4 text-primary" />
+                            <span className="text-sm font-medium text-foreground">{lead.percorso_venduto}</span>
+                          </div>
                         </div>
                       )}
                       
                       {lead.venditore && (
-                        <div className="flex items-center gap-2">
-                          <Users className="h-4 w-4 text-muted-foreground" />
-                          <span className="text-sm text-foreground">
-                            <strong>Venduto da:</strong> {lead.venditore}
-                          </span>
+                        <div className="space-y-1">
+                          <div className="text-xs text-muted-foreground uppercase tracking-wide">Venduto da</div>
+                          <div className="flex items-center gap-2">
+                            <Users className="h-4 w-4 text-primary" />
+                            <span className="text-sm font-medium text-foreground">{lead.venditore}</span>
+                          </div>
+                        </div>
+                      )}
+                      
+                      {lead.fonte_vendita && (
+                        <div className="space-y-1">
+                          <div className="text-xs text-muted-foreground uppercase tracking-wide">Fonte Vendita</div>
+                          <div className="flex items-center gap-2">
+                            <Tag className="h-4 w-4 text-primary" />
+                            <Badge variant="outline" className="text-xs">{lead.fonte_vendita}</Badge>
+                          </div>
                         </div>
                       )}
                       
                       {lead.ultima_fonte && (
-                        <div className="flex items-center gap-2">
-                          <Tag className="h-4 w-4 text-muted-foreground" />
-                          <span className="text-sm text-foreground">
-                            <strong>Ultima fonte:</strong> 
-                            <Badge variant="outline" className="ml-2 text-xs">
-                              {lead.ultima_fonte}
-                            </Badge>
-                          </span>
+                        <div className="space-y-1">
+                          <div className="text-xs text-muted-foreground uppercase tracking-wide">Ultima Fonte</div>
+                          <div className="flex items-center gap-2">
+                            <Tag className="h-4 w-4 text-primary" />
+                            <Badge variant="outline" className="text-xs">{lead.ultima_fonte}</Badge>
+                          </div>
                         </div>
                       )}
                     </div>
                     
                     {lead.note_vendita && (
-                      <div className="mt-4 pt-3 border-t border-border">
-                        <div className="flex items-start gap-2">
-                          <span className="text-sm text-foreground">
-                            <strong>Note:</strong> {lead.note_vendita}
-                          </span>
-                        </div>
+                      <div className="pt-3 border-t border-border">
+                        <div className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Note Vendita</div>
+                        <p className="text-sm text-foreground">{lead.note_vendita}</p>
                       </div>
                     )}
                   </div>
