@@ -1,4 +1,3 @@
-
 import {
   Dialog,
   DialogContent,
@@ -11,10 +10,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Lead } from "@/types/lead";
 import { format } from "date-fns";
 import { it } from "date-fns/locale";
-import { Calendar, Mail, Phone, User, Tag, Users, CheckCircle, History, Clock, DollarSign, ShoppingCart, UserPlus, RotateCcw, Bot, MessageSquare } from "lucide-react";
+import { Calendar, Mail, Phone, User, Tag, Users, CheckCircle, Clock, DollarSign, ShoppingCart, Route } from "lucide-react";
 import { getLeadStatus } from "@/utils/leadStatus";
-import { useLeadHistory, LeadActionLogItem } from "@/hooks/useLeadHistory";
+import { useLeadHistory } from "@/hooks/useLeadHistory";
 import { Skeleton } from "@/components/ui/skeleton";
+import CustomerJourneyTimeline from "./CustomerJourneyTimeline";
 
 interface LeadDetailsDialogProps {
   lead: Lead | null;
@@ -23,22 +23,7 @@ interface LeadDetailsDialogProps {
 }
 
 const LeadDetailsDialog = ({ lead, open, onOpenChange }: LeadDetailsDialogProps) => {
-  const { history, actionLogs, isLoading: historyLoading, error: historyError } = useLeadHistory(lead);
-
-  const getActionBadge = (actionType: string) => {
-    switch (actionType) {
-      case 'made_assignable':
-        return <Badge variant="outline" className="flex items-center gap-1 text-xs"><RotateCcw className="h-3 w-3" />Reso Assegnabile</Badge>;
-      case 'reassigned':
-        return <Badge variant="secondary" className="flex items-center gap-1 text-xs"><UserPlus className="h-3 w-3" />Riassegnato</Badge>;
-      case 'manual_assignment':
-        return <Badge variant="default" className="flex items-center gap-1 text-xs"><User className="h-3 w-3" />Assegnazione Manuale</Badge>;
-      case 'automation_assignment':
-        return <Badge className="flex items-center gap-1 bg-blue-500 text-xs"><Bot className="h-3 w-3" />Automazione</Badge>;
-      default:
-        return <Badge variant="outline" className="text-xs">{actionType}</Badge>;
-    }
-  };
+  const { timeline, isLoading: historyLoading, error: historyError } = useLeadHistory(lead);
   
   if (!lead) return null;
 
@@ -227,158 +212,29 @@ const LeadDetailsDialog = ({ lead, open, onOpenChange }: LeadDetailsDialogProps)
           </TabsContent>
 
           {/* TAB CUSTOMER JOURNEY */}
-          <TabsContent value="customer-journey" className="space-y-6 mt-4">
-            {/* STORICO LEAD GENERATION */}
+          <TabsContent value="customer-journey" className="mt-4">
             <div className="space-y-3">
               <h3 className="text-sm font-semibold text-muted-foreground border-b pb-1 flex items-center gap-2">
-                <History className="h-4 w-4" />
-                STORICO LEAD GENERATION
+                <Route className="h-4 w-4" />
+                TIMELINE COMPLETA
               </h3>
               
               {historyLoading ? (
-                <div className="space-y-2">
-                  <Skeleton className="h-4 w-full" />
-                  <Skeleton className="h-4 w-3/4" />
-                  <Skeleton className="h-4 w-1/2" />
+                <div className="space-y-3">
+                  <Skeleton className="h-20 w-full" />
+                  <Skeleton className="h-20 w-full" />
+                  <Skeleton className="h-20 w-full" />
                 </div>
               ) : historyError ? (
                 <div className="text-sm text-destructive">
                   Errore nel caricamento dello storico: {historyError}
                 </div>
-              ) : history.length === 0 ? (
-                <div className="text-sm text-muted-foreground">
-                  Nessuno storico trovato per questo lead.
-                </div>
               ) : (
-                <div className="space-y-3 max-h-[250px] overflow-y-auto">
-                  {history.map((historyItem) => {
-                    const isCurrentLead = historyItem.id === lead.id;
-                    
-                    return (
-                      <div 
-                        key={historyItem.id} 
-                        className={`p-3 rounded-lg border ${isCurrentLead ? 'bg-primary/5 border-primary/20' : 'bg-muted/30'}`}
-                      >
-                        <div className="flex flex-col space-y-2">
-                          {/* Header con data e badge corrente */}
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                              <Calendar className="h-3 w-3 text-muted-foreground" />
-                              <span className="text-xs font-medium">
-                                Creato il: {formatDate(historyItem.created_at)}
-                              </span>
-                              {isCurrentLead && (
-                                <Badge variant="outline" className="text-xs">
-                                  Corrente
-                                </Badge>
-                              )}
-                            </div>
-                          </div>
-                          
-                          {/* Informazioni di assegnazione */}
-                          {historyItem.venditore && (
-                            <div className="flex items-center gap-2">
-                              <Users className="h-3 w-3 text-muted-foreground" />
-                              <span className="text-xs">
-                                Assegnato a: <strong>{historyItem.venditore}</strong>
-                                {historyItem.data_assegnazione && (
-                                  <span className="text-muted-foreground ml-2">
-                                    ({formatDate(historyItem.data_assegnazione)})
-                                  </span>
-                                )}
-                              </span>
-                            </div>
-                          )}
-                          
-                          {/* Ultima Fonte */}
-                          {historyItem.ultima_fonte && (
-                            <div className="flex items-center gap-2">
-                              <Tag className="h-3 w-3 text-muted-foreground" />
-                              <div className="flex items-center gap-1">
-                                <span className="text-xs">Ultima fonte:</span>
-                                <Badge variant="outline" className="text-xs bg-primary/10 border-primary/30">
-                                  {historyItem.ultima_fonte}
-                                </Badge>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-
-            {/* AZIONI MANUALI */}
-            <div className="space-y-3">
-              <h3 className="text-sm font-semibold text-muted-foreground border-b pb-1 flex items-center gap-2">
-                <UserPlus className="h-4 w-4" />
-                AZIONI MANUALI
-              </h3>
-              
-              {historyLoading ? (
-                <div className="space-y-2">
-                  <Skeleton className="h-4 w-full" />
-                  <Skeleton className="h-4 w-3/4" />
-                </div>
-              ) : actionLogs.length === 0 ? (
-                <div className="text-sm text-muted-foreground">
-                  Nessuna azione manuale registrata per questo lead.
-                </div>
-              ) : (
-                <div className="space-y-3 max-h-[200px] overflow-y-auto">
-                  {actionLogs.map((actionLog) => (
-                    <div 
-                      key={actionLog.id} 
-                      className="p-3 rounded-lg border bg-muted/30"
-                    >
-                      <div className="flex flex-col space-y-2">
-                        {/* Header con data e tipo azione */}
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <Clock className="h-3 w-3 text-muted-foreground" />
-                            <span className="text-xs font-medium">
-                              {formatDate(actionLog.created_at)}
-                            </span>
-                            {getActionBadge(actionLog.action_type)}
-                          </div>
-                        </div>
-                        
-                        {/* Dettagli riassegnazione */}
-                        {(actionLog.previous_venditore || actionLog.new_venditore) && (
-                          <div className="flex items-center gap-2">
-                            <Users className="h-3 w-3 text-muted-foreground" />
-                            <span className="text-xs">
-                              {actionLog.previous_venditore && (
-                                <>
-                                  <span className="text-muted-foreground">Da:</span> <strong>{actionLog.previous_venditore}</strong>
-                                </>
-                              )}
-                              {actionLog.previous_venditore && actionLog.new_venditore && (
-                                <span className="mx-1">→</span>
-                              )}
-                              {actionLog.new_venditore && (
-                                <>
-                                  <span className="text-muted-foreground">A:</span> <strong>{actionLog.new_venditore}</strong>
-                                </>
-                              )}
-                            </span>
-                          </div>
-                        )}
-                        
-                        {/* Nota */}
-                        {actionLog.notes && (
-                          <div className="flex items-start gap-2 mt-1">
-                            <MessageSquare className="h-3 w-3 text-muted-foreground mt-0.5" />
-                            <span className="text-xs text-muted-foreground italic">
-                              "{actionLog.notes}"
-                            </span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  ))}
+                <div className="max-h-[400px] overflow-y-auto pr-2">
+                  <CustomerJourneyTimeline 
+                    timeline={timeline} 
+                    currentLeadId={lead.id} 
+                  />
                 </div>
               )}
             </div>
