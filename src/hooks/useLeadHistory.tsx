@@ -197,13 +197,25 @@ export const useLeadHistory = (lead: Lead | null) => {
 
     const events: TimelineEvent[] = [];
 
-    // 1. Ingressi from lead_generation history
-    history.forEach(h => {
+    // 1. Ingressi from lead_generation history (sorted by date first to number them)
+    const sortedHistory = [...history].sort((a, b) => 
+      new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+    );
+    
+    sortedHistory.forEach((h, index) => {
+      const ingressoNumber = index + 1;
+      const ingressoLabel = ingressoNumber === 1 ? 'Primo ingresso' : 
+                            ingressoNumber === 2 ? 'Secondo ingresso' :
+                            ingressoNumber === 3 ? 'Terzo ingresso' :
+                            ingressoNumber === 4 ? 'Quarto ingresso' :
+                            ingressoNumber === 5 ? 'Quinto ingresso' :
+                            `${ingressoNumber}° ingresso`;
+      
       events.push({
         id: `ingresso-${h.id}`,
         date: h.created_at,
         type: 'ingresso',
-        title: 'Nuovo ingresso',
+        title: ingressoLabel,
         fonte: h.ultima_fonte || h.fonte || undefined,
         venditore: h.venditore || undefined,
         details: { 
