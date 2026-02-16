@@ -8,6 +8,7 @@ import { useMarket } from "@/contexts/MarketContext";
 import { ReportFilters, ReportMetrics, getReportMetrics } from "@/services/reportsService";
 import ReportFiltersComponent from "@/components/reports/ReportFilters";
 import ReportMetricsComponent from "@/components/reports/ReportMetrics";
+import { LeadsBySourceChart } from "@/components/LeadsBySourceChart";
 
 const ReportsPage = () => {
   const isMobile = useIsMobile();
@@ -66,6 +67,9 @@ const ReportsPage = () => {
           <h2 className="text-xl font-semibold mb-4">Metriche Principali</h2>
           <ReportMetricsComponent metrics={metrics} isLoading={isLoading} />
         </div>
+
+        {/* Grafico Lead per Fonte */}
+        <LeadsBySourceChart />
 
         {/* Informazioni sui Filtri Attivi */}
         {hasActiveFilters() && (
