@@ -325,6 +325,45 @@ export type Database = {
         }
         Relationships: []
       }
+      calendly_event_types: {
+        Row: {
+          duration: number
+          id: string
+          members: Json | null
+          name: string
+          owner_name: string
+          pooling_type: string | null
+          scheduling_url: string | null
+          slug: string | null
+          updated_at: string | null
+          uri: string
+        }
+        Insert: {
+          duration: number
+          id?: string
+          members?: Json | null
+          name: string
+          owner_name: string
+          pooling_type?: string | null
+          scheduling_url?: string | null
+          slug?: string | null
+          updated_at?: string | null
+          uri: string
+        }
+        Update: {
+          duration?: number
+          id?: string
+          members?: Json | null
+          name?: string
+          owner_name?: string
+          pooling_type?: string | null
+          scheduling_url?: string | null
+          slug?: string | null
+          updated_at?: string | null
+          uri?: string
+        }
+        Relationships: []
+      }
       conferma_partecipazione_webinar: {
         Row: {
           cognome: string | null
@@ -460,6 +499,110 @@ export type Database = {
           match_type?: string
           priorita?: number
           updated_at?: string
+        }
+        Relationships: []
+      }
+      form_events: {
+        Row: {
+          assigned_to: string | null
+          created_at: string
+          email: string | null
+          event_type: string
+          form_id: string
+          id: string
+          nome: string | null
+          telefono: string | null
+        }
+        Insert: {
+          assigned_to?: string | null
+          created_at?: string
+          email?: string | null
+          event_type: string
+          form_id: string
+          id?: string
+          nome?: string | null
+          telefono?: string | null
+        }
+        Update: {
+          assigned_to?: string | null
+          created_at?: string
+          email?: string | null
+          event_type?: string
+          form_id?: string
+          id?: string
+          nome?: string | null
+          telefono?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "form_events_form_id_fkey"
+            columns: ["form_id"]
+            isOneToOne: false
+            referencedRelation: "forms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      forms: {
+        Row: {
+          attivo: boolean
+          calendly_event_type_uri: string | null
+          calendly_url: string
+          colore_primario: string | null
+          created_at: string
+          disclaimer: string | null
+          fonte: string | null
+          id: string
+          meta_access_token: string | null
+          meta_pixel_id: string | null
+          meta_test_event_code: string | null
+          nome: string
+          redirect_url: string | null
+          sottotitolo: string | null
+          titolo: string | null
+          updated_at: string
+          urgency_message: string | null
+          webhook_url: string
+        }
+        Insert: {
+          attivo?: boolean
+          calendly_event_type_uri?: string | null
+          calendly_url: string
+          colore_primario?: string | null
+          created_at?: string
+          disclaimer?: string | null
+          fonte?: string | null
+          id?: string
+          meta_access_token?: string | null
+          meta_pixel_id?: string | null
+          meta_test_event_code?: string | null
+          nome: string
+          redirect_url?: string | null
+          sottotitolo?: string | null
+          titolo?: string | null
+          updated_at?: string
+          urgency_message?: string | null
+          webhook_url: string
+        }
+        Update: {
+          attivo?: boolean
+          calendly_event_type_uri?: string | null
+          calendly_url?: string
+          colore_primario?: string | null
+          created_at?: string
+          disclaimer?: string | null
+          fonte?: string | null
+          id?: string
+          meta_access_token?: string | null
+          meta_pixel_id?: string | null
+          meta_test_event_code?: string | null
+          nome?: string
+          redirect_url?: string | null
+          sottotitolo?: string | null
+          titolo?: string | null
+          updated_at?: string
+          urgency_message?: string | null
+          webhook_url?: string
         }
         Relationships: []
       }
@@ -837,6 +980,24 @@ export type Database = {
         }
         Relationships: []
       }
+      user_roles: {
+        Row: {
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
       venditori: {
         Row: {
           cognome: string
@@ -928,8 +1089,21 @@ export type Database = {
     Functions: {
       check_leads_assignability: { Args: never; Returns: undefined }
       get_current_user_role: { Args: never; Returns: string }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
+      schedule_sync_job: {
+        Args: { anon_key: string; cron_expr: string; function_url: string }
+        Returns: undefined
+      }
+      unschedule_sync_job: { Args: never; Returns: undefined }
     }
     Enums: {
+      app_role: "admin" | "user"
       automation_action_type: "assign_to_seller" | "assign_to_previous_seller"
       automation_condition_type:
         | "contains"
@@ -1064,6 +1238,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      app_role: ["admin", "user"],
       automation_action_type: ["assign_to_seller", "assign_to_previous_seller"],
       automation_condition_type: [
         "contains",

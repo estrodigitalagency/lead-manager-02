@@ -274,36 +274,86 @@ async function getLeadTotaliLavorati(filters: ReportFilters): Promise<number> {
 
 export async function getAvailableFonti(market?: 'IT' | 'ES'): Promise<string[]> {
   try {
-    let query = supabase
-      .from('lead_generation')
-      .select('fonte')
-      .not('fonte', 'is', null)
-      .not('fonte', 'eq', '');
-    
-    if (market) {
-      query = query.eq('market', market);
-    }
-    
-    const { data, error } = await query;
+    const { data, error } = await supabase
+      .from('database_fonti')
+      .select('nome')
+      .eq('attivo', true)
+      .order('nome');
 
     if (error) throw error;
 
-    // Estrai e flatta tutte le fonti
-    const allFonti = new Set<string>();
-    data?.forEach(item => {
-      if (item.fonte) {
-        item.fonte.split(',').forEach((fonte: string) => {
-          const trimmedFonte = fonte.trim();
-          if (trimmedFonte) {
-            allFonti.add(trimmedFonte);
-          }
-        });
-      }
-    });
-
-    return Array.from(allFonti).sort();
+    return (data || []).map(item => item.nome).filter(Boolean);
   } catch (error) {
     console.error('Error fetching available fonti:', error);
+    return [];
+  }
+}
+
+export interface LeadsBySourceItem {
+  fonte: string;
+  count: number;
+  percentage: number;
+}
+
+export async function getLeadsBySource(
+  market: 'IT' | 'ES',
+  startDate?: string,
+  endDate?: string
+): Promise<LeadsBySourceItem[]> {
+  try {
+    const allFonti: string[] = [];
+    const pageSize = 1000;
+    let page = 0;
+    let hasMore = true;
+
+    while (hasMore) {
+      let query = supabase
+        .from('lead_generation')
+        .select('ultima_fonte')
+        .eq('market', market)
+        .not('ultima_fonte', 'is', null)
+        .not('ultima_fonte', 'eq', '');
+
+      if (startDate) {
+        query = query.gte('created_at', getStartOfDay(startDate));
+      }
+      if (endDate) {
+        query = query.lte('created_at', getEndOfDay(endDate));
+      }
+
+      query = query.range(page * pageSize, (page + 1) * pageSize - 1);
+
+      const { data, error } = await query;
+      if (error) throw error;
+
+      if (data && data.length > 0) {
+        data.forEach(item => {
+          if (item.ultima_fonte) allFonti.push(item.ultima_fonte.trim());
+        });
+      }
+
+      hasMore = (data?.length || 0) === pageSize;
+      page++;
+    }
+
+    // Aggregate
+    const counts: Record<string, number> = {};
+    allFonti.forEach(fonte => {
+      counts[fonte] = (counts[fonte] || 0) + 1;
+    });
+
+    const total = allFonti.length;
+    const result: LeadsBySourceItem[] = Object.entries(counts)
+      .map(([fonte, count]) => ({
+        fonte,
+        count,
+        percentage: total > 0 ? Math.round((count / total) * 1000) / 10 : 0
+      }))
+      .sort((a, b) => b.count - a.count);
+
+    return result;
+  } catch (error) {
+    console.error('Error fetching leads by source:', error);
     return [];
   }
 }
