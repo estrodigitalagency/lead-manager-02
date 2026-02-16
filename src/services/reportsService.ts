@@ -298,7 +298,10 @@ export interface LeadsBySourceItem {
 export async function getLeadsBySource(
   market: 'IT' | 'ES',
   startDate?: string,
-  endDate?: string
+  endDate?: string,
+  sourceMode?: 'include' | 'exclude',
+  fontiIncluse?: string[],
+  fontiEscluse?: string[]
 ): Promise<LeadsBySourceItem[]> {
   try {
     const allFonti: string[] = [];
@@ -319,6 +322,19 @@ export async function getLeadsBySource(
       }
       if (endDate) {
         query = query.lte('created_at', getEndOfDay(endDate));
+      }
+
+      // Apply source filters
+      if (sourceMode === 'include' && fontiIncluse && fontiIncluse.length > 0) {
+        const includeConditions = fontiIncluse.map(fonte => 
+          `ultima_fonte.ilike.%${fonte}%`
+        ).join(',');
+        query = query.or(includeConditions);
+      }
+      if (sourceMode === 'exclude' && fontiEscluse && fontiEscluse.length > 0) {
+        fontiEscluse.forEach(fonte => {
+          query = query.not('ultima_fonte', 'ilike', `%${fonte}%`);
+        });
       }
 
       query = query.range(page * pageSize, (page + 1) * pageSize - 1);

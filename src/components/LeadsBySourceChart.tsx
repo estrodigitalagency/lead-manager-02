@@ -1,13 +1,10 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from "recharts";
 import { PieChartIcon, Loader2 } from "lucide-react";
 import { useMarket } from "@/contexts/MarketContext";
-import { getLeadsBySource, LeadsBySourceItem, PRESET_PERIODS } from "@/services/reportsService";
+import { getLeadsBySource, LeadsBySourceItem, ReportFilters } from "@/services/reportsService";
 import {
   Table,
   TableBody,
@@ -27,35 +24,33 @@ const COLORS = [
 
 const THRESHOLD_PERCENT = 1;
 
-export function LeadsBySourceChart() {
+interface LeadsBySourceChartProps {
+  filters: ReportFilters;
+  refreshTrigger?: number;
+}
+
+export function LeadsBySourceChart({ filters, refreshTrigger }: LeadsBySourceChartProps) {
   const { selectedMarket } = useMarket();
   const [data, setData] = useState<LeadsBySourceItem[]>([]);
   const [loading, setLoading] = useState(false);
-  const [startDate, setStartDate] = useState(PRESET_PERIODS.last30days.startDate);
-  const [endDate, setEndDate] = useState(PRESET_PERIODS.last30days.endDate);
 
   const fetchData = async () => {
     setLoading(true);
-    const result = await getLeadsBySource(selectedMarket, startDate, endDate);
+    const result = await getLeadsBySource(
+      selectedMarket,
+      filters.startDate,
+      filters.endDate,
+      filters.sourceMode,
+      filters.fontiIncluse,
+      filters.fontiEscluse
+    );
     setData(result);
     setLoading(false);
   };
 
   useEffect(() => {
     fetchData();
-  }, [selectedMarket]);
-
-  const handlePreset = (key: string) => {
-    const period = PRESET_PERIODS[key as keyof typeof PRESET_PERIODS];
-    if (period) {
-      setStartDate(period.startDate);
-      setEndDate(period.endDate);
-    }
-  };
-
-  const handleApply = () => {
-    fetchData();
-  };
+  }, [selectedMarket, refreshTrigger]);
 
   const chartData = useMemo(() => {
     if (!data.length) return [];
@@ -97,34 +92,7 @@ export function LeadsBySourceChart() {
           )}
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-4">
-        {/* Filters */}
-        <div className="space-y-3">
-          <div className="flex flex-wrap gap-2">
-            {[
-              ["last7days", "7gg"],
-              ["last30days", "30gg"],
-              ["thisMonth", "Questo mese"],
-              ["lastMonth", "Mese scorso"],
-            ].map(([key, label]) => (
-              <Button key={key} variant="outline" size="sm" onClick={() => handlePreset(key)}>
-                {label}
-              </Button>
-            ))}
-          </div>
-          <div className="flex flex-wrap items-end gap-3">
-            <div className="space-y-1">
-              <Label className="text-xs">Da</Label>
-              <Input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="w-[150px] h-8 text-sm" />
-            </div>
-            <div className="space-y-1">
-              <Label className="text-xs">A</Label>
-              <Input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="w-[150px] h-8 text-sm" />
-            </div>
-            <Button size="sm" onClick={handleApply}>Applica</Button>
-          </div>
-        </div>
-
+      <CardContent>
         {loading ? (
           <div className="flex items-center justify-center py-12">
             <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
@@ -133,7 +101,6 @@ export function LeadsBySourceChart() {
           <p className="text-center text-muted-foreground py-8">Nessun dato disponibile per il periodo selezionato.</p>
         ) : (
           <>
-            {/* Pie Chart */}
             <div className="h-[350px] w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
@@ -159,8 +126,7 @@ export function LeadsBySourceChart() {
               </ResponsiveContainer>
             </div>
 
-            {/* Summary Table */}
-            <div className="rounded-md border max-h-[300px] overflow-auto">
+            <div className="rounded-md border max-h-[300px] overflow-auto mt-4">
               <Table>
                 <TableHeader>
                   <TableRow>
