@@ -20,6 +20,7 @@ const ReportsPage = () => {
     leadTotaliLavorati: 0
   });
   const [isLoading, setIsLoading] = useState(true);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   const loadMetrics = async () => {
     setIsLoading(true);
@@ -41,6 +42,7 @@ const ReportsPage = () => {
 
   const handleApplyFilters = () => {
     loadMetrics();
+    setRefreshTrigger(prev => prev + 1);
   };
 
   const hasActiveFilters = () => {
@@ -69,7 +71,7 @@ const ReportsPage = () => {
         </div>
 
         {/* Grafico Lead per Fonte */}
-        <LeadsBySourceChart />
+        <LeadsBySourceChart filters={filters} refreshTrigger={refreshTrigger} />
 
         {/* Informazioni sui Filtri Attivi */}
         {hasActiveFilters() && (
