@@ -562,6 +562,7 @@ export type Database = {
           titolo: string | null
           updated_at: string
           urgency_message: string | null
+          view_filter_param: string | null
           webhook_url: string
         }
         Insert: {
@@ -582,6 +583,7 @@ export type Database = {
           titolo?: string | null
           updated_at?: string
           urgency_message?: string | null
+          view_filter_param?: string | null
           webhook_url: string
         }
         Update: {
@@ -602,6 +604,7 @@ export type Database = {
           titolo?: string | null
           updated_at?: string
           urgency_message?: string | null
+          view_filter_param?: string | null
           webhook_url?: string
         }
         Relationships: []
