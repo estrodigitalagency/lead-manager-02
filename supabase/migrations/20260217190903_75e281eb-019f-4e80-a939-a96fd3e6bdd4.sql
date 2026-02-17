@@ -1,0 +1,1 @@
+UPDATE lead_generation SET ultima_fonte = 'funnel_video' WHERE ultima_fonte = 'fv1';
