@@ -182,9 +182,11 @@ async function getLeadTotaliGenerati(filters: ReportFilters): Promise<number> {
 async function getCallTotaliPrenotate(filters: ReportFilters): Promise<number> {
   console.log('Getting call totali prenotate with filters:', filters);
   
+  // Conta i lead in lead_generation con booked_call = 'SI'
   let query = supabase
-    .from('booked_call')
-    .select('id', { count: 'exact', head: true });
+    .from('lead_generation')
+    .select('id', { count: 'exact', head: true })
+    .or('booked_call.eq.SI,booked_call.eq.Si,booked_call.eq.si,booked_call.eq.Sì');
 
   // Filter by market
   if (filters.market) {
@@ -203,10 +205,10 @@ async function getCallTotaliPrenotate(filters: ReportFilters): Promise<number> {
     query = query.lte('created_at', endDateTime);
   }
 
-  // Applicare filtri fonte (booked_call usa 'fonte', non 'ultima_fonte')
-  query = applyFonteFilters(query, filters, 'fonte');
+  // Applicare filtri fonte (usa ultima_fonte come lead_generation)
+  query = applyFonteFilters(query, filters);
 
-  // Filtro per venditore - usa pattern matching con trim degli spazi
+  // Filtro per venditore
   if (filters.venditore && typeof filters.venditore === 'string' && filters.venditore.trim() !== '') {
     const cleanVenditore = filters.venditore.trim();
     console.log('Call prenotate - filtering by venditore:', cleanVenditore);
