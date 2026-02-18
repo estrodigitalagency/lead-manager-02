@@ -105,27 +105,27 @@ function getEndOfDay(dateString: string): string {
 }
 
 // Helper function to apply fonte filters
-function applyFonteFilters(query: any, filters: ReportFilters) {
+function applyFonteFilters(query: any, filters: ReportFilters, fonteColumn: string = 'ultima_fonte') {
   // Se c'è un filtro fonte specifico, ignorare i filtri di inclusione/esclusione
   if (filters.fonte && typeof filters.fonte === 'string' && filters.fonte.trim() !== '') {
     const cleanFonte = filters.fonte.trim();
-    console.log('Applying specific fonte filter:', cleanFonte);
-    return query.or(`ultima_fonte.ilike.%${cleanFonte}%,ultima_fonte.ilike.% ${cleanFonte}%,ultima_fonte.ilike.%${cleanFonte} %`);
+    console.log('Applying specific fonte filter:', cleanFonte, 'on column:', fonteColumn);
+    return query.or(`${fonteColumn}.ilike.%${cleanFonte}%,${fonteColumn}.ilike.% ${cleanFonte}%,${fonteColumn}.ilike.%${cleanFonte} %`);
   }
 
   // Applicare filtri di inclusione/esclusione
   if (filters.sourceMode === 'include' && filters.fontiIncluse && filters.fontiIncluse.length > 0) {
-    console.log('Applying include filters:', filters.fontiIncluse);
+    console.log('Applying include filters:', filters.fontiIncluse, 'on column:', fonteColumn);
     const includeConditions = filters.fontiIncluse.map(fonte => 
-      `ultima_fonte.ilike.%${fonte}%`
+      `${fonteColumn}.ilike.%${fonte}%`
     ).join(',');
     return query.or(includeConditions);
   }
 
   if (filters.sourceMode === 'exclude' && filters.fontiEscluse && filters.fontiEscluse.length > 0) {
-    console.log('Applying exclude filters:', filters.fontiEscluse);
+    console.log('Applying exclude filters:', filters.fontiEscluse, 'on column:', fonteColumn);
     filters.fontiEscluse.forEach(fonte => {
-      query = query.not('ultima_fonte', 'ilike', `%${fonte}%`);
+      query = query.not(fonteColumn, 'ilike', `%${fonte}%`);
     });
     return query;
   }
@@ -203,8 +203,8 @@ async function getCallTotaliPrenotate(filters: ReportFilters): Promise<number> {
     query = query.lte('created_at', endDateTime);
   }
 
-  // Applicare filtri fonte
-  query = applyFonteFilters(query, filters);
+  // Applicare filtri fonte (booked_call usa 'fonte', non 'ultima_fonte')
+  query = applyFonteFilters(query, filters, 'fonte');
 
   // Filtro per venditore - usa pattern matching con trim degli spazi
   if (filters.venditore && typeof filters.venditore === 'string' && filters.venditore.trim() !== '') {
