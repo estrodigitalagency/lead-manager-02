@@ -117,7 +117,7 @@ function applyFonteFilters(query: any, filters: ReportFilters, fonteColumn: stri
   if (filters.sourceMode === 'include' && filters.fontiIncluse && filters.fontiIncluse.length > 0) {
     console.log('Applying include filters:', filters.fontiIncluse, 'on column:', fonteColumn);
     const includeConditions = filters.fontiIncluse.map(fonte => 
-      `${fonteColumn}.eq.${fonte}`
+      `${fonteColumn}.ilike.${fonte}`
     ).join(',');
     return query.or(includeConditions);
   }
@@ -125,7 +125,7 @@ function applyFonteFilters(query: any, filters: ReportFilters, fonteColumn: stri
   if (filters.sourceMode === 'exclude' && filters.fontiEscluse && filters.fontiEscluse.length > 0) {
     console.log('Applying exclude filters:', filters.fontiEscluse, 'on column:', fonteColumn);
     filters.fontiEscluse.forEach(fonte => {
-      query = query.not(fonteColumn, 'eq', fonte);
+      query = query.not(fonteColumn, 'ilike', fonte);
     });
     return query;
   }
@@ -329,13 +329,13 @@ export async function getLeadsBySource(
       // Apply source filters
       if (sourceMode === 'include' && fontiIncluse && fontiIncluse.length > 0) {
         const includeConditions = fontiIncluse.map(fonte => 
-          `ultima_fonte.eq.${fonte}`
+          `ultima_fonte.ilike.${fonte}`
         ).join(',');
         query = query.or(includeConditions);
       }
       if (sourceMode === 'exclude' && fontiEscluse && fontiEscluse.length > 0) {
         fontiEscluse.forEach(fonte => {
-          query = query.not('ultima_fonte', 'eq', fonte);
+          query = query.not('ultima_fonte', 'ilike', fonte);
         });
       }
 
