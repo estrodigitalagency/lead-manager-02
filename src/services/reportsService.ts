@@ -186,7 +186,7 @@ async function getCallTotaliPrenotate(filters: ReportFilters): Promise<number> {
   let query = supabase
     .from('lead_generation')
     .select('id', { count: 'exact', head: true })
-    .or('booked_call.eq.SI,booked_call.eq.Si,booked_call.eq.si,booked_call.eq.Sì');
+    .in('booked_call', ['SI', 'Si', 'si', 'Sì']);
 
   // Filter by market
   if (filters.market) {
