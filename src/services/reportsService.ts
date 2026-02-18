@@ -376,6 +376,69 @@ export async function getLeadsBySource(
   }
 }
 
+export interface ReportLeadDetail {
+  id: string;
+  created_at: string | null;
+  nome: string;
+  cognome: string | null;
+  email: string | null;
+  telefono: string | null;
+  ultima_fonte: string | null;
+  booked_call: string | null;
+  venditore: string | null;
+  stato_del_lead: string | null;
+  data_assegnazione: string | null;
+}
+
+export async function getFilteredLeads(filters: ReportFilters): Promise<ReportLeadDetail[]> {
+  try {
+    const allLeads: ReportLeadDetail[] = [];
+    const pageSize = 1000;
+    let page = 0;
+    let hasMore = true;
+
+    while (hasMore) {
+      let query = supabase
+        .from('lead_generation')
+        .select('id, created_at, nome, cognome, email, telefono, ultima_fonte, booked_call, venditore, stato_del_lead, data_assegnazione');
+
+      if (filters.market) {
+        query = query.eq('market', filters.market);
+      }
+      if (filters.startDate) {
+        query = query.gte('created_at', getStartOfDay(filters.startDate));
+      }
+      if (filters.endDate) {
+        query = query.lte('created_at', getEndOfDay(filters.endDate));
+      }
+
+      query = applyFonteFilters(query, filters);
+
+      if (filters.venditore && filters.venditore.trim() !== '') {
+        const cleanVenditore = filters.venditore.trim();
+        query = query.or(`venditore.eq.${cleanVenditore},venditore.eq. ${cleanVenditore},venditore.eq.${cleanVenditore} `);
+      }
+
+      query = query.order('created_at', { ascending: false }).range(page * pageSize, (page + 1) * pageSize - 1);
+
+      const { data, error } = await query;
+      if (error) throw error;
+
+      if (data && data.length > 0) {
+        allLeads.push(...(data as ReportLeadDetail[]));
+      }
+
+      hasMore = (data?.length || 0) === pageSize;
+      page++;
+    }
+
+    return allLeads;
+  } catch (error) {
+    console.error('Error fetching filtered leads:', error);
+    return [];
+  }
+}
+
 export async function getAvailableVenditori(market?: 'IT' | 'ES'): Promise<string[]> {
   try {
     let query = supabase

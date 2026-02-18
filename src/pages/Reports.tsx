@@ -9,6 +9,7 @@ import { ReportFilters, ReportMetrics, getReportMetrics } from "@/services/repor
 import ReportFiltersComponent from "@/components/reports/ReportFilters";
 import ReportMetricsComponent from "@/components/reports/ReportMetrics";
 import { LeadsBySourceChart } from "@/components/LeadsBySourceChart";
+import ReportLeadsList from "@/components/reports/ReportLeadsList";
 
 const ReportsPage = () => {
   const isMobile = useIsMobile();
@@ -72,6 +73,9 @@ const ReportsPage = () => {
 
         {/* Grafico Lead per Fonte */}
         <LeadsBySourceChart filters={filters} refreshTrigger={refreshTrigger} />
+
+        {/* Dettaglio Lead Filtrati */}
+        <ReportLeadsList filters={filters} refreshTrigger={refreshTrigger} />
 
         {/* Informazioni sui Filtri Attivi */}
         {hasActiveFilters() && (
