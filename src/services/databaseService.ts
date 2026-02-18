@@ -2,6 +2,37 @@ import { supabase } from "@/integrations/supabase/client";
 import { Lead } from "@/types/lead";
 import { LeadLavorato } from "@/types/leadLavorato";
 
+// Utility per calcolare offset italiano (gestisce CET/CEST automaticamente)
+function getItalianTimezoneOffset(date: Date): string {
+  const formatter = new Intl.DateTimeFormat('it-IT', {
+    timeZone: 'Europe/Rome',
+    timeZoneName: 'shortOffset'
+  });
+  const parts = formatter.formatToParts(date);
+  const offsetPart = parts.find(p => p.type === 'timeZoneName');
+  if (offsetPart?.value) {
+    const match = offsetPart.value.match(/GMT([+-])(\d+)/);
+    if (match) {
+      return `${match[1]}${match[2].padStart(2, '0')}:00`;
+    }
+  }
+  return '+01:00'; // fallback CET
+}
+
+function getStartOfDayIT(dateString: string): string {
+  const [year, month, day] = dateString.split('-').map(Number);
+  const tempDate = new Date(year, month - 1, day, 12, 0, 0);
+  const offset = getItalianTimezoneOffset(tempDate);
+  return new Date(`${dateString}T00:00:00${offset}`).toISOString();
+}
+
+function getEndOfDayIT(dateString: string): string {
+  const [year, month, day] = dateString.split('-').map(Number);
+  const tempDate = new Date(year, month - 1, day, 12, 0, 0);
+  const offset = getItalianTimezoneOffset(tempDate);
+  return new Date(`${dateString}T23:59:59.999${offset}`).toISOString();
+}
+
 type ValidTableName = "lead_generation" | "booked_call" | "lead_assignments" | "lead_lavorati" | "system_settings" | "venditori";
 
 // Nuova interfaccia per i risultati paginati
@@ -87,13 +118,13 @@ export async function getPaginatedData<T>(
         query = query.ilike('esito', `%${filters.esito}%`);
       }
       
-      // Filtri per periodo
+      // Filtri per periodo (fuso orario italiano)
       if (filters.dataInizio) {
-        query = query.gte('created_at', `${filters.dataInizio}T00:00:00.000Z`);
+        query = query.gte('created_at', getStartOfDayIT(filters.dataInizio));
       }
       
       if (filters.dataFine) {
-        query = query.lte('created_at', `${filters.dataFine}T23:59:59.999Z`);
+        query = query.lte('created_at', getEndOfDayIT(filters.dataFine));
       }
 
       // Filtri per fonte avanzati (usa ultima_fonte per coerenza con i report)
@@ -265,13 +296,13 @@ export async function filterLeads(tableName: ValidTableName, filters: Record<str
     query = query.ilike('esito', `%${filters.esito}%`);
   }
   
-  // Filtri per periodo
+  // Filtri per periodo (fuso orario italiano)
   if (filters.dataInizio) {
-    query = query.gte('created_at', `${filters.dataInizio}T00:00:00.000Z`);
+    query = query.gte('created_at', getStartOfDayIT(filters.dataInizio));
   }
   
   if (filters.dataFine) {
-    query = query.lte('created_at', `${filters.dataFine}T23:59:59.999Z`);
+    query = query.lte('created_at', getEndOfDayIT(filters.dataFine));
   }
 
   // Filtri per fonte avanzati (usa ultima_fonte per coerenza con i report)
@@ -286,25 +317,6 @@ export async function filterLeads(tableName: ValidTableName, filters: Record<str
     filters.fontiEscluse.forEach((fonte: string) => {
       query = query.not('ultima_fonte', 'ilike', `%${fonte}%`);
     });
-  }
-  
-  // Filtri con date range personalizzati per compatibilità
-  if (filters.dataFine && filters.dataInizio) {
-    const startDate = new Date(filters.dataInizio);
-    startDate.setHours(0, 0, 0, 0);
-    const endDate = new Date(filters.dataFine);
-    endDate.setHours(23, 59, 59, 999);
-    
-    query = query.gte('created_at', startDate.toISOString())
-                 .lte('created_at', endDate.toISOString());
-  } else if (filters.dataInizio) {
-    const startDate = new Date(filters.dataInizio);
-    startDate.setHours(0, 0, 0, 0);
-    query = query.gte('created_at', startDate.toISOString());
-  } else if (filters.dataFine) {
-    const endDate = new Date(filters.dataFine);
-    endDate.setHours(23, 59, 59, 999);
-    query = query.lte('created_at', endDate.toISOString());
   }
   
   // Ordina per data di creazione
