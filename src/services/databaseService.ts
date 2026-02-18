@@ -131,14 +131,14 @@ export async function getPaginatedData<T>(
       const fonteColumn = tableName === 'lead_generation' ? 'ultima_fonte' : 'fonte';
       if (filters.fontiIncluse && filters.fontiIncluse.length > 0) {
         console.log('Applying include fonte filter:', filters.fontiIncluse, 'on column:', fonteColumn);
-        const conditions = filters.fontiIncluse.map((fonte: string) => `${fonteColumn}.eq.${fonte}`).join(',');
+        const conditions = filters.fontiIncluse.map((fonte: string) => `${fonteColumn}.ilike.${fonte}`).join(',');
         query = query.or(conditions);
       }
       
       if (filters.fontiEscluse && filters.fontiEscluse.length > 0) {
         console.log('Applying exclude fonte filter:', filters.fontiEscluse);
         filters.fontiEscluse.forEach((fonte: string) => {
-          query = query.not(fonteColumn, 'eq', fonte);
+          query = query.not(fonteColumn, 'ilike', fonte);
         });
       }
 
@@ -310,14 +310,14 @@ export async function filterLeads(tableName: ValidTableName, filters: Record<str
   const fonteColumn = tableName === 'lead_generation' ? 'ultima_fonte' : 'fonte';
   if (filters.fontiIncluse && filters.fontiIncluse.length > 0) {
     console.log('Applying include fonte filter:', filters.fontiIncluse, 'on column:', fonteColumn);
-    const conditions = filters.fontiIncluse.map((fonte: string) => `${fonteColumn}.eq.${fonte}`).join(',');
+    const conditions = filters.fontiIncluse.map((fonte: string) => `${fonteColumn}.ilike.${fonte}`).join(',');
     query = query.or(conditions);
   }
   
   if (filters.fontiEscluse && filters.fontiEscluse.length > 0) {
     console.log('Applying exclude fonte filter:', filters.fontiEscluse);
     filters.fontiEscluse.forEach((fonte: string) => {
-      query = query.not(fonteColumn, 'eq', fonte);
+      query = query.not(fonteColumn, 'ilike', fonte);
     });
   }
   
