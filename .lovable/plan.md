@@ -2,30 +2,71 @@
 
 ## Problema
 
-In `getCallTotaliPrenotate` (riga 189 di `reportsService.ts`), il filtro `booked_call` usa `.or()`:
-```
-.or('booked_call.eq.SI,booked_call.eq.Si,booked_call.eq.si,booked_call.eq.Sì')
-```
-
-Quando poi `applyFonteFilters` aggiunge un secondo `.or()` per il filtro fonte, il primo `.or()` (quello per booked_call) viene **sovrascritto**. Di conseguenza, filtrando per fonte, il vincolo su `booked_call = SI` sparisce e il conteggio delle call prenotate diventa errato.
+I filtri fonte usano `ilike` con wildcard `%` (es. `%VSL16%`), che corrisponde a qualsiasi stringa che **contiene** "VSL16", incluso "VSL16-BIS". Serve un match esatto.
 
 ## Soluzione
 
-Sostituire il `.or()` per booked_call con `.in()`, che non entra in conflitto con successivi `.or()`:
+Sostituire `ilike` con `eq` (match esatto) in tutti i punti dove si filtrano le fonti incluse/escluse.
 
+## File coinvolti e modifiche
+
+### 1. `src/services/databaseService.ts` (4 punti)
+
+**In `getPaginatedData()` - fonti incluse (riga 134):**
 ```text
-// Prima (problematico - usa .or() che viene sovrascritto):
-.or('booked_call.eq.SI,booked_call.eq.Si,booked_call.eq.si,booked_call.eq.Sì')
-
-// Dopo (usa .in() che non interferisce con .or() dei filtri fonte):
-.in('booked_call', ['SI', 'Si', 'si', 'Sì'])
+// Prima:  `${fonteColumn}.ilike.%${fonte}%`
+// Dopo:   `${fonteColumn}.eq.${fonte}`
 ```
 
-## Dettaglio Tecnico
+**In `getPaginatedData()` - fonti escluse (riga 141):**
+```text
+// Prima:  query.not(fonteColumn, 'ilike', `%${fonte}%`)
+// Dopo:   query.not(fonteColumn, 'eq', fonte)
+```
 
-| File | Modifica |
-|------|----------|
-| `src/services/reportsService.ts` | Riga 189: sostituire `.or('booked_call.eq.SI,...')` con `.in('booked_call', ['SI', 'Si', 'si', 'Sì'])` |
+**In `filterLeads()` - fonti incluse (riga 313):**
+```text
+// Prima:  `${fonteColumn}.ilike.%${fonte}%`
+// Dopo:   `${fonteColumn}.eq.${fonte}`
+```
 
-Una singola riga da modificare. Nessun altro file coinvolto.
+**In `filterLeads()` - fonti escluse (riga 320):**
+```text
+// Prima:  query.not(fonteColumn, 'ilike', `%${fonte}%`)
+// Dopo:   query.not(fonteColumn, 'eq', fonte)
+```
 
+### 2. `src/services/reportsService.ts` (4 punti)
+
+**In `applyFonteFilters()` - incluse (riga 120):**
+```text
+// Prima:  `${fonteColumn}.ilike.%${fonte}%`
+// Dopo:   `${fonteColumn}.eq.${fonte}`
+```
+
+**In `applyFonteFilters()` - escluse (riga 128):**
+```text
+// Prima:  query.not(fonteColumn, 'ilike', `%${fonte}%`)
+// Dopo:   query.not(fonteColumn, 'eq', fonte)
+```
+
+**In `getLeadsBySourceData()` - incluse (riga 332):**
+```text
+// Prima:  `ultima_fonte.ilike.%${fonte}%`
+// Dopo:   `ultima_fonte.eq.${fonte}`
+```
+
+**In `getLeadsBySourceData()` - escluse (riga 338):**
+```text
+// Prima:  query.not('ultima_fonte', 'ilike', `%${fonte}%`)
+// Dopo:   query.not('ultima_fonte', 'eq', fonte)
+```
+
+## Riepilogo
+
+| File | Modifiche |
+|------|-----------|
+| `src/services/databaseService.ts` | 4 sostituzioni: `ilike` + wildcard diventa `eq` esatto |
+| `src/services/reportsService.ts` | 4 sostituzioni: `ilike` + wildcard diventa `eq` esatto |
+
+Nessun nuovo file. Nessuna modifica al database.
