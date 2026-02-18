@@ -96,17 +96,17 @@ export async function getPaginatedData<T>(
         query = query.lte('created_at', `${filters.dataFine}T23:59:59.999Z`);
       }
 
-      // Filtri per fonte avanzati
+      // Filtri per fonte avanzati (usa ultima_fonte per coerenza con i report)
       if (filters.fontiIncluse && filters.fontiIncluse.length > 0) {
         console.log('Applying include fonte filter:', filters.fontiIncluse);
-        const conditions = filters.fontiIncluse.map((fonte: string) => `fonte.ilike.%${fonte}%`).join(',');
+        const conditions = filters.fontiIncluse.map((fonte: string) => `ultima_fonte.ilike.%${fonte}%`).join(',');
         query = query.or(conditions);
       }
       
       if (filters.fontiEscluse && filters.fontiEscluse.length > 0) {
         console.log('Applying exclude fonte filter:', filters.fontiEscluse);
         filters.fontiEscluse.forEach((fonte: string) => {
-          query = query.not('fonte', 'ilike', `%${fonte}%`);
+          query = query.not('ultima_fonte', 'ilike', `%${fonte}%`);
         });
       }
 
@@ -274,17 +274,17 @@ export async function filterLeads(tableName: ValidTableName, filters: Record<str
     query = query.lte('created_at', `${filters.dataFine}T23:59:59.999Z`);
   }
 
-  // Filtri per fonte avanzati
+  // Filtri per fonte avanzati (usa ultima_fonte per coerenza con i report)
   if (filters.fontiIncluse && filters.fontiIncluse.length > 0) {
     console.log('Applying include fonte filter:', filters.fontiIncluse);
-    const conditions = filters.fontiIncluse.map((fonte: string) => `fonte.ilike.%${fonte}%`).join(',');
+    const conditions = filters.fontiIncluse.map((fonte: string) => `ultima_fonte.ilike.%${fonte}%`).join(',');
     query = query.or(conditions);
   }
   
   if (filters.fontiEscluse && filters.fontiEscluse.length > 0) {
     console.log('Applying exclude fonte filter:', filters.fontiEscluse);
     filters.fontiEscluse.forEach((fonte: string) => {
-      query = query.not('fonte', 'ilike', `%${fonte}%`);
+      query = query.not('ultima_fonte', 'ilike', `%${fonte}%`);
     });
   }
   
