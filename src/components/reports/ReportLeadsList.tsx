@@ -63,10 +63,16 @@ export default function ReportLeadsList({ filters, refreshTrigger }: ReportLeads
   };
 
   const exportCSV = () => {
-    const header = "Nome,Cognome,Email,Telefono,Fonte,Call Prenotata,Venditore,Stato,Data Creazione,Data Assegnazione\n";
-    const rows = filtered.map(l =>
-      [l.nome, l.cognome || "", l.email || "", l.telefono || "", l.ultima_fonte || "", l.booked_call || "NO", l.venditore || "", l.stato_del_lead || "", formatDate(l.created_at), formatDate(l.data_assegnazione)].map(v => `"${v}"`).join(",")
-    ).join("\n");
+    const showFonteCal = filters.callAttributionMode === 'fonte_calendario';
+    const header = showFonteCal
+      ? "Nome,Cognome,Email,Telefono,Fonte,Fonte Calendario,Call Prenotata,Venditore,Stato,Data Creazione,Data Assegnazione\n"
+      : "Nome,Cognome,Email,Telefono,Fonte,Call Prenotata,Venditore,Stato,Data Creazione,Data Assegnazione\n";
+    const rows = filtered.map(l => {
+      const base = [l.nome, l.cognome || "", l.email || "", l.telefono || "", l.ultima_fonte || ""];
+      if (showFonteCal) base.push(l.fonte_calendario || "");
+      base.push(l.booked_call || "NO", l.venditore || "", l.stato_del_lead || "", formatDate(l.created_at), formatDate(l.data_assegnazione));
+      return base.map(v => `"${v}"`).join(",");
+    }).join("\n");
     const blob = new Blob([header + rows], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -122,6 +128,9 @@ export default function ReportLeadsList({ filters, refreshTrigger }: ReportLeads
                     <TableHead>Email</TableHead>
                     <TableHead>Telefono</TableHead>
                     <TableHead>Fonte</TableHead>
+                    {filters.callAttributionMode === 'fonte_calendario' && (
+                      <TableHead>Fonte Calendario</TableHead>
+                    )}
                     <TableHead>Call</TableHead>
                     <TableHead>Venditore</TableHead>
                     <TableHead>Stato</TableHead>
@@ -141,6 +150,13 @@ export default function ReportLeadsList({ filters, refreshTrigger }: ReportLeads
                           <Badge variant="outline" className="text-xs">{lead.ultima_fonte}</Badge>
                         ) : "-"}
                       </TableCell>
+                      {filters.callAttributionMode === 'fonte_calendario' && (
+                        <TableCell>
+                          {lead.fonte_calendario ? (
+                            <Badge variant="outline" className="text-xs bg-amber-50 border-amber-200 text-amber-800">{lead.fonte_calendario}</Badge>
+                          ) : "-"}
+                        </TableCell>
+                      )}
                       <TableCell>
                         {isCallBooked(lead.booked_call) ? (
                           <Badge className="bg-green-100 text-green-800 text-xs">SI</Badge>
