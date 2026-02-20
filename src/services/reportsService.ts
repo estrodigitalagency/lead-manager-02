@@ -10,6 +10,7 @@ export interface ReportFilters {
   fontiEscluse?: string[];
   sourceMode?: 'include' | 'exclude';
   market?: 'IT' | 'ES';
+  callAttributionMode?: 'ultima_fonte' | 'fonte_calendario';
 }
 
 export interface ReportMetrics {
@@ -182,45 +183,79 @@ async function getLeadTotaliGenerati(filters: ReportFilters): Promise<number> {
 async function getCallTotaliPrenotate(filters: ReportFilters): Promise<number> {
   console.log('Getting call totali prenotate with filters:', filters);
   
-  // Conta i lead in lead_generation con booked_call = 'SI'
+  // Modalità fonte calendario: query sulla tabella booked_call
+  if (filters.callAttributionMode === 'fonte_calendario') {
+    return getCallTotaliPrenotateFonteCalendario(filters);
+  }
+  
+  // Modalità default (ultima_fonte): comportamento attuale
   let query = supabase
     .from('lead_generation')
     .select('id', { count: 'exact', head: true })
     .in('booked_call', ['SI', 'Si', 'si', 'Sì']);
 
-  // Filter by market
   if (filters.market) {
     query = query.eq('market', filters.market);
   }
 
-  // Filtro per data di creazione
   if (filters.startDate) {
     const startDateTime = getStartOfDay(filters.startDate);
-    console.log('Call prenotate - filtering by start date:', startDateTime);
     query = query.gte('created_at', startDateTime);
   }
   if (filters.endDate) {
     const endDateTime = getEndOfDay(filters.endDate);
-    console.log('Call prenotate - filtering by end date:', endDateTime);
     query = query.lte('created_at', endDateTime);
   }
 
-  // Applicare filtri fonte (usa ultima_fonte come lead_generation)
   query = applyFonteFilters(query, filters);
 
-  // Filtro per venditore
   if (filters.venditore && typeof filters.venditore === 'string' && filters.venditore.trim() !== '') {
     const cleanVenditore = filters.venditore.trim();
-    console.log('Call prenotate - filtering by venditore:', cleanVenditore);
     query = query.or(`venditore.eq.${cleanVenditore},venditore.eq. ${cleanVenditore},venditore.eq.${cleanVenditore} `);
   }
 
   const { count, error } = await query;
   
-  console.log('Call prenotate query result:', { count, error });
-  
   if (error) {
     console.error('Error fetching call totali prenotate:', error);
+    return 0;
+  }
+
+  return count || 0;
+}
+
+async function getCallTotaliPrenotateFonteCalendario(filters: ReportFilters): Promise<number> {
+  console.log('Getting call prenotate by fonte_calendario with filters:', filters);
+  
+  let query = supabase
+    .from('booked_call')
+    .select('id', { count: 'exact', head: true });
+
+  if (filters.market) {
+    query = query.eq('market', filters.market);
+  }
+
+  if (filters.startDate) {
+    const startDateTime = getStartOfDay(filters.startDate);
+    query = query.gte('created_at', startDateTime);
+  }
+  if (filters.endDate) {
+    const endDateTime = getEndOfDay(filters.endDate);
+    query = query.lte('created_at', endDateTime);
+  }
+
+  // Filtri fonte applicati sulla colonna 'fonte' di booked_call
+  query = applyFonteFilters(query, filters, 'fonte');
+
+  if (filters.venditore && typeof filters.venditore === 'string' && filters.venditore.trim() !== '') {
+    const cleanVenditore = filters.venditore.trim();
+    query = query.or(`venditore.eq.${cleanVenditore},venditore.eq. ${cleanVenditore},venditore.eq.${cleanVenditore} `);
+  }
+
+  const { count, error } = await query;
+  
+  if (error) {
+    console.error('Error fetching call prenotate by fonte_calendario:', error);
     return 0;
   }
 
@@ -388,6 +423,7 @@ export interface ReportLeadDetail {
   venditore: string | null;
   stato_del_lead: string | null;
   data_assegnazione: string | null;
+  fonte_calendario?: string | null;
 }
 
 export async function getFilteredLeads(filters: ReportFilters): Promise<ReportLeadDetail[]> {
@@ -430,6 +466,38 @@ export async function getFilteredLeads(filters: ReportFilters): Promise<ReportLe
 
       hasMore = (data?.length || 0) === pageSize;
       page++;
+    }
+
+    // Se modalità fonte_calendario, arricchisci con la fonte dalla tabella booked_call
+    if (filters.callAttributionMode === 'fonte_calendario') {
+      const leadIds = allLeads.filter(l => l.booked_call && ['si', 'sì'].includes(l.booked_call.toLowerCase())).map(l => l.id);
+      
+      if (leadIds.length > 0) {
+        // Fetch booked_call data in batches
+        const batchSize = 500;
+        const bookedCallMap = new Map<string, string>();
+        
+        for (let i = 0; i < leadIds.length; i += batchSize) {
+          const batch = leadIds.slice(i, i + batchSize);
+          const { data: bookedData } = await supabase
+            .from('booked_call')
+            .select('lead_id, fonte')
+            .in('lead_id', batch);
+          
+          if (bookedData) {
+            bookedData.forEach(bc => {
+              if (bc.lead_id && bc.fonte) {
+                bookedCallMap.set(bc.lead_id, bc.fonte);
+              }
+            });
+          }
+        }
+
+        // Enrich leads with fonte_calendario
+        allLeads.forEach(lead => {
+          lead.fonte_calendario = bookedCallMap.get(lead.id) || null;
+        });
+      }
     }
 
     return allLeads;

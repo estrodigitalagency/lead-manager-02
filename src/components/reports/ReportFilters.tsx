@@ -5,10 +5,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { CalendarIcon, FilterIcon } from "lucide-react";
+import { CalendarIcon, FilterIcon, Info } from "lucide-react";
 import { useMarket } from "@/contexts/MarketContext";
 import { ReportFilters, PRESET_PERIODS, getAvailableVenditori } from "@/services/reportsService";
 import ReportSourceFilters from "./ReportSourceFilters";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface ReportFiltersProps {
   filters: ReportFilters;
@@ -165,6 +166,44 @@ const ReportFiltersComponent = ({ filters, onFiltersChange, onApplyFilters }: Re
                 ))}
               </SelectContent>
             </Select>
+          </div>
+
+          {/* Attribuzione Call */}
+          <div>
+            <div className="flex items-center gap-1.5 mb-2">
+              <Label className="text-sm font-medium">Attribuzione Call</Label>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Info className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-xs">
+                    <p className="text-xs">
+                      <strong>Ultima fonte lead:</strong> attribuisce la call all'ultima fonte del lead (comportamento standard).<br /><br />
+                      <strong>Fonte calendario:</strong> attribuisce la call alla fonte del calendario da cui è stata effettivamente prenotata. Utile quando un lead entra da più funnel ma prenota da uno specifico.
+                    </p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <Button
+                variant={(!filters.callAttributionMode || filters.callAttributionMode === 'ultima_fonte') ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => onFiltersChange({ ...filters, callAttributionMode: 'ultima_fonte' })}
+                className="text-xs"
+              >
+                Ultima fonte lead
+              </Button>
+              <Button
+                variant={filters.callAttributionMode === 'fonte_calendario' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => onFiltersChange({ ...filters, callAttributionMode: 'fonte_calendario' })}
+                className="text-xs"
+              >
+                Fonte calendario
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>
