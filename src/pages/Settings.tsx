@@ -1,10 +1,8 @@
 
 import { useState } from "react";
-import { Link } from "react-router-dom";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Button } from "@/components/ui/button";
-import { Webhook, ArrowLeft, ArrowRightLeft, Users, Database, Tag, Zap, RefreshCw } from "lucide-react";
+import { Webhook, ArrowRightLeft, Users, Database, Tag, Zap, RefreshCw } from "lucide-react";
 import SalespeopleSettings from "@/components/SalespeopleSettings";
 import CampaignsSettings from "@/components/CampaignsSettings";
 import DatabaseSection from "@/components/settings/DatabaseSection";
@@ -15,73 +13,45 @@ import { RoundRobinFixSection } from "@/components/settings/RoundRobinFixSection
 import FonteMappingSettings from "@/components/settings/FonteMappingSettings";
 import { useIsMobile } from "@/hooks/use-mobile";
 
+const tabItems = [
+  { value: "database", icon: Database, label: "Database" },
+  { value: "attribution", icon: Webhook, label: "Attribuzione" },
+  { value: "webhooks", icon: Webhook, label: "Webhook" },
+  { value: "salespeople", icon: Users, label: "Venditori" },
+  { value: "campaigns", icon: Tag, label: "Campagne" },
+  { value: "automations", icon: Zap, label: "Automazioni" },
+  { value: "roundrobin", icon: RefreshCw, label: "Round Robin" },
+  { value: "fontemapping", icon: ArrowRightLeft, label: "Mapping" },
+];
+
 const Settings = () => {
   const isMobile = useIsMobile();
   
   return (
-    <div className="w-full min-h-screen px-4 py-8 pt-20 max-w-7xl mx-auto">      
-      <Tabs defaultValue="attribution" className="w-full min-w-0" orientation={isMobile ? "vertical" : "horizontal"}>
-        <div className={`${isMobile ? 'flex flex-col space-y-4 min-w-0' : 'block min-w-0'}`}>
-          <TabsList className={`${isMobile ? 'flex flex-col h-auto w-full space-y-1 p-1' : 'grid w-full grid-cols-8'} mb-8 border`}>
-            <TabsTrigger 
-              value="database" 
-              className={`data-[state=active]:text-primary ${isMobile ? 'w-full justify-start text-left px-4 py-3' : ''}`}
-            >
-              <Database className={`mr-2 ${isMobile ? 'h-4 w-4' : 'h-4 w-4'}`} />
-              Database
-            </TabsTrigger>
-            <TabsTrigger 
-              value="attribution" 
-              className={`data-[state=active]:text-primary ${isMobile ? 'w-full justify-start text-left px-4 py-3' : ''}`}
-            >
-              <Webhook className={`mr-2 ${isMobile ? 'h-4 w-4' : 'h-4 w-4'}`} />
-              Finestre di Attribuzione
-            </TabsTrigger>
-            <TabsTrigger 
-              value="webhooks" 
-              className={`data-[state=active]:text-primary ${isMobile ? 'w-full justify-start text-left px-4 py-3' : ''}`}
-            >
-              <Webhook className={`mr-2 ${isMobile ? 'h-4 w-4' : 'h-4 w-4'}`} />
-              Webhook
-            </TabsTrigger>
-            <TabsTrigger 
-              value="salespeople" 
-              className={`data-[state=active]:text-primary ${isMobile ? 'w-full justify-start text-left px-4 py-3' : ''}`}
-            >
-              <Users className={`mr-2 ${isMobile ? 'h-4 w-4' : 'h-4 w-4'}`} />
-              Venditori
-            </TabsTrigger>
-            <TabsTrigger 
-              value="campaigns" 
-              className={`data-[state=active]:text-primary ${isMobile ? 'w-full justify-start text-left px-4 py-3' : ''}`}
-            >
-              <Tag className={`mr-2 ${isMobile ? 'h-4 w-4' : 'h-4 w-4'}`} />
-              Campagne
-            </TabsTrigger>
-            <TabsTrigger 
-              value="automations" 
-              className={`data-[state=active]:text-primary ${isMobile ? 'w-full justify-start text-left px-4 py-3' : ''}`}
-            >
-              <Zap className={`mr-2 ${isMobile ? 'h-4 w-4' : 'h-4 w-4'}`} />
-              Automazioni
-            </TabsTrigger>
-            <TabsTrigger 
-              value="roundrobin" 
-              className={`data-[state=active]:text-primary ${isMobile ? 'w-full justify-start text-left px-4 py-3' : ''}`}
-            >
-              <RefreshCw className={`mr-2 ${isMobile ? 'h-4 w-4' : 'h-4 w-4'}`} />
-              Fix Round Robin
-            </TabsTrigger>
-            <TabsTrigger 
-              value="fontemapping" 
-              className={`data-[state=active]:text-primary ${isMobile ? 'w-full justify-start text-left px-4 py-3' : ''}`}
-            >
-              <ArrowRightLeft className={`mr-2 ${isMobile ? 'h-4 w-4' : 'h-4 w-4'}`} />
-              Mapping Fonti
-            </TabsTrigger>
+    <div className={`w-full min-h-screen px-4 py-8 max-w-7xl mx-auto ${isMobile ? 'pt-16 pb-24 px-2' : 'pt-20'}`}>
+      <Tabs defaultValue="attribution" className="w-full min-w-0">
+        <div className="min-w-0">
+          <TabsList className={`${isMobile ? 'grid grid-cols-4 gap-1 h-auto p-1' : 'grid w-full grid-cols-8'} mb-6 border`}>
+            {tabItems.map((tab) => {
+              const Icon = tab.icon;
+              return (
+                <TabsTrigger
+                  key={tab.value}
+                  value={tab.value}
+                  className={`data-[state=active]:text-primary active:scale-95 transition-all ${
+                    isMobile 
+                      ? 'flex flex-col items-center gap-1 px-1 py-2.5 text-[10px] leading-tight min-h-[52px]' 
+                      : ''
+                  }`}
+                >
+                  <Icon className={`${isMobile ? 'h-4 w-4' : 'h-4 w-4 mr-2'}`} />
+                  <span className={isMobile ? 'truncate w-full text-center' : ''}>{tab.label}</span>
+                </TabsTrigger>
+              );
+            })}
           </TabsList>
           
-          <div className={`${isMobile ? 'flex-1 min-w-0 overflow-hidden' : 'min-w-0 overflow-hidden'}`}>
+          <div className="min-w-0 overflow-hidden">
             <TabsContent value="database">
               <DatabaseSection />
             </TabsContent>

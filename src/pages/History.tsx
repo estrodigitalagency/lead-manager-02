@@ -5,9 +5,11 @@ import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import AssignmentHistory from "@/components/AssignmentHistory";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 const History = () => {
   const [isRebuilding, setIsRebuilding] = useState(false);
+  const isMobile = useIsMobile();
 
   const handleRebuildHistory = async () => {
     setIsRebuilding(true);
@@ -18,7 +20,6 @@ const History = () => {
       
       toast.success(`Storico ricostruito: ${data.recordsCreated} assegnazioni recuperate da ${data.assignmentGroups} gruppi`);
       
-      // Ricarica la pagina per mostrare i nuovi dati
       window.location.reload();
     } catch (error) {
       console.error('Error rebuilding history:', error);
@@ -29,13 +30,13 @@ const History = () => {
   };
 
   return (
-    <div className="container mx-auto px-4 py-8 pt-20">
+    <div className={`container mx-auto px-4 py-8 ${isMobile ? 'pt-16 pb-24 px-2' : 'pt-20'}`}>
       <Card className="border">
-        <CardHeader>
-          <div className="flex items-center justify-between">
+        <CardHeader className={isMobile ? 'px-3 py-4' : ''}>
+          <div className={`flex items-center justify-between ${isMobile ? 'flex-col gap-3' : ''}`}>
             <div>
-              <CardTitle>Storico Assegnazioni Lead</CardTitle>
-              <CardDescription>
+              <CardTitle className={isMobile ? 'text-lg' : ''}>Storico Assegnazioni Lead</CardTitle>
+              <CardDescription className={isMobile ? 'text-xs' : ''}>
                 Visualizza tutte le assegnazioni di lead effettuate nel sistema
               </CardDescription>
             </div>
@@ -44,13 +45,14 @@ const History = () => {
               disabled={isRebuilding}
               variant="outline"
               size="sm"
+              className={`active:scale-95 transition-all ${isMobile ? 'w-full' : ''}`}
             >
               <RotateCcw className={`mr-2 h-4 w-4 ${isRebuilding ? 'animate-spin' : ''}`} />
               {isRebuilding ? 'Ricostruzione...' : 'Ricostruisci Storico'}
             </Button>
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className={isMobile ? 'px-2' : ''}>
           <AssignmentHistory />
         </CardContent>
       </Card>

@@ -30,8 +30,6 @@ interface Lead {
 }
 
 const LeadAssignment = () => {
-  console.log("🔍 LeadAssignment component rendering...");
-  
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [selectedVenditore, setSelectedVenditore] = useState<string | undefined>(undefined);
   const [selectedCampagna, setSelectedCampagna] = useState("");
@@ -44,16 +42,13 @@ const LeadAssignment = () => {
   } | null>(null);
   
   const { venditori, isLoading } = useSalespeopleData();
-  console.log("👥 Venditori loaded:", venditori.length, "Loading:", isLoading);
 
   const handleLeadFound = (lead: Lead) => {
     setSelectedLead(lead);
-    setAssignmentSuccess(null); // Reset success message when new lead is selected
+    setAssignmentSuccess(null);
   };
 
-  // Carica le campagne disponibili
   useEffect(() => {
-    console.log("📋 Loading campaigns...");
     const fetchCampagne = async () => {
       try {
         const { data, error } = await supabase
@@ -64,7 +59,6 @@ const LeadAssignment = () => {
         
         if (error) throw error;
         setCampagne(data || []);
-        console.log("📋 Campaigns loaded:", data?.length || 0);
       } catch (error) {
         console.error('Errore caricamento campagne:', error);
       }
@@ -99,7 +93,6 @@ const LeadAssignment = () => {
     try {
       const venditoreName = `${venditoreData.nome} ${venditoreData.cognome}`.trim();
       
-      // Aggiorna il lead con l'assegnazione
       const { error: updateError } = await supabase
         .from('lead_generation')
         .update({
@@ -113,7 +106,6 @@ const LeadAssignment = () => {
 
       if (updateError) throw updateError;
 
-      // Registra in cronologia
       const { error: historyError } = await supabase
         .from('assignment_history')
         .insert({
@@ -129,7 +121,6 @@ const LeadAssignment = () => {
         console.error('Errore nella registrazione cronologia:', historyError);
       }
 
-      // Invia webhook
       const { data: webhookData, error: webhookError } = await supabase
         .from('system_settings')
         .select('value')
@@ -137,8 +128,6 @@ const LeadAssignment = () => {
         .single();
 
       if (!webhookError && webhookData?.value) {
-        console.log('Invio webhook per assegnazione tramite ricerca...');
-        
         const assignmentPayload = {
           venditore: venditoreData.nome,
           venditore_cognome: venditoreData.cognome || '',
@@ -173,10 +162,8 @@ const LeadAssignment = () => {
             console.error('Errore chiamata webhook:', webhookCallError);
             toast.error('Lead assegnato ma errore nell\'invio del webhook');
           } else if (webhookResponse && webhookResponse.success) {
-            console.log('Webhook inviato con successo:', webhookResponse);
             toast.success(`Lead assegnato a ${venditoreName} e webhook inviato`);
           } else {
-            console.error('Webhook response indica errore:', webhookResponse);
             toast.success(`Lead assegnato a ${venditoreName} ma errore webhook`);
           }
         } catch (webhookError) {
@@ -184,18 +171,15 @@ const LeadAssignment = () => {
           toast.success(`Lead assegnato a ${venditoreName} ma errore webhook`);
         }
       } else {
-        console.log('Webhook non configurato');
         toast.success(`Lead assegnato a ${venditoreName}`);
       }
 
-      // Mostra messaggio di successo con dettagli
       setAssignmentSuccess({
         leadName: `${selectedLead.nome} ${selectedLead.cognome || ''}`.trim(),
         venditoreName: venditoreName,
         leadSource: selectedLead.fonte || 'Non specificata'
       });
 
-      // Aggiorna conteggio lead attuali del venditore
       const { data: currentVenditore } = await supabase
         .from('venditori')
         .select('lead_attuali')
@@ -210,12 +194,10 @@ const LeadAssignment = () => {
           .eq('id', selectedVenditore);
       }
 
-      // Reset form
       setSelectedLead(null);
       setSelectedVenditore(undefined);
       setSelectedCampagna("");
       
-      // Hide success message after 5 seconds
       setTimeout(() => {
         setAssignmentSuccess(null);
       }, 5000);
@@ -226,24 +208,15 @@ const LeadAssignment = () => {
       setIsAssigning(false);
     }
   };
-
-  console.log("🎨 About to render LeadAssignment UI...");
   
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 p-4">
-      {/* Diagnostic Information */}
-      <div className="fixed top-4 right-4 bg-red-500 text-white p-2 rounded text-xs z-50">
-        <div>✅ LeadAssignment MOUNTED</div>
-        <div>Venditori: {venditori.length} (Loading: {isLoading ? 'YES' : 'NO'})</div>
-        <div>Campagne: {campagne.length}</div>
-        <div>Selected Lead: {selectedLead ? 'YES' : 'NO'}</div>
-      </div>
-      <div className="min-h-screen flex items-center justify-center">
+    <div className="min-h-screen bg-gradient-to-br from-background via-background to-secondary/20 p-4">
+      <div className="flex items-center justify-center min-h-[calc(100vh-2rem)]">
         <div className="w-full max-w-md space-y-6">
           {assignmentSuccess && (
-            <Alert className="bg-green-50 border-green-200 animate-in slide-in-from-top duration-300">
-              <CheckCircle className="h-4 w-4 text-green-600" />
-              <AlertDescription className="text-green-800">
+            <Alert className="bg-green-500/10 border-green-500/20">
+              <CheckCircle className="h-4 w-4 text-green-400" />
+              <AlertDescription className="text-green-400">
                 <div className="space-y-1">
                   <p className="font-semibold">✅ Lead assegnato con successo!</p>
                   <p><strong>Lead:</strong> {assignmentSuccess.leadName}</p>
@@ -254,13 +227,12 @@ const LeadAssignment = () => {
             </Alert>
           )}
 
-          <Card className="shadow-xl border-0 bg-card/95 backdrop-blur-sm">
+          <Card className="glass-card border-border">
             <CardHeader className="text-center space-y-2">
-              <CardTitle className="text-2xl font-bold">Assegnazione Lead</CardTitle>
+              <CardTitle className="text-2xl font-bold gradient-text">Assegnazione Lead</CardTitle>
               <p className="text-muted-foreground text-sm">Cerca un lead specifico e assegnalo a un venditore</p>
             </CardHeader>
             <CardContent className="space-y-6">
-              {/* Componente di ricerca lead */}
               <LeadSearchComponent onLeadFound={handleLeadFound} />
 
               <div className="space-y-2">
@@ -307,7 +279,7 @@ const LeadAssignment = () => {
               <Button 
                 onClick={handleAssignment}
                 disabled={isAssigning || !selectedLead || !selectedVenditore}
-                className="w-full"
+                className="w-full btn-neon"
               >
                 {isAssigning ? "Assegnazione..." : "Assegna Lead"}
               </Button>
