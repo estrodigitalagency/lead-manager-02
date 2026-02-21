@@ -1,6 +1,50 @@
 
 import { supabase } from "@/integrations/supabase/client";
 
+// Cache for fonte mapping
+let fonteMappingCache: { leadToCalendario: Map<string, string>; calendarioToLead: Map<string, string> } | null = null;
+let fonteMappingCacheTime = 0;
+const CACHE_TTL = 60000; // 1 minute
+
+async function getFonteMapping() {
+  const now = Date.now();
+  if (fonteMappingCache && (now - fonteMappingCacheTime) < CACHE_TTL) {
+    return fonteMappingCache;
+  }
+
+  const { data, error } = await supabase
+    .from('fonte_mapping')
+    .select('fonte_lead, fonte_calendario');
+
+  const leadToCalendario = new Map<string, string>();
+  const calendarioToLead = new Map<string, string>();
+
+  if (!error && data) {
+    (data as { fonte_lead: string; fonte_calendario: string }[]).forEach(m => {
+      leadToCalendario.set(m.fonte_lead.toLowerCase(), m.fonte_calendario);
+      calendarioToLead.set(m.fonte_calendario.toLowerCase(), m.fonte_lead);
+    });
+  }
+
+  fonteMappingCache = { leadToCalendario, calendarioToLead };
+  fonteMappingCacheTime = now;
+  return fonteMappingCache;
+}
+
+// Translate fonte lead names to their calendario equivalents for booked_call queries
+function translateFontiForCalendario(fonti: string[], mapping: Map<string, string>): string[] {
+  const result: string[] = [];
+  for (const fonte of fonti) {
+    const mapped = mapping.get(fonte.toLowerCase());
+    result.push(mapped || fonte); // Use mapped name if exists, otherwise use original
+  }
+  return result;
+}
+
+function translateSingleFonteForCalendario(fonte: string, mapping: Map<string, string>): string {
+  return mapping.get(fonte.toLowerCase()) || fonte;
+}
+
 export interface ReportFilters {
   startDate?: string;
   endDate?: string;
@@ -227,6 +271,8 @@ async function getCallTotaliPrenotate(filters: ReportFilters): Promise<number> {
 async function getCallTotaliPrenotateFonteCalendario(filters: ReportFilters): Promise<number> {
   console.log('Getting call prenotate by fonte_calendario with filters:', filters);
   
+  const mapping = await getFonteMapping();
+  
   let query = supabase
     .from('booked_call')
     .select('id', { count: 'exact', head: true });
@@ -244,8 +290,19 @@ async function getCallTotaliPrenotateFonteCalendario(filters: ReportFilters): Pr
     query = query.lte('created_at', endDateTime);
   }
 
-  // Filtri fonte applicati sulla colonna 'fonte' di booked_call
-  query = applyFonteFilters(query, filters, 'fonte');
+  // Translate fonte filters using mapping before applying
+  const translatedFilters = { ...filters };
+  if (translatedFilters.fonte) {
+    translatedFilters.fonte = translateSingleFonteForCalendario(translatedFilters.fonte, mapping.leadToCalendario);
+  }
+  if (translatedFilters.fontiIncluse) {
+    translatedFilters.fontiIncluse = translateFontiForCalendario(translatedFilters.fontiIncluse, mapping.leadToCalendario);
+  }
+  if (translatedFilters.fontiEscluse) {
+    translatedFilters.fontiEscluse = translateFontiForCalendario(translatedFilters.fontiEscluse, mapping.leadToCalendario);
+  }
+
+  query = applyFonteFilters(query, translatedFilters, 'fonte');
 
   if (filters.venditore && typeof filters.venditore === 'string' && filters.venditore.trim() !== '') {
     const cleanVenditore = filters.venditore.trim();

@@ -502,6 +502,30 @@ export type Database = {
         }
         Relationships: []
       }
+      fonte_mapping: {
+        Row: {
+          created_at: string
+          fonte_calendario: string
+          fonte_lead: string
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          fonte_calendario: string
+          fonte_lead: string
+          id?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          fonte_calendario?: string
+          fonte_lead?: string
+          id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       form_events: {
         Row: {
           assigned_to: string | null
