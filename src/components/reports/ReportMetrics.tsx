@@ -1,6 +1,7 @@
 
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Users, Phone, UserCheck, TrendingUp } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Users, Phone, UserCheck } from "lucide-react";
 import { ReportMetrics } from "@/services/reportsService";
 
 interface ReportMetricsProps {
@@ -15,9 +16,10 @@ const ReportMetricsComponent = ({ metrics, isLoading }: ReportMetricsProps) => {
         {[1, 2, 3].map((i) => (
           <Card key={i}>
             <CardContent className="p-6">
-              <div className="animate-pulse">
-                <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
-                <div className="h-8 bg-gray-200 rounded w-1/2"></div>
+              <div className="space-y-3">
+                <Skeleton className="h-4 w-3/4" />
+                <Skeleton className="h-8 w-1/2" />
+                <Skeleton className="h-3 w-2/3" />
               </div>
             </CardContent>
           </Card>
@@ -32,24 +34,24 @@ const ReportMetricsComponent = ({ metrics, isLoading }: ReportMetricsProps) => {
       value: metrics.leadTotaliGenerati,
       icon: Users,
       description: "Lead generati nel periodo selezionato",
-      color: "text-blue-600",
-      bgColor: "bg-blue-100"
+      color: "text-blue-400",
+      bgColor: "bg-blue-500/15"
     },
     {
       title: "Call Totali Prenotate",
       value: metrics.callTotaliPrenotate,
       icon: Phone,
       description: "Call prenotate nel periodo selezionato",
-      color: "text-green-600",
-      bgColor: "bg-green-100"
+      color: "text-green-400",
+      bgColor: "bg-green-500/15"
     },
     {
       title: "Lead Totali Lavorati",
       value: metrics.leadTotaliLavorati,
       icon: UserCheck,
       description: "Lead assegnati nel periodo selezionato",
-      color: "text-orange-600",
-      bgColor: "bg-orange-100"
+      color: "text-orange-400",
+      bgColor: "bg-orange-500/15"
     }
   ];
 

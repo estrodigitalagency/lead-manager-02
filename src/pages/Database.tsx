@@ -293,7 +293,7 @@ const DatabasePage = () => {
   };
 
   return (
-    <div className={`container mx-auto px-4 py-8 ${isMobile ? 'px-2 py-4' : ''}`}>
+    <div className={`container mx-auto px-4 py-8 ${isMobile ? 'px-2 py-4 pt-16 pb-24' : ''}`}>
       <div className={`flex justify-between items-center mb-8 ${isMobile ? 'flex-col gap-4' : ''}`}>
         <div className={`flex items-center gap-4 ${isMobile ? 'flex-col text-center' : ''}`}>
           <Link to="/">
@@ -331,14 +331,14 @@ const DatabasePage = () => {
 
       {/* Mostra stato verifica se in corso */}
       {anyLoading && (
-        <div className="bg-blue-50 p-4 rounded-lg border border-blue-200 mb-6">
+        <div className="bg-primary/10 p-4 rounded-lg border border-primary/20 mb-6">
           <div className="flex items-center gap-3">
-            <RefreshCcw className="h-5 w-5 animate-spin text-blue-600" />
+            <RefreshCcw className="h-5 w-5 animate-spin text-primary" />
             <div>
-              <p className="text-blue-800 font-medium">
+              <p className="text-foreground font-medium">
                 {isVerifying ? "Verifica assegnabilità in corso..." : "Aggiornamento dati in corso..."}
               </p>
-              <p className="text-blue-600 text-sm">
+              <p className="text-muted-foreground text-sm">
                 {isVerifying 
                   ? "Controllo completo del database per garantire stati corretti"
                   : "Sincronizzazione globale dei dati"
@@ -351,8 +351,8 @@ const DatabasePage = () => {
 
       {/* Mostra risultato ultima verifica */}
       {verification.status === 'completed' && !anyLoading && (
-        <div className="bg-green-50 p-4 rounded-lg border border-green-200 mb-6">
-          <p className="text-green-800 text-sm">
+        <div className="bg-green-500/10 p-4 rounded-lg border border-green-500/20 mb-6">
+          <p className="text-green-400 text-sm">
             Ultima verifica: {verification.updated} lead aggiornati su {verification.totalChecked} controllati
           </p>
         </div>

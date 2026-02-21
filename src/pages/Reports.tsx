@@ -56,7 +56,7 @@ const ReportsPage = () => {
   };
 
   return (
-    <div className={`container mx-auto px-4 py-8 pt-20 ${isMobile ? 'px-2 py-4' : ''}`}>
+    <div className={`container mx-auto px-4 py-8 ${isMobile ? 'px-2 py-4 pt-16 pb-24' : 'pt-20'}`}>
       <div className="space-y-6">
         {/* Filtri */}
         <ReportFiltersComponent
@@ -79,9 +79,9 @@ const ReportsPage = () => {
 
         {/* Informazioni sui Filtri Attivi */}
         {hasActiveFilters() && (
-          <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-            <h3 className="font-medium text-blue-800 mb-2">Filtri Attivi:</h3>
-            <div className="text-sm text-blue-600 space-y-1">
+          <div className="bg-primary/10 p-4 rounded-lg border border-primary/20">
+            <h3 className="font-medium text-primary mb-2">Filtri Attivi:</h3>
+            <div className="text-sm text-muted-foreground space-y-1">
               {filters.startDate && (
                 <div>Data inizio: {new Date(filters.startDate).toLocaleDateString('it-IT')}</div>
               )}

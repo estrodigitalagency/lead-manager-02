@@ -9,10 +9,12 @@ import {
 } from "@/components/ui/table";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
+import { Card } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, Clock, Filter, Info, Play, Bot, User } from "lucide-react";
+import { Loader2, Clock, Filter, Info, Play, Bot, User, ChevronDown, ChevronUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useMarket } from "@/contexts/MarketContext";
+import { useIsMobile } from "@/hooks/use-mobile";
 import AssignedLeadsDialog from "@/components/database/AssignedLeadsDialog";
 import ReplayAssignmentDialog from "@/components/database/ReplayAssignmentDialog";
 
@@ -33,11 +35,13 @@ interface AssignmentRecord {
 
 const AssignmentHistory = () => {
   const { selectedMarket } = useMarket();
+  const isMobile = useIsMobile();
   const [history, setHistory] = useState<AssignmentRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedAssignment, setSelectedAssignment] = useState<AssignmentRecord | null>(null);
   const [leadsDialogOpen, setLeadsDialogOpen] = useState(false);
   const [replayDialogOpen, setReplayDialogOpen] = useState(false);
+  const [expandedCards, setExpandedCards] = useState<Set<string>>(new Set());
 
   const loadHistory = useCallback(async () => {
     setLoading(true);
@@ -75,6 +79,15 @@ const AssignmentHistory = () => {
     });
   };
 
+  const toggleExpand = (id: string) => {
+    setExpandedCards(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center items-center h-40">
@@ -92,6 +105,136 @@ const AssignmentHistory = () => {
     );
   }
 
+  // Mobile card-based view
+  if (isMobile) {
+    return (
+      <>
+        <div className="space-y-3">
+          {history.map((record) => {
+            const isExpanded = expandedCards.has(record.id);
+            return (
+              <Card key={record.id} className="p-3 border">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1.5">
+                      {record.assignment_type === 'automation' ? (
+                        <Badge variant="secondary" className="text-xs flex items-center gap-1">
+                          <Bot className="h-3 w-3" />
+                          Auto
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline" className="text-xs flex items-center gap-1">
+                          <User className="h-3 w-3" />
+                          Man.
+                        </Badge>
+                      )}
+                      <Badge variant="outline" className="text-xs">
+                        {record.leads_count} Lead
+                      </Badge>
+                    </div>
+                    <p className="font-medium text-sm truncate">{record.venditore}</p>
+                    <p className="text-xs text-muted-foreground">{formatDate(record.assigned_at)}</p>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => {
+                        setSelectedAssignment(record);
+                        setLeadsDialogOpen(true);
+                      }}
+                      className="h-9 w-9 active:scale-95"
+                    >
+                      <Info className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => {
+                        setSelectedAssignment(record);
+                        setReplayDialogOpen(true);
+                      }}
+                      className="h-9 w-9 active:scale-95"
+                    >
+                      <Play className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Expandable details */}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => toggleExpand(record.id)}
+                  className="w-full mt-2 h-7 text-xs text-muted-foreground"
+                >
+                  {isExpanded ? <ChevronUp className="h-3 w-3 mr-1" /> : <ChevronDown className="h-3 w-3 mr-1" />}
+                  {isExpanded ? 'Meno dettagli' : 'Più dettagli'}
+                </Button>
+
+                {isExpanded && (
+                  <div className="mt-2 pt-2 border-t border-border space-y-2 text-xs">
+                    {record.campagna && (
+                      <div className="flex items-center gap-2">
+                        <span className="text-muted-foreground">Campagna:</span>
+                        <Badge variant="secondary" className="text-xs">{record.campagna}</Badge>
+                      </div>
+                    )}
+                    {record.bypass_time_interval && (
+                      <div className="flex items-center gap-1">
+                        <Clock className="h-3 w-3 text-muted-foreground" />
+                        <span className="text-muted-foreground">Bypass Temporale</span>
+                      </div>
+                    )}
+                    {record.fonti_incluse && record.fonti_incluse.length > 0 && (
+                      <div>
+                        <span className="text-muted-foreground flex items-center gap-1 mb-1">
+                          <Filter className="h-3 w-3" /> Fonti incluse:
+                        </span>
+                        <div className="flex flex-wrap gap-1">
+                          {record.fonti_incluse.map((fonte, i) => (
+                            <Badge key={i} variant="default" className="text-xs">{fonte}</Badge>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {record.fonti_escluse && record.fonti_escluse.length > 0 && (
+                      <div>
+                        <span className="text-muted-foreground flex items-center gap-1 mb-1">
+                          <Filter className="h-3 w-3" /> Fonti escluse:
+                        </span>
+                        <div className="flex flex-wrap gap-1">
+                          {record.fonti_escluse.map((fonte, i) => (
+                            <Badge key={i} variant="destructive" className="text-xs">{fonte}</Badge>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </Card>
+            );
+          })}
+        </div>
+
+        <AssignedLeadsDialog
+          open={leadsDialogOpen}
+          onOpenChange={setLeadsDialogOpen}
+          assignmentRecord={selectedAssignment}
+          onRefresh={loadHistory}
+        />
+        
+        <ReplayAssignmentDialog
+          open={replayDialogOpen}
+          onOpenChange={setReplayDialogOpen}
+          assignmentRecord={selectedAssignment}
+          onSuccess={loadHistory}
+        />
+      </>
+    );
+  }
+
+  // Desktop table view
   return (
     <>
       <ScrollArea className="h-[600px]">
@@ -154,7 +297,6 @@ const AssignmentHistory = () => {
                 </TableCell>
                 <TableCell>
                   <div className="space-y-2">
-                    {/* Fonti Incluse */}
                     {record.fonti_incluse && record.fonti_incluse.length > 0 && (
                       <div className="space-y-1">
                         <div className="flex items-center gap-1 text-xs text-muted-foreground">
@@ -171,7 +313,6 @@ const AssignmentHistory = () => {
                       </div>
                     )}
                     
-                    {/* Fonti Escluse */}
                     {record.fonti_escluse && record.fonti_escluse.length > 0 && (
                       <div className="space-y-1">
                         <div className="flex items-center gap-1 text-xs text-muted-foreground">
@@ -188,7 +329,6 @@ const AssignmentHistory = () => {
                       </div>
                     )}
 
-                    {/* Fonti Escluse dalle Incluse */}
                     {record.exclude_from_included && record.exclude_from_included.length > 0 && (
                       <div className="space-y-1">
                         <div className="flex items-center gap-1 text-xs text-muted-foreground">
@@ -197,7 +337,7 @@ const AssignmentHistory = () => {
                         </div>
                         <div className="flex flex-wrap gap-1">
                           {record.exclude_from_included.map((fonte, index) => (
-                            <Badge key={index} variant="outline" className="text-xs border-orange-500 text-orange-600">
+                            <Badge key={index} variant="outline" className="text-xs border-orange-500 text-orange-400">
                               {fonte}
                             </Badge>
                           ))}
@@ -205,7 +345,6 @@ const AssignmentHistory = () => {
                       </div>
                     )}
                     
-                    {/* Se non ci sono filtri */}
                     {(!record.fonti_incluse || record.fonti_incluse.length === 0) && 
                      (!record.fonti_escluse || record.fonti_escluse.length === 0) &&
                      (!record.exclude_from_included || record.exclude_from_included.length === 0) && (
@@ -222,7 +361,7 @@ const AssignmentHistory = () => {
                         setSelectedAssignment(record);
                         setLeadsDialogOpen(true);
                       }}
-                      className="h-8 w-8 p-0"
+                      className="h-9 w-9 p-0 active:scale-95"
                       title="Visualizza dettagli e azioni"
                     >
                       <Info className="h-4 w-4" />
@@ -234,7 +373,7 @@ const AssignmentHistory = () => {
                         setSelectedAssignment(record);
                         setReplayDialogOpen(true);
                       }}
-                      className="h-8 w-8 p-0"
+                      className="h-9 w-9 p-0 active:scale-95"
                       title="Replay assegnazione"
                     >
                       <Play className="h-4 w-4" />

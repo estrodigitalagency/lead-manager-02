@@ -27,10 +27,8 @@ export function AvailableLeadsCounter({
   const [isUpdating, setIsUpdating] = useState(false);
   const [countTrend, setCountTrend] = useState<'up' | 'down' | 'stable'>('stable');
 
-  // Update display count with smooth transition
   useEffect(() => {
     if (!isLoading) {
-      // Determina il trend del cambiamento
       if (availableLeads > previousCount) {
         setCountTrend('up');
       } else if (availableLeads < previousCount) {
@@ -43,7 +41,6 @@ export function AvailableLeadsCounter({
       setDisplayCount(availableLeads);
       setIsUpdating(false);
 
-      // Reset trend dopo 2 secondi
       const trendTimer = setTimeout(() => {
         setCountTrend('stable');
       }, 2000);
@@ -61,33 +58,33 @@ export function AvailableLeadsCounter({
   const getTrendIcon = () => {
     switch (countTrend) {
       case 'up':
-        return <TrendingUp className="h-4 w-4 text-green-600" />;
+        return <TrendingUp className="h-4 w-4 text-green-400" />;
       case 'down':
-        return <TrendingDown className="h-4 w-4 text-red-600" />;
+        return <TrendingDown className="h-4 w-4 text-red-400" />;
       default:
         return null;
     }
   };
 
   const getCountColor = () => {
-    if (isLoading || isUpdating) return 'text-blue-500';
+    if (isLoading || isUpdating) return 'text-primary';
     
     switch (countTrend) {
       case 'up':
-        return 'text-green-600';
+        return 'text-green-400';
       case 'down':
-        return 'text-red-600';
+        return 'text-red-400';
       default:
-        return 'text-blue-700';
+        return 'text-primary';
     }
   };
 
   return (
-    <div className="p-4 border border-blue-200 rounded-lg bg-white">
+    <div className="p-4 border border-border rounded-lg bg-card">
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
-          <Users className="h-5 w-5 text-blue-600" />
-          <h3 className="text-base font-semibold text-blue-800">
+          <Users className="h-5 w-5 text-primary" />
+          <h3 className="text-base font-semibold text-foreground">
             Lead Disponibili per Assegnazione
           </h3>
           {getTrendIcon()}
@@ -104,7 +101,7 @@ export function AvailableLeadsCounter({
               <div className="flex items-center gap-2">
                 <span className="tabular-nums">{displayCount}</span>
                 {countTrend !== 'stable' && (
-                  <span className="text-sm font-normal text-gray-500">
+                  <span className="text-sm font-normal text-muted-foreground">
                     ({previousCount > displayCount ? '-' : '+'}{Math.abs(displayCount - previousCount)})
                   </span>
                 )}
@@ -114,17 +111,15 @@ export function AvailableLeadsCounter({
         </div>
       </div>
 
-      {/* Stato filtri attivi con indicatori di cambiamento */}
       <div className="space-y-2 text-sm">
-        {/* Controllo temporale */}
         <div className="flex items-center gap-2">
-          <Clock className="h-4 w-4 text-gray-500" />
-          <span className="text-gray-700">
+          <Clock className="h-4 w-4 text-muted-foreground" />
+          <span className="text-muted-foreground">
             Bypass temporale: 
             <Badge 
               variant={bypassTimeInterval ? "default" : "secondary"} 
               className={`ml-2 transition-colors duration-200 ${
-                bypassTimeInterval ? 'bg-green-100 text-green-800 border-green-300' : ''
+                bypassTimeInterval ? 'bg-green-500/15 text-green-400 border-green-500/30' : ''
               }`}
             >
               {bypassTimeInterval ? "ATTIVO" : "Non attivo"}
@@ -132,24 +127,23 @@ export function AvailableLeadsCounter({
           </span>
         </div>
 
-        {/* Filtri fonte con indicatori real-time */}
         {hasFilters && (
           <div className="flex items-center gap-2">
-            <Filter className="h-4 w-4 text-gray-500" />
-            <span className="text-gray-700">Filtri attivi:</span>
+            <Filter className="h-4 w-4 text-muted-foreground" />
+            <span className="text-muted-foreground">Filtri attivi:</span>
             <div className="flex flex-wrap gap-1">
               {sourceMode === 'exclude' && excludedSources.length > 0 && (
-                <Badge variant="destructive" className="text-xs animate-pulse">
+                <Badge variant="destructive" className="text-xs">
                   🚫 {excludedSources.length} escluse
                 </Badge>
               )}
               {sourceMode === 'include' && includedSources.length > 0 && (
-                <Badge variant="default" className="text-xs animate-pulse">
+                <Badge variant="default" className="text-xs">
                   ✅ {includedSources.length} incluse
                 </Badge>
               )}
               {excludeFromIncluded.length > 0 && (
-                <Badge variant="outline" className="text-xs border-orange-300 text-orange-700 animate-pulse">
+                <Badge variant="outline" className="text-xs border-orange-500/50 text-orange-400">
                   ➖ {excludeFromIncluded.length} escluse da incluse
                 </Badge>
               )}
@@ -158,32 +152,29 @@ export function AvailableLeadsCounter({
         )}
 
         {!hasFilters && !bypassTimeInterval && (
-          <div className="text-gray-600 text-xs">
+          <div className="text-muted-foreground text-xs">
             Nessun filtro attivo - utilizzando criteri standard di assegnabilità
           </div>
         )}
       </div>
 
-      {/* Messaggi di stato con migliore UX */}
       {!isLoading && !isUpdating && displayCount === 0 && (
-        <div className="mt-3 p-2 bg-yellow-100 border border-yellow-300 rounded text-sm text-yellow-800 animate-pulse">
+        <div className="mt-3 p-2 bg-yellow-500/10 border border-yellow-500/20 rounded text-sm text-yellow-400">
           ⚠️ Nessun lead disponibile con i filtri attuali
         </div>
       )}
 
-      {/* Indicatore di aggiornamento in tempo reale */}
       {(isLoading || isUpdating) && (
-        <div className="mt-3 p-2 bg-blue-100 border border-blue-300 rounded text-sm text-blue-800 animate-pulse">
+        <div className="mt-3 p-2 bg-primary/10 border border-primary/20 rounded text-sm text-primary">
           🔄 Aggiornamento conteggio in tempo reale...
         </div>
       )}
 
-      {/* Indicatore di successo aggiornamento */}
       {countTrend !== 'stable' && !isLoading && !isUpdating && (
-        <div className={`mt-3 p-2 rounded text-sm animate-pulse ${
+        <div className={`mt-3 p-2 rounded text-sm ${
           countTrend === 'up' 
-            ? 'bg-green-100 border border-green-300 text-green-800' 
-            : 'bg-red-100 border border-red-300 text-red-800'
+            ? 'bg-green-500/10 border border-green-500/20 text-green-400' 
+            : 'bg-red-500/10 border border-red-500/20 text-red-400'
         }`}>
           {countTrend === 'up' ? '📈' : '📉'} Conteggio aggiornato: {displayCount} lead disponibili
         </div>
