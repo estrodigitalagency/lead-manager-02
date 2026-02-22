@@ -55,7 +55,6 @@ const PersistentNavigation = () => {
               <h1 className="text-lg font-semibold gradient-text">Lead Manager</h1>
             </Link>
             <div className="flex items-center gap-2">
-              <MarketSelector />
               <LanguageSelector variant="mobile" />
               <Button 
                 variant="ghost" 
