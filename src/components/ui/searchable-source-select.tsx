@@ -75,9 +75,11 @@ export function SearchableSourceSelect({
         </Button>
       </PopoverTrigger>
       <PopoverContent 
-        className="w-[var(--radix-popover-trigger-width)] p-0" 
+        className="w-[var(--radix-popover-trigger-width)] p-0 z-[9999] bg-popover border border-border shadow-lg" 
         align="start"
         sideOffset={4}
+        style={{ pointerEvents: 'auto' }}
+        onOpenAutoFocus={(e) => e.preventDefault()}
       >
         <Command shouldFilter={false}>
           <div className="flex items-center border-b px-3">
