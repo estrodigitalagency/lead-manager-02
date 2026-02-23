@@ -1,5 +1,5 @@
 
-import { ReactNode, useState } from "react";
+import { ReactNode, useState, useCallback } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useIsMobile } from "@/hooks/use-mobile";
 import DatabaseFiltersResponsive from "@/components/DatabaseFiltersResponsive";
@@ -65,35 +65,27 @@ const DatabaseTableContainer = ({
   const [showFiltersDialog, setShowFiltersDialog] = useState(false);
   const [showColumnVisibilityMenu, setShowColumnVisibilityMenu] = useState(false);
 
-  const handleSearch = (searchTerm: string) => {
-    console.log('Search term:', searchTerm);
-    
-    const newFilters = {
-      ...currentFilters,
-      search: searchTerm || undefined
-    };
-    
-    Object.keys(newFilters).forEach(key => {
-      if (newFilters[key] === undefined) {
-        delete newFilters[key];
-      }
+  const handleSearch = useCallback((searchTerm: string) => {
+    setCurrentFilters(prev => {
+      const newFilters = { ...prev, search: searchTerm || undefined };
+      Object.keys(newFilters).forEach(key => {
+        if (newFilters[key] === undefined) delete newFilters[key];
+      });
+      onApplyFilters(newFilters);
+      return newFilters;
     });
-    
-    setCurrentFilters(newFilters);
-    onApplyFilters(newFilters);
-  };
+  }, [onApplyFilters]);
 
-  const handleAdvancedFilters = (filters: Record<string, any>) => {
-    console.log('Advanced filters:', filters);
-    
-    const newFilters = {
-      ...filters,
-      ...(currentFilters.search && { search: currentFilters.search })
-    };
-    
-    setCurrentFilters(newFilters);
-    onApplyFilters(newFilters);
-  };
+  const handleAdvancedFilters = useCallback((filters: Record<string, any>) => {
+    setCurrentFilters(prev => {
+      const newFilters = {
+        ...filters,
+        ...(prev.search && { search: prev.search })
+      };
+      onApplyFilters(newFilters);
+      return newFilters;
+    });
+  }, [onApplyFilters]);
 
   const handleExportCSV = () => {
     console.log('Export CSV triggered');

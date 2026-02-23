@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   Table,
   TableBody,
@@ -22,7 +22,6 @@ interface LeadsTableProps {
   onSelectionChange: (selected: string[]) => void;
   onDelete: (id: string) => void;
   filters?: Record<string, any>;
-  onDataChange?: (data: any[]) => void; // Nuovo prop per esporre i dati
 }
 
 const initialColumns: ColumnConfig[] = [
@@ -45,7 +44,6 @@ const LeadsTable = ({
   onSelectionChange, 
   onDelete,
   filters = {},
-  onDataChange // Nuovo prop
 }: LeadsTableProps) => {
   const isMobile = useIsMobile();
   const { columns, visibleColumns, toggleColumn } = useColumnVisibility(initialColumns);
@@ -78,18 +76,17 @@ const LeadsTable = ({
   // Sorting locale sui dati della pagina corrente
   const { sortedData, sortConfig, requestSort } = useTableSorting(leads);
 
-  // Reset selezioni quando cambiano i filtri
+  // Reset selezioni quando cambiano i filtri (con ref per evitare loop)
+  const prevFiltersRef = useRef(JSON.stringify(filters));
   useEffect(() => {
-    onSelectionChange([]);
-  }, [JSON.stringify(filters), onSelectionChange]);
-
-  // Correggi qui: usa 'leads' invece di 'data'
-  useEffect(() => {
-    if (onDataChange && leads) {
-      onDataChange(leads);
+    const filtersStr = JSON.stringify(filters);
+    if (prevFiltersRef.current !== filtersStr) {
+      prevFiltersRef.current = filtersStr;
+      if (selectedItems.length > 0) {
+        onSelectionChange([]);
+      }
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [leads]);
+  }, [filters, selectedItems.length, onSelectionChange]);
 
   const handleItemSelect = (id: string, checked: boolean) => {
     if (checked) {

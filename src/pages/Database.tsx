@@ -17,7 +17,6 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { Lead } from "@/types/lead";
 import { LeadLavorato } from "@/types/leadLavorato";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useLeadSync } from "@/contexts/LeadSyncContext";
@@ -72,11 +71,8 @@ const DatabasePage = () => {
   // Add a ref to prevent multiple initialization calls
   const isInitializedRef = useRef<boolean>(false);
 
-  // Aggiungi stato per i dati dei lead
-  const [leadsData, setLeadsData] = useState<Lead[]>([]);
-
   // Funzioni per caricare bookings e lead lavorati (manteniamo la logica esistente ma filtriamo per market)
-  const fetchBookings = async () => {
+  const fetchBookings = useCallback(async () => {
     setIsLoadingBookings(true);
     try {
       const result = await getPaginatedData<CalendlyBooking>(
@@ -92,9 +88,9 @@ const DatabasePage = () => {
     } finally {
       setIsLoadingBookings(false);
     }
-  };
+  }, [activeFilters, selectedMarket]);
 
-  const fetchLeadLavorati = async () => {
+  const fetchLeadLavorati = useCallback(async () => {
     setIsLoadingLeadLavorati(true);
     try {
       const result = await getPaginatedData<LeadLavorato>(
@@ -110,7 +106,7 @@ const DatabasePage = () => {
     } finally {
       setIsLoadingLeadLavorati(false);
     }
-  };
+  }, [activeFilters, selectedMarket]);
 
   // Carica dati all'apertura (la verifica è già gestita da LeadSyncProvider)
   useEffect(() => {
@@ -243,10 +239,6 @@ const DatabasePage = () => {
     console.log('Bulk action:', action);
   };
 
-  const handleLeadsDataChange = useCallback((data: Lead[]) => {
-    setLeadsData(data);
-  }, []);
-
   return (
     <div className={`container mx-auto px-4 py-8 ${isMobile ? 'px-2 py-4 pt-16 pb-24' : ''}`}>
       <div className={`flex justify-between items-center mb-8 ${isMobile ? 'flex-col gap-4' : ''}`}>
@@ -325,7 +317,7 @@ const DatabasePage = () => {
             title="Lead Database"
             description="Tutti i lead generati tramite form o webhook"
             tableName="lead_generation"
-            allItems={leadsData} // Usa i dati reali invece di array vuoto
+            allItems={[]}
             selectedItems={selectedLeads}
             onSelectionChange={setSelectedLeads}
             onApplyFilters={handleApplyFilters}
@@ -339,7 +331,6 @@ const DatabasePage = () => {
               onSelectionChange={setSelectedLeads}
               onDelete={(id) => handleDeleteClick(id, 'lead')}
               filters={activeFilters}
-              onDataChange={handleLeadsDataChange} // Passa la callback
             />
           </DatabaseTableContainer>
         </TabsContent>
