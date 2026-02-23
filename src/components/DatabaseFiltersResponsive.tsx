@@ -430,7 +430,11 @@ const DatabaseFiltersResponsive = ({
           </Button>
         </DialogTrigger>
       )}
-      <DialogContent className="max-w-md max-h-[85vh] p-0 gap-0">
+      <DialogContent 
+        className="max-w-md max-h-[85vh] p-0 gap-0"
+        onPointerDownOutside={(e) => e.preventDefault()}
+        onInteractOutside={(e) => e.preventDefault()}
+      >
         <DialogHeader className="p-5 pb-3 border-b border-border/50">
           <DialogTitle className="text-lg">Filtri Database</DialogTitle>
           <DialogDescription className="text-xs">
