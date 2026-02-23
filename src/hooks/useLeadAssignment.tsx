@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { getAllFonti, getAllCampagne, getUniqueSourcesFromLeads, syncSourcesToDatabase } from "@/services/databaseService";
+import { getAllFonti, getAllCampagne, getUniqueSourcesFromLeads } from "@/services/databaseService";
 import { assignLeadsWithExclusions, checkLeadsForPreviousAssignment, LeadAssignmentData, AlreadyAssignedLeadInfo } from "@/services/leadAssignmentService";
 import { Campaign } from '@/hooks/useCampaignsData';
 import { useRealTimeLeadCount } from "./useRealTimeLeadCount";
@@ -107,7 +107,6 @@ export function useLeadAssignment() {
 
   const fetchFonti = async () => {
     try {
-      await syncSourcesToDatabase();
       const data = await getAllFonti();
       setFonti(data);
       console.log(`📊 Loaded ${data.length} fonti`);

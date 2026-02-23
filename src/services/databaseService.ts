@@ -386,102 +386,21 @@ export async function getAllCampagne(market: string = 'IT') {
   }
 }
 
-export async function getUniqueSourcesFromLeads(market: string = 'IT'): Promise<string[]> {
+export async function getUniqueSourcesFromLeads(_market?: string): Promise<string[]> {
   try {
-    console.log(`🔍 getUniqueSourcesFromLeads: Fetching for market "${market}"`);
+    console.log(`🔍 getUniqueSourcesFromLeads: Fetching from database_fonti`);
 
-    // Fetch ALL rows in chunks to avoid the 1000-rows default cap
-    const pageSize = 1000;
-    const maxRows = 50000; // safety cap
-    let from = 0;
-    const allRows: any[] = [];
+    const { data, error } = await supabase
+      .from('database_fonti')
+      .select('nome')
+      .eq('attivo', true)
+      .order('nome');
 
-    while (from < maxRows) {
-      let query = supabase
-        .from('lead_generation')
-        .select('fonte, ultima_fonte, market, created_at')
-        .order('created_at', { ascending: false })
-        .range(from, from + pageSize - 1);
+    if (error) throw error;
 
-      // Include legacy records without market to avoid missing sources
-      if (market) {
-        query = query.or(`market.eq.${market},market.is.null`);
-      }
-
-      const { data, error }: { data: any[] | null; error: any } = await query;
-      if (error) {
-        console.error("❌ Error in getUniqueSourcesFromLeads query:", error);
-        throw error;
-      }
-
-      const chunk = data || [];
-      allRows.push(...chunk);
-      console.log(`📥 Fetched chunk: ${chunk.length} rows (from ${from})`);
-
-      if (chunk.length < pageSize) break; // last page reached
-      from += pageSize;
-    }
-
-    console.log(`📊 Retrieved ${allRows.length} lead records for market ${market}`);
-
-    // Helper to extract tokens from CSV or JSON array formats and sanitize them
-    const allTokens: string[] = [];
-    const addTokens = (raw?: string, _fieldName?: string) => {
-      if (!raw) return;
-      const val = String(raw).trim();
-      if (!val) return;
-
-      let tokens: string[] = [];
-      // Try parsing as JSON array first
-      if ((val.startsWith('[') && val.endsWith(']')) || val.includes('\",\"')) {
-        try {
-          const parsed = JSON.parse(val);
-          if (Array.isArray(parsed)) {
-            tokens = parsed.map((v) => String(v));
-          }
-        } catch {
-          // Fallback to delimiter-based split below
-        }
-      }
-
-      if (tokens.length === 0) {
-        tokens = val.split(/[\,\|;]+/).map(t => t.trim()).filter(Boolean);
-      }
-
-      for (let t of tokens) {
-        // Remove stray quotes/brackets (including typographic quotes) and trim
-        let s = t.replace(/^[\"'“”‘’\[\]]+|[\"'“”‘’\[\]]+$/g, '').trim();
-        if (!s) continue;
-        const normalized = s.toLowerCase();
-        // Ignore generic placeholders
-        if (["no", "si", "false", "true", "null", "undefined", "-"].includes(normalized)) continue;
-        allTokens.push(s);
-      }
-    };
-
-    allRows.forEach(item => {
-      addTokens(item.fonte, 'fonte');
-      addTokens(item.ultima_fonte, 'ultima_fonte');
-    });
-
-    console.log(`📋 Total tokens extracted: ${allTokens.length}`);
-
-    // Dedupe case-insensitively while preserving first-seen casing
-    const seen = new Set<string>();
-    const unique: string[] = [];
-    for (const s of allTokens) {
-      const k = s.toLowerCase();
-      if (!seen.has(k)) {
-        seen.add(k);
-        unique.push(s);
-      }
-    }
-
-    const sorted = unique.sort((a, b) => a.localeCompare(b));
-    console.log(`✅ getUniqueSourcesFromLeads: Returning ${sorted.length} unique sources for market ${market}`);
-    console.log(`📝 Sample sources (first 10):`, sorted.slice(0, 10));
-
-    return sorted;
+    const sources = (data || []).map(f => f.nome).filter(Boolean);
+    console.log(`✅ getUniqueSourcesFromLeads: Returning ${sources.length} sources from database_fonti`);
+    return sources;
   } catch (error) {
     console.error("❌ Error fetching unique sources:", error);
     return [];

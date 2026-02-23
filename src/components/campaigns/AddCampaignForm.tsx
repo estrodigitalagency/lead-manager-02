@@ -5,7 +5,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Plus } from 'lucide-react';
-import { getUniqueSourcesFromLeads, syncSourcesToDatabase } from '@/services/databaseService';
+import { getUniqueSourcesFromLeads } from '@/services/databaseService';
 import { supabase } from '@/integrations/supabase/client';
 import { useMarket } from '@/contexts/MarketContext';
 import CampaignSourcesConfig from './CampaignSourcesConfig';
