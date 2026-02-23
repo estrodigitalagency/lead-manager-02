@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -17,11 +16,8 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { isAuthenticated, loading } = useAuth();
   const location = useLocation();
   
-  // Check if current route is public or standalone (both should be unprotected)
   const isPublicRoute = publicRoutes.some(route => route.to === location.pathname);
   const isStandaloneRoute = standaloneRoutes.some(route => route.to === location.pathname);
-  
-  // Explicitly allow /lead-assignment without authentication
   const isLeadAssignmentPage = location.pathname === '/lead-assignment';
   
   console.log("🔐 ProtectedRoute Debug:", {
@@ -35,7 +31,6 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   
   if (!isAuthenticated && !isPublicRoute && !isStandaloneRoute && !isLeadAssignmentPage && !loading) {
     console.log("🚫 Redirecting to login...");
-    // Redirect to login if not authenticated and not on public/standalone route
     window.location.href = '/login';
     return null;
   }
