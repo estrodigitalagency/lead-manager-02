@@ -199,8 +199,9 @@ const LeadsTable = ({
         onToggleColumn={toggleColumn}
       />
       
-      <Table>
-        <LeadTableHeader
+      <div className="w-full overflow-x-auto">
+        <Table>
+          <LeadTableHeader
           visibleColumns={visibleColumnKeys}
           sortConfig={sortConfig}
           allCurrentPageSelected={allCurrentPageSelected}
@@ -220,8 +221,9 @@ const LeadsTable = ({
               onToggleManuallyNotAssignable={handleToggleManuallyNotAssignable}
             />
           ))}
-        </TableBody>
-      </Table>
+          </TableBody>
+        </Table>
+      </div>
 
       <PaginationControls
         currentPage={currentPage}

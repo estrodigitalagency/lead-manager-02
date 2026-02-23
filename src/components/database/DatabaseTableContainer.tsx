@@ -387,10 +387,8 @@ const DatabaseTableContainer = ({
         onRefresh={onRefresh}
       />
       
-      <CardContent className={isMobile ? 'p-2 overflow-x-auto' : 'overflow-x-auto'}>
-        <div className="min-w-full">
-          {children}
-        </div>
+      <CardContent className={isMobile ? 'p-2' : ''}>
+        {children}
       </CardContent>
 
       <ManualAssignmentDialog
