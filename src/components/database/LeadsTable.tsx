@@ -88,7 +88,8 @@ const LeadsTable = ({
     if (onDataChange && leads) {
       onDataChange(leads);
     }
-  }, [leads, onDataChange]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [leads]);
 
   const handleItemSelect = (id: string, checked: boolean) => {
     if (checked) {

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -232,9 +232,9 @@ const DatabasePage = () => {
     setIsImportDialogOpen(true);
   };
 
-  const handleApplyFilters = (filters: Record<string, any>) => {
+  const handleApplyFilters = useCallback((filters: Record<string, any>) => {
     setActiveFilters(filters);
-  };
+  }, []);
 
   const anyLoading = isVerifying || isRefreshing;
 
@@ -243,9 +243,9 @@ const DatabasePage = () => {
     console.log('Bulk action:', action);
   };
 
-  const handleLeadsDataChange = (data: Lead[]) => {
+  const handleLeadsDataChange = useCallback((data: Lead[]) => {
     setLeadsData(data);
-  };
+  }, []);
 
   return (
     <div className={`container mx-auto px-4 py-8 ${isMobile ? 'px-2 py-4 pt-16 pb-24' : ''}`}>
