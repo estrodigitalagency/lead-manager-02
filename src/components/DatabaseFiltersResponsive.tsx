@@ -9,12 +9,13 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTr
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { Filter, X, CalendarIcon } from "lucide-react";
+import { Filter, X, CalendarIcon, Search, User, Phone, Mail, Tag, CheckCircle } from "lucide-react";
 import { format } from "date-fns";
 import { it } from "date-fns/locale";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { getAvailableFonti, getAvailableVenditori } from "@/services/reportsService";
 import { SearchableSourceSelect } from "@/components/ui/searchable-source-select";
+import { Separator } from "@/components/ui/separator";
 
 interface DatabaseFiltersResponsiveProps {
   onApplyFilters: (filters: Record<string, any>) => void;
@@ -34,7 +35,6 @@ const DatabaseFiltersResponsive = ({
   const [filters, setFilters] = useState<Record<string, any>>({});
   const [internalOpen, setInternalOpen] = useState(false);
   
-  // Usa controlled state se fornito, altrimenti usa internal state
   const isOpen = controlledOpen !== undefined ? controlledOpen : internalOpen;
   const setIsOpen = controlledOnOpenChange || setInternalOpen;
   const [venditori, setVenditori] = useState<string[]>([]);
@@ -111,113 +111,135 @@ const DatabaseFiltersResponsive = ({
     return fonti.filter(fonte => !currentList.includes(fonte)).sort();
   };
 
+  const activeFiltersCount = Object.keys(filters).filter(k => {
+    const v = filters[k];
+    if (k === 'sourceMode') return false;
+    if (k === 'bookedCall' && v === 'all') return false;
+    if (Array.isArray(v)) return v.length > 0;
+    return v !== '' && v !== undefined && v !== null;
+  }).length;
+
+  const SectionHeader = ({ icon: Icon, title }: { icon: any; title: string }) => (
+    <div className="flex items-center gap-2 mb-3">
+      <div className="flex items-center justify-center w-7 h-7 rounded-md bg-primary/10">
+        <Icon className="h-3.5 w-3.5 text-primary" />
+      </div>
+      <Label className="text-sm font-semibold tracking-tight">{title}</Label>
+    </div>
+  );
+
   const FilterContent = () => (
-    <div className="space-y-4 p-2">
-      <div className="space-y-4">
-        {/* Periodo */}
-        <div className="space-y-3">
-          <Label className="text-sm font-medium">Periodo</Label>
-          <div className="space-y-2">
-            <div>
-              <Label className="text-xs">Data Inizio</Label>
-              <Popover open={calendarView === "from"} onOpenChange={() => 
-                setCalendarView(calendarView === "from" ? null : "from")
-              }>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" className="w-full justify-start text-left font-normal mt-1">
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {filters.dataInizio ? format(new Date(filters.dataInizio), "dd/MM/yyyy", { locale: it }) : "Da data"}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0">
-                  <Calendar
-                    mode="single"
-                    selected={filters.dataInizio ? new Date(filters.dataInizio) : undefined}
-                    onSelect={(date) => {
-                      handleFilterChange("dataInizio", date ? date.toISOString().split('T')[0] : null);
-                      setCalendarView(null);
-                    }}
-                    className="p-3 pointer-events-auto"
-                  />
-                </PopoverContent>
-              </Popover>
-            </div>
-            <div>
-              <Label className="text-xs">Data Fine</Label>
-              <Popover open={calendarView === "to"} onOpenChange={() => 
-                setCalendarView(calendarView === "to" ? null : "to")
-              }>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" className="w-full justify-start text-left font-normal mt-1">
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {filters.dataFine ? format(new Date(filters.dataFine), "dd/MM/yyyy", { locale: it }) : "A data"}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0">
-                  <Calendar
-                    mode="single"
-                    selected={filters.dataFine ? new Date(filters.dataFine) : undefined}
-                    onSelect={(date) => {
-                      handleFilterChange("dataFine", date ? date.toISOString().split('T')[0] : null);
-                      setCalendarView(null);
-                    }}
-                    className="p-3 pointer-events-auto"
-                  />
-                </PopoverContent>
-              </Popover>
-            </div>
+    <div className="space-y-5">
+      {/* Periodo */}
+      <div>
+        <SectionHeader icon={CalendarIcon} title="Periodo" />
+        <div className="grid grid-cols-2 gap-2">
+          <div>
+            <Label className="text-xs text-muted-foreground mb-1 block">Da</Label>
+            <Popover open={calendarView === "from"} onOpenChange={() => 
+              setCalendarView(calendarView === "from" ? null : "from")
+            }>
+              <PopoverTrigger asChild>
+                <Button variant="outline" size="sm" className="w-full justify-start text-left font-normal h-9">
+                  <CalendarIcon className="mr-2 h-3.5 w-3.5 text-muted-foreground" />
+                  <span className={filters.dataInizio ? "text-foreground" : "text-muted-foreground"}>
+                    {filters.dataInizio ? format(new Date(filters.dataInizio), "dd/MM/yyyy", { locale: it }) : "Inizio"}
+                  </span>
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0 z-[60]">
+                <Calendar
+                  mode="single"
+                  selected={filters.dataInizio ? new Date(filters.dataInizio) : undefined}
+                  onSelect={(date) => {
+                    handleFilterChange("dataInizio", date ? date.toISOString().split('T')[0] : null);
+                    setCalendarView(null);
+                  }}
+                  className="p-3 pointer-events-auto"
+                />
+              </PopoverContent>
+            </Popover>
+          </div>
+          <div>
+            <Label className="text-xs text-muted-foreground mb-1 block">A</Label>
+            <Popover open={calendarView === "to"} onOpenChange={() => 
+              setCalendarView(calendarView === "to" ? null : "to")
+            }>
+              <PopoverTrigger asChild>
+                <Button variant="outline" size="sm" className="w-full justify-start text-left font-normal h-9">
+                  <CalendarIcon className="mr-2 h-3.5 w-3.5 text-muted-foreground" />
+                  <span className={filters.dataFine ? "text-foreground" : "text-muted-foreground"}>
+                    {filters.dataFine ? format(new Date(filters.dataFine), "dd/MM/yyyy", { locale: it }) : "Fine"}
+                  </span>
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0 z-[60]">
+                <Calendar
+                  mode="single"
+                  selected={filters.dataFine ? new Date(filters.dataFine) : undefined}
+                  onSelect={(date) => {
+                    handleFilterChange("dataFine", date ? date.toISOString().split('T')[0] : null);
+                    setCalendarView(null);
+                  }}
+                  className="p-3 pointer-events-auto"
+                />
+              </PopoverContent>
+            </Popover>
           </div>
         </div>
+      </div>
 
-        {/* Ricerca testo */}
-        <div className="space-y-3">
-          <Label className="text-sm font-medium">Ricerca Testo</Label>
-          <div className="space-y-2">
-            <div>
-              <Label htmlFor="nome" className="text-xs">Nome</Label>
-              <Input
-                id="nome"
-                placeholder="Cerca per nome..."
-                value={filters.nome || ''}
-                onChange={(e) => handleFilterChange('nome', e.target.value)}
-                className="mt-1"
-              />
-            </div>
-            <div>
-              <Label htmlFor="email" className="text-xs">Email</Label>
-              <Input
-                id="email"
-                placeholder="Cerca per email..."
-                value={filters.email || ''}
-                onChange={(e) => handleFilterChange('email', e.target.value)}
-                className="mt-1"
-              />
-            </div>
-            <div>
-              <Label htmlFor="telefono" className="text-xs">Telefono</Label>
-              <Input
-                id="telefono"
-                placeholder="Cerca per telefono..."
-                value={filters.telefono || ''}
-                onChange={(e) => handleFilterChange('telefono', e.target.value)}
-                className="mt-1"
-              />
-            </div>
+      <Separator className="opacity-50" />
+
+      {/* Ricerca */}
+      <div>
+        <SectionHeader icon={Search} title="Ricerca" />
+        <div className="space-y-2">
+          <div className="relative">
+            <User className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
+            <Input
+              placeholder="Nome..."
+              value={filters.nome || ''}
+              onChange={(e) => handleFilterChange('nome', e.target.value)}
+              className="pl-8 h-9 text-sm"
+            />
+          </div>
+          <div className="relative">
+            <Mail className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
+            <Input
+              placeholder="Email..."
+              value={filters.email || ''}
+              onChange={(e) => handleFilterChange('email', e.target.value)}
+              className="pl-8 h-9 text-sm"
+            />
+          </div>
+          <div className="relative">
+            <Phone className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
+            <Input
+              placeholder="Telefono..."
+              value={filters.telefono || ''}
+              onChange={(e) => handleFilterChange('telefono', e.target.value)}
+              className="pl-8 h-9 text-sm"
+            />
           </div>
         </div>
+      </div>
 
-        {/* Venditore */}
-        {(tableName === 'lead_generation' || tableName === 'lead_lavorati') && (
-          <div className="space-y-2">
-            <Label className="text-sm font-medium">Venditore</Label>
+      <Separator className="opacity-50" />
+
+      {/* Venditore & Call Prenotata */}
+      {(tableName === 'lead_generation' || tableName === 'lead_lavorati') && (
+        <>
+          <div>
+            <SectionHeader icon={User} title="Venditore" />
             <Select
               value={filters.venditore || 'all-venditori'}
               onValueChange={handleVenditoreChange}
             >
-              <SelectTrigger>
-                <SelectValue placeholder="Seleziona venditore" />
+              <SelectTrigger className="h-9 text-sm">
+                <SelectValue placeholder="Tutti i venditori" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="z-[60]">
                 <SelectItem value="all-venditori">Tutti i venditori</SelectItem>
                 {venditori.map((venditore) => (
                   <SelectItem key={venditore} value={venditore}>
@@ -227,117 +249,121 @@ const DatabaseFiltersResponsive = ({
               </SelectContent>
             </Select>
           </div>
-        )}
+          <Separator className="opacity-50" />
+        </>
+      )}
 
-        {/* Filtri Fonte */}
-        <div className="space-y-3">
-          <Label className="text-sm font-medium">Filtri per Fonte</Label>
-          
-          {/* Modalità */}
-          <div className="flex gap-2">
-            <Button
-              variant={sourceMode === 'include' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => handleSourceModeChange('include')}
-              className="flex-1"
-            >
-              Includi Solo
-            </Button>
-            <Button
-              variant={sourceMode === 'exclude' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => handleSourceModeChange('exclude')}
-              className="flex-1"
-            >
-              Escludi
-            </Button>
-          </div>
-
-          {/* Selezione fonte con ricerca */}
-          <SearchableSourceSelect
-            sources={getAvailableFontiForSelection()}
-            onSelect={(fonte) => handleAddFonte(fonte, sourceMode)}
-            placeholder={`Cerca fonte da ${sourceMode === 'include' ? 'includere' : 'escludere'}...`}
-            emptyMessage="Nessuna fonte trovata"
-          />
-
-          {/* Fonti selezionate */}
-          {(fontiIncluse.length > 0 || fontiEscluse.length > 0) && (
-            <div className="space-y-2">
-              {fontiIncluse.length > 0 && (
-                <div>
-                  <Label className="text-xs text-green-600 mb-1 block">Incluse:</Label>
-                  <div className="flex flex-wrap gap-1">
-                    {fontiIncluse.map((fonte: string) => (
-                      <Badge key={fonte} variant="secondary" className="bg-green-100 text-green-800 text-xs">
-                        {fonte}
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-3 w-3 p-0 ml-1 hover:bg-transparent"
-                          onClick={() => handleRemoveFonte(fonte, 'include')}
-                        >
-                          <X className="h-2 w-2" />
-                        </Button>
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
-              )}
-              
-              {fontiEscluse.length > 0 && (
-                <div>
-                  <Label className="text-xs text-red-600 mb-1 block">Escluse:</Label>
-                  <div className="flex flex-wrap gap-1">
-                    {fontiEscluse.map((fonte: string) => (
-                      <Badge key={fonte} variant="secondary" className="bg-red-100 text-red-800 text-xs">
-                        {fonte}
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-3 w-3 p-0 ml-1 hover:bg-transparent"
-                          onClick={() => handleRemoveFonte(fonte, 'exclude')}
-                        >
-                          <X className="h-2 w-2" />
-                        </Button>
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
-              )}
+      {/* Call Prenotata */}
+      {tableName === 'lead_generation' && (
+        <>
+          <div>
+            <SectionHeader icon={CheckCircle} title="Call Prenotata" />
+            <div className="flex gap-2">
+              {['all', 'SI', 'NO'].map((val) => {
+                const isActive = (filters.bookedCall || 'all') === val;
+                const label = val === 'all' ? 'Tutte' : val;
+                return (
+                  <Button
+                    key={val}
+                    variant={isActive ? 'default' : 'outline'}
+                    size="sm"
+                    className={`flex-1 h-9 text-sm ${isActive ? '' : 'text-muted-foreground'}`}
+                    onClick={() => handleFilterChange('bookedCall', val)}
+                  >
+                    {label}
+                  </Button>
+                );
+              })}
             </div>
-          )}
+          </div>
+          <Separator className="opacity-50" />
+        </>
+      )}
+
+      {/* Fonti */}
+      <div>
+        <SectionHeader icon={Tag} title="Fonte" />
+        
+        <div className="flex gap-1.5 mb-3">
+          <Button
+            variant={sourceMode === 'include' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => handleSourceModeChange('include')}
+            className="flex-1 h-8 text-xs"
+          >
+            Includi
+          </Button>
+          <Button
+            variant={sourceMode === 'exclude' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => handleSourceModeChange('exclude')}
+            className="flex-1 h-8 text-xs"
+          >
+            Escludi
+          </Button>
         </div>
 
-        {/* Call Prenotata - solo per lead_generation */}
-        {tableName === 'lead_generation' && (
-          <div className="space-y-2">
-            <Label className="text-sm font-medium">Call Prenotata</Label>
-            <Select
-              value={filters.bookedCall || 'all'}
-              onValueChange={(value) => handleFilterChange('bookedCall', value)}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Tutte" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Tutte</SelectItem>
-                <SelectItem value="SI">SI</SelectItem>
-                <SelectItem value="NO">NO</SelectItem>
-              </SelectContent>
-            </Select>
+        <SearchableSourceSelect
+          sources={getAvailableFontiForSelection()}
+          onSelect={(fonte) => handleAddFonte(fonte, sourceMode)}
+          placeholder={`Cerca fonte...`}
+          emptyMessage="Nessuna fonte trovata"
+        />
+
+        {(fontiIncluse.length > 0 || fontiEscluse.length > 0) && (
+          <div className="mt-3 space-y-2">
+            {fontiIncluse.length > 0 && (
+              <div>
+                <Label className="text-xs text-muted-foreground mb-1.5 block">Incluse:</Label>
+                <div className="flex flex-wrap gap-1">
+                  {fontiIncluse.map((fonte: string) => (
+                    <Badge key={fonte} variant="secondary" className="bg-primary/10 text-primary border border-primary/20 text-xs py-0.5">
+                      {fonte}
+                      <button
+                        className="ml-1 hover:text-destructive transition-colors"
+                        onClick={() => handleRemoveFonte(fonte, 'include')}
+                      >
+                        <X className="h-2.5 w-2.5" />
+                      </button>
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            )}
+            
+            {fontiEscluse.length > 0 && (
+              <div>
+                <Label className="text-xs text-muted-foreground mb-1.5 block">Escluse:</Label>
+                <div className="flex flex-wrap gap-1">
+                  {fontiEscluse.map((fonte: string) => (
+                    <Badge key={fonte} variant="secondary" className="bg-destructive/10 text-destructive border border-destructive/20 text-xs py-0.5">
+                      {fonte}
+                      <button
+                        className="ml-1 hover:text-foreground transition-colors"
+                        onClick={() => handleRemoveFonte(fonte, 'exclude')}
+                      >
+                        <X className="h-2.5 w-2.5" />
+                      </button>
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
+      </div>
 
-        {/* Esito per lead lavorati */}
-        {tableName === 'lead_lavorati' && (
-          <div className="space-y-2">
-            <Label className="text-sm font-medium">Esito</Label>
+      {/* Esito per lead lavorati */}
+      {tableName === 'lead_lavorati' && (
+        <>
+          <Separator className="opacity-50" />
+          <div>
+            <SectionHeader icon={CheckCircle} title="Esito" />
             <Select value={filters.esito || ''} onValueChange={(value) => handleFilterChange('esito', value)}>
-              <SelectTrigger>
-                <SelectValue placeholder="Seleziona esito" />
+              <SelectTrigger className="h-9 text-sm">
+                <SelectValue placeholder="Tutti gli esiti" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="z-[60]">
                 <SelectItem value="">Tutti</SelectItem>
                 <SelectItem value="interessato">Interessato</SelectItem>
                 <SelectItem value="non_interessato">Non Interessato</SelectItem>
@@ -347,16 +373,22 @@ const DatabaseFiltersResponsive = ({
               </SelectContent>
             </Select>
           </div>
-        )}
-      </div>
+        </>
+      )}
 
-      <div className="flex gap-2 pt-4 border-t">
-        <Button onClick={applyFilters} className="flex-1">
-          Applica Filtri
+      {/* Azioni */}
+      <div className="flex gap-2 pt-3 border-t border-border/50 sticky bottom-0 bg-background pb-1">
+        <Button onClick={applyFilters} className="flex-1 h-10">
+          <Filter className="h-4 w-4 mr-2" />
+          Applica
+          {activeFiltersCount > 0 && (
+            <Badge variant="secondary" className="ml-2 bg-primary-foreground/20 text-primary-foreground text-xs px-1.5 py-0">
+              {activeFiltersCount}
+            </Badge>
+          )}
         </Button>
-        <Button variant="outline" onClick={clearFilters} className="flex-1">
-          <X className="h-4 w-4 mr-2" />
-          Reset
+        <Button variant="outline" onClick={clearFilters} size="icon" className="h-10 w-10 shrink-0">
+          <X className="h-4 w-4" />
         </Button>
       </div>
     </div>
@@ -373,9 +405,9 @@ const DatabaseFiltersResponsive = ({
         </SheetTrigger>
         <SheetContent side="bottom" className="h-[85vh] p-0">
           <SheetHeader className="p-4 pb-2">
-            <SheetTitle>Filtri Database</SheetTitle>
-            <SheetDescription>
-              Applica filtri per raffinare la ricerca
+            <SheetTitle className="text-lg">Filtri Database</SheetTitle>
+            <SheetDescription className="text-xs">
+              Raffina la ricerca con i filtri sottostanti
             </SheetDescription>
           </SheetHeader>
           <div className="overflow-y-auto h-[calc(85vh-80px)] px-4 pb-4">
@@ -396,14 +428,14 @@ const DatabaseFiltersResponsive = ({
           </Button>
         </DialogTrigger>
       )}
-      <DialogContent className="max-w-lg max-h-[90vh] p-0">
-        <DialogHeader className="p-6 pb-4">
-          <DialogTitle>Filtri Database</DialogTitle>
-          <DialogDescription>
-            Applica filtri per raffinare la ricerca
+      <DialogContent className="max-w-md max-h-[85vh] p-0 gap-0">
+        <DialogHeader className="p-5 pb-3 border-b border-border/50">
+          <DialogTitle className="text-lg">Filtri Database</DialogTitle>
+          <DialogDescription className="text-xs">
+            Raffina la ricerca con i filtri sottostanti
           </DialogDescription>
         </DialogHeader>
-        <div className="overflow-y-auto max-h-[calc(90vh-120px)] px-6 pb-6">
+        <div className="overflow-y-auto max-h-[calc(85vh-100px)] px-5 py-4">
           <FilterContent />
         </div>
       </DialogContent>
