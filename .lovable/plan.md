@@ -1,60 +1,78 @@
 
-# Fix: Database page freezes when applying filters (in production)
+
+# Fix: Table horizontal scroll broken after applying filters
+
+## Problem
+After applying filters in the Lead Generation table, the table becomes unscrollable horizontally and the UI appears "frozen." The table has 12+ columns that require horizontal scrolling on most screens.
 
 ## Root Cause
+There are **nested overflow containers** that conflict with each other:
 
-The Database page triggers `checkLeadsAssignability()` on every load, which performs 3 massive UPDATE operations on the `lead_generation` table (44,000+ rows):
+1. `DatabaseTableContainer` > `CardContent` has `overflow-x-auto` + a child `<div className="min-w-full">`
+2. Inside that, `LeadsTable` renders a `<Table>` component
+3. The `<Table>` UI component itself wraps the `<table>` element in another `<div className="relative w-full overflow-auto">`
 
-1. `UPDATE ... SET assignable=false WHERE booked_call='SI'` (updates thousands of rows)
-2. `UPDATE ... SET assignable=false WHERE venditore IS NOT NULL` (updates ~43,987 rows)  
-3. `UPDATE ... SET assignable=true WHERE ...` + `.select('id')` (returns all matching IDs to the browser)
-
-This same verification ALSO runs from `LeadSyncProvider` on app startup, so it runs twice. Each run blocks the browser while waiting for these massive queries to complete.
-
-Additionally, `handleRefresh` in Database.tsx triggers verification + refreshAllData + double-loads bookings and lavorati (6+ sequential operations).
+This creates a situation where the inner `overflow-auto` div (from `Table`) tries to handle scrolling, but the outer `min-w-full` div forces it to match the card width instead of allowing the table to overflow. After a re-render (triggered by filter application), the scroll context is lost.
 
 ## Solution
 
-### 1. Remove duplicate verification from Database page (`src/pages/Database.tsx`)
-- Remove the `performVerification()` call from `initializeDatabase()` — the `LeadSyncProvider` already handles this on app startup
-- Simplify `handleRefresh` to only reload data, not re-verify
-- Remove the `useAssignabilityVerification` hook import entirely from Database page
+### 1. Fix `DatabaseTableContainer.tsx` (line 390-393)
+Remove `overflow-x-auto` from `CardContent` and remove the unnecessary `min-w-full` wrapper div. Let the `Table` component's built-in overflow wrapper handle scrolling by itself.
 
-### 2. Optimize `checkLeadsAssignability` (`src/services/leadAssignabilityService.ts`)
-- Remove `.select('id')` from step 3 — use `{ count: 'exact', head: true }` instead to avoid downloading all matching IDs
-- Add `head: true` to steps 1 and 2 as well to reduce response payload
+**Before:**
+```
+<CardContent className={isMobile ? 'p-2 overflow-x-auto' : 'overflow-x-auto'}>
+  <div className="min-w-full">
+    {children}
+  </div>
+</CardContent>
+```
 
-### 3. Prevent double verification in LeadSyncProvider (`src/contexts/LeadSyncContext.tsx`)
-- Skip initial verification if it was recently completed (use a timestamp check)
-- Ensure the verification only runs once across the app lifecycle, not on every market change
+**After:**
+```
+<CardContent className={isMobile ? 'p-2' : ''}>
+  {children}
+</CardContent>
+```
 
-### 4. Remove unused `filterLeads` function (`src/services/databaseService.ts`)
-- Dead code that fetches unlimited rows — remove to prevent accidental future use
+### 2. Fix `LeadsTable.tsx` table wrapper (lines ~195-230)
+Wrap the `<Table>` in a container with explicit `overflow-x-auto` and constrained width to ensure the wide table (12 columns) can scroll properly within the card boundaries.
+
+**Before:**
+```
+<Table>
+  <LeadTableHeader ... />
+  <TableBody>...</TableBody>
+</Table>
+```
+
+**After:**
+```
+<div className="w-full overflow-x-auto">
+  <Table>
+    <LeadTableHeader ... />
+    <TableBody>...</TableBody>
+  </Table>
+</div>
+```
+
+### 3. Update `Table` UI component (`src/components/ui/table.tsx`)
+Change the table wrapper from `overflow-auto` (which handles both axes and can cause layout issues) to `overflow-x-auto` only, to be more explicit and avoid vertical scroll conflicts with pagination and other controls outside the table.
+
+**Before:**
+```
+<div className="relative w-full overflow-auto">
+```
+
+**After:**
+```
+<div className="relative w-full overflow-x-auto">
+```
 
 ## Technical Details
 
-### File changes:
+- The fix removes redundant scroll containers so only one element handles horizontal overflow
+- The `Table` UI component's wrapper remains the primary scroll container
+- `DatabaseTableContainer` simply passes through children without interfering with their scroll behavior
+- No changes to filtering logic, data loading, or pagination -- this is purely a CSS/layout fix
 
-**`src/pages/Database.tsx`**
-- Remove `useAssignabilityVerification` import and usage
-- Remove `performVerification()` from `initializeDatabase()`
-- Simplify `handleRefresh` to only call `refreshAllData()` + reload bookings/lavorati
-- Remove duplicate data fetches after verification
-- Remove "Verifica assegnabilita" button or make it use the LeadSync context version
-
-**`src/services/leadAssignabilityService.ts`**
-- Step 3: Replace `.select('id')` with `.select('id', { count: 'exact', head: true })` to avoid downloading all matching row IDs
-- Use count-only responses for steps 1 and 2
-
-**`src/services/databaseService.ts`**
-- Remove unused `filterLeads` function (lines 235-336)
-
-**`src/contexts/LeadSyncContext.tsx`**
-- Add a `lastVerificationRef` timestamp to skip re-verification within 5 minutes
-- This prevents the verification from re-running on every route change
-
-## Expected Impact
-
-- Database page load: from 5-10+ seconds of blocking to under 1 second
-- No more duplicate 44k-row UPDATE operations
-- Filter application becomes instant (was already using server pagination, just blocked by concurrent verification)
