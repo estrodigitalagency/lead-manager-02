@@ -309,6 +309,26 @@ const DatabaseFiltersResponsive = ({
           )}
         </div>
 
+        {/* Call Prenotata - solo per lead_generation */}
+        {tableName === 'lead_generation' && (
+          <div className="space-y-2">
+            <Label className="text-sm font-medium">Call Prenotata</Label>
+            <Select
+              value={filters.bookedCall || 'all'}
+              onValueChange={(value) => handleFilterChange('bookedCall', value)}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Tutte" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tutte</SelectItem>
+                <SelectItem value="SI">SI</SelectItem>
+                <SelectItem value="NO">NO</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+
         {/* Esito per lead lavorati */}
         {tableName === 'lead_lavorati' && (
           <div className="space-y-2">
