@@ -1,52 +1,60 @@
 
-# Fix: Blocco schermata Database quando si applicano filtri
+# Fix: Database page freezes when applying filters (in production)
 
-## Problema Identificato
+## Root Cause
 
-La funzione `getUniqueSourcesFromLeads()` in `databaseService.ts` scarica **TUTTI i 44.255+ lead** dalla tabella `lead_generation` in blocchi da 1000, solo per estrarre i nomi unici delle fonti. Questa operazione:
+The Database page triggers `checkLeadsAssignability()` on every load, which performs 3 massive UPDATE operations on the `lead_generation` table (44,000+ rows):
 
-1. Genera 44+ richieste di rete consecutive
-2. Elabora 123.000+ token lato client
-3. Blocca completamente il thread principale del browser
+1. `UPDATE ... SET assignable=false WHERE booked_call='SI'` (updates thousands of rows)
+2. `UPDATE ... SET assignable=false WHERE venditore IS NOT NULL` (updates ~43,987 rows)  
+3. `UPDATE ... SET assignable=true WHERE ...` + `.select('id')` (returns all matching IDs to the browser)
 
-Questa funzione viene chiamata dalla homepage (`LeadAssignmentWithExclusions` -> `useLeadAssignment`) e da `syncSourcesToDatabase()`, che poi inserisce ogni fonte una per una nel database (altre 146+ richieste).
+This same verification ALSO runs from `LeadSyncProvider` on app startup, so it runs twice. Each run blocks the browser while waiting for these massive queries to complete.
 
-Il tutto avviene ogni volta che si carica la homepage, e puo' sovrapporsi alla navigazione verso la pagina Database.
+Additionally, `handleRefresh` in Database.tsx triggers verification + refreshAllData + double-loads bookings and lavorati (6+ sequential operations).
 
-## Soluzione
+## Solution
 
-Sostituire `getUniqueSourcesFromLeads()` con una query diretta alla tabella `database_fonti` che contiene gia' tutte le fonti sincronizzate. Eliminare `syncSourcesToDatabase()` dal flusso di caricamento iniziale.
+### 1. Remove duplicate verification from Database page (`src/pages/Database.tsx`)
+- Remove the `performVerification()` call from `initializeDatabase()` — the `LeadSyncProvider` already handles this on app startup
+- Simplify `handleRefresh` to only reload data, not re-verify
+- Remove the `useAssignabilityVerification` hook import entirely from Database page
 
-### Modifiche ai file:
+### 2. Optimize `checkLeadsAssignability` (`src/services/leadAssignabilityService.ts`)
+- Remove `.select('id')` from step 3 — use `{ count: 'exact', head: true }` instead to avoid downloading all matching IDs
+- Add `head: true` to steps 1 and 2 as well to reduce response payload
 
-**1. `src/services/databaseService.ts`**
-- Riscrivere `getUniqueSourcesFromLeads()`: invece di scansionare 44k+ righe, fare una semplice query su `database_fonti` (tabella con ~177 righe)
-- Rendere `syncSourcesToDatabase()` un'operazione background opzionale, non bloccante
+### 3. Prevent double verification in LeadSyncProvider (`src/contexts/LeadSyncContext.tsx`)
+- Skip initial verification if it was recently completed (use a timestamp check)
+- Ensure the verification only runs once across the app lifecycle, not on every market change
 
-**2. `src/hooks/useLeadAssignment.tsx`**
-- Rimuovere la chiamata a `syncSourcesToDatabase()` dal `fetchFonti()` (riga 110): non deve bloccare il caricamento iniziale
-- Sostituire `getUniqueSourcesFromLeads()` con la versione ottimizzata che legge da `database_fonti`
+### 4. Remove unused `filterLeads` function (`src/services/databaseService.ts`)
+- Dead code that fetches unlimited rows — remove to prevent accidental future use
 
-**3. `src/components/campaigns/AddCampaignForm.tsx`**
-- Sostituire `getUniqueSourcesFromLeads()` con query a `database_fonti`
+## Technical Details
 
-**4. `src/components/campaigns/CampaignsList.tsx`**
-- Sostituire `getUniqueSourcesFromLeads()` con query a `database_fonti`
+### File changes:
 
-### Dettaglio tecnico
+**`src/pages/Database.tsx`**
+- Remove `useAssignabilityVerification` import and usage
+- Remove `performVerification()` from `initializeDatabase()`
+- Simplify `handleRefresh` to only call `refreshAllData()` + reload bookings/lavorati
+- Remove duplicate data fetches after verification
+- Remove "Verifica assegnabilita" button or make it use the LeadSync context version
 
-```text
-PRIMA (attuale):
-  getUniqueSourcesFromLeads()
-  -> 44 richieste x 1000 righe = 44.255 righe scaricate
-  -> parsing di 123.000+ token lato client
-  -> UI bloccata per 5-10 secondi
+**`src/services/leadAssignabilityService.ts`**
+- Step 3: Replace `.select('id')` with `.select('id', { count: 'exact', head: true })` to avoid downloading all matching row IDs
+- Use count-only responses for steps 1 and 2
 
-DOPO (ottimizzato):
-  getUniqueSourcesFromLeads()  
-  -> 1 richiesta a database_fonti = ~177 righe
-  -> nessun parsing complesso
-  -> risposta immediata (<100ms)
-```
+**`src/services/databaseService.ts`**
+- Remove unused `filterLeads` function (lines 235-336)
 
-La tabella `database_fonti` e' gia' popolata e sincronizzata (come si vede dai log di rete). Non c'e' bisogno di riscansionare tutti i lead ogni volta.
+**`src/contexts/LeadSyncContext.tsx`**
+- Add a `lastVerificationRef` timestamp to skip re-verification within 5 minutes
+- This prevents the verification from re-running on every route change
+
+## Expected Impact
+
+- Database page load: from 5-10+ seconds of blocking to under 1 second
+- No more duplicate 44k-row UPDATE operations
+- Filter application becomes instant (was already using server pagination, just blocked by concurrent verification)
