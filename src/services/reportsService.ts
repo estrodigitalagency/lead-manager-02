@@ -566,11 +566,11 @@ export async function getFilteredLeads(filters: ReportFilters): Promise<ReportLe
 
 export async function getAvailableVenditori(market?: 'IT' | 'ES'): Promise<string[]> {
   try {
+    // Use venditori table instead of scanning all 44k+ leads
     let query = supabase
-      .from('lead_generation')
-      .select('venditore')
-      .not('venditore', 'is', null)
-      .not('venditore', 'eq', '');
+      .from('venditori')
+      .select('nome, cognome')
+      .eq('stato', 'attivo');
     
     if (market) {
       query = query.eq('market', market);
@@ -580,8 +580,10 @@ export async function getAvailableVenditori(market?: 'IT' | 'ES'): Promise<strin
 
     if (error) throw error;
 
-    const uniqueVenditori = [...new Set(data?.map(item => item.venditore).filter(Boolean))];
-    return uniqueVenditori.sort();
+    const venditori = (data || []).map(v => 
+      `${v.nome}${v.cognome ? ' ' + v.cognome : ''}`.trim()
+    ).filter(Boolean);
+    return venditori.sort();
   } catch (error) {
     console.error('Error fetching available venditori:', error);
     return [];
