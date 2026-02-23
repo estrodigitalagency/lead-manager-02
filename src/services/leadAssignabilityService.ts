@@ -61,44 +61,46 @@ export async function checkLeadsAssignability() {
 
     console.log(`Cutoff date for assignability: ${cutoffDateISO}`);
 
-    // OPERAZIONE 1: Rendi NON assegnabili tutti i lead con call prenotate
+    // OPERAZIONE 1: Rendi NON assegnabili tutti i lead con call prenotate (head:true per non scaricare dati)
     console.log("Step 1: Setting leads with booked calls as non-assignable...");
-    const { error: bookedCallError } = await supabase
+    const { count: step1Count, error: bookedCallError } = await supabase
       .from('lead_generation')
-      .update({ assignable: false })
-      .eq('booked_call', 'SI');
+      .update({ assignable: false }, { count: 'exact' })
+      .eq('booked_call', 'SI')
+      .eq('assignable', true);
 
     if (bookedCallError) {
       console.error('Error updating booked call leads:', bookedCallError);
     }
 
-    // OPERAZIONE 2: Rendi NON assegnabili tutti i lead con venditore già assegnato
+    // OPERAZIONE 2: Rendi NON assegnabili tutti i lead con venditore già assegnato (head:true)
     console.log("Step 2: Setting leads with assigned vendors as non-assignable...");
-    const { error: assignedError } = await supabase
+    const { count: step2Count, error: assignedError } = await supabase
       .from('lead_generation')
-      .update({ assignable: false })
-      .not('venditore', 'is', null);
+      .update({ assignable: false }, { count: 'exact' })
+      .not('venditore', 'is', null)
+      .eq('assignable', true);
 
     if (assignedError) {
       console.error('Error updating assigned leads:', assignedError);
     }
 
-    // OPERAZIONE 3: Rendi assegnabili i lead che soddisfano tutti i criteri
+    // OPERAZIONE 3: Rendi assegnabili i lead che soddisfano tutti i criteri (count only, no data download)
     console.log("Step 3: Setting eligible leads as assignable...");
-    const { data: updatedLeads, error: assignableError } = await supabase
+    const { count: step3Count, error: assignableError } = await supabase
       .from('lead_generation')
-      .update({ assignable: true })
+      .update({ assignable: true }, { count: 'exact' })
       .eq('booked_call', 'NO')
       .is('venditore', null)
       .eq('manually_not_assignable', false)
-      .select('id');
+      .eq('assignable', false);
 
     if (assignableError) {
       console.error('Error updating assignable leads:', assignableError);
       throw assignableError;
     }
 
-    const updatedCount = updatedLeads?.length || 0;
+    const updatedCount = (step1Count || 0) + (step2Count || 0) + (step3Count || 0);
 
     // Conta i lead disponibili finali
     const { count: availableLeads } = await supabase

@@ -20,7 +20,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { Lead } from "@/types/lead";
 import { LeadLavorato } from "@/types/leadLavorato";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { useAssignabilityVerification } from "@/hooks/useAssignabilityVerification";
 import { useLeadSync } from "@/contexts/LeadSyncContext";
 import { useServerPagination } from "@/hooks/useServerPagination";
 import DatabaseAddRecordDialog from "@/components/settings/DatabaseAddRecordDialog";
@@ -50,12 +49,7 @@ type ValidTableName = "lead_generation" | "booked_call" | "lead_assignments" | "
 const DatabasePage = () => {
   const { selectedMarket } = useMarket();
   const isMobile = useIsMobile();
-  const { refreshAllData, isRefreshing } = useLeadSync();
-  const {
-    verification,
-    performVerification,
-    isVerifying
-  } = useAssignabilityVerification();
+  const { refreshAllData, isRefreshing, performVerification, isVerifying } = useLeadSync();
 
   // Stati per dati non paginati (per compatibilità con i componenti esistenti)
   const [bookings, setBookings] = useState<CalendlyBooking[]>([]);
@@ -118,55 +112,28 @@ const DatabasePage = () => {
     }
   };
 
-  // OTTIMIZZAZIONE: Verifica automatica più efficiente all'apertura
+  // Carica dati all'apertura (la verifica è già gestita da LeadSyncProvider)
   useEffect(() => {
     const initializeDatabase = async () => {
-      // Prevent multiple initialization calls
       if (isInitializedRef.current) {
         console.log("🚫 Database already initialized, skipping...");
         return;
       }
-      
       isInitializedRef.current = true;
       
       try {
-        console.log("🔍 Avvio verifica assegnabilità rapida...");
-        
-        // PRIMA carica i dati immediatamente per UI reattiva (solo per bookings e lead lavorati)
-        const initialDataLoad = Promise.all([
+        console.log("📊 Loading database data...");
+        await Promise.all([
           fetchBookings(),
           fetchLeadLavorati()
         ]);
-
-        // POI esegue la verifica in background
-        const verificationPromise = performVerification();
-        
-        // Attendi il caricamento iniziale, la verifica può finire dopo
-        await initialDataLoad;
-        
-        // Se la verifica finisce dopo, ricarica i dati
-        verificationPromise.then(async () => {
-          console.log("✅ Verifica completata, aggiornamento finale dati...");
-          await Promise.all([
-            fetchBookings(),
-            fetchLeadLavorati()
-          ]);
-        }).catch(error => {
-          console.error("❌ Errore durante la verifica:", error);
-        });
-        
       } catch (error) {
         console.error("❌ Errore durante l'inizializzazione:", error);
-        // Fallback: carica i dati anche se la verifica fallisce
-        Promise.all([
-          fetchBookings(),
-          fetchLeadLavorati()
-        ]);
       }
     };
 
     initializeDatabase();
-  }, []); // Empty dependency array to run only once
+  }, []);
 
   // Ricarica dati quando cambiano i filtri o il market
   useEffect(() => {
@@ -181,25 +148,13 @@ const DatabasePage = () => {
 
   const handleRefresh = async () => {
     console.log("🔄 Manual refresh requested...");
-    // Clear selections on refresh
     setSelectedLeads([]);
     setSelectedBookings([]);
     setSelectedLavorati([]);
     
-    // OTTIMIZZAZIONE: Refresh più veloce - prima UI poi verifica
     try {
-      // Aggiorna subito i dati per feedback immediato
       await Promise.all([
-        fetchBookings(),
-        fetchLeadLavorati()
-      ]);
-      
-      // Poi esegui verifica e refresh globale in background
-      await performVerification();
-      await refreshAllData();
-      
-      // Ricarica finale dopo verifica
-      await Promise.all([
+        refreshAllData(),
         fetchBookings(),
         fetchLeadLavorati()
       ]);
@@ -349,14 +304,8 @@ const DatabasePage = () => {
         </div>
       )}
 
-      {/* Mostra risultato ultima verifica */}
-      {verification.status === 'completed' && !anyLoading && (
-        <div className="bg-green-500/10 p-4 rounded-lg border border-green-500/20 mb-6">
-          <p className="text-green-400 text-sm">
-            Ultima verifica: {verification.updated} lead aggiornati su {verification.totalChecked} controllati
-          </p>
-        </div>
-      )}
+      
+
       
       <Tabs defaultValue="leads" className="w-full">
         <TabsList className={`grid w-full grid-cols-3 mb-8 border ${isMobile ? 'text-xs' : ''}`}>

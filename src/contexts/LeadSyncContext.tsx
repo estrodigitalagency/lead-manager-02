@@ -45,11 +45,19 @@ export const LeadSyncProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const operationLockRef = useRef(false);
   const verificationLockRef = useRef(false);
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const lastVerificationRef = useRef<number>(0);
+  const VERIFICATION_COOLDOWN_MS = 5 * 60 * 1000; // 5 minutes
 
   // Funzione centralizzata per la verifica dell'assegnabilità
   const performVerification = useCallback(async () => {
     if (verificationLockRef.current) {
       console.log('🔒 Verification already in progress, skipping...');
+      return;
+    }
+
+    const now = Date.now();
+    if (now - lastVerificationRef.current < VERIFICATION_COOLDOWN_MS) {
+      console.log('⏭️ Verification skipped - completed recently');
       return;
     }
 
@@ -59,6 +67,7 @@ export const LeadSyncProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     
     try {
       await checkLeadsAssignability();
+      lastVerificationRef.current = Date.now();
       console.log('✅ Verification completed successfully');
     } catch (error) {
       console.error('❌ Error in verification:', error);
