@@ -576,6 +576,9 @@ export type Database = {
           created_at: string
           disclaimer: string | null
           fonte: string | null
+          google_analytics_id: string | null
+          gtm_id: string | null
+          hyros_tag: string | null
           id: string
           meta_access_token: string | null
           meta_pixel_id: string | null
@@ -597,6 +600,9 @@ export type Database = {
           created_at?: string
           disclaimer?: string | null
           fonte?: string | null
+          google_analytics_id?: string | null
+          gtm_id?: string | null
+          hyros_tag?: string | null
           id?: string
           meta_access_token?: string | null
           meta_pixel_id?: string | null
@@ -618,6 +624,9 @@ export type Database = {
           created_at?: string
           disclaimer?: string | null
           fonte?: string | null
+          google_analytics_id?: string | null
+          gtm_id?: string | null
+          hyros_tag?: string | null
           id?: string
           meta_access_token?: string | null
           meta_pixel_id?: string | null
