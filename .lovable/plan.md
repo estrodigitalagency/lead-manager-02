@@ -1,78 +1,70 @@
 
 
-# Fix: Table horizontal scroll broken after applying filters
-
-## Problem
-After applying filters in the Lead Generation table, the table becomes unscrollable horizontally and the UI appears "frozen." The table has 12+ columns that require horizontal scrolling on most screens.
+# Fix: Page freezes after applying filters (infinite re-render loop)
 
 ## Root Cause
-There are **nested overflow containers** that conflict with each other:
 
-1. `DatabaseTableContainer` > `CardContent` has `overflow-x-auto` + a child `<div className="min-w-full">`
-2. Inside that, `LeadsTable` renders a `<Table>` component
-3. The `<Table>` UI component itself wraps the `<table>` element in another `<div className="relative w-full overflow-auto">`
+There is an **infinite re-render loop** between `Database.tsx` and `LeadsTable.tsx`:
 
-This creates a situation where the inner `overflow-auto` div (from `Table`) tries to handle scrolling, but the outer `min-w-full` div forces it to match the card width instead of allowing the table to overflow. After a re-render (triggered by filter application), the scroll context is lost.
+1. Filters change -> `LeadsTable` loads new data -> calls `onDataChange(leads)`
+2. `handleLeadsDataChange` in `Database.tsx` is **not wrapped in `useCallback`**, so a new function reference is created on every render
+3. `LeadsTable` has a `useEffect` with `onDataChange` in its dependency array -> detects the new reference -> calls `onDataChange` again
+4. This triggers `setLeadsData` -> re-render -> new function reference -> infinite loop
+
+This loop causes the browser's main thread to be fully consumed by React re-renders, making the page unresponsive.
 
 ## Solution
 
-### 1. Fix `DatabaseTableContainer.tsx` (line 390-393)
-Remove `overflow-x-auto` from `CardContent` and remove the unnecessary `min-w-full` wrapper div. Let the `Table` component's built-in overflow wrapper handle scrolling by itself.
+### 1. `src/pages/Database.tsx`
+- Wrap `handleLeadsDataChange` in `useCallback` to stabilize its reference across re-renders
 
-**Before:**
-```
-<CardContent className={isMobile ? 'p-2 overflow-x-auto' : 'overflow-x-auto'}>
-  <div className="min-w-full">
-    {children}
-  </div>
-</CardContent>
-```
+### 2. `src/components/database/LeadsTable.tsx`
+- Remove `onDataChange` from the `useEffect` dependency array to prevent re-triggering when the callback reference changes (the effect should only run when `leads` data actually changes)
 
-**After:**
-```
-<CardContent className={isMobile ? 'p-2' : ''}>
-  {children}
-</CardContent>
-```
-
-### 2. Fix `LeadsTable.tsx` table wrapper (lines ~195-230)
-Wrap the `<Table>` in a container with explicit `overflow-x-auto` and constrained width to ensure the wide table (12 columns) can scroll properly within the card boundaries.
-
-**Before:**
-```
-<Table>
-  <LeadTableHeader ... />
-  <TableBody>...</TableBody>
-</Table>
-```
-
-**After:**
-```
-<div className="w-full overflow-x-auto">
-  <Table>
-    <LeadTableHeader ... />
-    <TableBody>...</TableBody>
-  </Table>
-</div>
-```
-
-### 3. Update `Table` UI component (`src/components/ui/table.tsx`)
-Change the table wrapper from `overflow-auto` (which handles both axes and can cause layout issues) to `overflow-x-auto` only, to be more explicit and avoid vertical scroll conflicts with pagination and other controls outside the table.
-
-**Before:**
-```
-<div className="relative w-full overflow-auto">
-```
-
-**After:**
-```
-<div className="relative w-full overflow-x-auto">
-```
+### 3. `src/pages/Database.tsx` - Secondary fix
+- Wrap `handleApplyFilters` in `useCallback` to prevent unnecessary re-renders of `DatabaseTableContainer` and its children when filters haven't actually changed
 
 ## Technical Details
 
-- The fix removes redundant scroll containers so only one element handles horizontal overflow
-- The `Table` UI component's wrapper remains the primary scroll container
-- `DatabaseTableContainer` simply passes through children without interfering with their scroll behavior
-- No changes to filtering logic, data loading, or pagination -- this is purely a CSS/layout fix
+**File: `src/pages/Database.tsx`**
+```
+// Before (causes new function reference every render):
+const handleLeadsDataChange = (data: Lead[]) => {
+  setLeadsData(data);
+};
+
+// After (stable reference):
+const handleLeadsDataChange = useCallback((data: Lead[]) => {
+  setLeadsData(data);
+}, []);
+```
+
+Also stabilize `handleApplyFilters`:
+```
+const handleApplyFilters = useCallback((filters: Record<string, any>) => {
+  setActiveFilters(filters);
+}, []);
+```
+
+**File: `src/components/database/LeadsTable.tsx`**
+```
+// Before (re-fires when onDataChange reference changes):
+useEffect(() => {
+  if (onDataChange && leads) {
+    onDataChange(leads);
+  }
+}, [leads, onDataChange]);
+
+// After (only fires when actual data changes):
+useEffect(() => {
+  if (onDataChange && leads) {
+    onDataChange(leads);
+  }
+}, [leads]);
+```
+
+## Expected Impact
+- Eliminates the infinite re-render loop that freezes the page
+- Filter application becomes instant (data loads via server pagination, no loop)
+- No functional changes -- data still flows correctly from LeadsTable to DatabaseTableContainer
 
