@@ -146,6 +146,11 @@ export async function getPaginatedData<T>(
       if (filters.venditaChiusa === true) {
         query = query.eq('vendita_chiusa', true);
       }
+
+      // Filtro call prenotata
+      if (filters.bookedCall && filters.bookedCall !== 'all') {
+        query = query.eq('booked_call', filters.bookedCall);
+      }
     }
     
     // Ordina per data di creazione

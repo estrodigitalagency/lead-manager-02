@@ -285,6 +285,26 @@ const DatabaseAdvancedFilters = ({ onApplyFilters, tableName }: DatabaseAdvanced
           )}
         </div>
 
+        {/* Filtro Call Prenotata - solo per lead_generation */}
+        {tableName === 'lead_generation' && (
+          <div>
+            <Label className="text-sm font-medium mb-2 block">Call Prenotata</Label>
+            <Select
+              value={filters.bookedCall || 'all'}
+              onValueChange={(value) => handleFilterChange('bookedCall', value)}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Tutte" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tutte</SelectItem>
+                <SelectItem value="SI">SI</SelectItem>
+                <SelectItem value="NO">NO</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+
         {/* Filtro Vendite Chiuse - solo per lead_generation */}
         {tableName === 'lead_generation' && (
           <div className="flex items-center space-x-2">
