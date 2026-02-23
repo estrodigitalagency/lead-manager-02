@@ -63,11 +63,13 @@ const DatabaseFiltersResponsive = ({
   };
 
   const applyFilters = () => {
+    setCalendarView(null);
     onApplyFilters(filters);
     setIsOpen(false);
   };
 
   const clearFilters = () => {
+    setCalendarView(null);
     setFilters({});
     onApplyFilters({});
     setIsOpen(false);
@@ -419,7 +421,7 @@ const DatabaseFiltersResponsive = ({
   }
 
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+    <Dialog open={isOpen} onOpenChange={setIsOpen} modal={false}>
       {!hideButton && (
         <DialogTrigger asChild>
           <Button variant="outline" size="sm" className="flex items-center gap-1">
