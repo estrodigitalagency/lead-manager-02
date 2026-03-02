@@ -292,18 +292,35 @@ export async function getAllCampagne(market: string = 'IT') {
 
 export async function getUniqueSourcesFromLeads(_market?: string): Promise<string[]> {
   try {
-    console.log(`🔍 getUniqueSourcesFromLeads: Fetching from database_fonti`);
+    console.log(`🔍 getUniqueSourcesFromLeads: Fetching from database_fonti + lead_generation`);
 
-    const { data, error } = await supabase
+    // Fetch from database_fonti (curated list)
+    const { data: fontiData, error: fontiError } = await supabase
       .from('database_fonti')
       .select('nome')
       .eq('attivo', true)
       .order('nome');
 
-    if (error) throw error;
+    if (fontiError) throw fontiError;
 
-    const sources = (data || []).map(f => f.nome).filter(Boolean);
-    console.log(`✅ getUniqueSourcesFromLeads: Returning ${sources.length} sources from database_fonti`);
+    const fontiSources = new Set((fontiData || []).map(f => f.nome).filter(Boolean));
+
+    // Also fetch distinct ultima_fonte from lead_generation to catch new sources not yet in database_fonti
+    const { data: leadSources, error: leadError } = await supabase
+      .from('lead_generation')
+      .select('ultima_fonte')
+      .not('ultima_fonte', 'is', null)
+      .limit(5000);
+
+    if (!leadError && leadSources) {
+      const uniqueLeadSources = new Set(leadSources.map(l => l.ultima_fonte).filter(Boolean));
+      for (const src of uniqueLeadSources) {
+        fontiSources.add(src as string);
+      }
+    }
+
+    const sources = Array.from(fontiSources).sort();
+    console.log(`✅ getUniqueSourcesFromLeads: Returning ${sources.length} sources (fonti + lead_generation)`);
     return sources;
   } catch (error) {
     console.error("❌ Error fetching unique sources:", error);

@@ -642,6 +642,113 @@ export type Database = {
         }
         Relationships: []
       }
+      landing_page_events: {
+        Row: {
+          created_at: string
+          event_type: string
+          id: string
+          landing_page_id: string
+        }
+        Insert: {
+          created_at?: string
+          event_type: string
+          id?: string
+          landing_page_id: string
+        }
+        Update: {
+          created_at?: string
+          event_type?: string
+          id?: string
+          landing_page_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "landing_page_events_landing_page_id_fkey"
+            columns: ["landing_page_id"]
+            isOneToOne: false
+            referencedRelation: "landing_pages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      landing_pages: {
+        Row: {
+          attivo: boolean
+          clarity_id: string | null
+          created_at: string
+          custom_slug: string | null
+          google_analytics_id: string | null
+          gtm_id: string | null
+          hyros_tag: string | null
+          id: string
+          immagine_url: string | null
+          meta_access_token: string | null
+          meta_event_name: string | null
+          meta_pixel_id: string | null
+          meta_test_event_code: string | null
+          nome: string
+          pulsante_colore: string | null
+          pulsante_icona: string | null
+          pulsante_testo: string
+          pulsante_url: string
+          sfondo_blur: boolean | null
+          sfondo_colore: string | null
+          template: string | null
+          titolo: string
+          updated_at: string
+        }
+        Insert: {
+          attivo?: boolean
+          clarity_id?: string | null
+          created_at?: string
+          custom_slug?: string | null
+          google_analytics_id?: string | null
+          gtm_id?: string | null
+          hyros_tag?: string | null
+          id?: string
+          immagine_url?: string | null
+          meta_access_token?: string | null
+          meta_event_name?: string | null
+          meta_pixel_id?: string | null
+          meta_test_event_code?: string | null
+          nome: string
+          pulsante_colore?: string | null
+          pulsante_icona?: string | null
+          pulsante_testo?: string
+          pulsante_url: string
+          sfondo_blur?: boolean | null
+          sfondo_colore?: string | null
+          template?: string | null
+          titolo: string
+          updated_at?: string
+        }
+        Update: {
+          attivo?: boolean
+          clarity_id?: string | null
+          created_at?: string
+          custom_slug?: string | null
+          google_analytics_id?: string | null
+          gtm_id?: string | null
+          hyros_tag?: string | null
+          id?: string
+          immagine_url?: string | null
+          meta_access_token?: string | null
+          meta_event_name?: string | null
+          meta_pixel_id?: string | null
+          meta_test_event_code?: string | null
+          nome?: string
+          pulsante_colore?: string | null
+          pulsante_icona?: string | null
+          pulsante_testo?: string
+          pulsante_url?: string
+          sfondo_blur?: boolean | null
+          sfondo_colore?: string | null
+          template?: string | null
+          titolo?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       lead_actions_log: {
         Row: {
           action_type: string
