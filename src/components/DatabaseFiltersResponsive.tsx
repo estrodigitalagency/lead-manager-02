@@ -13,7 +13,9 @@ import { Filter, X, CalendarIcon, Search, User, Phone, Mail, Tag, CheckCircle } 
 import { format } from "date-fns";
 import { it } from "date-fns/locale";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { getAvailableFonti, getAvailableVenditori } from "@/services/reportsService";
+import { getAvailableVenditori } from "@/services/reportsService";
+import { getUniqueSourcesFromLeads } from "@/services/databaseService";
+import { useMarket } from "@/contexts/MarketContext";
 import { SearchableSourceSelect } from "@/components/ui/searchable-source-select";
 import { Separator } from "@/components/ui/separator";
 
@@ -42,18 +44,20 @@ const DatabaseFiltersResponsive = ({
   const [calendarView, setCalendarView] = useState<"from" | "to" | null>(null);
   const isMobile = useIsMobile();
 
+  const { selectedMarket } = useMarket();
+
   useEffect(() => {
     const loadOptions = async () => {
       const [availableVenditori, availableFonti] = await Promise.all([
         getAvailableVenditori(),
-        getAvailableFonti()
+        getUniqueSourcesFromLeads(selectedMarket)
       ]);
       setVenditori(availableVenditori);
       setFonti(availableFonti);
     };
 
     loadOptions();
-  }, []);
+  }, [selectedMarket]);
 
   const handleFilterChange = (key: string, value: any) => {
     setFilters(prev => ({
