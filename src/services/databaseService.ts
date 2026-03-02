@@ -305,12 +305,20 @@ export async function getUniqueSourcesFromLeads(_market?: string): Promise<strin
 
     const fontiSources = new Set((fontiData || []).map(f => f.nome).filter(Boolean));
 
-    // Also fetch distinct ultima_fonte from lead_generation to catch new sources not yet in database_fonti
-    const { data: leadSources, error: leadError } = await supabase
+    // Also fetch recent distinct ultima_fonte from lead_generation to catch new sources not yet in database_fonti
+    // NOTE: we read most recent rows first so newly arrived leads are immediately available in selectors
+    let leadSourcesQuery = supabase
       .from('lead_generation')
       .select('ultima_fonte')
       .not('ultima_fonte', 'is', null)
-      .limit(5000);
+      .order('created_at', { ascending: false })
+      .limit(10000);
+
+    if (_market) {
+      leadSourcesQuery = leadSourcesQuery.eq('market', _market);
+    }
+
+    const { data: leadSources, error: leadError } = await leadSourcesQuery;
 
     if (!leadError && leadSources) {
       const uniqueLeadSources = new Set(leadSources.map(l => l.ultima_fonte).filter(Boolean));
