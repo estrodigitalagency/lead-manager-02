@@ -87,22 +87,41 @@ const DatabaseTableContainer = ({
     });
   }, [onApplyFilters]);
 
-  const handleExportCSV = () => {
+  const handleExportCSV = async () => {
     console.log('Export CSV triggered');
     console.log('Selected items:', selectedItems);
-    console.log('All items length:', allItems.length);
     
     if (selectedItems.length === 0) {
-      console.log('No items selected');
       toast.error("Nessun elemento selezionato per l'esportazione");
       return;
     }
     
-    const selectedData = allItems.filter(item => selectedItems.includes(item.id));
-    console.log('Selected data:', selectedData);
+    let selectedData: any[] = [];
+    
+    // If allItems is empty (e.g. for server-paginated lead_generation), fetch from DB
+    if (allItems.length === 0) {
+      try {
+        // Fetch in batches of 100 to handle large selections
+        const batchSize = 100;
+        for (let i = 0; i < selectedItems.length; i += batchSize) {
+          const batch = selectedItems.slice(i, i + batchSize);
+          const { data, error } = await supabase
+            .from(tableName)
+            .select('*')
+            .in('id', batch);
+          if (error) throw error;
+          if (data) selectedData.push(...data);
+        }
+      } catch (error) {
+        console.error('Error fetching selected data:', error);
+        toast.error("Errore nel recupero dei dati selezionati");
+        return;
+      }
+    } else {
+      selectedData = allItems.filter(item => selectedItems.includes(item.id));
+    }
     
     if (selectedData.length === 0) {
-      console.log('No matching data found');
       toast.error("Nessun dato trovato per l'esportazione");
       return;
     }

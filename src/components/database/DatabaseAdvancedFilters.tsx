@@ -11,7 +11,8 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
 import { it } from "date-fns/locale";
-import { getAvailableFonti, getAvailableVenditori } from "@/services/reportsService";
+import { getAvailableVenditori } from "@/services/reportsService";
+import { getUniqueSourcesFromLeads } from "@/services/databaseService";
 import { SearchableSourceSelect } from "@/components/ui/searchable-source-select";
 import { Checkbox } from "@/components/ui/checkbox";
 
@@ -30,7 +31,7 @@ const DatabaseAdvancedFilters = ({ onApplyFilters, tableName }: DatabaseAdvanced
     const loadOptions = async () => {
       const [availableVenditori, availableFonti] = await Promise.all([
         getAvailableVenditori(),
-        getAvailableFonti()
+        getUniqueSourcesFromLeads()
       ]);
       setVenditori(availableVenditori);
       setFonti(availableFonti);
