@@ -15,6 +15,7 @@ import { getAvailableVenditori } from "@/services/reportsService";
 import { getUniqueSourcesFromLeads } from "@/services/databaseService";
 import { SearchableSourceSelect } from "@/components/ui/searchable-source-select";
 import { Checkbox } from "@/components/ui/checkbox";
+import { useMarket } from "@/contexts/MarketContext";
 
 interface DatabaseAdvancedFiltersProps {
   onApplyFilters: (filters: Record<string, any>) => void;
@@ -22,6 +23,7 @@ interface DatabaseAdvancedFiltersProps {
 }
 
 const DatabaseAdvancedFilters = ({ onApplyFilters, tableName }: DatabaseAdvancedFiltersProps) => {
+  const { selectedMarket } = useMarket();
   const [filters, setFilters] = useState<Record<string, any>>({});
   const [venditori, setVenditori] = useState<string[]>([]);
   const [fonti, setFonti] = useState<string[]>([]);
@@ -31,14 +33,14 @@ const DatabaseAdvancedFilters = ({ onApplyFilters, tableName }: DatabaseAdvanced
     const loadOptions = async () => {
       const [availableVenditori, availableFonti] = await Promise.all([
         getAvailableVenditori(),
-        getUniqueSourcesFromLeads()
+        getUniqueSourcesFromLeads(selectedMarket)
       ]);
       setVenditori(availableVenditori);
       setFonti(availableFonti);
     };
 
     loadOptions();
-  }, []);
+  }, [selectedMarket]);
 
   const handleFilterChange = (key: string, value: any) => {
     setFilters(prev => ({
