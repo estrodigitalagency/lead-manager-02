@@ -1,5 +1,5 @@
 
-import { ReactNode, useState, useCallback } from "react";
+import { ReactNode, useState, useCallback, useRef } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useIsMobile } from "@/hooks/use-mobile";
 import DatabaseFiltersResponsive from "@/components/DatabaseFiltersResponsive";
@@ -58,6 +58,7 @@ const DatabaseTableContainer = ({
 }: DatabaseTableContainerProps) => {
   const isMobile = useIsMobile();
   const [currentFilters, setCurrentFilters] = useState<Record<string, any>>({});
+  const currentFiltersRef = useRef<Record<string, any>>({});
   const [isDeleting, setIsDeleting] = useState(false);
   const [isAssigning, setIsAssigning] = useState(false);
   const [showManualAssignDialog, setShowManualAssignDialog] = useState(false);
@@ -66,25 +67,24 @@ const DatabaseTableContainer = ({
   const [showColumnVisibilityMenu, setShowColumnVisibilityMenu] = useState(false);
 
   const handleSearch = useCallback((searchTerm: string) => {
-    setCurrentFilters(prev => {
-      const newFilters = { ...prev, search: searchTerm || undefined };
-      Object.keys(newFilters).forEach(key => {
-        if (newFilters[key] === undefined) delete newFilters[key];
-      });
-      onApplyFilters(newFilters);
-      return newFilters;
+    const newFilters = { ...currentFiltersRef.current, search: searchTerm || undefined };
+    Object.keys(newFilters).forEach(key => {
+      if (newFilters[key] === undefined) delete newFilters[key];
     });
+    currentFiltersRef.current = newFilters;
+    setCurrentFilters(newFilters);
+    onApplyFilters(newFilters);
   }, [onApplyFilters]);
 
   const handleAdvancedFilters = useCallback((filters: Record<string, any>) => {
-    setCurrentFilters(prev => {
-      const newFilters = {
-        ...filters,
-        ...(prev.search && { search: prev.search })
-      };
-      onApplyFilters(newFilters);
-      return newFilters;
-    });
+    const searchFromCurrent = currentFiltersRef.current?.search;
+    const newFilters = {
+      ...filters,
+      ...(searchFromCurrent && { search: searchFromCurrent })
+    };
+    currentFiltersRef.current = newFilters;
+    setCurrentFilters(newFilters);
+    onApplyFilters(newFilters);
   }, [onApplyFilters]);
 
   const handleExportCSV = async () => {

@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { X, Filter } from "lucide-react";
 import { useMarket } from "@/contexts/MarketContext";
-import { getAvailableFonti } from "@/services/reportsService";
+import { getUniqueSourcesFromLeads } from "@/services/databaseService";
 import { SearchableSourceSelect } from "@/components/ui/searchable-source-select";
 
 interface ReportSourceFiltersProps {
@@ -33,7 +33,7 @@ const ReportSourceFilters = ({
 
   useEffect(() => {
     const loadFonti = async () => {
-      const fonti = await getAvailableFonti(selectedMarket);
+      const fonti = await getUniqueSourcesFromLeads(selectedMarket);
       setAvailableFonti(fonti);
     };
     loadFonti();
