@@ -1,72 +1,90 @@
 
 
-# Fix: Page freezes after applying filters
+# Fix: Fonti mancanti + filtri Database non funzionanti
 
-## Problem
-After applying filters in the Database page, the entire page becomes unresponsive -- vertical scrolling works but clicking, horizontal scrolling, and all interactions are blocked.
+## Problemi identificati
 
-## Root Cause
-Two separate issues are causing this:
+### Problema 1: Fonti mancanti nei Report
+**File**: `src/components/reports/ReportSourceFilters.tsx` (riga 9, 36)
+Usa ancora `getAvailableFonti` dal reportsService, che interroga SOLO la tabella `database_fonti` (lista curata statica). La fonte "iscritto webinar interno 032026" non è in `database_fonti`, quindi non appare mai nei filtri Report.
 
-### Issue A: Re-render cascade (performance)
-When filters are applied, a chain of state updates causes 7+ consecutive re-renders of the entire Database page:
-1. `setActiveFilters(newFilters)` -- Database re-renders
-2. `setCurrentFilters(newFilters)` -- DatabaseTableContainer re-renders
-3. `setSelectedLeads([])` -- from LeadsTable useEffect, Database re-renders again
-4. `setIsLoadingBookings(true)` / `setIsLoadingLeadLavorati(true)` -- more re-renders
-5. Data loaded: `setBookings()`, `setLeadLavorati()`, `setLeadsData()` -- even more re-renders
+### Problema 2: Filtri Database non si applicano
+**File**: `src/components/database/DatabaseTableContainer.tsx` (righe 79-88)
+`handleAdvancedFilters` chiama `onApplyFilters(newFilters)` DENTRO un callback di `setCurrentFilters`. In React 18 con batching automatico, chiamare un setter di stato esterno dentro un updater function di un altro setState è un anti-pattern che può causare la mancata propagazione dello stato. I filtri vengono impostati localmente ma non raggiungono `Database.tsx → activeFilters → LeadsTable`.
 
-Each re-render recreates 50 table rows x 12 columns = 600 cells, blocking the main thread.
+### Problema 3: DatabaseAdvancedFilters.tsx (codice morto)
+Questo componente non è importato da nessuna parte — è stato sostituito da `DatabaseFiltersResponsive`. Tuttavia, se qualcuno lo riutilizzasse, chiama `getUniqueSourcesFromLeads()` senza passare il market.
 
-### Issue B: Invisible overlay blocking interactions (the real blocker)
-The `DatabaseFiltersResponsive` Dialog renders an overlay (`fixed inset-0 z-50 bg-black/80`). When the Dialog closes at the same time as parent state changes, Radix may not properly remove the overlay element from the DOM, leaving an invisible barrier that blocks all pointer events except scrolling.
+## Soluzione
 
-## Solution
+### Fix 1: ReportSourceFilters → fonti dinamiche
+Sostituire `getAvailableFonti` con `getUniqueSourcesFromLeads` nel componente `ReportSourceFilters.tsx`, passando il `selectedMarket` dal context. Questo allinea i Report con la stessa logica già usata nei filtri Database.
 
-### 1. Remove the `onDataChange` pattern entirely (Database.tsx + LeadsTable.tsx)
-The `onDataChange` callback pattern was added to pass lead data from `LeadsTable` up to `DatabaseTableContainer` for bulk actions/export. This creates a re-render loop. Instead, we will:
-- Remove `leadsData` state and `handleLeadsDataChange` from `Database.tsx`
-- Remove `onDataChange` prop from `LeadsTable`
-- Pass an empty array for `allItems` in the leads tab (bulk export will query the server directly instead)
+```
+// src/components/reports/ReportSourceFilters.tsx
+- import { getAvailableFonti } from "@/services/reportsService";
++ import { getUniqueSourcesFromLeads } from "@/services/databaseService";
 
-### 2. Fix the selection reset effect (LeadsTable.tsx)
-Replace the `useEffect` that calls `onSelectionChange([])` on every filter change with a smarter approach:
-- Use a `useRef` to track the previous filter string
-- Only call `onSelectionChange([])` if filters actually changed AND selection is not already empty
+  useEffect(() => {
+    const loadFonti = async () => {
+-     const fonti = await getAvailableFonti(selectedMarket);
++     const fonti = await getUniqueSourcesFromLeads(selectedMarket);
+      setAvailableFonti(fonti);
+    };
+    loadFonti();
+  }, [selectedMarket]);
+```
 
-### 3. Add `modal={false}` to the filter Dialog (DatabaseFiltersResponsive.tsx)  
-Setting `modal={false}` on the Radix Dialog prevents it from rendering a blocking overlay. Since the filter dialog is not a critical modal (the user can interact with the page behind it), this is the correct behavior and eliminates the overlay blocking issue entirely.
+### Fix 2: handleAdvancedFilters — rimuovere anti-pattern
+Spostare la chiamata `onApplyFilters` fuori dal callback di `setCurrentFilters`. Calcolare i nuovi filtri e poi aggiornare entrambi gli stati in sequenza (React 18 li batcherà automaticamente).
 
-### 4. Memoize functions in DatabaseTableContainer
-Wrap `handleAdvancedFilters` and `handleSearch` in `useCallback` to prevent unnecessary re-renders of children when DatabaseTableContainer re-renders.
+```
+// src/components/database/DatabaseTableContainer.tsx
+const handleAdvancedFilters = useCallback((filters: Record<string, any>) => {
+  setCurrentFilters(prev => {
+    const newFilters = {
+      ...filters,
+      ...(prev.search && { search: prev.search })
+    };
+    return newFilters;
+  });
+  // Chiamata separata, fuori dal setState callback
+  setCurrentFilters(prev => {
+    onApplyFilters(prev);  // Usa lo stato già aggiornato
+    return prev;
+  });
+}, [onApplyFilters]);
+```
 
-### 5. Memoize `fetchBookings` and `fetchLeadLavorati` in Database.tsx
-Wrap these in `useCallback` with proper dependencies so they don't capture stale closures and don't trigger unnecessary re-renders.
+In realtà, un approccio più pulito: usare un ref per il search term o ristrutturare per evitare dipendenze circolari:
 
-## Technical Details
+```
+const handleAdvancedFilters = useCallback((filters: Record<string, any>) => {
+  const searchFromCurrent = currentFiltersRef.current?.search;
+  const newFilters = {
+    ...filters,
+    ...(searchFromCurrent && { search: searchFromCurrent })
+  };
+  setCurrentFilters(newFilters);
+  onApplyFilters(newFilters);
+}, [onApplyFilters]);
+```
 
-### File: `src/pages/Database.tsx`
-- Remove `leadsData` state and `handleLeadsDataChange`
-- Remove `onDataChange` prop from `LeadsTable`
-- Pass `allItems={[]}` for leads tab (or remove it)
-- Wrap `fetchBookings` and `fetchLeadLavorati` in `useCallback` with `[activeFilters, selectedMarket]` deps
+Aggiungere un `useRef` per tracciare i filtri correnti, così non si deve leggere `prev` dentro setState.
 
-### File: `src/components/database/LeadsTable.tsx`
-- Remove `onDataChange` prop and its interface entry
-- Replace the filter-change useEffect with a ref-based comparison that avoids calling `onSelectionChange([])` when selection is already empty
-- Remove `onDataChange` from the useEffect entirely
+### Fix 3: DatabaseAdvancedFilters — aggiungere market (housekeeping)
+Anche se è codice morto, aggiungere `useMarket()` e passare `selectedMarket` a `getUniqueSourcesFromLeads` per coerenza.
 
-### File: `src/components/DatabaseFiltersResponsive.tsx`
-- On desktop: change `<Dialog open={isOpen} onOpenChange={setIsOpen}>` to `<Dialog open={isOpen} onOpenChange={setIsOpen} modal={false}>`
-- Also reset `calendarView` to `null` in `applyFilters` and `clearFilters` to prevent orphaned Popover portals
+## File da modificare
 
-### File: `src/components/database/DatabaseTableContainer.tsx`
-- Wrap `handleAdvancedFilters` in `useCallback`
-- Wrap `handleSearch` in `useCallback`
+| File | Modifica |
+|------|----------|
+| `src/components/reports/ReportSourceFilters.tsx` | Sostituire `getAvailableFonti` → `getUniqueSourcesFromLeads(selectedMarket)` |
+| `src/components/database/DatabaseTableContainer.tsx` | Rifattorizzare `handleAdvancedFilters` con ref per evitare setState-inside-setState |
+| `src/components/database/DatabaseAdvancedFilters.tsx` | Aggiungere `useMarket()` e passare market (housekeeping) |
 
-## Expected Impact
-- Eliminates 4-5 unnecessary re-renders after filter application
-- Prevents the Dialog overlay from blocking page interactions
-- No functional regressions -- bulk export can still work by querying server directly for selected IDs
-- Overall page feels snappy after applying filters
+## Impatto atteso
+- Le fonti dinamiche (inclusa "iscritto webinar interno 032026") appaiono in tutti i selettori: Database filtri, Report filtri fonte
+- I filtri avanzati nel Database si applicano correttamente dopo il click su "Applica"
+- Nessuna regressione funzionale
 
