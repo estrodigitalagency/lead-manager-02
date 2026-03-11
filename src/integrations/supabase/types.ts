@@ -578,6 +578,7 @@ export type Database = {
           fonte: string | null
           google_analytics_id: string | null
           gtm_id: string | null
+          hyros_api_key: string | null
           hyros_tag: string | null
           id: string
           meta_access_token: string | null
@@ -602,6 +603,7 @@ export type Database = {
           fonte?: string | null
           google_analytics_id?: string | null
           gtm_id?: string | null
+          hyros_api_key?: string | null
           hyros_tag?: string | null
           id?: string
           meta_access_token?: string | null
@@ -626,6 +628,7 @@ export type Database = {
           fonte?: string | null
           google_analytics_id?: string | null
           gtm_id?: string | null
+          hyros_api_key?: string | null
           hyros_tag?: string | null
           id?: string
           meta_access_token?: string | null

@@ -1,4 +1,5 @@
 
+import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -10,7 +11,8 @@ import {
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { CheckCircle2, User, Mail, Phone, AlertCircle, Tag } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { CheckCircle2, User, Mail, Phone, AlertCircle, Tag, Filter } from "lucide-react";
 import FonteDisplay from "./FonteDisplay";
 
 interface SearchResult {
@@ -27,7 +29,7 @@ interface SearchResultsDialogProps {
   onOpenChange: (open: boolean) => void;
   results: SearchResult[];
   searchTerms: string[];
-  onConfirm: () => void;
+  onConfirm: (selectedIds: string[]) => void;
 }
 
 const SearchResultsDialog = ({
@@ -37,9 +39,76 @@ const SearchResultsDialog = ({
   searchTerms,
   onConfirm
 }: SearchResultsDialogProps) => {
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [selectedFonti, setSelectedFonti] = useState<Set<string>>(new Set());
+
+  // Extract unique fonti from results
+  const uniqueFonti = useMemo(() => {
+    const fonti = new Set<string>();
+    results.forEach(r => {
+      if (r.ultima_fonte) fonti.add(r.ultima_fonte);
+    });
+    return Array.from(fonti).sort();
+  }, [results]);
+
+  // Initialize all selected when results change
+  useMemo(() => {
+    setSelectedIds(new Set(results.map(r => r.id)));
+    setSelectedFonti(new Set());
+  }, [results]);
+
+  // Filter results by selected fonti
+  const filteredResults = useMemo(() => {
+    if (selectedFonti.size === 0) return results;
+    return results.filter(r => r.ultima_fonte && selectedFonti.has(r.ultima_fonte));
+  }, [results, selectedFonti]);
+
+  const toggleFonte = (fonte: string) => {
+    setSelectedFonti(prev => {
+      const next = new Set(prev);
+      if (next.has(fonte)) {
+        next.delete(fonte);
+      } else {
+        next.add(fonte);
+      }
+      return next;
+    });
+    // When fonte filter changes, auto-select all visible results
+    setTimeout(() => {
+      setSelectedIds(prev => {
+        const next = new Set(prev);
+        // We'll handle this in an effect-like way below
+        return next;
+      });
+    }, 0);
+  };
+
+  // Auto-update selection when fonte filter changes
+  useMemo(() => {
+    setSelectedIds(new Set(filteredResults.map(r => r.id)));
+  }, [filteredResults]);
+
+  const toggleLeadSelection = (id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleAll = () => {
+    if (selectedIds.size === filteredResults.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(filteredResults.map(r => r.id)));
+    }
+  };
+
   const handleConfirm = () => {
-    console.log('SearchResultsDialog - Confirming with results:', results);
-    onConfirm();
+    const ids = Array.from(selectedIds);
+    console.log('SearchResultsDialog - Confirming with IDs:', ids);
+    onConfirm(ids);
   };
 
   const handleCancel = () => {
@@ -47,7 +116,7 @@ const SearchResultsDialog = ({
   };
 
   // Trova i termini non trovati
-  const foundTerms = new Set();
+  const foundTerms = new Set<string>();
   results.forEach(result => {
     if (result.email && searchTerms.includes(result.email.toLowerCase())) {
       foundTerms.add(result.email.toLowerCase());
@@ -99,19 +168,64 @@ const SearchResultsDialog = ({
               </div>
             </div>
           )}
+
+          {/* Fonte filter */}
+          {uniqueFonti.length > 1 && (
+            <div className="space-y-2 flex-shrink-0">
+              <h4 className="text-sm font-medium flex items-center gap-2">
+                <Filter className="h-4 w-4 text-primary" />
+                Filtra per fonte:
+              </h4>
+              <div className="flex flex-wrap gap-2">
+                {uniqueFonti.map(fonte => (
+                  <Badge
+                    key={fonte}
+                    variant={selectedFonti.has(fonte) ? "default" : "outline"}
+                    className="cursor-pointer text-xs transition-colors"
+                    onClick={() => toggleFonte(fonte)}
+                  >
+                    <FonteDisplay fonte={fonte} />
+                  </Badge>
+                ))}
+                {selectedFonti.size > 0 && (
+                  <Badge
+                    variant="secondary"
+                    className="cursor-pointer text-xs"
+                    onClick={() => setSelectedFonti(new Set())}
+                  >
+                    Mostra tutti
+                  </Badge>
+                )}
+              </div>
+            </div>
+          )}
           
-          {results.length > 0 && (
+          {filteredResults.length > 0 && (
             <div className="space-y-2 flex-1 min-h-0">
-              <h4 className="text-sm font-medium">Lead trovati e che verranno selezionati ({results.length}):</h4>
+              <div className="flex items-center justify-between">
+                <h4 className="text-sm font-medium">
+                  Lead da selezionare ({selectedIds.size}/{filteredResults.length}):
+                </h4>
+                <Button variant="ghost" size="sm" onClick={toggleAll} className="text-xs h-7">
+                  {selectedIds.size === filteredResults.length ? "Deseleziona tutti" : "Seleziona tutti"}
+                </Button>
+              </div>
               <div className="border rounded-md" style={{ height: '300px' }}>
                 <ScrollArea className="h-full p-4">
                   <div className="space-y-3 pr-4">
-                    {results.map((result, index) => (
+                    {filteredResults.map((result, index) => (
                       <div
                         key={`${result.id}-${index}`}
-                        className="flex items-start space-x-3 rounded-lg border p-3 bg-muted/30"
+                        className={`flex items-start space-x-3 rounded-lg border p-3 cursor-pointer transition-colors ${
+                          selectedIds.has(result.id) ? 'bg-primary/5 border-primary/30' : 'bg-muted/30'
+                        }`}
+                        onClick={() => toggleLeadSelection(result.id)}
                       >
-                        <User className="h-4 w-4 mt-1 text-muted-foreground flex-shrink-0" />
+                        <Checkbox
+                          checked={selectedIds.has(result.id)}
+                          onCheckedChange={() => toggleLeadSelection(result.id)}
+                          className="mt-1"
+                        />
                         <div className="flex-1 space-y-1 min-w-0">
                           <div className="flex items-center gap-2">
                             <span className="font-medium text-sm">
@@ -153,8 +267,12 @@ const SearchResultsDialog = ({
             <Button variant="outline" onClick={handleCancel} className="flex-1 sm:flex-none">
               Annulla
             </Button>
-            <Button onClick={handleConfirm} className="flex-1 sm:flex-none">
-              Conferma selezione ({results.length} lead)
+            <Button 
+              onClick={handleConfirm} 
+              disabled={selectedIds.size === 0}
+              className="flex-1 sm:flex-none"
+            >
+              Conferma selezione ({selectedIds.size} lead)
             </Button>
           </div>
         </DialogFooter>

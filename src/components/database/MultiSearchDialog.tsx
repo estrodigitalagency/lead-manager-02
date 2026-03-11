@@ -104,11 +104,10 @@ const MultiSearchDialog = ({
     }
   };
 
-  const handleConfirmSelection = () => {
-    const selectedIds = searchResults.map(item => item.id);
+  const handleConfirmSelection = (selectedIds: string[]) => {
     console.log('Confirming selection with IDs:', selectedIds);
     onItemsSelected(selectedIds);
-    toast.success(`${searchResults.length} lead selezionati automaticamente`);
+    toast.success(`${selectedIds.length} lead selezionati automaticamente`);
     
     // Reset e chiudi
     setSearchText("");
