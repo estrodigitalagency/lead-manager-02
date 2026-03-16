@@ -347,25 +347,63 @@ const fetchUniqueSources = async () => {
         return acc;
       }, {} as Record<string, string[]>);
 
-      // Process each group based on the decision
+      // Consolidate: collect ALL lead IDs going to the target venditore
+      const targetLeadIds: string[] = [];
+      
+      // Process each group: leads going back to original venditore get NO campaign
       for (const [originalVenditore, leadIds] of Object.entries(leadsByVenditore)) {
         const decision = decisions[originalVenditore] || 'original';
-        const targetForGroup = decision === 'target' ? pendingAssignmentData.venditore : originalVenditore;
         
-        console.log(`📤 Assigning ${leadIds.length} leads to ${targetForGroup} (decision: ${decision})`);
-        
-        await assignLeadsWithExclusions({
-          ...pendingAssignmentData,
-          numLead: leadIds.length,
-          venditore: targetForGroup,
-          specificLeadIds: leadIds,
-          skipAlreadyAssignedCheck: true
-        });
+        if (decision === 'target') {
+          // These go to the target venditore - collect them for a single assignment
+          targetLeadIds.push(...leadIds);
+          console.log(`📤 ${leadIds.length} leads from ${originalVenditore} → target ${pendingAssignmentData.venditore}`);
+        } else {
+          // These go back to the original venditore - NO campaign, single call per original venditore
+          console.log(`📤 Reassigning ${leadIds.length} leads back to original ${originalVenditore} (no campaign)`);
+          await assignLeadsWithExclusions({
+            ...pendingAssignmentData,
+            numLead: leadIds.length,
+            venditore: originalVenditore,
+            campagna: undefined, // Don't spread the campaign to original venditore
+            specificLeadIds: leadIds,
+            skipAlreadyAssignedCheck: true
+          });
+        }
       }
 
-      // Now assign the remaining new leads to the target salesperson
+      // Now assign the remaining new leads + conflict leads going to target, ALL in one call
       const newLeadCount = pendingAssignmentData.numLead - alreadyAssignedLeads.length;
-      if (newLeadCount > 0) {
+      
+      if (targetLeadIds.length > 0 && newLeadCount > 0) {
+        // We have both conflict leads and new leads going to target - two calls but same venditore
+        // First assign the specific conflict leads
+        console.log(`📤 Assigning ${targetLeadIds.length} conflict leads to target ${pendingAssignmentData.venditore}`);
+        await assignLeadsWithExclusions({
+          ...pendingAssignmentData,
+          numLead: targetLeadIds.length,
+          venditore: pendingAssignmentData.venditore,
+          specificLeadIds: targetLeadIds,
+          skipAlreadyAssignedCheck: true
+        });
+        // Then assign the new leads
+        console.log(`📤 Assigning ${newLeadCount} new leads to ${pendingAssignmentData.venditore}`);
+        await assignLeadsWithExclusions({
+          ...pendingAssignmentData,
+          numLead: newLeadCount
+        });
+      } else if (targetLeadIds.length > 0) {
+        // Only conflict leads going to target
+        console.log(`📤 Assigning ${targetLeadIds.length} conflict leads to target ${pendingAssignmentData.venditore}`);
+        await assignLeadsWithExclusions({
+          ...pendingAssignmentData,
+          numLead: targetLeadIds.length,
+          venditore: pendingAssignmentData.venditore,
+          specificLeadIds: targetLeadIds,
+          skipAlreadyAssignedCheck: true
+        });
+      } else if (newLeadCount > 0) {
+        // Only new leads
         console.log(`📤 Assigning ${newLeadCount} new leads to ${pendingAssignmentData.venditore}`);
         await assignLeadsWithExclusions({
           ...pendingAssignmentData,
