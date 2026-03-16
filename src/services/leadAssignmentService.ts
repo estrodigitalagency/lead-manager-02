@@ -702,36 +702,51 @@ export async function checkLeadsForPreviousAssignment(
 
     const daysBeforeAssignable = settingsData?.value ? parseInt(settingsData.value) : 7;
 
-    // Build the query for candidate leads - SAME logic as assignLeadsWithExclusions
-    // Including venditore IS NULL to only get available leads
-    let query = supabase
-      .from('lead_generation')
-      .select('id, nome, cognome, email, telefono, fonte, ultima_fonte, lead_score, created_at, booked_call, venditore')
-      .is('venditore', null)
-      .eq('booked_call', 'NO')
-      .eq('manually_not_assignable', false)
-      .eq('market', market);
-      
-    if (onlyHotLeads) {
-      query = query.eq('lead_score', 'Hot');
+    // Build the query for candidate leads with pagination (same logic as assignLeadsWithExclusions)
+    let allCandidateLeads: any[] = [];
+    let page = 0;
+    const pageSize = 1000;
+    let hasMore = true;
+
+    while (hasMore) {
+      let query = supabase
+        .from('lead_generation')
+        .select('id, nome, cognome, email, telefono, fonte, ultima_fonte, lead_score, created_at, booked_call, venditore')
+        .is('venditore', null)
+        .eq('booked_call', 'NO')
+        .eq('manually_not_assignable', false)
+        .eq('market', market)
+        .order('created_at', { ascending: true })
+        .range(page * pageSize, (page + 1) * pageSize - 1);
+        
+      if (onlyHotLeads) {
+        query = query.eq('lead_score', 'Hot');
+      }
+
+      if (sourceMode === 'include' && includedSources.length > 0) {
+        const includeFilters = includedSources.map(source => `ultima_fonte.like.%${source}%`).join(',');
+        query = query.or(includeFilters);
+      }
+
+      const { data: pageLeads, error: fetchError } = await query;
+
+      if (fetchError) {
+        console.error('Error fetching leads for pre-check:', fetchError);
+        throw new Error(`Errore nel recupero dei lead: ${fetchError.message}`);
+      }
+
+      if (!pageLeads || pageLeads.length === 0) {
+        hasMore = false;
+      } else {
+        allCandidateLeads = [...allCandidateLeads, ...pageLeads];
+        hasMore = pageLeads.length === pageSize;
+        page++;
+      }
     }
 
-    // Apply source filtering logic
-    if (sourceMode === 'include' && includedSources.length > 0) {
-      const includeFilters = includedSources.map(source => `ultima_fonte.like.%${source}%`).join(',');
-      query = query.or(includeFilters);
-    }
+    const candidateLeads = allCandidateLeads;
 
-    // Get all candidate leads ordered from oldest to newest
-    const { data: candidateLeads, error: fetchError } = await query
-      .order('created_at', { ascending: true });
-
-    if (fetchError) {
-      console.error('Error fetching leads for pre-check:', fetchError);
-      throw new Error(`Errore nel recupero dei lead: ${fetchError.message}`);
-    }
-
-    if (!candidateLeads || candidateLeads.length === 0) {
+    if (candidateLeads.length === 0) {
       return {
         canProceed: true,
         alreadyAssignedLeads: [],
@@ -801,14 +816,11 @@ export async function checkLeadsForPreviousAssignment(
       };
     }
 
-    // Check for previous assignments by EMAIL or PHONE (not by UUID)
-    // This ensures we find leads even if they have different UUIDs
-    console.log(`🔍 Checking previous assignments by email/phone for ${leadsToAssign.length} leads...`);
+    // BATCH CHECK: Instead of N+1 queries, collect all emails/phones and query in batches
+    console.log(`🔍 Batch checking previous assignments for ${leadsToAssign.length} leads...`);
     
     const previousAssignments: Record<string, string> = {};
-    let foundCount = 0;
 
-    // Helper functions for normalization
     const normalizeEmail = (email: string | null): string => {
       if (!email) return '';
       return email.toLowerCase().trim();
@@ -820,70 +832,112 @@ export async function checkLeadsForPreviousAssignment(
     };
 
     try {
-      // Process each lead to find previous assignments by email/phone
+      // Collect all unique emails and phones from leads to check
+      const emailsToCheck: string[] = [];
+      const phonesToCheck: string[] = [];
+      const leadEmailMap: Record<string, string[]> = {}; // email -> lead ids
+      const leadPhoneMap: Record<string, string[]> = {}; // phone -> lead ids
+
       for (const lead of leadsToAssign) {
-        const normalizedEmail = normalizeEmail(lead.email);
-        const normalizedPhone = normalizePhone(lead.telefono);
+        const email = normalizeEmail(lead.email);
+        const phone = normalizePhone(lead.telefono);
         
-        // Skip if already found
-        if (previousAssignments[lead.id]) continue;
+        if (email) {
+          emailsToCheck.push(email);
+          if (!leadEmailMap[email]) leadEmailMap[email] = [];
+          leadEmailMap[email].push(lead.id);
+        }
+        if (phone) {
+          phonesToCheck.push(phone);
+          if (!leadPhoneMap[phone]) leadPhoneMap[phone] = [];
+          leadPhoneMap[phone].push(lead.id);
+        }
+      }
+
+      // Batch query for email matches (in chunks of 200)
+      const emailBatchSize = 200;
+      for (let i = 0; i < emailsToCheck.length; i += emailBatchSize) {
+        const emailBatch = emailsToCheck.slice(i, i + emailBatchSize);
+        // Use OR filter to find any assigned lead with matching email
+        const emailFilters = emailBatch.map(e => `email.ilike.${e}`).join(',');
         
-        // STEP 1: Search by EMAIL first (more reliable)
-        if (normalizedEmail) {
-          const { data: emailMatches, error: emailError } = await supabase
-            .from('lead_generation')
-            .select('venditore, id')
-            .eq('market', market)
-            .ilike('email', normalizedEmail)
-            .not('venditore', 'is', null)
-            .neq('id', lead.id) // Exclude current lead
-            .order('data_assegnazione', { ascending: false })
-            .limit(1);
-          
-          if (!emailError && emailMatches && emailMatches.length > 0) {
-            const match = emailMatches[0];
-            // Only track if assigned to a DIFFERENT salesperson
-            if (match.venditore !== venditore) {
-              previousAssignments[lead.id] = match.venditore;
-              foundCount++;
-              console.log(`✅ Found previous seller by EMAIL for ${lead.email}: ${match.venditore}`);
-              continue;
+        const { data: emailMatches } = await supabase
+          .from('lead_generation')
+          .select('email, venditore')
+          .eq('market', market)
+          .not('venditore', 'is', null)
+          .or(emailFilters)
+          .order('data_assegnazione', { ascending: false });
+
+        if (emailMatches) {
+          // Build a map of email -> most recent venditore
+          const emailVenditoreMap: Record<string, string> = {};
+          for (const match of emailMatches) {
+            const matchEmail = normalizeEmail(match.email);
+            if (matchEmail && !emailVenditoreMap[matchEmail]) {
+              emailVenditoreMap[matchEmail] = match.venditore!;
             }
           }
-        }
-        
-        // STEP 2: If not found by email, search by PHONE
-        if (normalizedPhone) {
-          const { data: phoneMatches, error: phoneError } = await supabase
-            .from('lead_generation')
-            .select('venditore, id')
-            .eq('market', market)
-            .ilike('telefono', normalizedPhone)
-            .not('venditore', 'is', null)
-            .neq('id', lead.id) // Exclude current lead
-            .order('data_assegnazione', { ascending: false })
-            .limit(1);
           
-          if (!phoneError && phoneMatches && phoneMatches.length > 0) {
-            const match = phoneMatches[0];
-            // Only track if assigned to a DIFFERENT salesperson
-            if (match.venditore !== venditore) {
-              previousAssignments[lead.id] = match.venditore;
-              foundCount++;
-              console.log(`✅ Found previous seller by PHONE for ${lead.telefono}: ${match.venditore}`);
-              continue;
+          // Map back to lead IDs
+          for (const [email, matchVenditore] of Object.entries(emailVenditoreMap)) {
+            if (matchVenditore !== venditore && leadEmailMap[email]) {
+              for (const leadId of leadEmailMap[email]) {
+                if (!previousAssignments[leadId]) {
+                  previousAssignments[leadId] = matchVenditore;
+                }
+              }
             }
           }
         }
       }
 
-      console.log(`📊 Previous assignment check complete: ${foundCount} leads have previous assignments to different salespeople`);
+      // Batch query for phone matches (only for leads not already found by email)
+      const remainingPhones = phonesToCheck.filter(phone => {
+        const leadIdsForPhone = leadPhoneMap[phone] || [];
+        return leadIdsForPhone.some(id => !previousAssignments[id]);
+      });
+
+      for (let i = 0; i < remainingPhones.length; i += emailBatchSize) {
+        const phoneBatch = remainingPhones.slice(i, i + emailBatchSize);
+        const phoneFilters = phoneBatch.map(p => `telefono.ilike.${p}`).join(',');
+        
+        const { data: phoneMatches } = await supabase
+          .from('lead_generation')
+          .select('telefono, venditore')
+          .eq('market', market)
+          .not('venditore', 'is', null)
+          .or(phoneFilters)
+          .order('data_assegnazione', { ascending: false });
+
+        if (phoneMatches) {
+          const phoneVenditoreMap: Record<string, string> = {};
+          for (const match of phoneMatches) {
+            const matchPhone = normalizePhone(match.telefono);
+            if (matchPhone && !phoneVenditoreMap[matchPhone]) {
+              phoneVenditoreMap[matchPhone] = match.venditore!;
+            }
+          }
+          
+          for (const [phone, matchVenditore] of Object.entries(phoneVenditoreMap)) {
+            if (matchVenditore !== venditore && leadPhoneMap[phone]) {
+              for (const leadId of leadPhoneMap[phone]) {
+                if (!previousAssignments[leadId]) {
+                  previousAssignments[leadId] = matchVenditore;
+                }
+              }
+            }
+          }
+        }
+      }
+
+      const foundCount = Object.keys(previousAssignments).length;
+      console.log(`📊 Batch pre-check complete: ${foundCount} leads have previous assignments to different salespeople`);
     } catch (searchError) {
       console.error('Error checking previous assignments:', searchError);
-      // Don't block assignment on error, just proceed with what we found
     }
 
-    // Separate leads that were previously assigned to a different salesperson
+    // Separate leads
     const alreadyAssignedLeads: AlreadyAssignedLeadInfo[] = [];
     const newLeads: any[] = [];
 
@@ -902,7 +956,7 @@ export async function checkLeadsForPreviousAssignment(
       }
     }
 
-    console.log(`🔍 Pre-check result: ${alreadyAssignedLeads.length} previously assigned in history, ${newLeads.length} new leads`);
+    console.log(`🔍 Pre-check result: ${alreadyAssignedLeads.length} previously assigned, ${newLeads.length} new leads`);
 
     return {
       canProceed: alreadyAssignedLeads.length === 0,
