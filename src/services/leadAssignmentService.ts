@@ -428,25 +428,31 @@ export async function assignLeadsWithExclusions(data: LeadAssignmentData) {
     }
 
     const leadIds = leadsToAssign.map(lead => lead.id);
-    console.log(`Assigning ${actualAssignedCount} leads (from oldest to newest):`, leadIds);
+    console.log(`Assigning ${actualAssignedCount} leads (from oldest to newest)`);
 
-    // Update the leads with the assigned salesperson - using only 'assegnato' state
+    // Update the leads in batches of 500 to avoid query size limits
     const currentTimestamp = new Date().toISOString();
+    const batchSize = 500;
     
-    const { error: updateError } = await supabase
-      .from('lead_generation')
-      .update({ 
-        venditore,
-        campagna: (campagna && campagna.trim() !== '') ? campagna : null,
-        stato: 'assegnato',
-        assignable: false,
-        data_assegnazione: currentTimestamp
-      })
-      .in('id', leadIds);
+    for (let i = 0; i < leadIds.length; i += batchSize) {
+      const batchIds = leadIds.slice(i, i + batchSize);
+      console.log(`Updating batch ${Math.floor(i / batchSize) + 1}/${Math.ceil(leadIds.length / batchSize)}: ${batchIds.length} leads`);
+      
+      const { error: updateError } = await supabase
+        .from('lead_generation')
+        .update({ 
+          venditore,
+          campagna: (campagna && campagna.trim() !== '') ? campagna : null,
+          stato: 'assegnato',
+          assignable: false,
+          data_assegnazione: currentTimestamp
+        })
+        .in('id', batchIds);
 
-    if (updateError) {
-      console.error('Error updating leads:', updateError);
-      throw new Error(`Errore nell'aggiornamento dei lead: ${updateError.message}`);
+      if (updateError) {
+        console.error(`Error updating batch ${Math.floor(i / batchSize) + 1}:`, updateError);
+        throw new Error(`Errore nell'aggiornamento dei lead (batch ${Math.floor(i / batchSize) + 1}): ${updateError.message}`);
+      }
     }
 
     // Process webhook, history, and counter update
