@@ -305,36 +305,52 @@ export async function assignLeadsWithExclusions(data: LeadAssignmentData) {
 
     const daysBeforeAssignable = settingsData?.value ? parseInt(settingsData.value) : 7;
 
-    // QUERY BASE: Recupera tutti i lead candidati filtrati per market
-    let query = supabase
-      .from('lead_generation')
-      .select('id, nome, cognome, email, telefono, fonte, ultima_fonte, lead_score, stato, stato_del_lead, campagna, booked_call, created_at, venditore, market')
-      .is('venditore', null)
-      .eq('booked_call', 'NO')
-      .eq('manually_not_assignable', false)
-      .eq('market', market);
-      
-    // IMPORTANTE: Filtro per Lead Score = "Hot" SOLO se richiesto esplicitamente
-    if (onlyHotLeads) {
-      query = query.eq('lead_score', 'Hot');
+    // QUERY BASE con paginazione per superare il limite di 1000 righe Supabase
+    let allCandidateLeads: any[] = [];
+    let page = 0;
+    const pageSize = 1000;
+    let hasMore = true;
+
+    while (hasMore) {
+      let query = supabase
+        .from('lead_generation')
+        .select('id, nome, cognome, email, telefono, fonte, ultima_fonte, lead_score, stato, stato_del_lead, campagna, booked_call, created_at, venditore, market')
+        .is('venditore', null)
+        .eq('booked_call', 'NO')
+        .eq('manually_not_assignable', false)
+        .eq('market', market)
+        .order('created_at', { ascending: true })
+        .range(page * pageSize, (page + 1) * pageSize - 1);
+        
+      if (onlyHotLeads) {
+        query = query.eq('lead_score', 'Hot');
+      }
+
+      if (sourceMode === 'include' && includedSources.length > 0) {
+        const includeFilters = includedSources.map(source => `ultima_fonte.like.%${source}%`).join(',');
+        query = query.or(includeFilters);
+      }
+
+      const { data: pageLeads, error: fetchError } = await query;
+
+      if (fetchError) {
+        console.error('Error fetching leads:', fetchError);
+        throw new Error(`Errore nel recupero dei lead: ${fetchError.message}`);
+      }
+
+      if (!pageLeads || pageLeads.length === 0) {
+        hasMore = false;
+      } else {
+        allCandidateLeads = [...allCandidateLeads, ...pageLeads];
+        hasMore = pageLeads.length === pageSize;
+        page++;
+      }
     }
 
-    // Apply source filtering logic SOLO se ci sono fonti specificate
-    if (sourceMode === 'include' && includedSources.length > 0) {
-      const includeFilters = includedSources.map(source => `ultima_fonte.like.%${source}%`).join(',');
-      query = query.or(includeFilters);
-    }
+    const candidateLeads = allCandidateLeads;
+    console.log(`Found ${candidateLeads.length} candidate leads (${page} pages)`);
 
-    // Get all candidate leads ordered from oldest to newest
-    const { data: candidateLeads, error: fetchError } = await query
-      .order('created_at', { ascending: true });
-
-    if (fetchError) {
-      console.error('Error fetching leads:', fetchError);
-      throw new Error(`Errore nel recupero dei lead: ${fetchError.message}`);
-    }
-
-    if (!candidateLeads || candidateLeads.length === 0) {
+    if (candidateLeads.length === 0) {
       throw new Error('Nessun lead disponibile per l\'assegnazione');
     }
 
