@@ -83,8 +83,8 @@ async function processAssignmentCompletion(
     
     // Prepare webhook payload with all required data
     const assignmentPayload = {
-      venditore: nomeVenditore,
-      venditore_cognome: venditoreDates?.cognome || cognomeVenditore || '',
+      venditore: venditoreDates?.nome || venditore,
+      venditore_cognome: venditoreDates?.cognome || '',
       venditore_email: venditoreDates?.email || '',
       venditore_telefono: venditoreDates?.telefono || '',
       google_sheets_file_id: venditoreDates?.sheets_file_id || '',
