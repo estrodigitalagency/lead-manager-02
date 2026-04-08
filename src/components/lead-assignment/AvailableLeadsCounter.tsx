@@ -51,16 +51,16 @@ export function AvailableLeadsCounter({
     }
   }, [availableLeads, isLoading, previousCount, displayCount]);
 
-  const hasFilters = excludedSources.length > 0 || 
-                    includedSources.length > 0 || 
+  const hasFilters = excludedSources.length > 0 ||
+                    includedSources.length > 0 ||
                     excludeFromIncluded.length > 0;
 
   const getTrendIcon = () => {
     switch (countTrend) {
       case 'up':
-        return <TrendingUp className="h-4 w-4 text-green-400" />;
+        return <TrendingUp className="h-4 w-4 text-emerald-600" />;
       case 'down':
-        return <TrendingDown className="h-4 w-4 text-red-400" />;
+        return <TrendingDown className="h-4 w-4 text-red-500" />;
       default:
         return null;
     }
@@ -68,46 +68,46 @@ export function AvailableLeadsCounter({
 
   const getCountColor = () => {
     if (isLoading || isUpdating) return 'text-primary';
-    
+
     switch (countTrend) {
       case 'up':
-        return 'text-green-400';
+        return 'text-emerald-600';
       case 'down':
-        return 'text-red-400';
+        return 'text-red-500';
       default:
-        return 'text-primary';
+        return 'text-foreground';
     }
   };
 
   return (
-    <div className="p-4 border border-border rounded-lg bg-card">
-      <div className="flex items-center justify-between mb-3">
+    <div className="p-3.5 sm:p-4 rounded-2xl bg-muted/40">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
         <div className="flex items-center gap-2">
-          <Users className="h-5 w-5 text-primary" />
-          <h3 className="text-base font-semibold text-foreground">
-            Lead Disponibili per Assegnazione
+          <div className="p-1.5 rounded-lg bg-primary/10">
+            <Users className="h-4 w-4 sm:h-5 sm:w-5 text-primary flex-shrink-0" />
+          </div>
+          <h3 className="text-sm sm:text-base font-semibold text-foreground">
+            Lead Disponibili
           </h3>
           {getTrendIcon()}
         </div>
-        
-        <div className="flex items-center gap-3">
-          <div className={`text-3xl font-bold transition-all duration-300 ${getCountColor()}`}>
-            {isLoading || isUpdating ? (
-              <div className="flex items-center gap-2">
-                <RefreshCw className="h-6 w-6 animate-spin" />
-                <span className="text-lg">Aggiornamento...</span>
-              </div>
-            ) : (
-              <div className="flex items-center gap-2">
-                <span className="tabular-nums">{displayCount}</span>
-                {countTrend !== 'stable' && (
-                  <span className="text-sm font-normal text-muted-foreground">
-                    ({previousCount > displayCount ? '-' : '+'}{Math.abs(displayCount - previousCount)})
-                  </span>
-                )}
-              </div>
-            )}
-          </div>
+
+        <div className={`text-2xl sm:text-3xl font-bold transition-all duration-300 ${getCountColor()}`}>
+          {isLoading || isUpdating ? (
+            <div className="flex items-center gap-2">
+              <RefreshCw className="h-5 w-5 animate-spin text-primary" />
+              <span className="text-sm text-muted-foreground">Aggiornamento...</span>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2">
+              <span className="tabular-nums">{displayCount}</span>
+              {countTrend !== 'stable' && (
+                <span className="text-xs font-normal text-muted-foreground">
+                  ({previousCount > displayCount ? '-' : '+'}{Math.abs(displayCount - previousCount)})
+                </span>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
@@ -115,11 +115,11 @@ export function AvailableLeadsCounter({
         <div className="flex items-center gap-2">
           <Clock className="h-4 w-4 text-muted-foreground" />
           <span className="text-muted-foreground">
-            Bypass temporale: 
-            <Badge 
-              variant={bypassTimeInterval ? "default" : "secondary"} 
+            Bypass temporale:
+            <Badge
+              variant={bypassTimeInterval ? "default" : "secondary"}
               className={`ml-2 transition-colors duration-200 ${
-                bypassTimeInterval ? 'bg-green-500/15 text-green-400 border-green-500/30' : ''
+                bypassTimeInterval ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : ''
               }`}
             >
               {bypassTimeInterval ? "ATTIVO" : "Non attivo"}
@@ -134,17 +134,17 @@ export function AvailableLeadsCounter({
             <div className="flex flex-wrap gap-1">
               {sourceMode === 'exclude' && excludedSources.length > 0 && (
                 <Badge variant="destructive" className="text-xs">
-                  🚫 {excludedSources.length} escluse
+                  {excludedSources.length} escluse
                 </Badge>
               )}
               {sourceMode === 'include' && includedSources.length > 0 && (
                 <Badge variant="default" className="text-xs">
-                  ✅ {includedSources.length} incluse
+                  {includedSources.length} incluse
                 </Badge>
               )}
               {excludeFromIncluded.length > 0 && (
-                <Badge variant="outline" className="text-xs border-orange-500/50 text-orange-400">
-                  ➖ {excludeFromIncluded.length} escluse da incluse
+                <Badge variant="outline" className="text-xs border-orange-300 text-orange-600">
+                  {excludeFromIncluded.length} escluse da incluse
                 </Badge>
               )}
             </div>
@@ -159,24 +159,24 @@ export function AvailableLeadsCounter({
       </div>
 
       {!isLoading && !isUpdating && displayCount === 0 && (
-        <div className="mt-3 p-2 bg-yellow-500/10 border border-yellow-500/20 rounded text-sm text-yellow-400">
-          ⚠️ Nessun lead disponibile con i filtri attuali
+        <div className="mt-3 p-2 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-700">
+          Nessun lead disponibile con i filtri attuali
         </div>
       )}
 
       {(isLoading || isUpdating) && (
-        <div className="mt-3 p-2 bg-primary/10 border border-primary/20 rounded text-sm text-primary">
-          🔄 Aggiornamento conteggio in tempo reale...
+        <div className="mt-3 p-2 bg-primary/5 border border-primary/10 rounded-lg text-sm text-primary">
+          Aggiornamento conteggio in tempo reale...
         </div>
       )}
 
       {countTrend !== 'stable' && !isLoading && !isUpdating && (
-        <div className={`mt-3 p-2 rounded text-sm ${
-          countTrend === 'up' 
-            ? 'bg-green-500/10 border border-green-500/20 text-green-400' 
-            : 'bg-red-500/10 border border-red-500/20 text-red-400'
+        <div className={`mt-3 p-2 rounded-lg text-sm ${
+          countTrend === 'up'
+            ? 'bg-emerald-50 border border-emerald-200 text-emerald-700'
+            : 'bg-red-50 border border-red-200 text-red-700'
         }`}>
-          {countTrend === 'up' ? '📈' : '📉'} Conteggio aggiornato: {displayCount} lead disponibili
+          Conteggio aggiornato: {displayCount} lead disponibili
         </div>
       )}
     </div>

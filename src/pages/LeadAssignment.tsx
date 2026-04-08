@@ -210,13 +210,13 @@ const LeadAssignment = () => {
   };
   
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-secondary/20 p-4">
-      <div className="flex items-center justify-center min-h-[calc(100vh-2rem)]">
-        <div className="w-full max-w-md space-y-6">
+    <div className="min-h-screen bg-background px-4 py-5 pt-16 md:pt-[72px] md:px-6 md:py-8">
+      <div className="flex items-center justify-center min-h-[calc(100vh-6rem)]">
+        <div className="w-full max-w-md space-y-4">
           {assignmentSuccess && (
-            <Alert className="bg-green-500/10 border-green-500/20">
-              <CheckCircle className="h-4 w-4 text-green-400" />
-              <AlertDescription className="text-green-400">
+            <Alert className="bg-emerald-50 border-emerald-200">
+              <CheckCircle className="h-4 w-4 text-emerald-600" />
+              <AlertDescription className="text-emerald-700">
                 <div className="space-y-1">
                   <p className="font-semibold">✅ Lead assegnato con successo!</p>
                   <p><strong>Lead:</strong> {assignmentSuccess.leadName}</p>
@@ -227,9 +227,9 @@ const LeadAssignment = () => {
             </Alert>
           )}
 
-          <Card className="glass-card border-border">
+          <Card className="border-border/50">
             <CardHeader className="text-center space-y-2">
-              <CardTitle className="text-2xl font-bold gradient-text">Assegnazione Lead</CardTitle>
+              <CardTitle className="text-xl font-semibold text-foreground">Assegnazione Lead</CardTitle>
               <p className="text-muted-foreground text-sm">Cerca un lead specifico e assegnalo a un venditore</p>
             </CardHeader>
             <CardContent className="space-y-6">

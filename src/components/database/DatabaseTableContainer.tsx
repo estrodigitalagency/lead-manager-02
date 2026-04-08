@@ -16,7 +16,8 @@ import {
   DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { MoreHorizontal, FileDown, Users, UserPlus, Trash2, Search, Filter, Eye, Ban } from "lucide-react";
+import { MoreHorizontal, FileDown, Users, UserPlus, Trash2, Search, Filter, Eye, Ban, X } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { deleteMultipleLeads } from "@/services/databaseService";
 import { supabase } from "@/integrations/supabase/client";
@@ -273,10 +274,10 @@ const DatabaseTableContainer = ({
   return (
     <Card>
       <CardHeader>
-        <div className={`flex items-center justify-between ${isMobile ? 'flex-col gap-4' : ''}`}>
+        <div className={`flex items-center justify-between ${isMobile ? 'flex-col gap-3' : ''}`}>
           <div>
-            <CardTitle className={isMobile ? 'text-center' : ''}>{title}</CardTitle>
-            <CardDescription className={isMobile ? 'text-center' : ''}>{description}</CardDescription>
+            <CardTitle className={`text-base ${isMobile ? 'text-center' : ''}`}>{title}</CardTitle>
+            <CardDescription className={`text-xs ${isMobile ? 'text-center' : ''}`}>{description}</CardDescription>
           </div>
           
           {/* Riga unificata con ricerca e menu azioni */}
@@ -290,7 +291,7 @@ const DatabaseTableContainer = ({
                   <MoreHorizontal className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="z-50 w-56 bg-background">
+              <DropdownMenuContent align="end" className="z-50 w-56">
                 <DropdownMenuLabel>Azioni Tabella</DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 
@@ -390,6 +391,57 @@ const DatabaseTableContainer = ({
         </div>
       </CardHeader>
       
+      {/* Active filter badges */}
+      {Object.keys(currentFilters).filter(k => k !== 'search' && currentFilters[k]).length > 0 && (
+        <div className="px-3 sm:px-6 pb-2 flex flex-wrap gap-1.5 items-center">
+          <span className="text-xs text-muted-foreground mr-1">Filtri:</span>
+          {currentFilters.startDate && (
+            <Badge variant="secondary" className="text-xs gap-1">
+              Da: {new Date(currentFilters.startDate).toLocaleDateString('it-IT')}
+            </Badge>
+          )}
+          {currentFilters.endDate && (
+            <Badge variant="secondary" className="text-xs gap-1">
+              A: {new Date(currentFilters.endDate).toLocaleDateString('it-IT')}
+            </Badge>
+          )}
+          {currentFilters.venditore && (
+            <Badge variant="secondary" className="text-xs gap-1">
+              Venditore: {currentFilters.venditore}
+            </Badge>
+          )}
+          {currentFilters.hasBookedCall && currentFilters.hasBookedCall !== 'all' && (
+            <Badge variant="secondary" className="text-xs gap-1">
+              Call: {currentFilters.hasBookedCall === 'yes' ? 'SI' : 'NO'}
+            </Badge>
+          )}
+          {currentFilters.fontiIncluse?.length > 0 && (
+            <Badge variant="default" className="text-xs gap-1">
+              {currentFilters.fontiIncluse.length} fonti incluse
+            </Badge>
+          )}
+          {currentFilters.fontiEscluse?.length > 0 && (
+            <Badge variant="destructive" className="text-xs gap-1">
+              {currentFilters.fontiEscluse.length} fonti escluse
+            </Badge>
+          )}
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-5 px-1.5 text-xs text-muted-foreground hover:text-foreground"
+            onClick={() => {
+              const searchOnly = currentFilters.search ? { search: currentFilters.search } : {};
+              currentFiltersRef.current = searchOnly;
+              setCurrentFilters(searchOnly);
+              onApplyFilters(searchOnly);
+            }}
+          >
+            <X className="h-3 w-3 mr-0.5" />
+            Rimuovi
+          </Button>
+        </div>
+      )}
+
       <BulkActions
         selectedItems={selectedItems}
         allItems={allItems}

@@ -76,10 +76,10 @@ export function SourceFilter({
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between mb-3">
+      <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-2">
-          <Filter className="h-5 w-5 text-primary" />
-          <h3 className="text-base font-semibold">Filtro per Fonti</h3>
+          <Filter className="h-4 w-4 text-primary" />
+          <h3 className="text-sm sm:text-base font-semibold">Filtro per Fonti</h3>
         </div>
         {onRefreshSources && (
           <Button
@@ -95,9 +95,9 @@ export function SourceFilter({
       </div>
 
       {/* Mode Toggle */}
-      <div className="p-4 border border-border rounded-lg bg-card/50">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center space-x-3">
+      <div className="p-3 sm:p-4 rounded-xl bg-muted/30">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center space-x-2 sm:space-x-3">
             <Switch
               checked={sourceMode === 'include'}
               onCheckedChange={(checked) => onToggleSourceMode(checked ? 'include' : 'exclude')}
@@ -151,7 +151,7 @@ export function SourceFilter({
                   : `✅ Fonti Incluse (${currentSources.length})`
                 }
               </Label>
-              <div className="flex flex-wrap gap-2 p-3 bg-muted/30 border border-border rounded-lg max-h-32 overflow-y-auto">
+              <div className="flex flex-wrap gap-2 p-3 bg-muted/20 rounded-xl max-h-32 overflow-y-auto">
                 {currentSources.map((source) => (
                   <Badge 
                     key={source} 
@@ -176,7 +176,7 @@ export function SourceFilter({
 
       {/* Esclusioni dalle Fonti Incluse - Solo quando si usa modalità "include" */}
       {sourceMode === 'include' && includedSources.length > 0 && (
-        <div className="p-4 border border-border rounded-lg bg-card/50">
+        <div className="p-4 rounded-xl bg-muted/30">
           <div className="flex items-center gap-2 mb-3">
             <Minus className="h-4 w-4 text-destructive" />
             <Label className="text-sm font-medium">
@@ -216,7 +216,7 @@ export function SourceFilter({
                 <Label className="text-sm font-medium text-muted-foreground">
                   ➖ Escluse dalle Incluse ({excludeFromIncluded.length})
                 </Label>
-                <div className="flex flex-wrap gap-2 p-3 bg-muted/30 border border-border rounded-lg max-h-32 overflow-y-auto">
+                <div className="flex flex-wrap gap-2 p-3 bg-muted/20 rounded-xl max-h-32 overflow-y-auto">
                   {excludeFromIncluded.map((source) => (
                     <Badge 
                       key={source} 

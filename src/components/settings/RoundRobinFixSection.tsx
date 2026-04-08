@@ -286,25 +286,25 @@ export function RoundRobinFixSection() {
           {/* Stats */}
           {analysisData && (
             <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-              <div className="p-3 bg-muted rounded-lg">
+              <div className="p-3 bg-muted/50 rounded-xl">
                 <p className="text-2xl font-bold">{analysisData.summary.totalRoundRobinLeads}</p>
-                <p className="text-sm text-muted-foreground">Lead Round Robin totali</p>
+                <p className="text-xs text-muted-foreground">Lead Round Robin totali</p>
               </div>
-              <div className="p-3 bg-green-100 dark:bg-green-900/20 rounded-lg">
-                <p className="text-2xl font-bold text-green-600">{analysisData.summary.withPreviousSeller}</p>
-                <p className="text-sm text-muted-foreground">Con venditore precedente</p>
+              <div className="p-3 bg-emerald-50 rounded-xl">
+                <p className="text-2xl font-bold text-emerald-600">{analysisData.summary.withPreviousSeller}</p>
+                <p className="text-xs text-muted-foreground">Con venditore precedente</p>
               </div>
-              <div className="p-3 bg-blue-100 dark:bg-blue-900/20 rounded-lg">
+              <div className="p-3 bg-blue-50 rounded-xl">
                 <p className="text-2xl font-bold text-blue-600">{analysisData.summary.withPreviousSellerFiltered || analysisData.summary.withPreviousSeller}</p>
-                <p className="text-sm text-muted-foreground">Filtrati (intervallo giorni)</p>
+                <p className="text-xs text-muted-foreground">Filtrati (intervallo giorni)</p>
               </div>
-              <div className="p-3 bg-orange-100 dark:bg-orange-900/20 rounded-lg">
-                <p className="text-2xl font-bold text-orange-600">{analysisData.summary.withoutPreviousSeller}</p>
-                <p className="text-sm text-muted-foreground">Senza venditore precedente</p>
+              <div className="p-3 bg-amber-50 rounded-xl">
+                <p className="text-2xl font-bold text-amber-600">{analysisData.summary.withoutPreviousSeller}</p>
+                <p className="text-xs text-muted-foreground">Senza venditore precedente</p>
               </div>
-              <div className="p-3 bg-purple-100 dark:bg-purple-900/20 rounded-lg">
-                <p className="text-2xl font-bold text-purple-600">{analysisData.summary.uniqueVenditori}</p>
-                <p className="text-sm text-muted-foreground">Venditori unici</p>
+              <div className="p-3 bg-violet-50 rounded-xl">
+                <p className="text-2xl font-bold text-violet-600">{analysisData.summary.uniqueVenditori}</p>
+                <p className="text-xs text-muted-foreground">Venditori unici</p>
               </div>
             </div>
           )}
@@ -471,24 +471,24 @@ export function RoundRobinFixSection() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-3 gap-4 mb-4">
-              <div className="p-3 bg-green-100 dark:bg-green-900/20 rounded-lg text-center">
-                <p className="text-xl font-bold text-green-600">
+            <div className="grid grid-cols-3 gap-3 mb-4">
+              <div className="p-3 bg-emerald-50 rounded-xl text-center">
+                <p className="text-xl font-bold text-emerald-600">
                   {processResults.filter(r => r.status === 'success').length}
                 </p>
-                <p className="text-sm text-muted-foreground">Successi</p>
+                <p className="text-xs text-muted-foreground">Successi</p>
               </div>
-              <div className="p-3 bg-red-100 dark:bg-red-900/20 rounded-lg text-center">
+              <div className="p-3 bg-red-50 rounded-xl text-center">
                 <p className="text-xl font-bold text-red-600">
                   {processResults.filter(r => r.status === 'error').length}
                 </p>
-                <p className="text-sm text-muted-foreground">Errori</p>
+                <p className="text-xs text-muted-foreground">Errori</p>
               </div>
-              <div className="p-3 bg-blue-100 dark:bg-blue-900/20 rounded-lg text-center">
+              <div className="p-3 bg-blue-50 rounded-xl text-center">
                 <p className="text-xl font-bold text-blue-600">
                   {processResults.filter(r => r.webhook_sent).length}
                 </p>
-                <p className="text-sm text-muted-foreground">Webhook inviati</p>
+                <p className="text-xs text-muted-foreground">Webhook inviati</p>
               </div>
             </div>
             
@@ -496,7 +496,7 @@ export function RoundRobinFixSection() {
               <div className="space-y-2">
                 <p className="text-sm font-medium text-red-600">Errori:</p>
                 {processResults.filter(r => r.status === 'error').map(r => (
-                  <div key={r.lead_id} className="text-sm p-2 bg-red-50 dark:bg-red-900/10 rounded">
+                  <div key={r.lead_id} className="text-sm p-2 bg-red-50 rounded-lg">
                     {r.nome} ({r.email}): {r.error}
                   </div>
                 ))}
@@ -531,7 +531,7 @@ export function RoundRobinFixSection() {
             const allSelected = selectedInGroup === group.leads.length;
 
             return (
-              <AccordionItem key={group.venditore} value={group.venditore} className="border rounded-lg">
+              <AccordionItem key={group.venditore} value={group.venditore} className="border rounded-xl overflow-hidden">
                 <AccordionTrigger className="px-4 hover:no-underline">
                   <div className="flex items-center gap-4 w-full">
                     <Checkbox

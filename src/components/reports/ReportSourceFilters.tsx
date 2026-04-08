@@ -17,6 +17,7 @@ interface ReportSourceFiltersProps {
   onFontiIncluseChange: (fonti: string[]) => void;
   onFontiEscluseChange: (fonti: string[]) => void;
   onClearSourceFilters: () => void;
+  inline?: boolean;
 }
 
 const ReportSourceFilters = ({
@@ -26,7 +27,8 @@ const ReportSourceFilters = ({
   fontiEscluse,
   onFontiIncluseChange,
   onFontiEscluseChange,
-  onClearSourceFilters
+  onClearSourceFilters,
+  inline = false
 }: ReportSourceFiltersProps) => {
   const { selectedMarket } = useMarket();
   const [availableFonti, setAvailableFonti] = useState<string[]>([]);
@@ -72,6 +74,78 @@ const ReportSourceFilters = ({
 
   const hasActiveFilters = fontiIncluse.length > 0 || fontiEscluse.length > 0;
 
+  const content = (
+    <div className="space-y-3">
+      {/* Header for inline mode */}
+      {inline && (
+        <div className="flex items-center justify-between">
+          <Label className="text-xs font-medium text-muted-foreground">Filtri per Fonte</Label>
+          {hasActiveFilters && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onClearSourceFilters}
+              className="h-6 px-2 text-[11px] text-muted-foreground"
+            >
+              <X className="h-3 w-3 mr-1" />
+              Azzera
+            </Button>
+          )}
+        </div>
+      )}
+
+      {/* Modalità di filtro */}
+      <div className="flex items-center gap-2">
+        <Button
+          variant={sourceMode === 'include' ? 'default' : 'outline'}
+          size="sm"
+          onClick={() => onSourceModeChange('include')}
+          className="text-xs h-8"
+        >
+          Includi Solo
+        </Button>
+        <Button
+          variant={sourceMode === 'exclude' ? 'default' : 'outline'}
+          size="sm"
+          onClick={() => onSourceModeChange('exclude')}
+          className="text-xs h-8"
+        >
+          Escludi
+        </Button>
+      </div>
+
+      {/* Selezione fonte */}
+      <SearchableSourceSelect
+        sources={getAvailableForSelection()}
+        onSelect={handleAddFonte}
+        placeholder={sourceMode === 'include' ? 'Aggiungi fonte da includere...' : 'Aggiungi fonte da escludere...'}
+        emptyMessage="Nessuna fonte trovata"
+      />
+
+      {/* Fonti selezionate */}
+      {getSelectedFonti().length > 0 && (
+        <div className="flex flex-wrap gap-1.5">
+          {getSelectedFonti().map((fonte) => (
+            <Badge key={fonte} variant="secondary" className="flex items-center gap-1 text-xs">
+              {fonte}
+              <button
+                type="button"
+                className="ml-0.5 hover:text-foreground transition-colors"
+                onClick={() => handleRemoveFonte(fonte)}
+              >
+                <X className="h-3 w-3" />
+              </button>
+            </Badge>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+
+  if (inline) {
+    return content;
+  }
+
   return (
     <Card>
       <CardHeader>
@@ -90,64 +164,8 @@ const ReportSourceFilters = ({
           )}
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-4">
-        {/* Modalità di filtro */}
-        <div>
-          <Label className="text-sm font-medium mb-2 block">Modalità Filtro</Label>
-          <div className="flex gap-2">
-            <Button
-              variant={sourceMode === 'include' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => onSourceModeChange('include')}
-            >
-              Includi Solo
-            </Button>
-            <Button
-              variant={sourceMode === 'exclude' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => onSourceModeChange('exclude')}
-            >
-              Escludi
-            </Button>
-          </div>
-        </div>
-
-        {/* Selezione fonte */}
-        <div>
-          <Label className="text-sm font-medium mb-2 block">
-            {sourceMode === 'include' ? 'Aggiungi Fonte da Includere' : 'Aggiungi Fonte da Escludere'}
-          </Label>
-          <SearchableSourceSelect
-            sources={getAvailableForSelection()}
-            onSelect={handleAddFonte}
-            placeholder="Cerca e seleziona una fonte..."
-            emptyMessage="Nessuna fonte trovata"
-          />
-        </div>
-
-        {/* Fonti selezionate */}
-        {getSelectedFonti().length > 0 && (
-          <div>
-            <Label className="text-sm font-medium mb-2 block">
-              Fonti {sourceMode === 'include' ? 'Incluse' : 'Escluse'}:
-            </Label>
-            <div className="flex flex-wrap gap-2">
-              {getSelectedFonti().map((fonte) => (
-                <Badge key={fonte} variant="secondary" className="flex items-center gap-1">
-                  {fonte}
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-4 w-4 p-0 hover:bg-transparent"
-                    onClick={() => handleRemoveFonte(fonte)}
-                  >
-                    <X className="h-3 w-3" />
-                  </Button>
-                </Badge>
-              ))}
-            </div>
-          </div>
-        )}
+      <CardContent>
+        {content}
       </CardContent>
     </Card>
   );

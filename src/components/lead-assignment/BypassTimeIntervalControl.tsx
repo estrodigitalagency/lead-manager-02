@@ -16,15 +16,15 @@ export const BypassTimeIntervalControl = ({
   disabled = false 
 }: BypassTimeIntervalControlProps) => {
   return (
-    <div className="space-y-4">
-      <div className="flex items-center gap-2 mb-3">
-        <Clock className="h-5 w-5 text-primary" />
-        <h3 className="text-base font-semibold">Controllo Temporale</h3>
+    <div className="space-y-2">
+      <div className="flex items-center gap-2">
+        <Clock className="h-4 w-4 text-primary" />
+        <h3 className="text-sm sm:text-base font-semibold">Controllo Temporale</h3>
       </div>
-      
-      <div className="p-4 rounded-lg border border-border bg-card/50">
+
+      <div className="p-3 sm:p-4 rounded-xl bg-muted/30">
         <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-3">
+          <div className="flex items-center space-x-2 sm:space-x-3">
             <Switch
               id="bypass-time-interval"
               checked={bypassTimeInterval}

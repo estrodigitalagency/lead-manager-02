@@ -337,7 +337,7 @@ const AssignmentHistory = () => {
                         </div>
                         <div className="flex flex-wrap gap-1">
                           {record.exclude_from_included.map((fonte, index) => (
-                            <Badge key={index} variant="outline" className="text-xs border-orange-500 text-orange-400">
+                            <Badge key={index} variant="outline" className="text-xs border-orange-300 text-orange-600">
                               {fonte}
                             </Badge>
                           ))}

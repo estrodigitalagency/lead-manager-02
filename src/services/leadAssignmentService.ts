@@ -46,57 +46,25 @@ async function processAssignmentCompletion(
   excludeFromIncluded: string[],
   leadIds: string[]
 ) {
-  // MIGLIORAMENTO: Cerca venditore per nome completo (nome + cognome) nello stesso market
-  const venditoreParts = venditore.trim().split(' ');
-  const nomeVenditore = venditoreParts[0];
-  const cognomeVenditore = venditoreParts.slice(1).join(' ');
+  // Cerca venditore confrontando nome+cognome concatenati per evitare problemi con nomi composti
+  console.log(`Cercando venditore: "${venditore}", market="${market}"`);
 
-  console.log(`Cercando venditore: nome="${nomeVenditore}", cognome="${cognomeVenditore}", market="${market}"`);
-
-  // Prova prima con nome e cognome separati
   let venditoreDates = null;
-  let venditoreError = null;
 
-  if (cognomeVenditore) {
-    const { data, error } = await supabase
-      .from('venditori')
-      .select('nome, cognome, email, telefono, sheets_file_id, sheets_tab_name')
-      .eq('nome', nomeVenditore)
-      .eq('cognome', cognomeVenditore)
-      .eq('market', market)
-      .single();
-    
-    venditoreDates = data;
-    venditoreError = error;
+  const { data: allVenditori, error: venditoreError } = await supabase
+    .from('venditori')
+    .select('nome, cognome, email, telefono, sheets_file_id, sheets_tab_name')
+    .eq('market', market)
+    .eq('stato', 'attivo');
+
+  if (!venditoreError && allVenditori) {
+    venditoreDates = allVenditori.find(v =>
+      `${v.nome} ${v.cognome}`.trim() === venditore.trim() ||
+      v.nome.trim() === venditore.trim()
+    ) || null;
   }
 
-  // Se non trova con nome/cognome separati, prova con nome completo nel campo nome
   if (!venditoreDates) {
-    const { data, error } = await supabase
-      .from('venditori')
-      .select('nome, cognome, email, telefono, sheets_file_id, sheets_tab_name')
-      .eq('nome', venditore)
-      .eq('market', market)
-      .single();
-    
-    venditoreDates = data;
-    venditoreError = error;
-  }
-
-  // Se ancora non trova, prova cercando per nome che contiene il valore
-  if (!venditoreDates) {
-    const { data, error } = await supabase
-      .from('venditori')
-      .select('nome, cognome, email, telefono, sheets_file_id, sheets_tab_name')
-      .ilike('nome', `%${nomeVenditore}%`)
-      .eq('market', market)
-      .single();
-    
-    venditoreDates = data;
-    venditoreError = error;
-  }
-
-  if (venditoreError || !venditoreDates) {
     console.warn('Could not fetch venditore details:', venditoreError);
     console.warn('Proceeding without venditore details for webhook');
   } else {

@@ -228,8 +228,8 @@ const CustomerJourneyTimeline = ({ timeline, currentLeadId }: CustomerJourneyTim
                     <div className="mt-2 p-2 bg-emerald-500/10 rounded-md border border-emerald-500/20">
                       {event.details?.importo && (
                         <div className="flex items-center gap-2 mb-1.5">
-                          <DollarSign className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
-                          <span className="text-sm font-bold text-emerald-700 dark:text-emerald-300">
+                          <DollarSign className="h-4 w-4 text-emerald-600" />
+                          <span className="text-sm font-bold text-emerald-700">
                             €{Number(event.details.importo).toLocaleString('it-IT', { minimumFractionDigits: 2 })}
                           </span>
                         </div>
