@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { TrendingUp, Users, Database, Zap } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
@@ -61,7 +61,7 @@ export const RealTimeStatsSection = () => {
           tempoMedioAssegnazione: tempoMedio
         });
       } catch (error) {
-        console.error('❌ Errore nel caricamento delle statistiche:', error);
+        console.error('Errore nel caricamento delle statistiche:', error);
       } finally {
         setIsLoading(false);
       }
@@ -74,80 +74,82 @@ export const RealTimeStatsSection = () => {
     {
       title: "Lead Generati",
       value: customStats.leadGeneratiUltimi30.toString(),
-      change: "ultimi 30 giorni",
+      subtitle: "ultimi 30 giorni",
       icon: Database,
-      color: "text-primary",
+      accentColor: "text-blue-600",
+      bgColor: "bg-blue-50",
       loading: isLoading
     },
     {
-      title: "Lead Assegnabili", 
+      title: "Lead Assegnabili",
       value: stats.assignable.toString(),
-      change: "pronti per assegnazione",
+      subtitle: "pronti per assegnazione",
       icon: TrendingUp,
-      color: "text-green-400",
+      accentColor: "text-emerald-600",
+      bgColor: "bg-emerald-50",
       loading: isRefreshing
     },
     {
       title: "Call Generate",
       value: customStats.callGenerateUltimi30.toString(),
-      change: "ultimi 30 giorni",
+      subtitle: "ultimi 30 giorni",
       icon: Users,
-      color: "text-accent",
+      accentColor: "text-violet-600",
+      bgColor: "bg-violet-50",
       loading: isLoading
     },
     {
-      title: "Tempo Medio Assegnazione",
+      title: "Tempo Medio",
       value: `${customStats.tempoMedioAssegnazione}h`,
-      change: "ultimi 30 giorni",
+      subtitle: "assegnazione",
       icon: Zap,
-      color: "text-blue-400",
+      accentColor: "text-amber-600",
+      bgColor: "bg-amber-50",
       loading: isLoading
     }
   ];
 
   return (
-    <section className="py-6 md:py-12 px-0">
-      <div className="max-w-7xl mx-auto">
-        <div className="text-center mb-8 md:mb-12">
-          <h2 className="text-2xl md:text-4xl font-bold mb-2">
-            <span className="gradient-text">Performance Lead</span>
+    <section className="animate-fade-in">
+      <div className="flex items-baseline justify-between mb-4 sm:mb-5">
+        <div>
+          <h2 className="text-lg sm:text-xl font-bold text-foreground">
+            Performance
           </h2>
-          <p className="text-sm md:text-lg text-muted-foreground max-w-2xl mx-auto">
-            Dati degli ultimi 30 giorni aggiornati in tempo reale
-            {isRefreshing && <span className="block text-sm text-primary mt-1">🔄 Aggiornamento in corso...</span>}
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Ultimi 30 giorni
+            {isRefreshing && <span className="ml-2 text-primary animate-pulse">Aggiornamento...</span>}
           </p>
         </div>
+      </div>
 
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6">
-          {statsConfig.map((stat) => (
-            <Card 
-              key={stat.title} 
-              className="glass-card hover:scale-[1.02] transition-all duration-300 group"
-            >
-              <CardHeader className="flex flex-row items-center justify-between pb-1 md:pb-2 px-3 md:px-6 pt-3 md:pt-6">
-                <CardTitle className="text-xs md:text-sm font-medium text-muted-foreground">
-                  {stat.title}
-                </CardTitle>
-                <stat.icon className={`h-4 w-4 md:h-5 md:w-5 ${stat.color} group-hover:scale-110 transition-transform`} />
-              </CardHeader>
-              <CardContent className="px-3 md:px-6 pb-3 md:pb-6">
-                {stat.loading ? (
-                  <div className="space-y-2">
-                    <Skeleton className="h-7 md:h-9 w-16 md:w-24" />
-                    <Skeleton className="h-3 md:h-4 w-20 md:w-32" />
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        {statsConfig.map((stat, i) => (
+          <Card key={stat.title} className={`stat-card group stagger-${i + 1} animate-slide-up`}>
+            <CardContent className="p-4 sm:p-5">
+              <div className="flex items-start justify-between mb-3 sm:mb-4">
+                <div className={`icon-container-sm ${stat.bgColor}`}>
+                  <stat.icon className={`h-4 w-4 ${stat.accentColor}`} />
+                </div>
+              </div>
+              {stat.loading ? (
+                <div className="space-y-2.5">
+                  <Skeleton className="h-8 w-16 rounded-lg" />
+                  <Skeleton className="h-3 w-20 rounded-md" />
+                </div>
+              ) : (
+                <>
+                  <div className="text-2xl sm:text-3xl font-extrabold text-foreground tabular-nums tracking-tight">
+                    {stat.value}
                   </div>
-                ) : (
-                  <div>
-                    <div className="text-xl md:text-3xl font-bold">{stat.value}</div>
-                    <div className="text-xs md:text-sm font-medium text-muted-foreground mt-1">
-                      {stat.change}
-                    </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+                  <p className="text-[11px] sm:text-xs text-muted-foreground mt-1 font-medium">
+                    {stat.title}
+                  </p>
+                </>
+              )}
+            </CardContent>
+          </Card>
+        ))}
       </div>
     </section>
   );

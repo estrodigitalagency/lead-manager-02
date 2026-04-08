@@ -255,8 +255,8 @@ const LeadDetailsDialog = ({ lead, open, onOpenChange }: LeadDetailsDialogProps)
                     <div className="p-4 bg-emerald-500/10 rounded-lg border border-emerald-500/30">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
-                          <DollarSign className="h-6 w-6 text-emerald-600 dark:text-emerald-400" />
-                          <span className="text-2xl font-bold text-emerald-700 dark:text-emerald-300">
+                          <DollarSign className="h-6 w-6 text-emerald-600" />
+                          <span className="text-2xl font-bold text-emerald-700">
                             €{lead.importo_vendita.toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                           </span>
                         </div>

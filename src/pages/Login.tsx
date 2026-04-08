@@ -13,7 +13,7 @@ const Login = () => {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  
+
   const { signIn, isAuthenticated, loading: authLoading } = useAuth();
   const navigate = useNavigate();
 
@@ -29,13 +29,13 @@ const Login = () => {
     setLoading(true);
 
     const { error } = await signIn(password);
-    
+
     if (error) {
       setError(error);
     } else {
       navigate("/");
     }
-    
+
     setLoading(false);
   };
 
@@ -48,53 +48,60 @@ const Login = () => {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-background to-secondary/20 p-4">
-      <div className="hero-glow absolute inset-0 pointer-events-none" />
-      <Card className="w-full max-w-md relative z-10 glass-card border-border">
-        <CardHeader className="text-center">
-          <div className="mx-auto mb-4 w-12 h-12 bg-primary/20 rounded-full flex items-center justify-center neon-border">
-            <Lock className="h-6 w-6 text-primary" />
-          </div>
-          <CardTitle className="text-2xl font-bold gradient-text">
-            Lead Manager
-          </CardTitle>
-          <CardDescription className="text-muted-foreground">
-            Inserisci la password per accedere
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSignIn} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <Input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                className="w-full input-neon"
-                placeholder="Inserisci la password"
-                autoFocus
-              />
+    <div className="min-h-screen flex items-center justify-center bg-background p-4">
+      <div className="w-full max-w-sm animate-scale-in">
+        <div className="text-center mb-8">
+          <h1 className="text-2xl font-extrabold tracking-tight text-foreground">
+            Lead<span className="text-primary">Manager</span>
+          </h1>
+        </div>
+
+        <Card>
+          <CardHeader className="text-center pb-2">
+            <div className="mx-auto mb-3 w-12 h-12 bg-primary/8 rounded-2xl flex items-center justify-center">
+              <Lock className="h-5 w-5 text-primary" />
             </div>
-            {error && (
-              <Alert variant="destructive">
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
-            )}
-            <Button type="submit" className="w-full btn-neon" disabled={loading}>
-              {loading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Accesso in corso...
-                </>
-              ) : (
-                "Accedi"
+            <CardTitle className="text-xl">
+              Bentornato
+            </CardTitle>
+            <CardDescription>
+              Inserisci la password per accedere
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleSignIn} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="password" className="text-sm font-medium">Password</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  className="w-full"
+                  placeholder="Inserisci la password"
+                  autoFocus
+                />
+              </div>
+              {error && (
+                <Alert variant="destructive" className="rounded-xl">
+                  <AlertDescription>{error}</AlertDescription>
+                </Alert>
               )}
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
+              <Button type="submit" className="w-full h-11 rounded-2xl font-semibold" disabled={loading}>
+                {loading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Accesso in corso...
+                  </>
+                ) : (
+                  "Accedi"
+                )}
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 };

@@ -1,7 +1,7 @@
 
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Users, Phone, UserCheck } from "lucide-react";
+import { Users, Phone, UserCheck, TrendingUp } from "lucide-react";
 import { ReportMetrics } from "@/services/reportsService";
 
 interface ReportMetricsProps {
@@ -12,14 +12,14 @@ interface ReportMetricsProps {
 const ReportMetricsComponent = ({ metrics, isLoading }: ReportMetricsProps) => {
   if (isLoading) {
     return (
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {[1, 2, 3].map((i) => (
-          <Card key={i}>
-            <CardContent className="p-6">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
+        {[1, 2, 3, 4].map((i) => (
+          <Card key={i} className="stat-card">
+            <CardContent className="p-4 sm:p-5">
               <div className="space-y-3">
-                <Skeleton className="h-4 w-3/4" />
-                <Skeleton className="h-8 w-1/2" />
-                <Skeleton className="h-3 w-2/3" />
+                <Skeleton className="h-7 w-7 rounded-lg" />
+                <Skeleton className="h-8 w-16 rounded-lg" />
+                <Skeleton className="h-3 w-20 rounded-md" />
               </div>
             </CardContent>
           </Card>
@@ -28,56 +28,61 @@ const ReportMetricsComponent = ({ metrics, isLoading }: ReportMetricsProps) => {
     );
   }
 
+  const conversionRate = metrics.leadTotaliGenerati > 0
+    ? ((metrics.callTotaliPrenotate / metrics.leadTotaliGenerati) * 100).toFixed(1)
+    : '0.0';
+
   const metricCards = [
     {
-      title: "Lead Totali Generati",
-      value: metrics.leadTotaliGenerati,
+      title: "Lead Generati",
+      value: metrics.leadTotaliGenerati.toLocaleString('it-IT'),
       icon: Users,
-      description: "Lead generati nel periodo selezionato",
-      color: "text-blue-400",
-      bgColor: "bg-blue-500/15"
+      subtitle: "nel periodo",
+      color: "text-blue-600",
+      bgColor: "bg-blue-50"
     },
     {
-      title: "Call Totali Prenotate",
-      value: metrics.callTotaliPrenotate,
+      title: "Call Prenotate",
+      value: metrics.callTotaliPrenotate.toLocaleString('it-IT'),
       icon: Phone,
-      description: "Call prenotate nel periodo selezionato",
-      color: "text-green-400",
-      bgColor: "bg-green-500/15"
+      subtitle: "nel periodo",
+      color: "text-emerald-600",
+      bgColor: "bg-emerald-50"
     },
     {
-      title: "Lead Totali Lavorati",
-      value: metrics.leadTotaliLavorati,
+      title: "Lead Lavorati",
+      value: metrics.leadTotaliLavorati.toLocaleString('it-IT'),
       icon: UserCheck,
-      description: "Lead assegnati nel periodo selezionato",
-      color: "text-orange-400",
-      bgColor: "bg-orange-500/15"
+      subtitle: "nel periodo",
+      color: "text-violet-600",
+      bgColor: "bg-violet-50"
+    },
+    {
+      title: "Conversione",
+      value: `${conversionRate}%`,
+      icon: TrendingUp,
+      subtitle: "lead \u2192 call",
+      color: metrics.callTotaliPrenotate > 0 ? "text-amber-600" : "text-muted-foreground",
+      bgColor: metrics.callTotaliPrenotate > 0 ? "bg-amber-50" : "bg-muted/40"
     }
   ];
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-      {metricCards.map((metric) => {
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
+      {metricCards.map((metric, i) => {
         const IconComponent = metric.icon;
         return (
-          <Card key={metric.title}>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                {metric.title}
-              </CardTitle>
-              <div className={`p-2 rounded-full ${metric.bgColor}`}>
+          <Card key={metric.title} className={`stat-card stagger-${i + 1} animate-slide-up`}>
+            <CardContent className="p-4 sm:p-5">
+              <div className={`icon-container-sm ${metric.bgColor} mb-3 sm:mb-4`}>
                 <IconComponent className={`h-4 w-4 ${metric.color}`} />
               </div>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-1">
-                <div className={`text-2xl font-bold ${metric.color}`}>
-                  {metric.value.toLocaleString('it-IT')}
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  {metric.description}
-                </p>
+              <div className={`text-xl sm:text-2xl font-extrabold tabular-nums tracking-tight ${metric.color}`}>
+                {metric.value}
               </div>
+              <p className="text-[11px] sm:text-xs text-muted-foreground mt-1 font-medium">
+                {metric.title}
+              </p>
             </CardContent>
           </Card>
         );
