@@ -294,11 +294,11 @@ export function RoundRobinFixSection() {
                 <p className="text-2xl font-bold text-emerald-600">{analysisData.summary.withPreviousSeller}</p>
                 <p className="text-xs text-muted-foreground">Con venditore precedente</p>
               </div>
-              <div className="p-3 bg-blue-50 rounded-xl">
+              <div className="p-3 bg-primary/10 rounded-xl">
                 <p className="text-2xl font-bold text-blue-600">{analysisData.summary.withPreviousSellerFiltered || analysisData.summary.withPreviousSeller}</p>
                 <p className="text-xs text-muted-foreground">Filtrati (intervallo giorni)</p>
               </div>
-              <div className="p-3 bg-amber-50 rounded-xl">
+              <div className="p-3 bg-yellow-500/10 rounded-xl">
                 <p className="text-2xl font-bold text-amber-600">{analysisData.summary.withoutPreviousSeller}</p>
                 <p className="text-xs text-muted-foreground">Senza venditore precedente</p>
               </div>
@@ -478,13 +478,13 @@ export function RoundRobinFixSection() {
                 </p>
                 <p className="text-xs text-muted-foreground">Successi</p>
               </div>
-              <div className="p-3 bg-red-50 rounded-xl text-center">
+              <div className="p-3 bg-destructive/10 rounded-xl text-center">
                 <p className="text-xl font-bold text-red-600">
                   {processResults.filter(r => r.status === 'error').length}
                 </p>
                 <p className="text-xs text-muted-foreground">Errori</p>
               </div>
-              <div className="p-3 bg-blue-50 rounded-xl text-center">
+              <div className="p-3 bg-primary/10 rounded-xl text-center">
                 <p className="text-xl font-bold text-blue-600">
                   {processResults.filter(r => r.webhook_sent).length}
                 </p>
@@ -496,7 +496,7 @@ export function RoundRobinFixSection() {
               <div className="space-y-2">
                 <p className="text-sm font-medium text-red-600">Errori:</p>
                 {processResults.filter(r => r.status === 'error').map(r => (
-                  <div key={r.lead_id} className="text-sm p-2 bg-red-50 rounded-lg">
+                  <div key={r.lead_id} className="text-sm p-2 bg-destructive/10 rounded-lg">
                     {r.nome} ({r.email}): {r.error}
                   </div>
                 ))}

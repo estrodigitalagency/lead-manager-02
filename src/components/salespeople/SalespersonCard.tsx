@@ -76,7 +76,7 @@ const SalespersonCard = ({ venditore, onUpdate }: SalespersonCardProps) => {
               variant="ghost"
               size="sm"
               onClick={handleDelete}
-              className="text-red-600 hover:text-red-800"
+              className="text-destructive hover:text-destructive/80"
             >
               <Trash2 className="h-4 w-4" />
             </Button>

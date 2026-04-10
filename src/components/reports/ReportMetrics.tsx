@@ -39,7 +39,7 @@ const ReportMetricsComponent = ({ metrics, isLoading }: ReportMetricsProps) => {
       icon: Users,
       subtitle: "nel periodo",
       color: "text-blue-600",
-      bgColor: "bg-blue-50"
+      bgColor: "bg-primary/10"
     },
     {
       title: "Call Prenotate",
@@ -47,7 +47,7 @@ const ReportMetricsComponent = ({ metrics, isLoading }: ReportMetricsProps) => {
       icon: Phone,
       subtitle: "nel periodo",
       color: "text-emerald-600",
-      bgColor: "bg-emerald-50"
+      bgColor: "bg-green-500/10"
     },
     {
       title: "Lead Lavorati",
@@ -63,7 +63,7 @@ const ReportMetricsComponent = ({ metrics, isLoading }: ReportMetricsProps) => {
       icon: TrendingUp,
       subtitle: "lead \u2192 call",
       color: metrics.callTotaliPrenotate > 0 ? "text-amber-600" : "text-muted-foreground",
-      bgColor: metrics.callTotaliPrenotate > 0 ? "bg-amber-50" : "bg-muted/40"
+      bgColor: metrics.callTotaliPrenotate > 0 ? "bg-yellow-500/10" : "bg-muted/40"
     }
   ];
 

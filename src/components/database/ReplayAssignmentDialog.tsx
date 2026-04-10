@@ -168,7 +168,7 @@ const ReplayAssignmentDialog = ({
               </div>
             </div>
 
-            <div className="text-sm text-muted-foreground p-3 bg-blue-50 rounded-lg">
+            <div className="text-sm text-muted-foreground p-3 bg-primary/10 rounded-lg">
               <p className="font-medium mb-1">Nota:</p>
               <p>Il replay riassegnerà ESATTAMENTE gli stessi {assignmentRecord.leads_count} lead dell'assegnazione originale al nuovo venditore selezionato. I lead verranno prima sbloccati e poi riassegnati.</p>
             </div>

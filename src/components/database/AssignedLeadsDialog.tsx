@@ -509,7 +509,7 @@ const AssignedLeadsDialog = ({ open, onOpenChange, assignmentRecord, onRefresh }
                           type="checkbox" 
                           checked={selectedLeadIds.length === leads.length && leads.length > 0}
                           onChange={toggleAllLeads}
-                          className="rounded border-gray-300"
+                          className="rounded border-border"
                         />
                       </TableHead>
                       <TableHead>Nome</TableHead>
@@ -532,7 +532,7 @@ const AssignedLeadsDialog = ({ open, onOpenChange, assignmentRecord, onRefresh }
                             type="checkbox" 
                             checked={selectedLeadIds.includes(lead.id)}
                             onChange={() => toggleLeadSelection(lead.id)}
-                            className="rounded border-gray-300"
+                            className="rounded border-border"
                           />
                         </TableCell>
                         <TableCell className="font-medium">

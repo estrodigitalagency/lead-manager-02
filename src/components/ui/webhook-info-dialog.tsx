@@ -73,9 +73,9 @@ export function WebhookInfoDialog({ isOpen, onOpenChange }: WebhookInfoDialogPro
           {/* Lead Generation Webhook */}
           <div>
             <h3 className="text-lg font-semibold mb-3">Webhook Lead Generation</h3>
-            <div className="bg-gray-50 p-4 rounded-lg border">
+            <div className="bg-muted p-4 rounded-lg border">
               <div className="flex justify-between items-center mb-2">
-                <span className="font-mono text-sm text-gray-600">POST</span>
+                <span className="font-mono text-sm text-muted-foreground">POST</span>
                 <Button
                   variant="ghost"
                   size="sm"
@@ -131,19 +131,19 @@ export function WebhookInfoDialog({ isOpen, onOpenChange }: WebhookInfoDialogPro
             <div className="mt-4">
               <h4 className="font-medium mb-2">Campi supportati:</h4>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
-                <div><code className="bg-gray-100 px-1 rounded">nome</code> - <strong>Obbligatorio</strong></div>
-                <div><code className="bg-gray-100 px-1 rounded">cognome</code> - Opzionale</div>
-                <div><code className="bg-gray-100 px-1 rounded">email</code> - Email</div>
-                <div><code className="bg-gray-100 px-1 rounded">telefono</code> - Telefono</div>
-                <div><code className="bg-gray-100 px-1 rounded">fonte</code> - Fonte lead</div>
-                <div><code className="bg-gray-100 px-1 rounded">ultima_fonte</code> - Ultima fonte</div>
-                <div><code className="bg-gray-100 px-1 rounded">campagna</code> - Nome campagna</div>
-                <div><code className="bg-gray-100 px-1 rounded">lead_score</code> - HOT/WARM/COLD</div>
-                <div><code className="bg-gray-100 px-1 rounded">market</code> - IT/ES/FR (default: IT)</div>
-                <div><code className="bg-gray-100 px-1 rounded">venditore</code> - Nome venditore</div>
-                <div><code className="bg-gray-100 px-1 rounded">assignable</code> - false per skip automazioni</div>
-                <div><code className="bg-gray-100 px-1 rounded">stato</code> - Stato lead</div>
-                <div><code className="bg-gray-100 px-1 rounded">notes</code> - Note aggiuntive</div>
+                <div><code className="bg-muted px-1 rounded">nome</code> - <strong>Obbligatorio</strong></div>
+                <div><code className="bg-muted px-1 rounded">cognome</code> - Opzionale</div>
+                <div><code className="bg-muted px-1 rounded">email</code> - Email</div>
+                <div><code className="bg-muted px-1 rounded">telefono</code> - Telefono</div>
+                <div><code className="bg-muted px-1 rounded">fonte</code> - Fonte lead</div>
+                <div><code className="bg-muted px-1 rounded">ultima_fonte</code> - Ultima fonte</div>
+                <div><code className="bg-muted px-1 rounded">campagna</code> - Nome campagna</div>
+                <div><code className="bg-muted px-1 rounded">lead_score</code> - HOT/WARM/COLD</div>
+                <div><code className="bg-muted px-1 rounded">market</code> - IT/ES/FR (default: IT)</div>
+                <div><code className="bg-muted px-1 rounded">venditore</code> - Nome venditore</div>
+                <div><code className="bg-muted px-1 rounded">assignable</code> - false per skip automazioni</div>
+                <div><code className="bg-muted px-1 rounded">stato</code> - Stato lead</div>
+                <div><code className="bg-muted px-1 rounded">notes</code> - Note aggiuntive</div>
               </div>
             </div>
           </div>
@@ -151,9 +151,9 @@ export function WebhookInfoDialog({ isOpen, onOpenChange }: WebhookInfoDialogPro
           {/* Calendly Webhook */}
           <div>
             <h3 className="text-lg font-semibold mb-3">Webhook Prenotazioni Calendly</h3>
-            <div className="bg-gray-50 p-4 rounded-lg border">
+            <div className="bg-muted p-4 rounded-lg border">
               <div className="flex justify-between items-center mb-2">
-                <span className="font-mono text-sm text-gray-600">POST</span>
+                <span className="font-mono text-sm text-muted-foreground">POST</span>
                 <Button
                   variant="ghost"
                   size="sm"
@@ -188,13 +188,13 @@ export function WebhookInfoDialog({ isOpen, onOpenChange }: WebhookInfoDialogPro
             <div className="mt-4">
               <h4 className="font-medium mb-2">Campi supportati:</h4>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
-                <div><code className="bg-gray-100 px-1 rounded">nome</code> - <strong>Obbligatorio</strong></div>
-                <div><code className="bg-gray-100 px-1 rounded">cognome</code> - Opzionale</div>
-                <div><code className="bg-gray-100 px-1 rounded">email</code> - <strong>Obbligatorio</strong></div>
-                <div><code className="bg-gray-100 px-1 rounded">telefono</code> - <strong>Obbligatorio</strong></div>
-                <div><code className="bg-gray-100 px-1 rounded">fonte</code> - Fonte prenotazione</div>
-                <div><code className="bg-gray-100 px-1 rounded">scheduled_at</code> - <strong>Obbligatorio</strong> (ISO 8601)</div>
-                <div><code className="bg-gray-100 px-1 rounded">note</code> - Note aggiuntive</div>
+                <div><code className="bg-muted px-1 rounded">nome</code> - <strong>Obbligatorio</strong></div>
+                <div><code className="bg-muted px-1 rounded">cognome</code> - Opzionale</div>
+                <div><code className="bg-muted px-1 rounded">email</code> - <strong>Obbligatorio</strong></div>
+                <div><code className="bg-muted px-1 rounded">telefono</code> - <strong>Obbligatorio</strong></div>
+                <div><code className="bg-muted px-1 rounded">fonte</code> - Fonte prenotazione</div>
+                <div><code className="bg-muted px-1 rounded">scheduled_at</code> - <strong>Obbligatorio</strong> (ISO 8601)</div>
+                <div><code className="bg-muted px-1 rounded">note</code> - Note aggiuntive</div>
               </div>
             </div>
           </div>

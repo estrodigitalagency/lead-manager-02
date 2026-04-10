@@ -95,13 +95,13 @@ const LeadLavoratiTable = ({
     let className = "";
     
     if (esitoLower.includes('vendita') || esitoLower.includes('chiuso')) {
-      className = "bg-green-100 text-green-800 border-green-200";
+      className = "bg-green-500/15 text-green-400 border-green-500/30";
     } else if (esitoLower.includes('interessato') || esitoLower.includes('ricontattare')) {
-      className = "bg-yellow-100 text-yellow-800 border-yellow-200";
+      className = "bg-yellow-500/10 text-yellow-400 border-yellow-500/30";
     } else if (esitoLower.includes('non interessato') || esitoLower.includes('rifiutato')) {
-      className = "bg-red-100 text-red-800 border-red-200";
+      className = "bg-destructive/10 text-destructive border-destructive/30";
     } else {
-      className = "bg-gray-100 text-gray-800 border-gray-200";
+      className = "bg-muted text-muted-foreground border-border";
     }
     
     return (
@@ -276,7 +276,7 @@ const LeadLavoratiTable = ({
                   variant="ghost"
                   size="sm"
                   onClick={() => onDelete(lead.id!)}
-                  className="text-red-600 hover:text-red-800 hover:bg-red-100"
+                  className="text-destructive hover:text-destructive hover:bg-destructive/10"
                 >
                   <Trash2 className="h-4 w-4" />
                 </Button>

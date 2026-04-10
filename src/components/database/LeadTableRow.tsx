@@ -102,7 +102,7 @@ const LeadTableRow = ({
 
       {visibleColumns.includes('booked_call') && (
         <TableCell className="text-sm">
-          <Badge variant="outline" className={lead.booked_call === 'SI' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}>
+          <Badge variant="outline" className={lead.booked_call === 'SI' ? 'bg-green-500/15 text-green-400' : 'bg-muted text-muted-foreground'}>
             {lead.booked_call === 'SI' ? 'Sì' : 'No'}
           </Badge>
         </TableCell>
@@ -127,10 +127,10 @@ const LeadTableRow = ({
               variant="outline" 
               className={
                 lead.stato_del_lead.toLowerCase() === 'nuovo' 
-                  ? 'bg-green-100 text-green-800 border-green-300' 
+                  ? 'bg-green-500/15 text-green-400 border-green-500/30'
                   : lead.stato_del_lead.toLowerCase() === 'vecchio'
-                    ? 'bg-red-100 text-red-800 border-red-300'
-                    : 'bg-gray-100 text-gray-800 border-gray-300'
+                    ? 'bg-destructive/10 text-destructive border-destructive/40'
+                    : 'bg-muted text-muted-foreground border-border'
               }
             >
               {lead.stato_del_lead}
@@ -150,7 +150,7 @@ const LeadTableRow = ({
       {visibleColumns.includes('vendita') && (
         <TableCell className="text-sm">
           {lead.vendita_chiusa ? (
-            <Badge variant="outline" className="bg-green-100 text-green-800 border-green-200">
+            <Badge variant="outline" className="bg-green-500/15 text-green-400 border-green-500/30">
               <ShoppingCart className="h-3 w-3 mr-1" />
               Venduto
             </Badge>
@@ -166,7 +166,7 @@ const LeadTableRow = ({
             variant="ghost"
             size="sm"
             onClick={() => onShowDetails(lead)}
-            className="text-blue-600 hover:text-blue-800 hover:bg-blue-100 p-2"
+            className="text-blue-500 hover:text-blue-400 hover:bg-primary/10 p-2"
           >
             <Info className="h-4 w-4" />
           </Button>
@@ -174,7 +174,7 @@ const LeadTableRow = ({
             variant="ghost"
             size="sm"
             onClick={() => onDelete(lead.id!)}
-            className="text-red-600 hover:text-red-800 hover:bg-red-100 p-2"
+            className="text-destructive hover:text-destructive hover:bg-destructive/10 p-2"
           >
             <Trash2 className="h-4 w-4" />
           </Button>

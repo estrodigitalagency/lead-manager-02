@@ -176,9 +176,9 @@ export const LeadSearchComponent: React.FC<LeadSearchComponentProps> = ({ onLead
       </Card>
 
       {foundLead && (
-        <Alert className="bg-blue-50 border-blue-200">
-          <User className="h-4 w-4 text-blue-600" />
-          <AlertDescription className="text-blue-800">
+        <Alert className="bg-primary/10 border-primary/30">
+          <User className="h-4 w-4 text-blue-500" />
+          <AlertDescription className="text-foreground">
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <p className="font-semibold">Lead trovato:</p>

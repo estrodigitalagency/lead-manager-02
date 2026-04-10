@@ -79,11 +79,11 @@ const LeadAssignmentVerificationWrapper = () => {
           </CardDescription>
         </CardHeader>
         <CardContent className="text-center space-y-4">
-          <div className="bg-blue-50 p-6 rounded-lg border">
+          <div className="bg-primary/10 p-6 rounded-lg border border-primary/30">
             <div className="flex items-center justify-center mb-4">
-              <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+              <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
             </div>
-            <p className="text-blue-800 font-medium mb-2">
+            <p className="text-foreground font-medium mb-2">
               Verifica in corso...
             </p>
             <p className="text-blue-600 text-sm">
@@ -110,8 +110,8 @@ const LeadAssignmentVerificationWrapper = () => {
           </CardDescription>
         </CardHeader>
         <CardContent className="text-center space-y-4">
-          <div className="bg-red-50 p-6 rounded-lg border border-red-200">
-            <p className="text-red-800 font-medium mb-2">
+          <div className="bg-destructive/10 p-6 rounded-lg border border-destructive/30">
+            <p className="text-destructive font-medium mb-2">
               Impossibile completare la verifica
             </p>
             <p className="text-red-600 text-sm mb-4">
@@ -121,7 +121,7 @@ const LeadAssignmentVerificationWrapper = () => {
             <Button 
               onClick={performVerification}
               variant="outline"
-              className="border-red-300 text-red-700 hover:bg-red-50"
+              className="border-destructive/40 text-destructive hover:bg-destructive/10"
             >
               <RefreshCcw className="h-4 w-4 mr-2" />
               Riprova Verifica
@@ -136,9 +136,9 @@ const LeadAssignmentVerificationWrapper = () => {
     return (
       <div className="space-y-6">
         {/* Risultati della verifica */}
-        <Card className="bg-green-50 border-green-200">
+        <Card className="bg-green-500/10 border-green-500/30">
           <CardHeader>
-            <CardTitle className="text-lg flex items-center gap-2 text-green-800">
+            <CardTitle className="text-lg flex items-center gap-2 text-green-400">
               <CheckCircle className="h-5 w-5" />
               Verifica Completata con Successo
             </CardTitle>
@@ -148,20 +148,20 @@ const LeadAssignmentVerificationWrapper = () => {
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div className="bg-white p-4 rounded-lg border border-green-200">
-                <div className="text-2xl font-bold text-green-800">
+              <div className="bg-card p-4 rounded-lg border border-green-500/30">
+                <div className="text-2xl font-bold text-green-400">
                   {verification.totalChecked}
                 </div>
                 <div className="text-sm text-green-600">Lead verificati</div>
               </div>
-              <div className="bg-white p-4 rounded-lg border border-green-200">
-                <div className="text-2xl font-bold text-green-800">
+              <div className="bg-card p-4 rounded-lg border border-green-500/30">
+                <div className="text-2xl font-bold text-green-400">
                   {verification.updated}
                 </div>
                 <div className="text-sm text-green-600">Lead aggiornati</div>
               </div>
-              <div className="bg-white p-4 rounded-lg border border-green-200">
-                <div className="text-2xl font-bold text-green-800">
+              <div className="bg-card p-4 rounded-lg border border-green-500/30">
+                <div className="text-2xl font-bold text-green-400">
                   {verification.availableLeads}
                 </div>
                 <div className="text-sm text-green-600">Lead assegnabili</div>
@@ -172,7 +172,7 @@ const LeadAssignmentVerificationWrapper = () => {
                 onClick={resetVerification}
                 variant="outline"
                 size="sm"
-                className="border-green-300 text-green-700 hover:bg-green-100"
+                className="border-green-500/50 text-green-400 hover:bg-green-500/15"
               >
                 <RefreshCcw className="h-4 w-4 mr-2" />
                 Riverifica

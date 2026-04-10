@@ -164,9 +164,9 @@ export function AutomationTestPanel({ automations, onClose }: AutomationTestPane
                 key={result.automation.id || index}
                 className={`p-3 rounded-lg border-l-4 ${
                   result.matched && index === 0 
-                    ? 'bg-green-50 border-green-500'
+                    ? 'bg-green-500/10 border-green-500/50'
                     : result.matched
-                    ? 'bg-yellow-50 border-yellow-500'
+                    ? 'bg-yellow-500/10 border-yellow-500/50'
                     : 'bg-muted border-muted-foreground'
                 }`}
               >

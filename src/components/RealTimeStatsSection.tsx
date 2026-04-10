@@ -77,7 +77,7 @@ export const RealTimeStatsSection = () => {
       subtitle: "ultimi 30 giorni",
       icon: Database,
       accentColor: "text-blue-600",
-      bgColor: "bg-blue-50",
+      bgColor: "bg-primary/10",
       loading: isLoading
     },
     {
@@ -104,7 +104,7 @@ export const RealTimeStatsSection = () => {
       subtitle: "assegnazione",
       icon: Zap,
       accentColor: "text-amber-600",
-      bgColor: "bg-amber-50",
+      bgColor: "bg-yellow-500/10",
       loading: isLoading
     }
   ];

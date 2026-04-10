@@ -34,9 +34,9 @@ export default function CSVFileUploader({ onFileChange }: CSVFileUploaderProps) 
       <Label htmlFor="csvFile" className="w-full text-center">
         Seleziona un file CSV
       </Label>
-      <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 w-full flex flex-col items-center">
-        <Upload className="h-10 w-10 text-gray-400 mb-2" />
-        <p className="text-sm text-gray-500 mb-4">Trascina qui il file o clicca per sfogliare</p>
+      <div className="border-2 border-dashed border-border rounded-lg p-6 w-full flex flex-col items-center">
+        <Upload className="h-10 w-10 text-muted-foreground mb-2" />
+        <p className="text-sm text-muted-foreground mb-4">Trascina qui il file o clicca per sfogliare</p>
         <input
           id="csvFile"
           type="file"

@@ -159,7 +159,7 @@ export function AvailableLeadsCounter({
       </div>
 
       {!isLoading && !isUpdating && displayCount === 0 && (
-        <div className="mt-3 p-2 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-700">
+        <div className="mt-3 p-2 bg-yellow-500/10 border border-yellow-500/30 rounded-lg text-sm text-yellow-400">
           Nessun lead disponibile con i filtri attuali
         </div>
       )}
@@ -173,8 +173,8 @@ export function AvailableLeadsCounter({
       {countTrend !== 'stable' && !isLoading && !isUpdating && (
         <div className={`mt-3 p-2 rounded-lg text-sm ${
           countTrend === 'up'
-            ? 'bg-emerald-50 border border-emerald-200 text-emerald-700'
-            : 'bg-red-50 border border-red-200 text-red-700'
+            ? 'bg-green-500/10 border border-green-500/30 text-green-400'
+            : 'bg-destructive/10 border border-destructive/30 text-destructive'
         }`}>
           Conteggio aggiornato: {displayCount} lead disponibili
         </div>

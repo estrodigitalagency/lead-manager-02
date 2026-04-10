@@ -153,13 +153,13 @@ export default function ReportLeadsList({ filters, refreshTrigger }: ReportLeads
                       {filters.callAttributionMode === 'fonte_calendario' && (
                         <TableCell>
                           {lead.fonte_calendario ? (
-                            <Badge variant="outline" className="text-xs bg-amber-50 border-amber-200 text-amber-800">{lead.fonte_calendario}</Badge>
+                            <Badge variant="outline" className="text-xs bg-yellow-500/10 border-yellow-500/30 text-yellow-400">{lead.fonte_calendario}</Badge>
                           ) : "-"}
                         </TableCell>
                       )}
                       <TableCell>
                         {isCallBooked(lead.booked_call) ? (
-                          <Badge className="bg-green-100 text-green-800 text-xs">SI</Badge>
+                          <Badge className="bg-green-500/15 text-green-400 text-xs">SI</Badge>
                         ) : (
                           <Badge variant="secondary" className="text-xs">NO</Badge>
                         )}

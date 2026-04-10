@@ -122,19 +122,19 @@ export default function WebhookDocumentationSection() {
                 <div className="space-y-2">
                   <h4 className="font-medium">Campi supportati:</h4>
                   <ul className="text-sm space-y-1 ml-4">
-                    <li><code className="bg-gray-100 px-1 rounded">nome</code> - <strong>Obbligatorio</strong>: Nome del lead</li>
-                    <li><code className="bg-gray-100 px-1 rounded">cognome</code> - Cognome del lead</li>
-                    <li><code className="bg-gray-100 px-1 rounded">email</code> - Email del lead</li>
-                    <li><code className="bg-gray-100 px-1 rounded">telefono</code> - Numero di telefono</li>
-                    <li><code className="bg-gray-100 px-1 rounded">fonte</code> - Fonte del lead (es: google,leadmanager)</li>
-                    <li><code className="bg-gray-100 px-1 rounded">ultima_fonte</code> - Ultima fonte specifica del lead</li>
-                    <li><code className="bg-gray-100 px-1 rounded">campagna</code> - Nome della campagna pubblicitaria</li>
-                    <li><code className="bg-gray-100 px-1 rounded">lead_score</code> - Punteggio lead (HOT, WARM, COLD)</li>
-                    <li><code className="bg-gray-100 px-1 rounded">market</code> - Mercato (IT, ES, FR, etc.) - Default: IT</li>
-                    <li><code className="bg-gray-100 px-1 rounded">venditore</code> - Nome completo venditore pre-assegnato</li>
-                    <li><code className="bg-gray-100 px-1 rounded">assignable</code> - <strong>false</strong> per evitare automazioni (se venditore è presente)</li>
-                    <li><code className="bg-gray-100 px-1 rounded">stato</code> - Stato del lead (nuovo, assegnato, contattato, etc.)</li>
-                    <li><code className="bg-gray-100 px-1 rounded">notes</code> - Note aggiuntive sul lead</li>
+                    <li><code className="bg-muted px-1 rounded">nome</code> - <strong>Obbligatorio</strong>: Nome del lead</li>
+                    <li><code className="bg-muted px-1 rounded">cognome</code> - Cognome del lead</li>
+                    <li><code className="bg-muted px-1 rounded">email</code> - Email del lead</li>
+                    <li><code className="bg-muted px-1 rounded">telefono</code> - Numero di telefono</li>
+                    <li><code className="bg-muted px-1 rounded">fonte</code> - Fonte del lead (es: google,leadmanager)</li>
+                    <li><code className="bg-muted px-1 rounded">ultima_fonte</code> - Ultima fonte specifica del lead</li>
+                    <li><code className="bg-muted px-1 rounded">campagna</code> - Nome della campagna pubblicitaria</li>
+                    <li><code className="bg-muted px-1 rounded">lead_score</code> - Punteggio lead (HOT, WARM, COLD)</li>
+                    <li><code className="bg-muted px-1 rounded">market</code> - Mercato (IT, ES, FR, etc.) - Default: IT</li>
+                    <li><code className="bg-muted px-1 rounded">venditore</code> - Nome completo venditore pre-assegnato</li>
+                    <li><code className="bg-muted px-1 rounded">assignable</code> - <strong>false</strong> per evitare automazioni (se venditore è presente)</li>
+                    <li><code className="bg-muted px-1 rounded">stato</code> - Stato del lead (nuovo, assegnato, contattato, etc.)</li>
+                    <li><code className="bg-muted px-1 rounded">notes</code> - Note aggiuntive sul lead</li>
                   </ul>
                 </div>
               </div>
@@ -178,13 +178,13 @@ export default function WebhookDocumentationSection() {
                 <div className="space-y-2">
                   <h4 className="font-medium">Campi supportati:</h4>
                   <ul className="text-sm space-y-1 ml-4">
-                    <li><code className="bg-gray-100 px-1 rounded">nome</code> - <strong>Obbligatorio</strong>: Nome della persona</li>
-                    <li><code className="bg-gray-100 px-1 rounded">cognome</code> - Cognome della persona</li>
-                    <li><code className="bg-gray-100 px-1 rounded">email</code> - <strong>Obbligatorio</strong>: Email della persona</li>
-                    <li><code className="bg-gray-100 px-1 rounded">telefono</code> - <strong>Obbligatorio</strong>: Numero di telefono</li>
-                    <li><code className="bg-gray-100 px-1 rounded">fonte</code> - Fonte della prenotazione (es: calendly, website)</li>
-                    <li><code className="bg-gray-100 px-1 rounded">scheduled_at</code> - <strong>Obbligatorio</strong>: Data e ora della chiamata (formato ISO 8601)</li>
-                    <li><code className="bg-gray-100 px-1 rounded">note</code> - Note aggiuntive sulla prenotazione</li>
+                    <li><code className="bg-muted px-1 rounded">nome</code> - <strong>Obbligatorio</strong>: Nome della persona</li>
+                    <li><code className="bg-muted px-1 rounded">cognome</code> - Cognome della persona</li>
+                    <li><code className="bg-muted px-1 rounded">email</code> - <strong>Obbligatorio</strong>: Email della persona</li>
+                    <li><code className="bg-muted px-1 rounded">telefono</code> - <strong>Obbligatorio</strong>: Numero di telefono</li>
+                    <li><code className="bg-muted px-1 rounded">fonte</code> - Fonte della prenotazione (es: calendly, website)</li>
+                    <li><code className="bg-muted px-1 rounded">scheduled_at</code> - <strong>Obbligatorio</strong>: Data e ora della chiamata (formato ISO 8601)</li>
+                    <li><code className="bg-muted px-1 rounded">note</code> - Note aggiuntive sulla prenotazione</li>
                   </ul>
                 </div>
               </div>

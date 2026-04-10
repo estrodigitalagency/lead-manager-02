@@ -248,7 +248,7 @@ const DatabaseAdvancedFilters = ({ onApplyFilters, tableName }: DatabaseAdvanced
                   <Label className="text-xs text-green-600 mb-1 block">Fonti Incluse:</Label>
                   <div className="flex flex-wrap gap-1">
                     {fontiIncluse.map((fonte: string) => (
-                      <Badge key={fonte} variant="secondary" className="bg-green-100 text-green-800">
+                      <Badge key={fonte} variant="secondary" className="bg-green-500/15 text-green-400">
                         {fonte}
                         <Button
                           variant="ghost"
@@ -269,7 +269,7 @@ const DatabaseAdvancedFilters = ({ onApplyFilters, tableName }: DatabaseAdvanced
                   <Label className="text-xs text-red-600 mb-1 block">Fonti Escluse:</Label>
                   <div className="flex flex-wrap gap-1">
                     {fontiEscluse.map((fonte: string) => (
-                      <Badge key={fonte} variant="secondary" className="bg-red-100 text-red-800">
+                      <Badge key={fonte} variant="secondary" className="bg-destructive/10 text-destructive">
                         {fonte}
                         <Button
                           variant="ghost"

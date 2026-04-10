@@ -7,49 +7,49 @@
 
 @layer base {
   :root {
-    /* ─── Warm Minimal Light — refined cream + slate blue ─── */
-    --background: 30 25% 96%;         /* #F6F4F1 — warm cream canvas */
-    --foreground: 230 18% 18%;        /* #272D3B — deep slate for body text */
+    /* ─── Dark mode — deep navy + soft accents ─── */
+    --background: 222 24% 10%;        /* #141A24 — deep navy canvas */
+    --foreground: 210 20% 90%;        /* #DEE3EA — soft light text */
 
-    --card: 30 20% 99%;               /* #FDFCFB — barely-warm white */
-    --card-foreground: 230 18% 18%;
+    --card: 222 20% 13%;              /* #1A2130 — slightly raised surface */
+    --card-foreground: 210 20% 90%;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 230 18% 18%;
+    --popover: 222 22% 12%;
+    --popover-foreground: 210 20% 90%;
 
-    --primary: 220 72% 50%;           /* #2563EB — confident blue */
+    --primary: 220 72% 56%;           /* #3B82F6 — bright blue */
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 30 12% 93%;          /* #EFECE8 — warm light gray */
-    --secondary-foreground: 230 14% 35%;
+    --secondary: 222 18% 18%;         /* #242D3D — muted dark surface */
+    --secondary-foreground: 210 15% 72%;
 
-    --muted: 30 10% 94%;              /* #F1EFEC — warm muted */
-    --muted-foreground: 220 10% 52%;  /* #787F8E — readable gray */
+    --muted: 222 16% 16%;             /* #202838 — muted dark */
+    --muted-foreground: 215 12% 55%;  /* #7B8594 — readable muted text */
 
-    --accent: 160 50% 42%;            /* #36A06E — muted sage green */
+    --accent: 160 50% 42%;            /* #36A06E — sage green accent */
     --accent-foreground: 0 0% 100%;
 
     --destructive: 4 72% 58%;         /* #E25444 — warm red */
     --destructive-foreground: 0 0% 100%;
 
-    --border: 30 12% 90%;             /* #E8E4DF — warm border */
-    --input: 30 12% 92%;
-    --ring: 220 72% 50%;
+    --border: 222 16% 20%;            /* #2A3344 — subtle border */
+    --input: 222 16% 18%;
+    --ring: 220 72% 56%;
 
     --radius: 1rem;
 
-    --sidebar-background: 30 20% 99%;
-    --sidebar-foreground: 230 18% 18%;
-    --sidebar-primary: 220 72% 50%;
+    --sidebar-background: 222 22% 11%;
+    --sidebar-foreground: 210 20% 90%;
+    --sidebar-primary: 220 72% 56%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 30 10% 94%;
-    --sidebar-accent-foreground: 230 14% 35%;
-    --sidebar-border: 30 12% 90%;
-    --sidebar-ring: 220 72% 50%;
+    --sidebar-accent: 222 16% 16%;
+    --sidebar-accent-foreground: 210 15% 72%;
+    --sidebar-border: 222 16% 20%;
+    --sidebar-ring: 220 72% 56%;
 
     /* ─── Semantic surface tokens ─── */
-    --surface-warm: 30 25% 96%;
-    --surface-raised: 30 20% 99%;
+    --surface-warm: 222 24% 10%;
+    --surface-raised: 222 20% 13%;
   }
 }
 
@@ -122,21 +122,21 @@
 }
 
 @layer components {
-  /* ─── Card surface — barely-warm white with soft shadow ─── */
+  /* ─── Card surface — dark elevated with subtle glow ─── */
   .glass-card {
     @apply bg-card rounded-2xl;
     box-shadow:
-      0 0 0 1px rgba(0, 0, 0, 0.03),
-      0 1px 2px rgba(0, 0, 0, 0.02),
-      0 4px 16px rgba(0, 0, 0, 0.04);
+      0 0 0 1px rgba(255, 255, 255, 0.05),
+      0 1px 2px rgba(0, 0, 0, 0.2),
+      0 4px 16px rgba(0, 0, 0, 0.15);
     transition: box-shadow 0.25s ease, transform 0.25s ease;
   }
 
   .glass-card:hover {
     box-shadow:
-      0 0 0 1px rgba(0, 0, 0, 0.04),
-      0 4px 8px rgba(0, 0, 0, 0.03),
-      0 12px 32px rgba(0, 0, 0, 0.06);
+      0 0 0 1px rgba(255, 255, 255, 0.08),
+      0 4px 8px rgba(0, 0, 0, 0.25),
+      0 12px 32px rgba(0, 0, 0, 0.2);
   }
 
   /* ─── Primary CTA button ─── */
@@ -145,15 +145,15 @@
     @apply active:scale-[0.98];
     transition: all 0.2s cubic-bezier(0.2, 0, 0, 1);
     box-shadow:
-      0 1px 2px rgba(37, 99, 235, 0.15),
-      0 4px 12px rgba(37, 99, 235, 0.12);
+      0 1px 2px rgba(59, 130, 246, 0.2),
+      0 4px 12px rgba(59, 130, 246, 0.15);
   }
 
   .btn-neon:hover {
     box-shadow:
-      0 2px 4px rgba(37, 99, 235, 0.18),
-      0 8px 24px rgba(37, 99, 235, 0.16);
-    filter: brightness(1.05);
+      0 2px 4px rgba(59, 130, 246, 0.25),
+      0 8px 24px rgba(59, 130, 246, 0.2);
+    filter: brightness(1.1);
   }
 
   /* ─── Subtle outline border ─── */
@@ -170,10 +170,10 @@
     @apply border-t border-border/40 p-3 text-sm text-foreground;
   }
 
-  /* ─── Input with warm background ─── */
+  /* ─── Input with dark background ─── */
   .input-neon {
-    @apply bg-white border border-border rounded-xl;
-    @apply focus:border-primary/50 focus:ring-2 focus:ring-primary/10;
+    @apply bg-muted border border-border rounded-xl;
+    @apply focus:border-primary/50 focus:ring-2 focus:ring-primary/20;
     transition: all 0.2s ease;
   }
 
@@ -187,29 +187,29 @@
 
   /* ─── Subtle background glow ─── */
   .hero-glow {
-    background: radial-gradient(ellipse at 50% 0%, rgba(37, 99, 235, 0.04) 0%, transparent 65%);
+    background: radial-gradient(ellipse at 50% 0%, rgba(59, 130, 246, 0.06) 0%, transparent 65%);
   }
 
   .data-flow {
-    background: linear-gradient(90deg, transparent 0%, rgba(37, 99, 235, 0.03) 50%, transparent 100%);
+    background: linear-gradient(90deg, transparent 0%, rgba(59, 130, 246, 0.04) 50%, transparent 100%);
     animation: flow 4s linear infinite;
   }
 
-  /* ─── Stat card — elevated surface ─── */
+  /* ─── Stat card — elevated dark surface ─── */
   .stat-card {
     @apply bg-card rounded-2xl p-5 relative overflow-hidden;
     box-shadow:
-      0 0 0 1px rgba(0, 0, 0, 0.03),
-      0 1px 2px rgba(0, 0, 0, 0.02),
-      0 4px 16px rgba(0, 0, 0, 0.04);
+      0 0 0 1px rgba(255, 255, 255, 0.05),
+      0 1px 2px rgba(0, 0, 0, 0.2),
+      0 4px 16px rgba(0, 0, 0, 0.15);
     transition: box-shadow 0.25s ease, transform 0.25s ease;
   }
 
   .stat-card:hover {
     box-shadow:
-      0 0 0 1px rgba(0, 0, 0, 0.04),
-      0 4px 8px rgba(0, 0, 0, 0.03),
-      0 12px 32px rgba(0, 0, 0, 0.06);
+      0 0 0 1px rgba(255, 255, 255, 0.08),
+      0 4px 8px rgba(0, 0, 0, 0.25),
+      0 12px 32px rgba(0, 0, 0, 0.2);
     transform: translateY(-2px);
   }
 

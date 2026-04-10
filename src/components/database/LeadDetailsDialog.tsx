@@ -129,7 +129,7 @@ const LeadDetailsDialog = ({ lead, open, onOpenChange }: LeadDetailsDialogProps)
                     <CheckCircle className="h-4 w-4 text-green-600" />
                     <span className="text-sm">
                       <strong>Call prenotata:</strong>
-                      <Badge variant="outline" className="ml-2 bg-green-100 text-green-800 border-green-200 text-xs">
+                      <Badge variant="outline" className="ml-2 bg-green-500/15 text-green-400 border-green-500/30 text-xs">
                         Sì
                       </Badge>
                     </span>

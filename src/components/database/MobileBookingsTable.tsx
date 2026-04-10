@@ -75,7 +75,7 @@ const MobileBookingsTable = ({
                       {booking.nome} {booking.cognome || ''}
                     </span>
                   </div>
-                  <Badge variant="outline" className="bg-blue-100 text-blue-800 border-blue-200 text-xs">
+                  <Badge variant="outline" className="bg-primary/10 text-blue-400 border-primary/30 text-xs">
                     Call Prenotata
                   </Badge>
                 </div>
@@ -84,7 +84,7 @@ const MobileBookingsTable = ({
                 variant="ghost"
                 size="sm"
                 onClick={() => onDelete(booking.id)}
-                className="text-red-600 hover:text-red-800 hover:bg-red-100 p-2"
+                className="text-destructive hover:text-destructive hover:bg-destructive/10 p-2"
               >
                 <Trash2 className="h-4 w-4" />
               </Button>

@@ -91,7 +91,7 @@ const LeadDatabase = () => {
                         {status.label}
                       </Badge>
                       {lead.booked_call === "SI" && (
-                        <Badge variant="outline" className="bg-green-100 text-green-800 border-green-200 text-xs">
+                        <Badge variant="outline" className="bg-green-500/15 text-green-400 border-green-500/30 text-xs">
                           Call Prenotata
                         </Badge>
                       )}
@@ -170,7 +170,7 @@ const LeadDatabase = () => {
                   {lead.lead_score || '-'}
                 </TableCell>
                 <TableCell className="table-body-cell">
-                  <Badge variant="outline" className={lead.booked_call === "SI" ? "bg-green-100 text-green-800 border-green-200" : "bg-gray-100 text-gray-800 border-gray-200"}>
+                  <Badge variant="outline" className={lead.booked_call === "SI" ? "bg-green-500/15 text-green-400 border-green-500/30" : "bg-muted text-muted-foreground border-border"}>
                     {lead.booked_call || "NO"}
                   </Badge>
                 </TableCell>
