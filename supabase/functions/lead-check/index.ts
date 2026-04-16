@@ -249,7 +249,7 @@ serve(async (req) => {
   } catch (error) {
     console.error('Lead check processing error:', error)
     return new Response(
-      JSON.stringify({ error: 'Internal Server Error', details: error.message }),
+      JSON.stringify({ error: 'Internal Server Error', details: (error as Error).message }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 500

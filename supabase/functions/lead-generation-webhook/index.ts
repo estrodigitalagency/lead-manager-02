@@ -103,7 +103,7 @@ serve(async (req) => {
     console.error('Error in lead-generation-webhook:', error);
     return new Response(JSON.stringify({
       error: 'Internal server error',
-      details: error.message
+      details: (error as Error).message
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 500
@@ -129,7 +129,7 @@ async function calculateUltimaFonte(email: string, telefono: string, newFonte: s
       .limit(100);
     
     // Filter manually with normalized values
-    const matchingLeads = existingLeads?.filter(lead => 
+    const matchingLeads = existingLeads?.filter((lead: any) => 
       normalizeEmail(lead.email) === normalizedEmail || 
       normalizePhone(lead.telefono) === normalizedPhone
     );
@@ -404,7 +404,7 @@ async function findPreviousSellerWithSourceCheck(lead: any, automationSources: s
     }
     
     // Filtra manualmente con normalizzazione e controllo fonte
-    const matchingLead = previousLeads?.find(l => {
+    const matchingLead = previousLeads?.find((l: any) => {
       const emailMatch = normalizeEmail(l.email) === normalizedEmail;
       const phoneMatch = normalizePhone(l.telefono) === normalizedPhone;
       
@@ -443,7 +443,7 @@ async function findPreviousSellerWithSourceCheck(lead: any, automationSources: s
       .eq('market', lead.market)
       .eq('stato', 'attivo');
     
-    const targetSeller = sellers?.find(seller => {
+    const targetSeller = sellers?.find((seller: any) => {
       const fullName = `${seller.nome} ${seller.cognome}`.trim();
       return fullName.toLowerCase() === previousSellerName.toLowerCase().trim();
     });
@@ -545,7 +545,7 @@ async function fetchSellerDetails(sellerName: string, market: string, supabase: 
       return null;
     }
     
-    const targetSeller = sellers.find(seller => {
+    const targetSeller = sellers.find((seller: any) => {
       const fullName = `${seller.nome} ${seller.cognome}`.trim().toLowerCase();
       return fullName === sellerName.toLowerCase().trim();
     });
@@ -554,7 +554,7 @@ async function fetchSellerDetails(sellerName: string, market: string, supabase: 
       console.log(`✅ Matched seller details:`, targetSeller);
     } else {
       console.log(`❌ No matching seller found for name: ${sellerName}`);
-      console.log('Available sellers:', sellers.map(s => `${s.nome} ${s.cognome}`));
+      console.log('Available sellers:', sellers.map((s: any) => `${s.nome} ${s.cognome}`));
     }
     
     return targetSeller || null;
@@ -677,22 +677,22 @@ async function assignLeadAutomatically(lead: any, seller: any, sheetsTabName: st
     }
 
     let webhookSuccess = true;
-    let webhookError = null;
+    let webhookErrorMsg: string | null = null;
 
     // Call webhook if automation has webhook enabled
     if (automation.webhook_enabled) {
       try {
         // Get webhook URL from system settings
-        const { data: webhookSettings, error: webhookError } = await supabase
+        const { data: webhookSettings, error: webhookSettingsError } = await supabase
           .from('system_settings')
           .select('value')
           .eq('key', 'lead_assign_webhook_url')
           .single();
 
-        if (webhookError || !webhookSettings?.value) {
+        if (webhookSettingsError || !webhookSettings?.value) {
           console.error('Webhook URL not configured in system settings');
           webhookSuccess = false;
-          webhookError = 'Webhook URL not configured';
+          webhookErrorMsg = 'Webhook URL not configured';
         } else {
           const webhookUrl = webhookSettings.value;
           
@@ -746,7 +746,7 @@ async function assignLeadAutomatically(lead: any, seller: any, sheetsTabName: st
           if (webhookCallError) {
             console.error('Error calling lead-assign-webhook:', webhookCallError);
             webhookSuccess = false;
-            webhookError = webhookCallError.message;
+            webhookErrorMsg = webhookCallError.message;
           } else {
             console.log('Successfully called lead-assign-webhook for automation assignment');
           }
@@ -754,19 +754,19 @@ async function assignLeadAutomatically(lead: any, seller: any, sheetsTabName: st
       } catch (error) {
         console.error('Error in webhook call:', error);
         webhookSuccess = false;
-        webhookError = error.message;
+        webhookErrorMsg = (error as Error).message;
       }
     } else {
       console.log('Webhook disabled for automation:', automation.nome);
     }
 
     // Log successful execution
-    await logAutomationExecution(lead, automation, seller, 'success', webhookError, 'webhook', supabase);
+    await logAutomationExecution(lead, automation, seller, 'success', webhookErrorMsg, 'webhook', supabase);
 
     console.log(`Lead ${lead.id} successfully assigned via automation: ${automation.nome}`);
     
   } catch (error) {
     console.error('Error in assignLeadAutomatically:', error);
-    await logAutomationExecution(lead, automation, seller, 'error', error.message, 'webhook', supabase);
+    await logAutomationExecution(lead, automation, seller, 'error', (error as Error).message, 'webhook', supabase);
   }
 }
