@@ -199,7 +199,7 @@ serve(async (req) => {
   } catch (error) {
     console.error('Sale webhook error:', error);
     return new Response(
-      JSON.stringify({ error: 'Errore interno del server', details: error.message }),
+      JSON.stringify({ error: 'Errore interno del server', details: (error as Error).message }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
