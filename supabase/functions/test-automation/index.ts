@@ -79,23 +79,23 @@ serve(async (req) => {
       switch (automation.condition_type) {
         case 'contains':
           // TRUE se il campo contiene ALMENO UNO dei valori
-          conditionMet = conditionValues.some(val => field.includes(val.toLowerCase()));
+          conditionMet = conditionValues.some((val: string) => field.includes(val.toLowerCase()));
           break;
         case 'equals':
           // TRUE se il campo è UGUALE ad ALMENO UNO dei valori
-          conditionMet = conditionValues.some(val => field === val.toLowerCase());
+          conditionMet = conditionValues.some((val: string) => field === val.toLowerCase());
           break;
         case 'starts_with':
           // TRUE se il campo inizia con ALMENO UNO dei valori
-          conditionMet = conditionValues.some(val => field.startsWith(val.toLowerCase()));
+          conditionMet = conditionValues.some((val: string) => field.startsWith(val.toLowerCase()));
           break;
         case 'ends_with':
           // TRUE se il campo finisce con ALMENO UNO dei valori
-          conditionMet = conditionValues.some(val => field.endsWith(val.toLowerCase()));
+          conditionMet = conditionValues.some((val: string) => field.endsWith(val.toLowerCase()));
           break;
         case 'not_contains':
           // TRUE se il campo NON contiene NESSUNO dei valori (TUTTI devono non matchare)
-          conditionMet = conditionValues.every(val => !field.includes(val.toLowerCase()));
+          conditionMet = conditionValues.every((val: string) => !field.includes(val.toLowerCase()));
           break;
         default:
           conditionMet = false;
@@ -160,7 +160,7 @@ serve(async (req) => {
     console.error('Error in test-automation:', error);
     return new Response(JSON.stringify({
       error: 'Internal server error',
-      details: error.message
+      details: (error as Error).message
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 500

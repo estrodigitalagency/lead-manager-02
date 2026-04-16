@@ -51,7 +51,7 @@ serve(async (req) => {
       market: assignmentData.market || 'IT',
       leads_count: assignmentData.leads_count,
       timestamp: assignmentData.timestamp,
-      leads: assignmentData.leads.map(lead => ({
+      leads: assignmentData.leads.map((lead: any) => ({
         // Pass-through ALL fields from upstream, with defaults for essential ones
         ...lead,
         id: lead.id,
@@ -144,7 +144,7 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({ 
           error: 'Webhook error',
-          details: webhookError.message,
+          details: (webhookError as Error).message,
           webhookUrl
         }),
         { 
@@ -156,7 +156,7 @@ serve(async (req) => {
   } catch (error) {
     console.error('Lead assignment webhook processing error:', error)
     return new Response(
-      JSON.stringify({ error: 'Internal Server Error', details: error.message }),
+      JSON.stringify({ error: 'Internal Server Error', details: (error as Error).message }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 500

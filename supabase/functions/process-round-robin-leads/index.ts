@@ -181,7 +181,7 @@ Deno.serve(async (req) => {
           email: lead.email,
           previous_venditore: 'N/A',
           status: 'error',
-          error: error.message || 'Unknown error',
+          error: (error as Error).message || 'Unknown error',
         });
         errorCount++;
       }
@@ -203,7 +203,7 @@ Deno.serve(async (req) => {
   } catch (error) {
     console.error('Error in process-round-robin-leads:', error);
     return new Response(
-      JSON.stringify({ error: error.message || 'Internal server error' }),
+      JSON.stringify({ error: (error as Error).message || 'Internal server error' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
