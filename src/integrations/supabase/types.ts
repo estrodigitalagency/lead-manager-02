@@ -575,6 +575,7 @@ export type Database = {
           colore_primario: string | null
           created_at: string
           disclaimer: string | null
+          folder: string | null
           fonte: string | null
           google_analytics_id: string | null
           gtm_id: string | null
@@ -600,6 +601,7 @@ export type Database = {
           colore_primario?: string | null
           created_at?: string
           disclaimer?: string | null
+          folder?: string | null
           fonte?: string | null
           google_analytics_id?: string | null
           gtm_id?: string | null
@@ -625,6 +627,7 @@ export type Database = {
           colore_primario?: string | null
           created_at?: string
           disclaimer?: string | null
+          folder?: string | null
           fonte?: string | null
           google_analytics_id?: string | null
           gtm_id?: string | null
@@ -680,6 +683,7 @@ export type Database = {
           clarity_id: string | null
           created_at: string
           custom_slug: string | null
+          folder: string | null
           google_analytics_id: string | null
           gtm_id: string | null
           hyros_tag: string | null
@@ -698,6 +702,7 @@ export type Database = {
           sfondo_colore: string | null
           template: string | null
           titolo: string
+          type: string | null
           updated_at: string
         }
         Insert: {
@@ -705,6 +710,7 @@ export type Database = {
           clarity_id?: string | null
           created_at?: string
           custom_slug?: string | null
+          folder?: string | null
           google_analytics_id?: string | null
           gtm_id?: string | null
           hyros_tag?: string | null
@@ -723,6 +729,7 @@ export type Database = {
           sfondo_colore?: string | null
           template?: string | null
           titolo: string
+          type?: string | null
           updated_at?: string
         }
         Update: {
@@ -730,6 +737,7 @@ export type Database = {
           clarity_id?: string | null
           created_at?: string
           custom_slug?: string | null
+          folder?: string | null
           google_analytics_id?: string | null
           gtm_id?: string | null
           hyros_tag?: string | null
@@ -748,6 +756,7 @@ export type Database = {
           sfondo_colore?: string | null
           template?: string | null
           titolo?: string
+          type?: string | null
           updated_at?: string
         }
         Relationships: []
