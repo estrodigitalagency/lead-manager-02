@@ -46,8 +46,11 @@ async function processAssignmentCompletion(
   excludeFromIncluded: string[],
   leadIds: string[]
 ) {
-  // Cerca venditore confrontando nome+cognome concatenati per evitare problemi con nomi composti
+  // Cerca venditore confrontando nome+cognome con normalizzazione accenti e spazi
   console.log(`Cercando venditore: "${venditore}", market="${market}"`);
+
+  // Helper: normalizza stringa rimuovendo accenti, spazi extra, e lowercase
+  const normalize = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase();
 
   let venditoreDates = null;
 
@@ -58,9 +61,10 @@ async function processAssignmentCompletion(
     .eq('stato', 'attivo');
 
   if (!venditoreError && allVenditori) {
+    const normalizedVenditore = normalize(venditore);
     venditoreDates = allVenditori.find(v =>
-      `${v.nome} ${v.cognome}`.trim() === venditore.trim() ||
-      v.nome.trim() === venditore.trim()
+      normalize(`${v.nome} ${v.cognome}`) === normalizedVenditore ||
+      normalize(v.nome) === normalizedVenditore
     ) || null;
   }
 
