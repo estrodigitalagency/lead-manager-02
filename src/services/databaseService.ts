@@ -2,35 +2,39 @@ import { supabase } from "@/integrations/supabase/client";
 import { Lead } from "@/types/lead";
 import { LeadLavorato } from "@/types/leadLavorato";
 
-// Utility per calcolare offset italiano (gestisce CET/CEST automaticamente)
-function getItalianTimezoneOffset(date: Date): string {
-  const formatter = new Intl.DateTimeFormat('it-IT', {
-    timeZone: 'Europe/Rome',
-    timeZoneName: 'shortOffset'
-  });
-  const parts = formatter.formatToParts(date);
-  const offsetPart = parts.find(p => p.type === 'timeZoneName');
-  if (offsetPart?.value) {
-    const match = offsetPart.value.match(/GMT([+-])(\d+)/);
-    if (match) {
-      return `${match[1]}${match[2].padStart(2, '0')}:00`;
-    }
-  }
-  return '+01:00'; // fallback CET
+// Conversione iterativa wall-clock Europe/Rome → UTC, bulletproof su DST e tutti i browser.
+function romeWallClockToUTC(dateString: string, timeString: string): Date {
+  const getOffsetMs = (utcDate: Date): number => {
+    const parts = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'Europe/Rome',
+      hourCycle: 'h23',
+      year: 'numeric', month: '2-digit', day: '2-digit',
+      hour: '2-digit', minute: '2-digit', second: '2-digit'
+    }).formatToParts(utcDate);
+    const obj: Record<string, string> = {};
+    parts.forEach(p => { if (p.type !== 'literal') obj[p.type] = p.value; });
+    const wallAsUTC = Date.UTC(
+      +obj.year, +obj.month - 1, +obj.day,
+      +obj.hour === 24 ? 0 : +obj.hour, +obj.minute, +obj.second
+    );
+    return wallAsUTC - utcDate.getTime();
+  };
+  const guess = new Date(`${dateString}T${timeString}Z`);
+  const firstOffset = getOffsetMs(guess);
+  const refined = new Date(guess.getTime() - firstOffset);
+  const secondOffset = getOffsetMs(refined);
+  return new Date(guess.getTime() - secondOffset);
 }
 
 function getStartOfDayIT(dateString: string): string {
-  const [year, month, day] = dateString.split('-').map(Number);
-  const tempDate = new Date(year, month - 1, day, 12, 0, 0);
-  const offset = getItalianTimezoneOffset(tempDate);
-  return new Date(`${dateString}T00:00:00${offset}`).toISOString();
+  return romeWallClockToUTC(dateString, '00:00:00').toISOString();
 }
 
-function getEndOfDayIT(dateString: string): string {
+// Upper bound esclusivo: inizio del giorno successivo in Italia. Usare con .lt().
+function getNextDayStartIT(dateString: string): string {
   const [year, month, day] = dateString.split('-').map(Number);
-  const tempDate = new Date(year, month - 1, day, 12, 0, 0);
-  const offset = getItalianTimezoneOffset(tempDate);
-  return new Date(`${dateString}T23:59:59.999${offset}`).toISOString();
+  const next = new Date(Date.UTC(year, month - 1, day + 1));
+  return getStartOfDayIT(next.toISOString().slice(0, 10));
 }
 
 type ValidTableName = "lead_generation" | "booked_call" | "lead_assignments" | "lead_lavorati" | "system_settings" | "venditori";
@@ -124,7 +128,7 @@ export async function getPaginatedData<T>(
       }
       
       if (filters.dataFine) {
-        query = query.lte('created_at', getEndOfDayIT(filters.dataFine));
+        query = query.lt('created_at', getNextDayStartIT(filters.dataFine));
       }
 
       // Filtri per fonte avanzati - usa colonna corretta in base alla tabella

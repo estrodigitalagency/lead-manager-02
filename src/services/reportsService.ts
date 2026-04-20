@@ -96,58 +96,44 @@ export async function getReportMetrics(filters: ReportFilters): Promise<ReportMe
   }
 }
 
-// Helper function to get Italian timezone offset dynamically (handles DST)
-function getItalianTimezoneOffset(date: Date): string {
-  // Create a formatter for Italian timezone to detect the offset
-  const formatter = new Intl.DateTimeFormat('it-IT', {
-    timeZone: 'Europe/Rome',
-    timeZoneName: 'shortOffset'
-  });
-  
-  const parts = formatter.formatToParts(date);
-  const offsetPart = parts.find(p => p.type === 'timeZoneName');
-  
-  // Parse offset like "GMT+1" or "GMT+2"
-  if (offsetPart?.value) {
-    const match = offsetPart.value.match(/GMT([+-])(\d+)/);
-    if (match) {
-      const sign = match[1];
-      const hours = match[2].padStart(2, '0');
-      return `${sign}${hours}:00`;
-    }
-  }
-  
-  // Fallback: calculate offset manually
-  const testDate = new Date(date.toLocaleString('en-US', { timeZone: 'Europe/Rome' }));
-  const utcDate = new Date(date.toLocaleString('en-US', { timeZone: 'UTC' }));
-  const diffHours = Math.round((testDate.getTime() - utcDate.getTime()) / (1000 * 60 * 60));
-  const sign = diffHours >= 0 ? '+' : '-';
-  return `${sign}${Math.abs(diffHours).toString().padStart(2, '0')}:00`;
+// Compute the UTC instant corresponding to a wall-clock moment in Europe/Rome.
+// Iterative method is robust across DST transitions and all browser timezones.
+function romeWallClockToUTC(dateString: string, timeString: string): Date {
+  const getOffsetMs = (utcDate: Date): number => {
+    const parts = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'Europe/Rome',
+      hourCycle: 'h23',
+      year: 'numeric', month: '2-digit', day: '2-digit',
+      hour: '2-digit', minute: '2-digit', second: '2-digit'
+    }).formatToParts(utcDate);
+    const obj: Record<string, string> = {};
+    parts.forEach(p => { if (p.type !== 'literal') obj[p.type] = p.value; });
+    const wallAsUTC = Date.UTC(
+      +obj.year, +obj.month - 1, +obj.day,
+      +obj.hour === 24 ? 0 : +obj.hour, +obj.minute, +obj.second
+    );
+    return wallAsUTC - utcDate.getTime();
+  };
+  const guess = new Date(`${dateString}T${timeString}Z`);
+  const firstOffset = getOffsetMs(guess);
+  const refined = new Date(guess.getTime() - firstOffset);
+  const secondOffset = getOffsetMs(refined);
+  return new Date(guess.getTime() - secondOffset);
 }
 
-// Helper function to convert date to start of day in Italian timezone
 function getStartOfDay(dateString: string): string {
-  // Parse the date string and determine the correct offset for that specific date
-  const [year, month, day] = dateString.split('-').map(Number);
-  const tempDate = new Date(year, month - 1, day, 12, 0, 0); // Use noon to avoid DST edge cases
-  const offset = getItalianTimezoneOffset(tempDate);
-  
-  // Create date at midnight in Italy with the correct offset
-  const date = new Date(`${dateString}T00:00:00${offset}`);
-  return date.toISOString();
+  return romeWallClockToUTC(dateString, '00:00:00').toISOString();
 }
 
-// Helper function to convert date to end of day in Italian timezone
-function getEndOfDay(dateString: string): string {
-  // Parse the date string and determine the correct offset for that specific date
+// Exclusive upper bound: start of the NEXT day in Rome.
+// Use with .lt() instead of .lte() to avoid timestamp precision edge cases.
+function getNextDayStart(dateString: string): string {
   const [year, month, day] = dateString.split('-').map(Number);
-  const tempDate = new Date(year, month - 1, day, 12, 0, 0); // Use noon to avoid DST edge cases
-  const offset = getItalianTimezoneOffset(tempDate);
-  
-  // Create date at 23:59:59 in Italy with the correct offset
-  const date = new Date(`${dateString}T23:59:59.999${offset}`);
-  return date.toISOString();
+  const next = new Date(Date.UTC(year, month - 1, day + 1));
+  const nextDateString = next.toISOString().slice(0, 10);
+  return getStartOfDay(nextDateString);
 }
+
 
 // Helper function to apply fonte filters
 function applyFonteFilters(query: any, filters: ReportFilters, fonteColumn: string = 'ultima_fonte') {
@@ -190,16 +176,16 @@ async function getLeadTotaliGenerati(filters: ReportFilters): Promise<number> {
     query = query.eq('market', filters.market);
   }
 
-  // Filtro per data di creazione
+  // Filtro per data di creazione (bound esclusivo su next-day-start per evitare edge di precisione)
   if (filters.startDate) {
     const startDateTime = getStartOfDay(filters.startDate);
-    console.log('Lead generati - filtering by start date:', startDateTime);
+    console.log('Lead generati - start >=', startDateTime);
     query = query.gte('created_at', startDateTime);
   }
   if (filters.endDate) {
-    const endDateTime = getEndOfDay(filters.endDate);
-    console.log('Lead generati - filtering by end date:', endDateTime);
-    query = query.lte('created_at', endDateTime);
+    const nextDayStart = getNextDayStart(filters.endDate);
+    console.log('Lead generati - end <', nextDayStart);
+    query = query.lt('created_at', nextDayStart);
   }
 
   // Applicare filtri fonte
@@ -243,12 +229,10 @@ async function getCallTotaliPrenotate(filters: ReportFilters): Promise<number> {
   }
 
   if (filters.startDate) {
-    const startDateTime = getStartOfDay(filters.startDate);
-    query = query.gte('created_at', startDateTime);
+    query = query.gte('created_at', getStartOfDay(filters.startDate));
   }
   if (filters.endDate) {
-    const endDateTime = getEndOfDay(filters.endDate);
-    query = query.lte('created_at', endDateTime);
+    query = query.lt('created_at', getNextDayStart(filters.endDate));
   }
 
   query = applyFonteFilters(query, filters);
@@ -259,7 +243,7 @@ async function getCallTotaliPrenotate(filters: ReportFilters): Promise<number> {
   }
 
   const { count, error } = await query;
-  
+
   if (error) {
     console.error('Error fetching call totali prenotate:', error);
     return 0;
@@ -270,9 +254,9 @@ async function getCallTotaliPrenotate(filters: ReportFilters): Promise<number> {
 
 async function getCallTotaliPrenotateFonteCalendario(filters: ReportFilters): Promise<number> {
   console.log('Getting call prenotate by fonte_calendario with filters:', filters);
-  
+
   const mapping = await getFonteMapping();
-  
+
   let query = supabase
     .from('booked_call')
     .select('id', { count: 'exact', head: true });
@@ -282,12 +266,10 @@ async function getCallTotaliPrenotateFonteCalendario(filters: ReportFilters): Pr
   }
 
   if (filters.startDate) {
-    const startDateTime = getStartOfDay(filters.startDate);
-    query = query.gte('created_at', startDateTime);
+    query = query.gte('created_at', getStartOfDay(filters.startDate));
   }
   if (filters.endDate) {
-    const endDateTime = getEndOfDay(filters.endDate);
-    query = query.lte('created_at', endDateTime);
+    query = query.lt('created_at', getNextDayStart(filters.endDate));
   }
 
   // Translate fonte filters using mapping before applying
@@ -335,13 +317,13 @@ async function getLeadTotaliLavorati(filters: ReportFilters): Promise<number> {
   // IMPORTANTE: Filtro per data di ASSEGNAZIONE, non di creazione
   if (filters.startDate) {
     const startDateTime = getStartOfDay(filters.startDate);
-    console.log('Lead lavorati - filtering by data_assegnazione start date:', startDateTime);
+    console.log('Lead lavorati - data_assegnazione >=', startDateTime);
     query = query.gte('data_assegnazione', startDateTime);
   }
   if (filters.endDate) {
-    const endDateTime = getEndOfDay(filters.endDate);
-    console.log('Lead lavorati - filtering by data_assegnazione end date:', endDateTime);
-    query = query.lte('data_assegnazione', endDateTime);
+    const nextDayStart = getNextDayStart(filters.endDate);
+    console.log('Lead lavorati - data_assegnazione <', nextDayStart);
+    query = query.lt('data_assegnazione', nextDayStart);
   }
 
   // Applicare filtri fonte
@@ -415,7 +397,7 @@ export async function getLeadsBySource(
         query = query.gte('created_at', getStartOfDay(startDate));
       }
       if (endDate) {
-        query = query.lte('created_at', getEndOfDay(endDate));
+        query = query.lt('created_at', getNextDayStart(endDate));
       }
 
       // Apply source filters
@@ -502,7 +484,7 @@ export async function getFilteredLeads(filters: ReportFilters): Promise<ReportLe
         query = query.gte('created_at', getStartOfDay(filters.startDate));
       }
       if (filters.endDate) {
-        query = query.lte('created_at', getEndOfDay(filters.endDate));
+        query = query.lt('created_at', getNextDayStart(filters.endDate));
       }
 
       query = applyFonteFilters(query, filters);
