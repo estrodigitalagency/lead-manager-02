@@ -349,9 +349,8 @@ const fetchUniqueSources = async () => {
 
       // Consolidate: collect ALL lead IDs going to the target venditore
       const targetLeadIds: string[] = [];
-      const originalGroups: { venditore: string; leadIds: string[] }[] = [];
 
-      // Process each group: leads going back to original venditore preserve their original campagna
+      // Process each group: passa SEMPRE la campagna selezionata nel form (pendingAssignmentData.campagna)
       for (const [originalVenditore, leadIds] of Object.entries(leadsByVenditore)) {
         const decision = decisions[originalVenditore] || 'original';
 
@@ -360,43 +359,13 @@ const fetchUniqueSources = async () => {
           targetLeadIds.push(...leadIds);
           console.log(`📤 ${leadIds.length} leads from ${originalVenditore} → target ${pendingAssignmentData.venditore}`);
         } else {
-          originalGroups.push({ venditore: originalVenditore, leadIds });
-        }
-      }
-
-      // Fetch campagna originale dei lead che tornano al venditore originale
-      const allOriginalLeadIds = originalGroups.flatMap(g => g.leadIds);
-      let leadCampagneMap = new Map<string, string | null>();
-      if (allOriginalLeadIds.length > 0) {
-        const { data: leadRows, error: fetchError } = await supabase
-          .from('lead_generation')
-          .select('id, campagna')
-          .in('id', allOriginalLeadIds);
-        if (fetchError) {
-          console.error('Error fetching original campagna for leads:', fetchError);
-        } else {
-          leadCampagneMap = new Map(leadRows.map(r => [r.id, r.campagna || null]));
-        }
-      }
-
-      // Per ogni gruppo venditore originale, sottoraggruppa per campagna e invoca una chiamata per gruppo
-      for (const { venditore: originalVenditore, leadIds } of originalGroups) {
-        const byCampagna = new Map<string, string[]>();
-        for (const id of leadIds) {
-          const camp = leadCampagneMap.get(id) ?? '';
-          const key = camp || '__NO_CAMPAGNA__';
-          if (!byCampagna.has(key)) byCampagna.set(key, []);
-          byCampagna.get(key)!.push(id);
-        }
-        for (const [campKey, ids] of byCampagna) {
-          const campagnaForCall = campKey === '__NO_CAMPAGNA__' ? undefined : campKey;
-          console.log(`📤 Reassigning ${ids.length} leads back to ${originalVenditore} (campagna: ${campagnaForCall ?? 'nessuna'})`);
+          // Riassegna al venditore originale MANTENENDO la campagna selezionata dall'utente nel form
+          console.log(`📤 Reassigning ${leadIds.length} leads back to ${originalVenditore} (campagna from form: ${pendingAssignmentData.campagna ?? 'nessuna'})`);
           await assignLeadsWithExclusions({
             ...pendingAssignmentData,
-            numLead: ids.length,
+            numLead: leadIds.length,
             venditore: originalVenditore,
-            campagna: campagnaForCall,
-            specificLeadIds: ids,
+            specificLeadIds: leadIds,
             skipAlreadyAssignedCheck: true
           });
         }
