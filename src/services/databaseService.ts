@@ -48,10 +48,95 @@ export interface PaginatedResult<T> {
   totalPages: number;
 }
 
+// Applica market + filtri standard alla query Supabase (condivisa tra paginazione e select-all)
+function applyStandardFilters(
+  query: any,
+  tableName: ValidTableName,
+  filters: Record<string, any> | undefined,
+  market: string
+): any {
+  if (['lead_generation', 'booked_call', 'venditori', 'lead_lavorati'].includes(tableName)) {
+    if (market === 'IT') {
+      query = query.or('market.eq.IT,market.is.null');
+    } else {
+      query = query.eq('market', market);
+    }
+  }
+
+  if (filters) {
+    if (filters.search) {
+      const searchTerm = filters.search.trim();
+      const searchConditions = [
+        `nome.ilike.%${searchTerm}%`,
+        `cognome.ilike.%${searchTerm}%`,
+        `email.ilike.%${searchTerm}%`,
+        `telefono.ilike.%${searchTerm}%`,
+      ];
+      query = query.or(searchConditions.join(','));
+    }
+
+    if (!filters.search) {
+      if (filters.nome) query = query.ilike('nome', `%${filters.nome}%`);
+      if (filters.email) query = query.ilike('email', `%${filters.email}%`);
+      if (filters.telefono) query = query.ilike('telefono', `%${filters.telefono}%`);
+    }
+
+    if (filters.venditore) query = query.ilike('venditore', `%${filters.venditore}%`);
+    if (filters.campagna) query = query.ilike('campagna', `%${filters.campagna}%`);
+    if (filters.esito) query = query.ilike('esito', `%${filters.esito}%`);
+
+    if (filters.dataInizio) query = query.gte('created_at', getStartOfDayIT(filters.dataInizio));
+    if (filters.dataFine) query = query.lt('created_at', getNextDayStartIT(filters.dataFine));
+
+    const fonteColumn = tableName === 'lead_generation' ? 'ultima_fonte' : 'fonte';
+    if (filters.fontiIncluse && filters.fontiIncluse.length > 0) {
+      const conditions = filters.fontiIncluse.map((fonte: string) => `${fonteColumn}.ilike.${fonte}`).join(',');
+      query = query.or(conditions);
+    }
+    if (filters.fontiEscluse && filters.fontiEscluse.length > 0) {
+      filters.fontiEscluse.forEach((fonte: string) => {
+        query = query.not(fonteColumn, 'ilike', fonte);
+      });
+    }
+
+    if (filters.venditaChiusa === true) query = query.eq('vendita_chiusa', true);
+    if (filters.bookedCall && filters.bookedCall !== 'all') query = query.eq('booked_call', filters.bookedCall);
+  }
+
+  return query;
+}
+
+// Ritorna tutti gli id dei record che matchano filtri (per select-all su tabelle server-paginate)
+export async function getAllFilteredIds(
+  tableName: ValidTableName,
+  filters?: Record<string, any>,
+  market: string = 'IT'
+): Promise<string[]> {
+  try {
+    const ids: string[] = [];
+    const pageSize = 1000;
+    let from = 0;
+    while (true) {
+      let query: any = supabase.from(tableName).select('id');
+      query = applyStandardFilters(query, tableName, filters, market);
+      const { data, error } = await query.range(from, from + pageSize - 1);
+      if (error) throw error;
+      if (!data || data.length === 0) break;
+      ids.push(...data.map((r: any) => r.id));
+      if (data.length < pageSize) break;
+      from += pageSize;
+    }
+    return ids;
+  } catch (error) {
+    console.error(`Error fetching filtered ids from ${tableName}:`, error);
+    throw error;
+  }
+}
+
 // Nuova funzione per paginazione server-side
 export async function getPaginatedData<T>(
-  tableName: ValidTableName, 
-  page: number = 1, 
+  tableName: ValidTableName,
+  page: number = 1,
   pageSize: number = 50,
   filters?: Record<string, any>,
   market: string = 'IT'

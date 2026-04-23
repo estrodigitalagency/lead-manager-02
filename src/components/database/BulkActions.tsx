@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -12,8 +12,9 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
-import { deleteMultipleLeads } from "@/services/databaseService";
+import { deleteMultipleLeads, getAllFilteredIds } from "@/services/databaseService";
 import { supabase } from "@/integrations/supabase/client";
+import { useMarket } from "@/contexts/MarketContext";
 import ManualAssignmentDialog from "./ManualAssignmentDialog";
 
 interface BulkActionsProps {
@@ -22,24 +23,101 @@ interface BulkActionsProps {
   tableName: 'lead_generation' | 'booked_call' | 'lead_lavorati';
   onSelectionChange: (selected: string[]) => void;
   onRefresh: () => void;
+  filters?: Record<string, any>;
+  totalCount?: number;
 }
 
-const BulkActions = ({ 
-  selectedItems, 
-  allItems, 
-  tableName, 
+const BulkActions = ({
+  selectedItems,
+  allItems,
+  tableName,
   onSelectionChange,
-  onRefresh 
+  onRefresh,
+  filters,
+  totalCount
 }: BulkActionsProps) => {
+  const { selectedMarket } = useMarket();
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showManualAssignDialog, setShowManualAssignDialog] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isSelectingAll, setIsSelectingAll] = useState(false);
+  const [fetchedTotal, setFetchedTotal] = useState<number | null>(null);
 
-  const handleSelectAll = (checked: boolean) => {
-    if (checked) {
-      onSelectionChange(allItems.map(item => item.id));
-    } else {
+  const isServerPaginated = allItems.length === 0;
+  const effectiveTotal = isServerPaginated
+    ? (totalCount ?? fetchedTotal ?? 0)
+    : allItems.length;
+
+  // Fetch count filtrato quando server-paginated e parent non fornisce totalCount
+  useEffect(() => {
+    if (!isServerPaginated || totalCount !== undefined) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        let q: any = supabase.from(tableName).select('id', { count: 'exact', head: true });
+        if (selectedMarket === 'IT') {
+          q = q.or('market.eq.IT,market.is.null');
+        } else {
+          q = q.eq('market', selectedMarket);
+        }
+        if (filters) {
+          if (filters.search) {
+            const s = String(filters.search).trim();
+            q = q.or(`nome.ilike.%${s}%,cognome.ilike.%${s}%,email.ilike.%${s}%,telefono.ilike.%${s}%`);
+          } else {
+            if (filters.nome) q = q.ilike('nome', `%${filters.nome}%`);
+            if (filters.email) q = q.ilike('email', `%${filters.email}%`);
+            if (filters.telefono) q = q.ilike('telefono', `%${filters.telefono}%`);
+          }
+          if (filters.venditore) q = q.ilike('venditore', `%${filters.venditore}%`);
+          if (filters.campagna) q = q.ilike('campagna', `%${filters.campagna}%`);
+          if (filters.esito) q = q.ilike('esito', `%${filters.esito}%`);
+          const fonteCol = tableName === 'lead_generation' ? 'ultima_fonte' : 'fonte';
+          if (filters.fontiIncluse?.length > 0) {
+            q = q.or(filters.fontiIncluse.map((f: string) => `${fonteCol}.ilike.${f}`).join(','));
+          }
+          if (filters.fontiEscluse?.length > 0) {
+            filters.fontiEscluse.forEach((f: string) => { q = q.not(fonteCol, 'ilike', f); });
+          }
+          if (filters.bookedCall && filters.bookedCall !== 'all') q = q.eq('booked_call', filters.bookedCall);
+          if (filters.venditaChiusa === true) q = q.eq('vendita_chiusa', true);
+        }
+        const { count, error } = await q;
+        if (!cancelled && !error) setFetchedTotal(count || 0);
+      } catch (e) {
+        console.error('Errore fetch count BulkActions:', e);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [tableName, selectedMarket, JSON.stringify(filters), isServerPaginated, totalCount]);
+
+  // Deseleziona tutto quando cambiano i filtri (evita stato stale)
+  useEffect(() => {
+    if (selectedItems.length > 0) {
       onSelectionChange([]);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [JSON.stringify(filters)]);
+
+  const handleSelectAll = async (checked: boolean) => {
+    if (!checked) {
+      onSelectionChange([]);
+      return;
+    }
+    if (isServerPaginated) {
+      try {
+        setIsSelectingAll(true);
+        const ids = await getAllFilteredIds(tableName, filters, selectedMarket);
+        onSelectionChange(ids);
+        toast.success(`${ids.length} record selezionati`);
+      } catch (error) {
+        console.error('Errore select all:', error);
+        toast.error('Errore nel selezionare tutti i record');
+      } finally {
+        setIsSelectingAll(false);
+      }
+    } else {
+      onSelectionChange(allItems.map(item => item.id));
     }
   };
 
@@ -125,8 +203,8 @@ const BulkActions = ({
     onRefresh();
   };
 
-  const isAllSelected = selectedItems.length === allItems.length && allItems.length > 0;
-  const isIndeterminate = selectedItems.length > 0 && selectedItems.length < allItems.length;
+  const isAllSelected = effectiveTotal > 0 && selectedItems.length === effectiveTotal;
+  const isIndeterminate = selectedItems.length > 0 && selectedItems.length < effectiveTotal;
 
   return (
     <>
@@ -135,12 +213,15 @@ const BulkActions = ({
           <Checkbox
             checked={isAllSelected}
             onCheckedChange={handleSelectAll}
+            disabled={isSelectingAll || effectiveTotal === 0}
             className={isIndeterminate ? "data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground" : ""}
           />
           <span className="text-sm text-muted-foreground">
-            {selectedItems.length > 0 
-              ? `${selectedItems.length} di ${allItems.length} selezionati`
-              : `Seleziona tutto (${allItems.length})`
+            {isSelectingAll
+              ? 'Selezione in corso...'
+              : selectedItems.length > 0
+                ? `${selectedItems.length} di ${effectiveTotal} selezionati`
+                : `Seleziona tutto (${effectiveTotal})`
             }
           </span>
         </div>

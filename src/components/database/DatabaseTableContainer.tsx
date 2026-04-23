@@ -448,6 +448,7 @@ const DatabaseTableContainer = ({
         tableName={tableName}
         onSelectionChange={onSelectionChange}
         onRefresh={onRefresh}
+        filters={currentFilters}
       />
       
       <CardContent className={isMobile ? 'p-2' : ''}>
