@@ -410,21 +410,26 @@ const DatabaseTableContainer = ({
               Venditore: {currentFilters.venditore}
             </Badge>
           )}
+          {currentFilters.campagna && (
+            <Badge variant="default" className="text-xs gap-1 bg-primary">
+              Campagna: {currentFilters.campagna}
+            </Badge>
+          )}
           {currentFilters.hasBookedCall && currentFilters.hasBookedCall !== 'all' && (
             <Badge variant="secondary" className="text-xs gap-1">
               Call: {currentFilters.hasBookedCall === 'yes' ? 'SI' : 'NO'}
             </Badge>
           )}
-          {currentFilters.fontiIncluse?.length > 0 && (
-            <Badge variant="default" className="text-xs gap-1">
-              {currentFilters.fontiIncluse.length} fonti incluse
+          {currentFilters.fontiIncluse?.length > 0 && currentFilters.fontiIncluse.map((fonte: string) => (
+            <Badge key={`inc-${fonte}`} variant="default" className="text-xs bg-primary/15 text-primary border border-primary/30">
+              {fonte}
             </Badge>
-          )}
-          {currentFilters.fontiEscluse?.length > 0 && (
-            <Badge variant="destructive" className="text-xs gap-1">
-              {currentFilters.fontiEscluse.length} fonti escluse
+          ))}
+          {currentFilters.fontiEscluse?.length > 0 && currentFilters.fontiEscluse.map((fonte: string) => (
+            <Badge key={`exc-${fonte}`} variant="secondary" className="text-xs bg-destructive/10 text-destructive border border-destructive/20">
+              {fonte}
             </Badge>
-          )}
+          ))}
           <Button
             variant="ghost"
             size="sm"

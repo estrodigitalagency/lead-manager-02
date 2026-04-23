@@ -162,12 +162,15 @@ const ReportFiltersComponent = ({ filters, onFiltersChange, onApplyFilters }: Re
                 {filters.venditore && (
                   <Badge variant="secondary" className="text-[10px] h-5">{filters.venditore}</Badge>
                 )}
-                {filters.fontiIncluse && filters.fontiIncluse.length > 0 && (
-                  <Badge variant="default" className="text-[10px] h-5">{filters.fontiIncluse.length} incluse</Badge>
+                {filters.campagna && (
+                  <Badge variant="default" className="text-[10px] h-5 bg-primary">Campagna: {filters.campagna}</Badge>
                 )}
-                {filters.fontiEscluse && filters.fontiEscluse.length > 0 && (
-                  <Badge variant="destructive" className="text-[10px] h-5">{filters.fontiEscluse.length} escluse</Badge>
-                )}
+                {filters.fontiIncluse && filters.fontiIncluse.length > 0 && filters.fontiIncluse.map(f => (
+                  <Badge key={`inc-${f}`} variant="default" className="text-[10px] h-5 bg-primary/15 text-primary border border-primary/30">{f}</Badge>
+                ))}
+                {filters.fontiEscluse && filters.fontiEscluse.length > 0 && filters.fontiEscluse.map(f => (
+                  <Badge key={`exc-${f}`} variant="secondary" className="text-[10px] h-5 bg-destructive/10 text-destructive border border-destructive/20">{f}</Badge>
+                ))}
               </div>
             )}
           </div>
