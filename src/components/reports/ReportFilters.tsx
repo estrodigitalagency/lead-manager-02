@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { CalendarIcon, FilterIcon, Info, ChevronDown, X } from "lucide-react";
 import { useMarket } from "@/contexts/MarketContext";
 import { ReportFilters, PRESET_PERIODS, getAvailableVenditori } from "@/services/reportsService";
-import { getAllCampagne } from "@/services/databaseService";
+import { getAllCampagne, resolveCampagnaConfig } from "@/services/databaseService";
 import ReportSourceFilters from "./ReportSourceFilters";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Badge } from "@/components/ui/badge";
@@ -66,17 +66,22 @@ const ReportFiltersComponent = ({ filters, onFiltersChange, onApplyFilters }: Re
     }
   };
 
-  const handleCampagnaChange = (value: string) => {
+  const handleCampagnaChange = async (value: string) => {
     if (value === 'all-campagne') {
       const newFilters = { ...filters };
       delete newFilters.campagna;
       onFiltersChange(newFilters);
-    } else {
-      onFiltersChange({
-        ...filters,
-        campagna: value
-      });
+      return;
     }
+    // Carica config campagna e popola i filtri fonte visibili (override manuale)
+    const config = await resolveCampagnaConfig(selectedMarket, value);
+    const next: ReportFilters = { ...filters, campagna: value };
+    if (config) {
+      next.sourceMode = (config.source_mode as 'include' | 'exclude') || 'exclude';
+      next.fontiIncluse = config.fonti_incluse || [];
+      next.fontiEscluse = config.fonti_escluse || [];
+    }
+    onFiltersChange(next);
   };
 
   const handleSourceModeChange = (mode: 'include' | 'exclude') => {

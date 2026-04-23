@@ -14,7 +14,7 @@ import { format } from "date-fns";
 import { it } from "date-fns/locale";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { getAvailableVenditori } from "@/services/reportsService";
-import { getUniqueSourcesFromLeads, getAllCampagne } from "@/services/databaseService";
+import { getUniqueSourcesFromLeads, getAllCampagne, resolveCampagnaConfig } from "@/services/databaseService";
 import { useMarket } from "@/contexts/MarketContext";
 import { SearchableSourceSelect } from "@/components/ui/searchable-source-select";
 import { Separator } from "@/components/ui/separator";
@@ -267,13 +267,23 @@ const DatabaseFiltersResponsive = ({
         <SectionHeader icon={Tag} title="Campagna" />
         <Select
           value={filters.campagna || 'all-campagne'}
-          onValueChange={(value) => {
+          onValueChange={async (value) => {
             if (value === 'all-campagne') {
               const { campagna, ...rest } = filters;
               setFilters(rest);
-            } else {
-              handleFilterChange('campagna', value);
+              return;
             }
+            // Carica config campagna e popola i filtri fonte visibili
+            const config = await resolveCampagnaConfig(selectedMarket, value);
+            setFilters(prev => {
+              const next = { ...prev, campagna: value };
+              if (config) {
+                next.sourceMode = config.source_mode || 'exclude';
+                next.fontiIncluse = config.fonti_incluse || [];
+                next.fontiEscluse = config.fonti_escluse || [];
+              }
+              return next;
+            });
           }}
         >
           <SelectTrigger className="h-9 text-sm">
