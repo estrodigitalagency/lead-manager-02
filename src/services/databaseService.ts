@@ -48,6 +48,64 @@ export interface PaginatedResult<T> {
   totalPages: number;
 }
 
+// Risolve config di una campagna (nome -> { fonti_incluse, fonti_escluse, source_mode, ... })
+export async function resolveCampagnaConfig(
+  market: string,
+  campagnaName: string
+): Promise<{
+  nome: string;
+  fonti_incluse: string[];
+  fonti_escluse: string[];
+  source_mode: string;
+  exclude_from_included: string[];
+} | null> {
+  try {
+    const { data, error }: { data: any; error: any } = await supabase
+      .from('database_campagne')
+      .select('nome, fonti_incluse, fonti_escluse, source_mode, exclude_from_included')
+      .eq('market', market)
+      .eq('attivo', true)
+      .ilike('nome', campagnaName.trim())
+      .maybeSingle();
+    if (error || !data) return null;
+    return {
+      nome: data.nome,
+      fonti_incluse: data.fonti_incluse || [],
+      fonti_escluse: data.fonti_escluse || [],
+      source_mode: data.source_mode || 'exclude',
+      exclude_from_included: data.exclude_from_included || [],
+    };
+  } catch (e) {
+    console.error('Errore resolveCampagnaConfig:', e);
+    return null;
+  }
+}
+
+// Espande filters.campagna in filtri fonte equivalenti (fonti_incluse/fonti_escluse della campagna).
+// Mantiene la colonna campagna su ilike come match diretto, in OR con match sulle fonti.
+export async function expandCampagnaToFilters(
+  filters: Record<string, any> | undefined,
+  market: string
+): Promise<Record<string, any> | undefined> {
+  if (!filters?.campagna || String(filters.campagna).trim() === '') return filters;
+  const config = await resolveCampagnaConfig(market, String(filters.campagna));
+  if (!config) return filters;
+  const out = { ...filters };
+  // Se non ci sono filtri fonte manuali, applica quelli della campagna
+  const hasManualSourceFilter =
+    (Array.isArray(filters.fontiIncluse) && filters.fontiIncluse.length > 0) ||
+    (Array.isArray(filters.fontiEscluse) && filters.fontiEscluse.length > 0);
+  if (!hasManualSourceFilter) {
+    if (config.source_mode === 'include') {
+      out.fontiIncluse = config.fonti_incluse;
+    } else {
+      out.fontiEscluse = config.fonti_escluse;
+    }
+    out.__campagnaExpanded = true;
+  }
+  return out;
+}
+
 // Applica market + filtri standard alla query Supabase (condivisa tra paginazione e select-all)
 function applyStandardFilters(
   query: any,
@@ -82,7 +140,12 @@ function applyStandardFilters(
     }
 
     if (filters.venditore) query = query.ilike('venditore', `%${filters.venditore}%`);
-    if (filters.campagna) query = query.ilike('campagna', `%${filters.campagna}%`);
+    // Se la campagna e' stata espansa in filtri fonte (fonti_incluse/escluse della campagna),
+    // NON filtriamo anche sulla colonna campagna: la colonna e' spesso vuota sui lead e
+    // farebbe un AND restrittivo che azzera i risultati.
+    if (filters.campagna && !filters.__campagnaExpanded) {
+      query = query.ilike('campagna', `%${filters.campagna}%`);
+    }
     if (filters.esito) query = query.ilike('esito', `%${filters.esito}%`);
 
     if (filters.dataInizio) query = query.gte('created_at', getStartOfDayIT(filters.dataInizio));
@@ -113,12 +176,13 @@ export async function getAllFilteredIds(
   market: string = 'IT'
 ): Promise<string[]> {
   try {
+    const expandedFilters = await expandCampagnaToFilters(filters, market);
     const ids: string[] = [];
     const pageSize = 1000;
     let from = 0;
     while (true) {
       let query: any = supabase.from(tableName).select('id');
-      query = applyStandardFilters(query, tableName, filters, market);
+      query = applyStandardFilters(query, tableName, expandedFilters, market);
       const { data, error } = await query.range(from, from + pageSize - 1);
       if (error) throw error;
       if (!data || data.length === 0) break;
@@ -142,6 +206,8 @@ export async function getPaginatedData<T>(
   market: string = 'IT'
 ): Promise<PaginatedResult<T>> {
   try {
+    // Risolve filtro campagna -> filtri fonte equivalenti (se config campagna ha fonti_incluse/escluse)
+    filters = await expandCampagnaToFilters(filters, market);
     let query: any = supabase.from(tableName).select('*', { count: 'exact' });
     
     // Apply market filter for relevant tables

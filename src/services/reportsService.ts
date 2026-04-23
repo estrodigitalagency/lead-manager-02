@@ -1,5 +1,6 @@
 
 import { supabase } from "@/integrations/supabase/client";
+import { expandCampagnaToFilters } from "@/services/databaseService";
 
 // Cache for fonte mapping
 let fonteMappingCache: { leadToCalendario: Map<string, string>; calendarioToLead: Map<string, string> } | null = null;
@@ -67,11 +68,13 @@ export interface ReportMetrics {
 export async function getReportMetrics(filters: ReportFilters): Promise<ReportMetrics> {
   try {
     console.log('Report filters:', filters);
-    
+    // Espande filtro campagna in fonti incluse/escluse secondo config campagna
+    const expanded = (await expandCampagnaToFilters(filters as any, filters.market || 'IT')) as ReportFilters;
+
     const promises = [
-      getLeadTotaliGenerati(filters),
-      getCallTotaliPrenotate(filters),
-      getLeadTotaliLavorati(filters)
+      getLeadTotaliGenerati(expanded),
+      getCallTotaliPrenotate(expanded),
+      getLeadTotaliLavorati(expanded)
     ];
 
     const [leadTotaliGenerati, callTotaliPrenotate, leadTotaliLavorati] = await Promise.all(promises);
@@ -136,8 +139,9 @@ function getNextDayStart(dateString: string): string {
 }
 
 
-// Applica filtro campagna (ilike wildcard)
-function applyCampagnaFilter(query: any, filters: ReportFilters) {
+// Applica filtro campagna (ilike wildcard) solo se NON e' gia' stata espansa in filtri fonte
+function applyCampagnaFilter(query: any, filters: ReportFilters & { __campagnaExpanded?: boolean }) {
+  if (filters.__campagnaExpanded) return query;
   if (filters.campagna && typeof filters.campagna === 'string' && filters.campagna.trim() !== '') {
     return query.ilike('campagna', `%${filters.campagna.trim()}%`);
   }
@@ -394,6 +398,20 @@ export async function getLeadsBySource(
   campagna?: string
 ): Promise<LeadsBySourceItem[]> {
   try {
+    // Espande campagna in fonti incluse/escluse (se non ci sono filtri fonte manuali)
+    let campagnaExpanded = false;
+    if (campagna && campagna.trim() !== '') {
+      const hasManualSourceFilter = (fontiIncluse?.length ?? 0) > 0 || (fontiEscluse?.length ?? 0) > 0;
+      if (!hasManualSourceFilter) {
+        const expanded = (await expandCampagnaToFilters({ campagna } as any, market)) as any;
+        if (expanded?.__campagnaExpanded) {
+          fontiIncluse = expanded.fontiIncluse;
+          fontiEscluse = expanded.fontiEscluse;
+          sourceMode = fontiIncluse?.length ? 'include' : 'exclude';
+          campagnaExpanded = true;
+        }
+      }
+    }
     const allFonti: string[] = [];
     const pageSize = 1000;
     let page = 0;
@@ -414,7 +432,7 @@ export async function getLeadsBySource(
         query = query.lt('created_at', getNextDayStart(endDate));
       }
 
-      if (campagna && campagna.trim() !== '') {
+      if (campagna && campagna.trim() !== '' && !campagnaExpanded) {
         query = query.ilike('campagna', `%${campagna.trim()}%`);
       }
 
@@ -485,6 +503,8 @@ export interface ReportLeadDetail {
 
 export async function getFilteredLeads(filters: ReportFilters): Promise<ReportLeadDetail[]> {
   try {
+    // Espande filtro campagna in fonti incluse/escluse
+    filters = (await expandCampagnaToFilters(filters as any, filters.market || 'IT')) as ReportFilters;
     const allLeads: ReportLeadDetail[] = [];
     const pageSize = 1000;
     let page = 0;
