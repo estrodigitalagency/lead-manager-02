@@ -42,7 +42,8 @@ export function LeadsBySourceChart({ filters, refreshTrigger }: LeadsBySourceCha
       filters.endDate,
       filters.sourceMode,
       filters.fontiIncluse,
-      filters.fontiEscluse
+      filters.fontiEscluse,
+      filters.campagna
     );
     setData(result);
     setLoading(false);

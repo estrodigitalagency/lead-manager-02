@@ -50,6 +50,7 @@ export interface ReportFilters {
   endDate?: string;
   fonte?: string;
   venditore?: string;
+  campagna?: string;
   fontiIncluse?: string[];
   fontiEscluse?: string[];
   sourceMode?: 'include' | 'exclude';
@@ -135,6 +136,14 @@ function getNextDayStart(dateString: string): string {
 }
 
 
+// Applica filtro campagna (ilike wildcard)
+function applyCampagnaFilter(query: any, filters: ReportFilters) {
+  if (filters.campagna && typeof filters.campagna === 'string' && filters.campagna.trim() !== '') {
+    return query.ilike('campagna', `%${filters.campagna.trim()}%`);
+  }
+  return query;
+}
+
 // Helper function to apply fonte filters
 function applyFonteFilters(query: any, filters: ReportFilters, fonteColumn: string = 'ultima_fonte') {
   // Se c'è un filtro fonte specifico, ignorare i filtri di inclusione/esclusione
@@ -190,6 +199,7 @@ async function getLeadTotaliGenerati(filters: ReportFilters): Promise<number> {
 
   // Applicare filtri fonte
   query = applyFonteFilters(query, filters);
+  query = applyCampagnaFilter(query, filters);
 
   // Filtro per venditore - usa pattern matching con trim degli spazi
   if (filters.venditore && typeof filters.venditore === 'string' && filters.venditore.trim() !== '') {
@@ -236,6 +246,7 @@ async function getCallTotaliPrenotate(filters: ReportFilters): Promise<number> {
   }
 
   query = applyFonteFilters(query, filters);
+  query = applyCampagnaFilter(query, filters);
 
   if (filters.venditore && typeof filters.venditore === 'string' && filters.venditore.trim() !== '') {
     const cleanVenditore = filters.venditore.trim();
@@ -285,6 +296,7 @@ async function getCallTotaliPrenotateFonteCalendario(filters: ReportFilters): Pr
   }
 
   query = applyFonteFilters(query, translatedFilters, 'fonte');
+  query = applyCampagnaFilter(query, filters);
 
   if (filters.venditore && typeof filters.venditore === 'string' && filters.venditore.trim() !== '') {
     const cleanVenditore = filters.venditore.trim();
@@ -328,6 +340,7 @@ async function getLeadTotaliLavorati(filters: ReportFilters): Promise<number> {
 
   // Applicare filtri fonte
   query = applyFonteFilters(query, filters);
+  query = applyCampagnaFilter(query, filters);
 
   // Filtro per venditore - usa pattern matching con trim degli spazi
   if (filters.venditore && typeof filters.venditore === 'string' && filters.venditore.trim() !== '') {
@@ -377,7 +390,8 @@ export async function getLeadsBySource(
   endDate?: string,
   sourceMode?: 'include' | 'exclude',
   fontiIncluse?: string[],
-  fontiEscluse?: string[]
+  fontiEscluse?: string[],
+  campagna?: string
 ): Promise<LeadsBySourceItem[]> {
   try {
     const allFonti: string[] = [];
@@ -400,9 +414,13 @@ export async function getLeadsBySource(
         query = query.lt('created_at', getNextDayStart(endDate));
       }
 
+      if (campagna && campagna.trim() !== '') {
+        query = query.ilike('campagna', `%${campagna.trim()}%`);
+      }
+
       // Apply source filters
       if (sourceMode === 'include' && fontiIncluse && fontiIncluse.length > 0) {
-        const includeConditions = fontiIncluse.map(fonte => 
+        const includeConditions = fontiIncluse.map(fonte =>
           `ultima_fonte.ilike.${fonte}`
         ).join(',');
         query = query.or(includeConditions);
@@ -488,6 +506,7 @@ export async function getFilteredLeads(filters: ReportFilters): Promise<ReportLe
       }
 
       query = applyFonteFilters(query, filters);
+      query = applyCampagnaFilter(query, filters);
 
       if (filters.venditore && filters.venditore.trim() !== '') {
         const cleanVenditore = filters.venditore.trim();

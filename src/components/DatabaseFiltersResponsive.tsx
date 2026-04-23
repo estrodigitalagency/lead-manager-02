@@ -14,7 +14,7 @@ import { format } from "date-fns";
 import { it } from "date-fns/locale";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { getAvailableVenditori } from "@/services/reportsService";
-import { getUniqueSourcesFromLeads } from "@/services/databaseService";
+import { getUniqueSourcesFromLeads, getAllCampagne } from "@/services/databaseService";
 import { useMarket } from "@/contexts/MarketContext";
 import { SearchableSourceSelect } from "@/components/ui/searchable-source-select";
 import { Separator } from "@/components/ui/separator";
@@ -41,6 +41,7 @@ const DatabaseFiltersResponsive = ({
   const setIsOpen = controlledOnOpenChange || setInternalOpen;
   const [venditori, setVenditori] = useState<string[]>([]);
   const [fonti, setFonti] = useState<string[]>([]);
+  const [campagne, setCampagne] = useState<string[]>([]);
   const [calendarView, setCalendarView] = useState<"from" | "to" | null>(null);
   const isMobile = useIsMobile();
 
@@ -48,12 +49,14 @@ const DatabaseFiltersResponsive = ({
 
   useEffect(() => {
     const loadOptions = async () => {
-      const [availableVenditori, availableFonti] = await Promise.all([
+      const [availableVenditori, availableFonti, availableCampagne] = await Promise.all([
         getAvailableVenditori(),
-        getUniqueSourcesFromLeads(selectedMarket)
+        getUniqueSourcesFromLeads(selectedMarket),
+        getAllCampagne(selectedMarket)
       ]);
       setVenditori(availableVenditori);
       setFonti(availableFonti);
+      setCampagne((availableCampagne as any[]).map((c: any) => c.nome).filter(Boolean).sort());
     };
 
     loadOptions();
@@ -258,6 +261,33 @@ const DatabaseFiltersResponsive = ({
           <Separator className="opacity-50" />
         </>
       )}
+
+      {/* Campagna */}
+      <div>
+        <SectionHeader icon={Tag} title="Campagna" />
+        <Select
+          value={filters.campagna || 'all-campagne'}
+          onValueChange={(value) => {
+            if (value === 'all-campagne') {
+              const { campagna, ...rest } = filters;
+              setFilters(rest);
+            } else {
+              handleFilterChange('campagna', value);
+            }
+          }}
+        >
+          <SelectTrigger className="h-9 text-sm">
+            <SelectValue placeholder="Tutte le campagne" />
+          </SelectTrigger>
+          <SelectContent className="z-[60]">
+            <SelectItem value="all-campagne">Tutte le campagne</SelectItem>
+            {campagne.map((c) => (
+              <SelectItem key={c} value={c}>{c}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+      <Separator className="opacity-50" />
 
       {/* Call Prenotata */}
       {tableName === 'lead_generation' && (

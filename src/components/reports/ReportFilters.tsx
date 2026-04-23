@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { CalendarIcon, FilterIcon, Info, ChevronDown, X } from "lucide-react";
 import { useMarket } from "@/contexts/MarketContext";
 import { ReportFilters, PRESET_PERIODS, getAvailableVenditori } from "@/services/reportsService";
+import { getAllCampagne } from "@/services/databaseService";
 import ReportSourceFilters from "./ReportSourceFilters";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Badge } from "@/components/ui/badge";
@@ -21,12 +22,17 @@ interface ReportFiltersProps {
 const ReportFiltersComponent = ({ filters, onFiltersChange, onApplyFilters }: ReportFiltersProps) => {
   const { selectedMarket } = useMarket();
   const [venditori, setVenditori] = useState<string[]>([]);
+  const [campagne, setCampagne] = useState<string[]>([]);
   const [isExpanded, setIsExpanded] = useState(false);
 
   useEffect(() => {
     const loadOptions = async () => {
-      const availableVenditori = await getAvailableVenditori(selectedMarket);
+      const [availableVenditori, availableCampagne] = await Promise.all([
+        getAvailableVenditori(selectedMarket),
+        getAllCampagne(selectedMarket)
+      ]);
       setVenditori(availableVenditori);
+      setCampagne((availableCampagne as any[]).map((c: any) => c.nome).filter(Boolean).sort());
     };
 
     loadOptions();
@@ -56,6 +62,19 @@ const ReportFiltersComponent = ({ filters, onFiltersChange, onApplyFilters }: Re
       onFiltersChange({
         ...filters,
         venditore: value
+      });
+    }
+  };
+
+  const handleCampagnaChange = (value: string) => {
+    if (value === 'all-campagne') {
+      const newFilters = { ...filters };
+      delete newFilters.campagna;
+      onFiltersChange(newFilters);
+    } else {
+      onFiltersChange({
+        ...filters,
+        campagna: value
       });
     }
   };
@@ -97,12 +116,14 @@ const ReportFiltersComponent = ({ filters, onFiltersChange, onApplyFilters }: Re
     filters.endDate ||
     filters.fonte ||
     filters.venditore ||
+    filters.campagna ||
     (filters.fontiIncluse && filters.fontiIncluse.length > 0) ||
     (filters.fontiEscluse && filters.fontiEscluse.length > 0);
 
   const activeFilterCount = [
     filters.startDate || filters.endDate ? 1 : 0,
     filters.venditore ? 1 : 0,
+    filters.campagna ? 1 : 0,
     (filters.fontiIncluse?.length || 0) + (filters.fontiEscluse?.length || 0) > 0 ? 1 : 0,
     filters.callAttributionMode === 'fonte_calendario' ? 1 : 0,
   ].reduce((a, b) => a + b, 0);
@@ -228,6 +249,25 @@ const ReportFiltersComponent = ({ filters, onFiltersChange, onApplyFilters }: Re
                   </SelectContent>
                 </Select>
               </div>
+            </div>
+
+            {/* Campagna */}
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium text-muted-foreground">Campagna</Label>
+              <Select
+                value={filters.campagna || 'all-campagne'}
+                onValueChange={handleCampagnaChange}
+              >
+                <SelectTrigger className="h-9">
+                  <SelectValue placeholder="Tutte" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all-campagne">Tutte le campagne</SelectItem>
+                  {campagne.map((c) => (
+                    <SelectItem key={c} value={c}>{c}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             {/* Attribuzione Call */}
