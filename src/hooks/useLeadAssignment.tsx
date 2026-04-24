@@ -359,12 +359,19 @@ const fetchUniqueSources = async () => {
           targetLeadIds.push(...leadIds);
           console.log(`📤 ${leadIds.length} leads from ${originalVenditore} → target ${pendingAssignmentData.venditore}`);
         } else {
-          // Riassegna al venditore originale MANTENENDO la campagna selezionata dall'utente nel form
-          console.log(`📤 Reassigning ${leadIds.length} leads back to ${originalVenditore} (campagna from form: ${pendingAssignmentData.campagna ?? 'nessuna'})`);
+          // Riassegna al venditore originale MANTENENDO la campagna selezionata dall'utente nel form.
+          // Fallback: se pendingAssignmentData.campagna dovesse essere vuoto, usa il valore corrente dello state hook.
+          const campagnaForOriginal = pendingAssignmentData.campagna || campagna || undefined;
+          console.log(`📤 [BRANCH=original] Reassign ${leadIds.length} lead a ${originalVenditore}`, {
+            campagnaFromPending: pendingAssignmentData.campagna,
+            campagnaFromState: campagna,
+            campagnaFinale: campagnaForOriginal,
+          });
           await assignLeadsWithExclusions({
             ...pendingAssignmentData,
             numLead: leadIds.length,
             venditore: originalVenditore,
+            campagna: campagnaForOriginal,
             specificLeadIds: leadIds,
             skipAlreadyAssignedCheck: true
           });
