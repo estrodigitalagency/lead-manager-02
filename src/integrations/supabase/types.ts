@@ -373,6 +373,7 @@ export type Database = {
           id: string
           market: string
           nome: string | null
+          sales_name: string | null
           telefono: string | null
         }
         Insert: {
@@ -383,6 +384,7 @@ export type Database = {
           id?: string
           market?: string
           nome?: string | null
+          sales_name?: string | null
           telefono?: string | null
         }
         Update: {
@@ -393,6 +395,7 @@ export type Database = {
           id?: string
           market?: string
           nome?: string | null
+          sales_name?: string | null
           telefono?: string | null
         }
         Relationships: []
