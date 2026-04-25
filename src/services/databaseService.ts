@@ -265,7 +265,9 @@ export async function getPaginatedData<T>(
         query = query.ilike('venditore', `%${filters.venditore}%`);
       }
       
-      if (filters.campagna) {
+      // Se la campagna e' stata espansa in filtri fonte, NON filtrare anche sulla colonna campagna
+      // (spesso vuota sui lead) per evitare un AND restrittivo che azzera i risultati.
+      if (filters.campagna && !filters.__campagnaExpanded) {
         query = query.ilike('campagna', `%${filters.campagna}%`);
       }
       
