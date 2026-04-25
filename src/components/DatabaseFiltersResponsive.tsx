@@ -276,7 +276,7 @@ const DatabaseFiltersResponsive = ({
             // Carica config campagna e popola i filtri fonte visibili
             const config = await resolveCampagnaConfig(selectedMarket, value);
             setFilters(prev => {
-              const next = { ...prev, campagna: value };
+              const next: any = { ...prev, campagna: value };
               if (config) {
                 next.sourceMode = config.source_mode || 'exclude';
                 next.fontiIncluse = config.fonti_incluse || [];

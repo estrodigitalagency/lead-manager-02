@@ -229,39 +229,86 @@ export async function assignLeadsWithExclusions(data: LeadAssignmentData) {
 
       console.log(`Replay: Assigning ${actualAssignedCount} specific leads:`, leadIds);
 
-      // Update the leads with the assigned salesperson
+      const hasCampagnaOverride = !!(campagna && campagna.trim() !== '');
       const currentTimestamp = new Date().toISOString();
-      
-      const { error: updateError } = await supabase
-        .from('lead_generation')
-        .update({ 
+
+      if (hasCampagnaOverride) {
+        // Override: applichiamo la campagna fornita su TUTTI i lead specifici
+        const { error: updateError } = await supabase
+          .from('lead_generation')
+          .update({
+            venditore,
+            campagna: campagna!.trim(),
+            stato: 'assegnato',
+            assignable: false,
+            data_assegnazione: currentTimestamp
+          })
+          .in('id', leadIds);
+
+        if (updateError) {
+          console.error('Error updating leads:', updateError);
+          throw new Error(`Errore nell'aggiornamento dei lead: ${updateError.message}`);
+        }
+
+        await processAssignmentCompletion(
           venditore,
-          campagna: (campagna && campagna.trim() !== '') ? campagna : null,
-          stato: 'assegnato',
-          assignable: false,
-          data_assegnazione: currentTimestamp
-        })
-        .in('id', leadIds);
+          campagna,
+          actualAssignedCount,
+          leadsToAssign,
+          market,
+          excludedSources,
+          includedSources,
+          sourceMode,
+          bypassTimeInterval,
+          excludeFromIncluded,
+          leadIds
+        );
+      } else {
+        // Nessuna campagna fornita (es. riassegnazione al vecchio venditore):
+        // PRESERVIAMO la campagna originale di ogni lead, e raggruppiamo per campagna
+        // per inviare webhook + history corretti.
+        const { error: updateError } = await supabase
+          .from('lead_generation')
+          .update({
+            venditore,
+            stato: 'assegnato',
+            assignable: false,
+            data_assegnazione: currentTimestamp
+          })
+          .in('id', leadIds);
 
-      if (updateError) {
-        console.error('Error updating leads:', updateError);
-        throw new Error(`Errore nell'aggiornamento dei lead: ${updateError.message}`);
+        if (updateError) {
+          console.error('Error updating leads:', updateError);
+          throw new Error(`Errore nell'aggiornamento dei lead: ${updateError.message}`);
+        }
+
+        // Raggruppa lead per campagna esistente (preservata)
+        const groups = new Map<string, any[]>();
+        for (const lead of leadsToAssign) {
+          const key = (lead.campagna && String(lead.campagna).trim() !== '') ? String(lead.campagna).trim() : '';
+          if (!groups.has(key)) groups.set(key, []);
+          groups.get(key)!.push(lead);
+        }
+
+        console.log(`📦 Riassegnazione senza override campagna: ${groups.size} gruppi per campagna`);
+
+        for (const [groupCampagna, groupLeads] of groups.entries()) {
+          const groupLeadIds = groupLeads.map(l => l.id);
+          await processAssignmentCompletion(
+            venditore,
+            groupCampagna || undefined,
+            groupLeads.length,
+            groupLeads,
+            market,
+            excludedSources,
+            includedSources,
+            sourceMode,
+            bypassTimeInterval,
+            excludeFromIncluded,
+            groupLeadIds
+          );
+        }
       }
-
-      // Continue with webhook and history recording...
-      await processAssignmentCompletion(
-        venditore, 
-        campagna, 
-        actualAssignedCount, 
-        leadsToAssign, 
-        market,
-        excludedSources,
-        includedSources,
-        sourceMode,
-        bypassTimeInterval,
-        excludeFromIncluded,
-        leadIds
-      );
 
       console.log(`Successfully replayed assignment of ${actualAssignedCount} leads to ${venditore}`);
       return { assignedCount: actualAssignedCount, leads: leadsToAssign };
