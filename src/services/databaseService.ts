@@ -180,20 +180,26 @@ export async function getAllFilteredIds(
 ): Promise<string[]> {
   try {
     const expandedFilters = await expandCampagnaToFilters(filters, market);
-    const ids: string[] = [];
+    const seen = new Set<string>();
     const pageSize = 1000;
     let from = 0;
     while (true) {
       let query: any = supabase.from(tableName).select('id');
       query = applyStandardFilters(query, tableName, expandedFilters, market);
+      // ORDER BY id obbligatorio: senza ordine deterministico la paginazione
+      // restituisce record duplicati o saltati tra range successivi.
+      query = query.order('id', { ascending: true });
       const { data, error } = await query.range(from, from + pageSize - 1);
       if (error) throw error;
       if (!data || data.length === 0) break;
-      ids.push(...data.map((r: any) => r.id));
+      // Dedup difensivo: anche se l'ordine garantisce no overlap, evitiamo regressioni.
+      for (const r of data) {
+        if (r.id && !seen.has(r.id)) seen.add(r.id);
+      }
       if (data.length < pageSize) break;
       from += pageSize;
     }
-    return ids;
+    return [...seen];
   } catch (error) {
     console.error(`Error fetching filtered ids from ${tableName}:`, error);
     throw error;
