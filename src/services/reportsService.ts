@@ -140,9 +140,15 @@ function getNextDayStart(dateString: string): string {
 
 
 // Applica filtro campagna (ilike wildcard) solo se NON e' gia' stata espansa in filtri fonte
+// E nessun filtro fonte manuale e' settato. La colonna campagna sui lead e' spesso vuota,
+// quindi AND con filtri fonte azzererebbe i risultati.
 function applyCampagnaFilter(query: any, filters: ReportFilters & { __campagnaExpanded?: boolean }) {
   if (filters.__campagnaExpanded) return query;
-  if (filters.campagna && typeof filters.campagna === 'string' && filters.campagna.trim() !== '') {
+  const hasFonte =
+    (Array.isArray(filters.fontiIncluse) && filters.fontiIncluse.length > 0) ||
+    (Array.isArray(filters.fontiEscluse) && filters.fontiEscluse.length > 0) ||
+    (typeof filters.fonte === 'string' && filters.fonte.trim() !== '');
+  if (filters.campagna && typeof filters.campagna === 'string' && filters.campagna.trim() !== '' && !hasFonte) {
     return query.ilike('campagna', `%${filters.campagna.trim()}%`);
   }
   return query;

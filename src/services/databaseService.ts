@@ -140,10 +140,13 @@ function applyStandardFilters(
     }
 
     if (filters.venditore) query = query.ilike('venditore', `%${filters.venditore}%`);
-    // Se la campagna e' stata espansa in filtri fonte (fonti_incluse/escluse della campagna),
-    // NON filtriamo anche sulla colonna campagna: la colonna e' spesso vuota sui lead e
-    // farebbe un AND restrittivo che azzera i risultati.
-    if (filters.campagna && !filters.__campagnaExpanded) {
+    // NON filtriamo sulla colonna campagna se sono presenti filtri fonte (manuali o espansi
+    // dalla campagna): la colonna campagna sui lead e' spesso vuota e farebbe un AND
+    // restrittivo che azzera i risultati. I filtri fonte sono gia' sufficienti.
+    const hasFonteFilters =
+      (Array.isArray(filters.fontiIncluse) && filters.fontiIncluse.length > 0) ||
+      (Array.isArray(filters.fontiEscluse) && filters.fontiEscluse.length > 0);
+    if (filters.campagna && !filters.__campagnaExpanded && !hasFonteFilters) {
       query = query.ilike('campagna', `%${filters.campagna}%`);
     }
     if (filters.esito) query = query.ilike('esito', `%${filters.esito}%`);
