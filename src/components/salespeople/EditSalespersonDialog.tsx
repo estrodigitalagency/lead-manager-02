@@ -45,11 +45,17 @@ const EditSalespersonDialog = ({ venditore, onUpdate }: EditSalespersonDialogPro
     setIsSubmitting(true);
 
     try {
+      const oldFullName = `${venditore.nome} ${venditore.cognome}`.trim();
+      const newNome = formData.nome.trim();
+      const newCognome = formData.cognome.trim();
+      const newFullName = `${newNome} ${newCognome}`.trim();
+      const nameChanged = oldFullName !== newFullName;
+
       const { error } = await supabase
         .from('venditori')
         .update({
-          nome: formData.nome.trim(),
-          cognome: formData.cognome.trim(),
+          nome: newNome,
+          cognome: newCognome,
           email: formData.email.trim() || null,
           telefono: formData.telefono.trim() || null,
           sheets_file_id: formData.sheets_file_id.trim(),
@@ -61,7 +67,28 @@ const EditSalespersonDialog = ({ venditore, onUpdate }: EditSalespersonDialogPro
 
       if (error) throw error;
 
-      toast.success("Venditore aggiornato con successo");
+      // Se nome o cognome sono cambiati, propaga il rename ai record denormalizzati
+      // (lead_generation.venditore e assignment_history.venditore sono stringhe)
+      if (nameChanged) {
+        const { error: leadsError, count: leadsCount } = await supabase
+          .from('lead_generation')
+          .update({ venditore: newFullName }, { count: 'exact' })
+          .eq('venditore', oldFullName);
+        if (leadsError) console.error('Errore propagazione rename su lead_generation:', leadsError);
+
+        const { error: histError, count: histCount } = await supabase
+          .from('assignment_history')
+          .update({ venditore: newFullName }, { count: 'exact' })
+          .eq('venditore', oldFullName);
+        if (histError) console.error('Errore propagazione rename su assignment_history:', histError);
+
+        toast.success(
+          `Venditore aggiornato. Rinominati ${leadsCount ?? 0} lead e ${histCount ?? 0} entry cronologia da "${oldFullName}" a "${newFullName}"`
+        );
+      } else {
+        toast.success("Venditore aggiornato con successo");
+      }
+
       setOpen(false);
       onUpdate();
     } catch (error) {
