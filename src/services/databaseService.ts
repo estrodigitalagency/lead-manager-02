@@ -274,9 +274,13 @@ export async function getPaginatedData<T>(
         query = query.ilike('venditore', `%${filters.venditore}%`);
       }
       
-      // Se la campagna e' stata espansa in filtri fonte, NON filtrare anche sulla colonna campagna
-      // (spesso vuota sui lead) per evitare un AND restrittivo che azzera i risultati.
-      if (filters.campagna && !filters.__campagnaExpanded) {
+      // Se la campagna e' stata espansa in filtri fonte O se sono presenti filtri fonte
+      // manuali, NON filtriamo anche sulla colonna campagna (spesso vuota sui lead) per
+      // evitare un AND restrittivo che azzera i risultati.
+      const hasFonteFiltersInline =
+        (Array.isArray(filters.fontiIncluse) && filters.fontiIncluse.length > 0) ||
+        (Array.isArray(filters.fontiEscluse) && filters.fontiEscluse.length > 0);
+      if (filters.campagna && !filters.__campagnaExpanded && !hasFonteFiltersInline) {
         query = query.ilike('campagna', `%${filters.campagna}%`);
       }
       
