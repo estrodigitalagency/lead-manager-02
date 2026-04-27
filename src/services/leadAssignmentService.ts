@@ -837,7 +837,7 @@ export async function checkLeadsForPreviousAssignment(
 
     // BATCH CHECK: Instead of N+1 queries, collect all emails/phones and query in batches
     console.log(`🔍 Batch checking previous assignments for ${leadsToAssign.length} leads...`);
-    
+
     const previousAssignments: Record<string, string> = {};
 
     const normalizeEmail = (email: string | null): string => {
@@ -849,6 +849,22 @@ export async function checkLeadsForPreviousAssignment(
       if (!phone) return '';
       return phone.replace(/[^0-9+]/g, '');
     };
+
+    const normalizeName = (s: string): string =>
+      s.normalize('NFD').replace(/[̀-ͯ]/g, '').trim().toLowerCase();
+
+    // Carica venditori attivi del market: serve per ignorare venditori eliminati o disattivati
+    // (lead orfani con stringa di un sales che non esiste piu' non devono triggerare il dialog).
+    const { data: activeVendList } = await supabase
+      .from('venditori')
+      .select('nome, cognome')
+      .eq('market', market)
+      .eq('stato', 'attivo');
+    const activeVendSet = new Set<string>(
+      (activeVendList || []).map(v => normalizeName(`${v.nome} ${v.cognome}`))
+    );
+    const isActiveVenditore = (n: string | null | undefined) =>
+      !!n && activeVendSet.has(normalizeName(n));
 
     try {
       // Collect all unique emails and phones from leads to check
@@ -898,9 +914,9 @@ export async function checkLeadsForPreviousAssignment(
             }
           }
           
-          // Map back to lead IDs
+          // Map back to lead IDs (skip se venditore non e' piu' attivo: trattalo come lead nuovo)
           for (const [email, matchVenditore] of Object.entries(emailVenditoreMap)) {
-            if (matchVenditore !== venditore && leadEmailMap[email]) {
+            if (matchVenditore !== venditore && isActiveVenditore(matchVenditore) && leadEmailMap[email]) {
               for (const leadId of leadEmailMap[email]) {
                 if (!previousAssignments[leadId]) {
                   previousAssignments[leadId] = matchVenditore;
@@ -939,7 +955,7 @@ export async function checkLeadsForPreviousAssignment(
           }
           
           for (const [phone, matchVenditore] of Object.entries(phoneVenditoreMap)) {
-            if (matchVenditore !== venditore && leadPhoneMap[phone]) {
+            if (matchVenditore !== venditore && isActiveVenditore(matchVenditore) && leadPhoneMap[phone]) {
               for (const leadId of leadPhoneMap[phone]) {
                 if (!previousAssignments[leadId]) {
                   previousAssignments[leadId] = matchVenditore;
