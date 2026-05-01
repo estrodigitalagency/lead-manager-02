@@ -12,7 +12,9 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Checkbox } from "@/components/ui/checkbox";
-import { CheckCircle2, User, Mail, Phone, AlertCircle, Tag, Filter } from "lucide-react";
+import { CheckCircle2, User, Mail, Phone, AlertCircle, Tag, Filter, UserCheck, UserX } from "lucide-react";
+import { format } from "date-fns";
+import { it } from "date-fns/locale";
 import FonteDisplay from "./FonteDisplay";
 
 interface SearchResult {
@@ -22,6 +24,8 @@ interface SearchResult {
   email: string;
   telefono: string;
   ultima_fonte?: string;
+  venditore?: string | null;
+  data_assegnazione?: string | null;
 }
 
 interface SearchResultsDialogProps {
@@ -137,7 +141,7 @@ const SearchResultsDialog = ({
             Risultati Ricerca Multipla
           </DialogTitle>
           <DialogDescription>
-            Trovati {results.length} lead corrispondenti ai termini di ricerca.
+            Trovati {results.length} lead · {results.filter(r => r.venditore).length} già assegnati · {results.filter(r => !r.venditore).length} liberi
           </DialogDescription>
         </DialogHeader>
         
@@ -227,10 +231,26 @@ const SearchResultsDialog = ({
                           className="mt-1"
                         />
                         <div className="flex-1 space-y-1 min-w-0">
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center justify-between gap-2 flex-wrap">
                             <span className="font-medium text-sm">
                               {result.nome} {result.cognome}
                             </span>
+                            {result.venditore ? (
+                              <Badge variant="outline" className="text-[10px] flex items-center gap-1 bg-amber-500/10 border-amber-500/30 text-amber-600 dark:text-amber-400">
+                                <UserCheck className="h-3 w-3" />
+                                Assegnato a {result.venditore}
+                                {result.data_assegnazione && (
+                                  <span className="opacity-70">
+                                    ·{' '}{format(new Date(result.data_assegnazione), 'dd/MM/yy', { locale: it })}
+                                  </span>
+                                )}
+                              </Badge>
+                            ) : (
+                              <Badge variant="outline" className="text-[10px] flex items-center gap-1 bg-emerald-500/10 border-emerald-500/30 text-emerald-600 dark:text-emerald-400">
+                                <UserX className="h-3 w-3" />
+                                Non assegnato
+                              </Badge>
+                            )}
                           </div>
                           <div className="flex flex-col gap-1 text-xs text-muted-foreground">
                             {result.email && (

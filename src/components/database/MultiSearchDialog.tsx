@@ -30,6 +30,8 @@ interface SearchResult {
   telefono: string;
   ultima_fonte?: string;
   created_at?: string;
+  venditore?: string | null;
+  data_assegnazione?: string | null;
 }
 
 const MultiSearchDialog = ({
@@ -74,7 +76,7 @@ const MultiSearchDialog = ({
       // Cerca tutti i match ordinati dal più recente, poi tieni solo il più recente per ogni termine
       const { data: matchedItems, error } = await supabase
         .from('lead_generation')
-        .select('id, email, telefono, nome, cognome, ultima_fonte, created_at')
+        .select('id, email, telefono, nome, cognome, ultima_fonte, created_at, venditore, data_assegnazione')
         .or(`${emailConditions},${phoneConditions}`)
         .order('created_at', { ascending: false });
 
