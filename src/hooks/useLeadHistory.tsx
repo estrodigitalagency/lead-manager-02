@@ -313,8 +313,59 @@ export const useLeadHistory = (lead: Lead | null) => {
       });
     }
 
+    // Sort chronologically asc to merge co-temporal events
+    events.sort((a, b) =>
+      new Date(a.date).getTime() - new Date(b.date).getTime()
+    );
+
+    // Merge co-temporal events (within 60s) that describe same flow.
+    // Priority: ingresso > assegnazione_manuale > automation > azione.
+    // Sub-events get attached as `details.related` on primary event.
+    const PRIORITY: Record<TimelineEvent['type'], number> = {
+      ingresso: 0,
+      assegnazione_manuale: 1,
+      vendita: 2,
+      call_prenotata: 3,
+      automation: 4,
+      azione: 5,
+    };
+    const merged: TimelineEvent[] = [];
+    const WINDOW_MS = 60_000;
+    for (const ev of events) {
+      const evTime = new Date(ev.date).getTime();
+      // Try to attach to last primary within window
+      let attached = false;
+      for (let i = merged.length - 1; i >= 0; i--) {
+        const cand = merged[i];
+        const candTime = new Date(cand.date).getTime();
+        if (evTime - candTime > WINDOW_MS) break;
+        // Same flow heuristic: same fonte OR same venditore OR co-occurrence within window
+        const sameFonte = !!ev.fonte && !!cand.fonte && ev.fonte === cand.fonte;
+        const sameVend = !!ev.venditore && !!cand.venditore && ev.venditore === cand.venditore;
+        if (sameFonte || sameVend || (ev.type === 'automation' || cand.type === 'automation')) {
+          // Decide who is primary: lower PRIORITY wins
+          const evPri = PRIORITY[ev.type];
+          const candPri = PRIORITY[cand.type];
+          if (evPri < candPri) {
+            // ev becomes new primary, cand gets demoted
+            const related = (ev.details?.related ?? []) as TimelineEvent[];
+            related.push(cand, ...((cand.details?.related ?? []) as TimelineEvent[]));
+            ev.details = { ...(ev.details || {}), related };
+            merged[i] = ev;
+          } else {
+            const related = (cand.details?.related ?? []) as TimelineEvent[];
+            related.push(ev);
+            cand.details = { ...(cand.details || {}), related };
+          }
+          attached = true;
+          break;
+        }
+      }
+      if (!attached) merged.push(ev);
+    }
+
     // Sort newest first (most recent at top)
-    return events.sort((a, b) =>
+    return merged.sort((a, b) =>
       new Date(b.date).getTime() - new Date(a.date).getTime()
     );
   }, [lead, history, bookedCalls, automationExecutions, assignmentHistory, actionLogs]);

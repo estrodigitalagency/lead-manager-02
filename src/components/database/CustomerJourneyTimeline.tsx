@@ -221,16 +221,24 @@ const CustomerJourneyTimeline = ({ timeline }: CustomerJourneyTimelineProps) => 
                     </div>
                   </div>
 
-                  {/* Status badge */}
-                  {event.badge && (
-                    <Badge
-                      variant={getBadgeVariant(event.badgeVariant)}
-                      className="text-[10px] flex items-center gap-1 h-5 shrink-0"
-                    >
-                      {getResultIcon(event.badge)}
-                      {translateBadge(event.badge)}
-                    </Badge>
-                  )}
+                  {/* Status badge — hide if redundant with error_message */}
+                  {event.badge && (() => {
+                    const translated = translateBadge(event.badge);
+                    const errMsg = event.details?.error_message
+                      ? translateErrorMessage(event.details.error_message)
+                      : '';
+                    const redundant = errMsg && errMsg.toLowerCase().startsWith(translated.toLowerCase());
+                    if (redundant) return null;
+                    return (
+                      <Badge
+                        variant={getBadgeVariant(event.badgeVariant)}
+                        className="text-[10px] flex items-center gap-1 h-5 shrink-0"
+                      >
+                        {getResultIcon(event.badge)}
+                        {translated}
+                      </Badge>
+                    );
+                  })()}
                 </div>
 
                 {/* Body — chips row */}
@@ -319,6 +327,29 @@ const CustomerJourneyTimeline = ({ timeline }: CustomerJourneyTimelineProps) => 
                 {event.details?.notes && (
                   <div className="mt-2 text-[11px] text-muted-foreground italic border-l-2 border-border pl-2">
                     "{event.details.notes}"
+                  </div>
+                )}
+
+                {/* Related (merged) sub-events */}
+                {Array.isArray(event.details?.related) && event.details.related.length > 0 && (
+                  <div className="mt-2.5 pt-2.5 border-t border-border/40 space-y-1.5">
+                    {(event.details.related as TimelineEvent[]).map((sub) => {
+                      const subStyle = EVENT_STYLE[sub.type] || EVENT_STYLE.azione;
+                      const subErr = sub.details?.error_message ? translateErrorMessage(sub.details.error_message) : '';
+                      const subBadge = sub.badge ? translateBadge(sub.badge) : '';
+                      return (
+                        <div key={sub.id} className="flex items-center gap-2 text-[11px] text-muted-foreground">
+                          <div className={`shrink-0 w-4 h-4 rounded-full flex items-center justify-center ${subStyle.dot}`} style={{ boxShadow: 'none' }}>
+                            <span className="scale-75">{subStyle.icon}</span>
+                          </div>
+                          <span className="font-medium text-foreground/90">{sub.title}</span>
+                          {subBadge && (
+                            <span className="px-1.5 py-0.5 rounded bg-muted/60 border border-border/50 text-[10px]">{subBadge}</span>
+                          )}
+                          {subErr && <span className="text-destructive/80 text-[10px]">· {subErr}</span>}
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
               </div>
