@@ -363,28 +363,45 @@ const CustomerJourneyTimeline = ({ timeline }: CustomerJourneyTimelineProps) => 
                   </div>
                 )}
 
-                {/* Related (merged) sub-events */}
-                {Array.isArray(event.details?.related) && event.details.related.length > 0 && (
-                  <div className="mt-2.5 pt-2.5 border-t border-border/40 space-y-1.5">
-                    {(event.details.related as TimelineEvent[]).map((sub) => {
-                      const subStyle = EVENT_STYLE[sub.type] || EVENT_STYLE.azione;
-                      const subErr = sub.details?.error_message ? translateErrorMessage(sub.details.error_message) : '';
-                      const subBadge = sub.badge ? translateBadge(sub.badge) : '';
-                      return (
-                        <div key={sub.id} className="flex items-center gap-2 text-[11px] text-muted-foreground">
-                          <div className={`shrink-0 w-4 h-4 rounded-full flex items-center justify-center ${subStyle.dot}`} style={{ boxShadow: 'none' }}>
-                            <span className="scale-75">{subStyle.icon}</span>
+                {/* Related (merged) sub-events — filter out redundant noise */}
+                {(() => {
+                  const allRelated = Array.isArray(event.details?.related)
+                    ? (event.details.related as TimelineEvent[])
+                    : [];
+                  const BENIGN_BADGES = new Set(['success', 'automation', 'manual', 'default']);
+                  const usefulRelated = allRelated.filter((sub) => {
+                    const hasError = !!sub.details?.error_message;
+                    const sameVend = !!sub.venditore && sub.venditore === event.venditore;
+                    const sameFonte = !!sub.fonte && sub.fonte === event.fonte;
+                    const benign = !sub.badge || BENIGN_BADGES.has(sub.badge);
+                    // Drop if no error AND benign badge AND same venditore/fonte (no new info)
+                    if (!hasError && benign && (sameVend || sameFonte)) return false;
+                    return true;
+                  });
+                  if (usefulRelated.length === 0) return null;
+                  return (
+                    <div className="mt-2.5 pt-2.5 border-t border-border/40 space-y-1.5">
+                      {usefulRelated.map((sub) => {
+                        const subStyle = EVENT_STYLE[sub.type] || EVENT_STYLE.azione;
+                        const subErr = sub.details?.error_message ? translateErrorMessage(sub.details.error_message) : '';
+                        const subBadge = sub.badge ? translateBadge(sub.badge) : '';
+                        const badgeRedundantWithErr = subErr && subBadge && subErr.toLowerCase().startsWith(subBadge.toLowerCase());
+                        return (
+                          <div key={sub.id} className="flex items-center gap-2 text-[11px] text-muted-foreground">
+                            <div className={`shrink-0 w-4 h-4 rounded-full flex items-center justify-center ${subStyle.dot}`} style={{ boxShadow: 'none' }}>
+                              <span className="scale-75">{subStyle.icon}</span>
+                            </div>
+                            <span className="font-medium text-foreground/90">{sub.title}</span>
+                            {subBadge && !badgeRedundantWithErr && (
+                              <span className="px-1.5 py-0.5 rounded bg-muted/60 border border-border/50 text-[10px]">{subBadge}</span>
+                            )}
+                            {subErr && <span className="text-destructive/80 text-[10px]">· {subErr}</span>}
                           </div>
-                          <span className="font-medium text-foreground/90">{sub.title}</span>
-                          {subBadge && (
-                            <span className="px-1.5 py-0.5 rounded bg-muted/60 border border-border/50 text-[10px]">{subBadge}</span>
-                          )}
-                          {subErr && <span className="text-destructive/80 text-[10px]">· {subErr}</span>}
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
+                        );
+                      })}
+                    </div>
+                  );
+                })()}
               </div>
             </li>
           );
