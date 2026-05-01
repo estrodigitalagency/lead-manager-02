@@ -204,12 +204,7 @@ export const useLeadHistory = (lead: Lead | null) => {
     
     sortedHistory.forEach((h, index) => {
       const ingressoNumber = index + 1;
-      const ingressoLabel = ingressoNumber === 1 ? 'Primo ingresso' : 
-                            ingressoNumber === 2 ? 'Secondo ingresso' :
-                            ingressoNumber === 3 ? 'Terzo ingresso' :
-                            ingressoNumber === 4 ? 'Quarto ingresso' :
-                            ingressoNumber === 5 ? 'Quinto ingresso' :
-                            `${ingressoNumber}° ingresso`;
+      const ingressoLabel = `${ingressoNumber}° ingresso`;
       
       events.push({
         id: `ingresso-${h.id}`,
