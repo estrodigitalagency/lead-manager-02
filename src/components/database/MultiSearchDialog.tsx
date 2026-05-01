@@ -29,6 +29,7 @@ interface SearchResult {
   email: string;
   telefono: string;
   ultima_fonte?: string;
+  created_at?: string;
 }
 
 const MultiSearchDialog = ({
@@ -70,11 +71,12 @@ const MultiSearchDialog = ({
       const emailConditions = terms.map(term => `email.eq.${term}`).join(',');
       const phoneConditions = terms.map(term => `telefono.eq.${term}`).join(',');
       
-      // Cerca direttamente nel database tutti i lead che corrispondono ai termini
+      // Cerca tutti i match ordinati dal più recente, poi tieni solo il più recente per ogni termine
       const { data: matchedItems, error } = await supabase
         .from('lead_generation')
-        .select('id, email, telefono, nome, cognome, ultima_fonte')
-        .or(`${emailConditions},${phoneConditions}`);
+        .select('id, email, telefono, nome, cognome, ultima_fonte, created_at')
+        .or(`${emailConditions},${phoneConditions}`)
+        .order('created_at', { ascending: false });
 
       if (error) {
         console.error('Database search error:', error);
@@ -87,12 +89,34 @@ const MultiSearchDialog = ({
         toast.error(`Nessun lead trovato per i termini di ricerca specificati`);
         setSearchResults([]);
       } else {
-        // Rimuovi duplicati basati sull'ID
-        const uniqueResults = matchedItems.filter((item, index, self) => 
-          index === self.findIndex((t) => t.id === item.id)
-        );
-        
-        console.log('Unique results:', uniqueResults);
+        // Per ogni termine, tieni solo il lead più recente (primo match dato l'ORDER BY DESC)
+        const termsSet = new Set(terms);
+        const claimedTerms = new Set<string>();
+        const seenIds = new Set<string>();
+        const uniqueResults: SearchResult[] = [];
+
+        for (const item of matchedItems as SearchResult[]) {
+          if (seenIds.has(item.id)) continue;
+
+          const itemEmail = (item.email || '').trim().toLowerCase();
+          const itemTel = (item.telefono || '').trim().toLowerCase();
+          const matchedTerms: string[] = [];
+          if (itemEmail && termsSet.has(itemEmail)) matchedTerms.push(itemEmail);
+          if (itemTel && termsSet.has(itemTel)) matchedTerms.push(itemTel);
+
+          // Salta se tutti i termini matchati sono già stati coperti da un lead più recente
+          if (matchedTerms.length === 0) continue;
+          const novelTerms = matchedTerms.filter(t => !claimedTerms.has(t));
+          if (novelTerms.length === 0) continue;
+
+          novelTerms.forEach(t => claimedTerms.add(t));
+          seenIds.add(item.id);
+          uniqueResults.push(item);
+
+          if (claimedTerms.size === termsSet.size) break;
+        }
+
+        console.log('Unique results (most recent per term):', uniqueResults);
         setSearchResults(uniqueResults);
         setShowResults(true);
       }

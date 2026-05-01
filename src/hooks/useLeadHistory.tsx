@@ -313,9 +313,9 @@ export const useLeadHistory = (lead: Lead | null) => {
       });
     }
 
-    // Sort chronologically (oldest first)
-    return events.sort((a, b) => 
-      new Date(a.date).getTime() - new Date(b.date).getTime()
+    // Sort newest first (most recent at top)
+    return events.sort((a, b) =>
+      new Date(b.date).getTime() - new Date(a.date).getTime()
     );
   }, [lead, history, bookedCalls, automationExecutions, assignmentHistory, actionLogs]);
 
