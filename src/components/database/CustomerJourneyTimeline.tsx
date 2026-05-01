@@ -75,6 +75,46 @@ const EVENT_STYLE: Record<EventType, {
   },
 };
 
+const BADGE_LABELS: Record<string, string> = {
+  success: 'Successo',
+  error: 'Errore',
+  no_seller_found: 'Nessun venditore',
+  no_previous_assignment: 'Nessuna assegnazione precedente',
+  beyond_lock_period: 'Oltre lock period',
+  within_lock_period: 'Entro lock period',
+  skipped: 'Saltato',
+  pending: 'In attesa',
+  warning: 'Attenzione',
+  automation: 'Automatica',
+  manual: 'Manuale',
+  default: 'Default',
+};
+
+const translateBadge = (b: string) => BADGE_LABELS[b] ?? b;
+
+const translateErrorMessage = (msg: string): string => {
+  if (!msg) return msg;
+  // No previous assignment found
+  if (/no previous assignment found/i.test(msg)) return 'Nessuna assegnazione precedente trovata';
+  // No seller / venditore found
+  if (/no (seller|venditore) found/i.test(msg)) return 'Nessun venditore disponibile';
+  // "X days since last assignment exceeds lock period of Y days"
+  const lockMatch = msg.match(/(\d+)\s+days?\s+since\s+last\s+assignment\s+exceeds\s+lock\s+period\s+of\s+(\d+)\s+days?/i);
+  if (lockMatch) {
+    return `Trascorsi ${lockMatch[1]} giorni dall'ultima assegnazione, oltre il lock period di ${lockMatch[2]} giorni`;
+  }
+  // "X days since last assignment within lock period of Y days"
+  const withinMatch = msg.match(/(\d+)\s+days?\s+since\s+last\s+assignment\s+within\s+lock\s+period\s+of\s+(\d+)\s+days?/i);
+  if (withinMatch) {
+    return `Trascorsi ${withinMatch[1]} giorni dall'ultima assegnazione, entro lock period di ${withinMatch[2]} giorni`;
+  }
+  if (/lock period/i.test(msg)) return msg.replace(/lock period/gi, 'lock period');
+  if (/already assigned/i.test(msg)) return 'Lead già assegnato';
+  if (/lead not found/i.test(msg)) return 'Lead non trovato';
+  if (/insufficient leads/i.test(msg)) return 'Lead insufficienti';
+  return msg;
+};
+
 const CustomerJourneyTimeline = ({ timeline }: CustomerJourneyTimelineProps) => {
   const formatDate = (dateString: string) =>
     format(new Date(dateString), "dd MMM yyyy 'alle' HH:mm", { locale: it });
@@ -188,11 +228,7 @@ const CustomerJourneyTimeline = ({ timeline }: CustomerJourneyTimelineProps) => 
                       className="text-[10px] flex items-center gap-1 h-5 shrink-0"
                     >
                       {getResultIcon(event.badge)}
-                      {event.badge === 'success' ? 'Successo' :
-                       event.badge === 'error' ? 'Errore' :
-                       event.badge === 'no_seller_found' ? 'Nessun venditore' :
-                       event.badge === 'beyond_lock_period' ? 'Lock period' :
-                       event.badge}
+                      {translateBadge(event.badge)}
                     </Badge>
                   )}
                 </div>
@@ -275,7 +311,7 @@ const CustomerJourneyTimeline = ({ timeline }: CustomerJourneyTimelineProps) => 
                 {event.details?.error_message && (
                   <div className="mt-2 text-[11px] text-destructive px-2.5 py-1.5 rounded-md bg-destructive/10 border border-destructive/20 flex items-start gap-1.5">
                     <XCircle className="h-3 w-3 mt-0.5 shrink-0" />
-                    <span>{event.details.error_message}</span>
+                    <span>{translateErrorMessage(event.details.error_message)}</span>
                   </div>
                 )}
 
