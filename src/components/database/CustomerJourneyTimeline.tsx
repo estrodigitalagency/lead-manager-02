@@ -82,6 +82,14 @@ const BADGE_LABELS: Record<string, string> = {
   no_previous_assignment: 'Nessuna assegnazione precedente',
   beyond_lock_period: 'Oltre lock period',
   within_lock_period: 'Entro lock period',
+  seller_excluded: 'Venditore escluso',
+  seller_inactive: 'Venditore inattivo',
+  seller_deleted: 'Venditore eliminato',
+  reassigned: 'Riassegnato',
+  reassigned_original: 'Riassegnato originale',
+  reassigned_round_robin: 'Round Robin',
+  round_robin: 'Round Robin',
+  duplicate: 'Duplicato',
   skipped: 'Saltato',
   pending: 'In attesa',
   warning: 'Attenzione',
@@ -94,10 +102,32 @@ const translateBadge = (b: string) => BADGE_LABELS[b] ?? b;
 
 const translateErrorMessage = (msg: string): string => {
   if (!msg) return msg;
-  // No previous assignment found
+
+  // "Previous seller X is in excluded list"
+  const excludedMatch = msg.match(/previous seller\s+(.+?)\s+is in excluded list/i);
+  if (excludedMatch) return `Venditore precedente "${excludedMatch[1]}" presente nella lista esclusi`;
+
+  // "Previous seller X is inactive/deleted/disabled"
+  const inactiveMatch = msg.match(/previous seller\s+(.+?)\s+is\s+(inactive|deleted|disabled|not active)/i);
+  if (inactiveMatch) {
+    const stateMap: Record<string, string> = {
+      inactive: 'inattivo', deleted: 'eliminato', disabled: 'disattivato', 'not active': 'non attivo'
+    };
+    return `Venditore precedente "${inactiveMatch[1]}" ${stateMap[inactiveMatch[2].toLowerCase()] || inactiveMatch[2]}`;
+  }
+
+  // "Previous seller X not found"
+  const notFoundMatch = msg.match(/previous seller\s+(.+?)\s+not found/i);
+  if (notFoundMatch) return `Venditore precedente "${notFoundMatch[1]}" non trovato`;
+
+  // No previous assignment
   if (/no previous assignment found/i.test(msg)) return 'Nessuna assegnazione precedente trovata';
-  // No seller / venditore found
+
+  // No seller / venditore
   if (/no (seller|venditore) found/i.test(msg)) return 'Nessun venditore disponibile';
+  if (/no active sellers?/i.test(msg)) return 'Nessun venditore attivo disponibile';
+  if (/no eligible sellers?/i.test(msg)) return 'Nessun venditore idoneo disponibile';
+
   // "X days since last assignment exceeds lock period of Y days"
   const lockMatch = msg.match(/(\d+)\s+days?\s+since\s+last\s+assignment\s+exceeds\s+lock\s+period\s+of\s+(\d+)\s+days?/i);
   if (lockMatch) {
@@ -108,10 +138,13 @@ const translateErrorMessage = (msg: string): string => {
   if (withinMatch) {
     return `Trascorsi ${withinMatch[1]} giorni dall'ultima assegnazione, entro lock period di ${withinMatch[2]} giorni`;
   }
-  if (/lock period/i.test(msg)) return msg.replace(/lock period/gi, 'lock period');
+
+  // Generic single-word swaps
   if (/already assigned/i.test(msg)) return 'Lead già assegnato';
   if (/lead not found/i.test(msg)) return 'Lead non trovato';
-  if (/insufficient leads/i.test(msg)) return 'Lead insufficienti';
+  if (/insufficient leads?/i.test(msg)) return 'Lead insufficienti';
+  if (/excluded list/i.test(msg)) return msg.replace(/excluded list/gi, 'lista esclusi');
+  if (/lock period/i.test(msg)) return msg.replace(/lock period/gi, 'lock period');
   return msg;
 };
 
