@@ -294,6 +294,14 @@ const CustomerJourneyTimeline = ({ timeline }: CustomerJourneyTimelineProps) => 
                     </div>
                   )}
 
+                  {event.details?.historicalVenditore && event.details.historicalVenditore !== event.venditore && (
+                    <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-500/10 border border-amber-500/30 text-[11px]">
+                      <AlertCircle className="h-2.5 w-2.5 text-amber-500" />
+                      <span className="text-muted-foreground">Originariamente</span>
+                      <span className="font-semibold text-foreground line-through opacity-70">{event.details.historicalVenditore}</span>
+                    </div>
+                  )}
+
                   {event.details?.campagna && (
                     <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-muted/60 border border-border/60 text-[11px]">
                       <Tag className="h-2.5 w-2.5 text-muted-foreground" />
