@@ -216,15 +216,43 @@ export const useLeadHistory = (lead: Lead | null) => {
       const ingressoNumber = index + 1;
       const ingressoLabel = `${ingressoNumber}° ingresso`;
 
-      // Find all sub-events tied to this lead row by lead_id / lead_ids
-      const subAutomations = automationExecutions.filter(ae => ae.lead_id === h.id);
-      const subAssignments = assignmentHistory.filter(ah => Array.isArray(ah.lead_ids) && ah.lead_ids.includes(h.id));
-      const subActions = actionLogs.filter(al => Array.isArray(al.lead_ids) && al.lead_ids.includes(h.id));
+      // Sub-events tied to this lead row
+      const subAutomations = automationExecutions.filter(ae => ae.lead_id === h.id)
+        .sort((a, b) => new Date(a.executed_at).getTime() - new Date(b.executed_at).getTime());
+      const subAssignments = assignmentHistory.filter(ah => Array.isArray(ah.lead_ids) && ah.lead_ids.includes(h.id))
+        .sort((a, b) => new Date(a.assigned_at).getTime() - new Date(b.assigned_at).getTime());
+      const subActions = actionLogs.filter(al => Array.isArray(al.lead_ids) && al.lead_ids.includes(h.id))
+        .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
 
-      // Build sub-event list (chronological asc)
-      const subEvents: TimelineEvent[] = [];
-      for (const ae of subAutomations) {
-        subEvents.push({
+      // FIRST assignment (initial) → inline metadata on ingresso
+      const firstAssignment = subAssignments[0];
+      // FIRST automation execution → inline if it succeeded the first assignment, or if any automation excluded/no_previous etc
+      const ingressoIssueAutomations = subAutomations.filter(a => a.result !== 'success');
+
+      let assignmentMethod: string | undefined;
+      let assignmentBulkSize: number | undefined;
+      let assignmentCampagna: string | undefined;
+      let automationName: string | undefined;
+      let automationResult: string | undefined;
+      let automationError: string | null | undefined;
+
+      if (firstAssignment) {
+        assignmentMethod = firstAssignment.assignment_type;
+        assignmentBulkSize = firstAssignment.leads_count;
+        assignmentCampagna = firstAssignment.campagna || undefined;
+      }
+      // Pick first automation that's tied to ingresso flow (success or first failure)
+      const firstAuto = subAutomations[0];
+      if (firstAuto) {
+        automationName = firstAuto.automation_name;
+        automationResult = firstAuto.result;
+        automationError = firstAuto.error_message;
+        if (!assignmentMethod && firstAuto.result === 'success') assignmentMethod = 'automation';
+      }
+      // Sub-event list shown UNDER ingresso = only automation issues (excluded/no_previous/etc)
+      const inlineSubs: TimelineEvent[] = [];
+      for (const ae of ingressoIssueAutomations) {
+        inlineSubs.push({
           id: `auto-${ae.id}`,
           date: ae.executed_at,
           type: 'automation',
@@ -234,65 +262,6 @@ export const useLeadHistory = (lead: Lead | null) => {
           badgeVariant: ae.result === 'success' ? 'success' : ae.result === 'error' ? 'error' : 'warning',
           details: { action_taken: ae.action_taken, error_message: ae.error_message }
         });
-      }
-      for (const ah of subAssignments) {
-        subEvents.push({
-          id: `assign-${ah.id}`,
-          date: ah.assigned_at,
-          type: 'assegnazione_manuale',
-          title: ah.assignment_type === 'automation' ? 'Assegnazione automatica' : 'Assegnazione manuale',
-          venditore: ah.venditore,
-          badge: ah.assignment_type,
-          badgeVariant: ah.assignment_type === 'automation' ? 'info' : 'default',
-          details: { campagna: ah.campagna, leads_count: ah.leads_count, assignment_type: ah.assignment_type }
-        });
-      }
-      for (const al of subActions) {
-        subEvents.push({
-          id: `action-${al.id}`,
-          date: al.created_at,
-          type: 'azione',
-          title: getActionTitle(al.action_type),
-          venditore: al.new_venditore || undefined,
-          badge: al.action_type,
-          details: { previous_venditore: al.previous_venditore, notes: al.notes, performed_by: al.performed_by }
-        });
-      }
-      subEvents.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-
-      // Determine assignmentMethod from sub-events
-      let assignmentMethod: string | undefined;
-      let assignmentBulkSize: number | undefined;
-      let assignmentCampagna: string | undefined;
-      let automationName: string | undefined;
-      let automationResult: string | undefined;
-      let automationError: string | null | undefined;
-      let lastAction: string | undefined;
-      let previousVenditore: string | undefined;
-      let reassignmentReason: string | undefined;
-      let reassignmentBy: string | undefined;
-      // pick latest assignment row to determine method
-      const latestAssign = [...subAssignments].sort((a, b) => new Date(b.assigned_at).getTime() - new Date(a.assigned_at).getTime())[0];
-      if (latestAssign) {
-        assignmentMethod = latestAssign.assignment_type;
-        assignmentBulkSize = latestAssign.leads_count;
-        assignmentCampagna = latestAssign.campagna || undefined;
-      }
-      // automation info — pick latest
-      const latestAuto = [...subAutomations].sort((a, b) => new Date(b.executed_at).getTime() - new Date(a.executed_at).getTime())[0];
-      if (latestAuto) {
-        automationName = latestAuto.automation_name;
-        automationResult = latestAuto.result;
-        automationError = latestAuto.error_message;
-        if (!assignmentMethod && latestAuto.result === 'success') assignmentMethod = 'automation';
-      }
-      // last reassignment action
-      const latestAction = [...subActions].filter(x => x.action_type === 'reassigned').sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0];
-      if (latestAction) {
-        lastAction = getActionTitle(latestAction.action_type);
-        previousVenditore = latestAction.previous_venditore || undefined;
-        reassignmentReason = latestAction.notes || undefined;
-        reassignmentBy = latestAction.performed_by || undefined;
       }
 
       events.push({
@@ -305,19 +274,52 @@ export const useLeadHistory = (lead: Lead | null) => {
         details: {
           data_assegnazione: h.data_assegnazione,
           isCurrentLead: h.id === lead.id,
-          related: subEvents,
+          related: inlineSubs,
           assignmentMethod,
           assignmentBulkSize,
           assignmentCampagna,
           automationName,
           automationResult,
-          automationError,
-          lastAction,
-          previousVenditore,
-          reassignmentReason,
-          reassignmentBy
+          automationError
         }
       });
+
+      // Subsequent assignment_history rows (after the first) → separate timeline events as REASSIGNMENT
+      for (const ah of subAssignments.slice(1)) {
+        events.push({
+          id: `assign-${ah.id}`,
+          date: ah.assigned_at,
+          type: 'assegnazione_manuale',
+          title: 'Riassegnazione',
+          venditore: ah.venditore,
+          badge: ah.assignment_type,
+          badgeVariant: ah.assignment_type === 'automation' ? 'info' : 'default',
+          details: {
+            campagna: ah.campagna,
+            leads_count: ah.leads_count,
+            assignment_type: ah.assignment_type,
+            ingressoNumber
+          }
+        });
+      }
+
+      // Action logs (reassignments, made_assignable etc.) → separate events in timeline
+      for (const al of subActions) {
+        events.push({
+          id: `action-${al.id}`,
+          date: al.created_at,
+          type: 'azione',
+          title: getActionTitle(al.action_type),
+          venditore: al.new_venditore || undefined,
+          badge: al.action_type,
+          details: {
+            previous_venditore: al.previous_venditore,
+            notes: al.notes,
+            performed_by: al.performed_by,
+            ingressoNumber
+          }
+        });
+      }
     });
 
     // 2. Booked calls (standalone - their own card)
