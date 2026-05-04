@@ -300,6 +300,28 @@ const CustomerJourneyTimeline = ({ timeline }: CustomerJourneyTimelineProps) => 
                           Corrente
                         </span>
                       )}
+                      {/* Assignment method badge inline with title for ingresso events */}
+                      {event.type === 'ingresso' && event.details?.assignmentMethod && (() => {
+                        const m = event.details.assignmentMethod as string;
+                        const isAuto = m === 'automation';
+                        return (
+                          <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-md border uppercase tracking-wider flex items-center gap-1 ${
+                            isAuto
+                              ? 'bg-violet-500/15 text-violet-600 dark:text-violet-300 border-violet-500/30'
+                              : 'bg-amber-500/15 text-amber-600 dark:text-amber-300 border-amber-500/30'
+                          }`}>
+                            {isAuto ? <Bot className="h-2.5 w-2.5" /> : <UserPlus className="h-2.5 w-2.5" />}
+                            {isAuto ? 'Auto' : 'Manuale'}
+                          </span>
+                        );
+                      })()}
+                      {/* Reassigned indicator if last action was a reassignment */}
+                      {event.type === 'ingresso' && event.details?.lastAction === 'Riassegnato' && (
+                        <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-md bg-orange-500/15 text-orange-600 dark:text-orange-300 border border-orange-500/30 uppercase tracking-wider flex items-center gap-1">
+                          <RotateCcw className="h-2.5 w-2.5" />
+                          Riassegnato
+                        </span>
+                      )}
                     </div>
                     <div className="flex items-center gap-1.5 mt-0.5">
                       <span className="text-[11px] text-muted-foreground tabular-nums">
@@ -349,6 +371,11 @@ const CustomerJourneyTimeline = ({ timeline }: CustomerJourneyTimelineProps) => 
                          event.type === 'vendita' ? 'Venduto da' : 'A'}
                       </span>
                       <span className="font-semibold text-foreground">{event.venditore}</span>
+                      {event.type === 'ingresso' && typeof event.details?.assignmentBulkSize === 'number' && event.details.assignmentBulkSize > 1 && (
+                        <span className="ml-1 px-1 py-0 rounded text-[9px] bg-violet-500/15 text-violet-600 dark:text-violet-300 border border-violet-500/30 font-medium">
+                          bulk {event.details.assignmentBulkSize}
+                        </span>
+                      )}
                     </div>
                   )}
 

@@ -26,3 +26,4 @@ dist-ssr
 # Supabase CLI temp
 supabase/.temp/
 supabase/.branches/
+.claude/scheduled_tasks.lock

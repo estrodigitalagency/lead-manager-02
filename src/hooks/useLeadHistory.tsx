@@ -265,9 +265,10 @@ export const useLeadHistory = (lead: Lead | null) => {
         venditore: ah.venditore,
         badge: ah.assignment_type,
         badgeVariant: ah.assignment_type === 'automation' ? 'info' : 'default',
-        details: { 
-          campagna: ah.campagna, 
-          leads_count: ah.leads_count 
+        details: {
+          campagna: ah.campagna,
+          leads_count: ah.leads_count,
+          assignment_type: ah.assignment_type
         }
       });
     });
@@ -338,6 +339,30 @@ export const useLeadHistory = (lead: Lead | null) => {
         // Otherwise: co-temporal events are part of same flow
         const evPri = PRIORITY[ev.type];
         const candPri = PRIORITY[cand.type];
+        // Helper: extract assignment metadata from a sub-event into primary
+        const liftAssignmentMeta = (primary: TimelineEvent, sub: TimelineEvent) => {
+          const meta: Record<string, any> = {};
+          if (sub.type === 'assegnazione_manuale') {
+            meta.assignmentMethod = sub.details?.assignment_type || sub.badge || 'manual';
+            if (typeof sub.details?.leads_count === 'number') meta.assignmentBulkSize = sub.details.leads_count;
+            if (sub.details?.campagna) meta.assignmentCampagna = sub.details.campagna;
+          }
+          if (sub.type === 'automation') {
+            meta.automationName = sub.title;
+            meta.automationResult = sub.badge;
+            meta.automationError = sub.details?.error_message || null;
+            // If automation succeeded the assignment, mark method
+            if (sub.badge === 'success' && !primary.details?.assignmentMethod) {
+              meta.assignmentMethod = 'automation';
+            }
+          }
+          if (sub.type === 'azione') {
+            meta.lastAction = sub.title;
+            if (sub.details?.previous_venditore) meta.previousVenditore = sub.details.previous_venditore;
+          }
+          return meta;
+        };
+
         if (evPri < candPri) {
           const related = (ev.details?.related ?? []) as TimelineEvent[];
           related.push(cand, ...((cand.details?.related ?? []) as TimelineEvent[]));
@@ -345,7 +370,13 @@ export const useLeadHistory = (lead: Lead | null) => {
           if (cand.venditore && ev.venditore && cand.venditore !== ev.venditore) {
             ev.details = { ...(ev.details || {}), historicalVenditore: cand.venditore };
           }
-          ev.details = { ...(ev.details || {}), related };
+          // Lift assignment metadata from cand + its previous related into ev
+          const liftedFromCand = liftAssignmentMeta(ev, cand);
+          let liftedFromRelated: Record<string, any> = {};
+          for (const r of (cand.details?.related ?? []) as TimelineEvent[]) {
+            liftedFromRelated = { ...liftedFromRelated, ...liftAssignmentMeta(ev, r) };
+          }
+          ev.details = { ...(ev.details || {}), ...liftedFromRelated, ...liftedFromCand, related };
           merged[i] = ev;
         } else {
           const related = (cand.details?.related ?? []) as TimelineEvent[];
@@ -353,7 +384,8 @@ export const useLeadHistory = (lead: Lead | null) => {
           if (ev.venditore && cand.venditore && ev.venditore !== cand.venditore) {
             cand.details = { ...(cand.details || {}), historicalVenditore: ev.venditore };
           }
-          cand.details = { ...(cand.details || {}), related };
+          const lifted = liftAssignmentMeta(cand, ev);
+          cand.details = { ...(cand.details || {}), ...lifted, related };
         }
         attached = true;
         break;
