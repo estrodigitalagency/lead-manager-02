@@ -898,11 +898,11 @@ export async function checkLeadsForPreviousAssignment(
         
         const { data: emailMatches } = await supabase
           .from('lead_generation')
-          .select('email, venditore')
+          .select('email, venditore, created_at')
           .eq('market', market)
           .not('venditore', 'is', null)
           .or(emailFilters)
-          .order('data_assegnazione', { ascending: false });
+          .order('created_at', { ascending: false });
 
         if (emailMatches) {
           // Build a map of email -> most recent venditore
@@ -939,11 +939,11 @@ export async function checkLeadsForPreviousAssignment(
         
         const { data: phoneMatches } = await supabase
           .from('lead_generation')
-          .select('telefono, venditore')
+          .select('telefono, venditore, created_at')
           .eq('market', market)
           .not('venditore', 'is', null)
           .or(phoneFilters)
-          .order('data_assegnazione', { ascending: false });
+          .order('created_at', { ascending: false });
 
         if (phoneMatches) {
           const phoneVenditoreMap: Record<string, string> = {};
