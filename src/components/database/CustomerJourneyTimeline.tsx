@@ -189,12 +189,70 @@ const CustomerJourneyTimeline = ({ timeline }: CustomerJourneyTimelineProps) => 
     );
   }
 
+  // Build summary stats
+  const summary = (() => {
+    const ingressi = timeline.filter(e => e.type === 'ingresso').length;
+    const assegnazioni = timeline.filter(e => e.type === 'assegnazione_manuale').length;
+    const calls = timeline.filter(e => e.type === 'call_prenotata').length;
+    const issues = timeline.filter(e =>
+      e.details?.error_message ||
+      (Array.isArray(e.details?.related) && (e.details!.related as TimelineEvent[]).some(s => s.details?.error_message))
+    ).length;
+    const currentEvent = timeline.find(e => e.details?.isCurrentLead);
+    const currentVend = currentEvent?.venditore;
+    const currentFonte = currentEvent?.fonte;
+    return { ingressi, assegnazioni, calls, issues, currentVend, currentFonte };
+  })();
+
   return (
     <div className="relative pl-1">
+      {/* Summary card */}
+      <div className="mb-4 p-3 rounded-xl bg-gradient-to-br from-muted/40 to-muted/10 border border-border/50">
+        <div className="flex flex-wrap gap-x-4 gap-y-1.5 text-[12px]">
+          <div className="flex items-center gap-1.5">
+            <Calendar className="h-3.5 w-3.5 text-emerald-500" />
+            <span className="text-muted-foreground">Ingressi:</span>
+            <span className="font-bold text-foreground">{summary.ingressi}</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <UserPlus className="h-3.5 w-3.5 text-amber-500" />
+            <span className="text-muted-foreground">Assegnazioni:</span>
+            <span className="font-bold text-foreground">{summary.assegnazioni}</span>
+          </div>
+          {summary.calls > 0 && (
+            <div className="flex items-center gap-1.5">
+              <Phone className="h-3.5 w-3.5 text-sky-500" />
+              <span className="text-muted-foreground">Call:</span>
+              <span className="font-bold text-foreground">{summary.calls}</span>
+            </div>
+          )}
+          {summary.issues > 0 && (
+            <div className="flex items-center gap-1.5">
+              <AlertCircle className="h-3.5 w-3.5 text-amber-500" />
+              <span className="text-muted-foreground">Anomalie:</span>
+              <span className="font-bold text-amber-600 dark:text-amber-400">{summary.issues}</span>
+            </div>
+          )}
+          {summary.currentVend && (
+            <div className="ml-auto flex items-center gap-1.5">
+              <span className="text-muted-foreground">Stato attuale:</span>
+              <span className="px-1.5 py-0.5 rounded bg-primary/15 text-primary border border-primary/30 font-semibold text-[11px]">
+                {summary.currentVend}
+              </span>
+              {summary.currentFonte && (
+                <span className="text-[11px] text-muted-foreground italic">via {summary.currentFonte}</span>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+
       {/* Vertical rail with fade-out top/bottom */}
       <div
-        className="absolute left-[14px] top-2 bottom-2 w-px"
+        className="absolute left-[14px] w-px"
         style={{
+          top: 'var(--rail-top, 90px)',
+          bottom: '8px',
           background: 'linear-gradient(180deg, transparent 0%, hsl(var(--border)) 8%, hsl(var(--border)) 92%, transparent 100%)'
         }}
       />
@@ -310,6 +368,13 @@ const CustomerJourneyTimeline = ({ timeline }: CustomerJourneyTimelineProps) => 
                     </div>
                   )}
 
+                  {event.type === 'assegnazione_manuale' && typeof event.details?.leads_count === 'number' && event.details.leads_count > 1 && (
+                    <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-violet-500/10 border border-violet-500/30 text-[11px] text-violet-600 dark:text-violet-400">
+                      <Users className="h-2.5 w-2.5" />
+                      <span>Bulk di {event.details.leads_count} lead</span>
+                    </div>
+                  )}
+
                   {event.type === 'call_prenotata' && event.details?.scheduled_at && (
                     <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-sky-500/10 border border-sky-500/20 text-[11px]">
                       <Clock className="h-2.5 w-2.5 text-sky-500" />
@@ -388,22 +453,38 @@ const CustomerJourneyTimeline = ({ timeline }: CustomerJourneyTimelineProps) => 
                   });
                   if (usefulRelated.length === 0) return null;
                   return (
-                    <div className="mt-2.5 pt-2.5 border-t border-border/40 space-y-1.5">
+                    <div className="mt-2.5 pt-2.5 border-t border-border/40 space-y-2">
                       {usefulRelated.map((sub) => {
                         const subStyle = EVENT_STYLE[sub.type] || EVENT_STYLE.azione;
                         const subErr = sub.details?.error_message ? translateErrorMessage(sub.details.error_message) : '';
                         const subBadge = sub.badge ? translateBadge(sub.badge) : '';
                         const badgeRedundantWithErr = subErr && subBadge && subErr.toLowerCase().startsWith(subBadge.toLowerCase());
+                        const hasIssue = !!subErr;
                         return (
-                          <div key={sub.id} className="flex items-center gap-2 text-[11px] text-muted-foreground">
-                            <div className={`shrink-0 w-4 h-4 rounded-full flex items-center justify-center ${subStyle.dot}`} style={{ boxShadow: 'none' }}>
+                          <div
+                            key={sub.id}
+                            className={`flex items-start gap-2 text-[11px] rounded-md px-2 py-1.5 ${
+                              hasIssue
+                                ? 'bg-amber-500/10 border border-amber-500/25'
+                                : 'text-muted-foreground'
+                            }`}
+                          >
+                            <div className={`shrink-0 w-4 h-4 rounded-full flex items-center justify-center mt-0.5 ${subStyle.dot}`} style={{ boxShadow: 'none' }}>
                               <span className="scale-75">{subStyle.icon}</span>
                             </div>
-                            <span className="font-medium text-foreground/90">{sub.title}</span>
-                            {subBadge && !badgeRedundantWithErr && (
-                              <span className="px-1.5 py-0.5 rounded bg-muted/60 border border-border/50 text-[10px]">{subBadge}</span>
-                            )}
-                            {subErr && <span className="text-destructive/80 text-[10px]">· {subErr}</span>}
+                            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 min-w-0">
+                              <span className="font-semibold text-foreground/95">{sub.title}</span>
+                              {subBadge && !badgeRedundantWithErr && (
+                                <span className={`px-1.5 py-0.5 rounded text-[10px] ${
+                                  hasIssue
+                                    ? 'bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/30'
+                                    : 'bg-muted/60 border border-border/50'
+                                }`}>{subBadge}</span>
+                              )}
+                              {subErr && (
+                                <span className="text-amber-700 dark:text-amber-300 text-[11px]">{subErr}</span>
+                              )}
+                            </div>
                           </div>
                         );
                       })}
