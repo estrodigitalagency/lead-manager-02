@@ -379,7 +379,15 @@ const CustomerJourneyTimeline = ({ timeline }: CustomerJourneyTimelineProps) => 
                     </div>
                   )}
 
-                  {event.details?.historicalVenditore && event.details.historicalVenditore !== event.venditore && (
+                  {event.details?.previousVenditore && event.details.previousVenditore !== event.venditore && (
+                    <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-orange-500/10 border border-orange-500/30 text-[11px]">
+                      <RotateCcw className="h-2.5 w-2.5 text-orange-500" />
+                      <span className="text-muted-foreground">da</span>
+                      <span className="font-semibold text-foreground line-through opacity-70">{event.details.previousVenditore}</span>
+                    </div>
+                  )}
+
+                  {event.details?.historicalVenditore && event.details.historicalVenditore !== event.venditore && !event.details?.previousVenditore && (
                     <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-500/10 border border-amber-500/30 text-[11px]">
                       <AlertCircle className="h-2.5 w-2.5 text-amber-500" />
                       <span className="text-muted-foreground">Originariamente</span>
@@ -417,6 +425,24 @@ const CustomerJourneyTimeline = ({ timeline }: CustomerJourneyTimelineProps) => 
                     <span className="text-muted-foreground line-through">{event.details.previous_venditore}</span>
                     <span className="text-muted-foreground/60">→</span>
                     <span className="font-semibold text-foreground">{event.venditore || '—'}</span>
+                  </div>
+                )}
+
+                {/* Motivo riassegnazione + chi l'ha eseguita (per ingressi con sub-event reassignment) */}
+                {(event.details?.reassignmentReason || event.details?.reassignmentBy) && (
+                  <div className="mt-2 flex flex-col gap-1 text-[11px] px-2.5 py-1.5 rounded-md bg-orange-500/[0.06] border border-orange-500/20">
+                    {event.details?.reassignmentReason && (
+                      <div className="flex items-start gap-1.5">
+                        <span className="text-muted-foreground shrink-0">Motivo:</span>
+                        <span className="text-foreground italic">"{event.details.reassignmentReason}"</span>
+                      </div>
+                    )}
+                    {event.details?.reassignmentBy && (
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-muted-foreground">Eseguita da:</span>
+                        <span className="font-semibold text-foreground">{event.details.reassignmentBy}</span>
+                      </div>
+                    )}
                   </div>
                 )}
 

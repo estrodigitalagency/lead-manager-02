@@ -359,6 +359,8 @@ export const useLeadHistory = (lead: Lead | null) => {
           if (sub.type === 'azione') {
             meta.lastAction = sub.title;
             if (sub.details?.previous_venditore) meta.previousVenditore = sub.details.previous_venditore;
+            if (sub.details?.notes) meta.reassignmentReason = sub.details.notes;
+            if (sub.details?.performed_by) meta.reassignmentBy = sub.details.performed_by;
           }
           return meta;
         };
