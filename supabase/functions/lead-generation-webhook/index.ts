@@ -237,8 +237,13 @@ async function checkAndApplyAutomations(lead: any, supabase: any) {
           sheetsTabName = automation.sheets_tab_name || automation.venditori?.sheets_tab_name;
           
         } else if (automation.action_type === 'assign_to_previous_seller') {
-          // Cerca sempre tra TUTTI i lead precedenti (qualsiasi fonte)
-          const previousSellerResult = await findPreviousSeller(lead, supabase);
+          // Cerca tra TUTTI i lead precedenti (qualsiasi fonte), ordinati per ingresso desc
+          // e già filtrati dagli excluded_sellers — così se il più recente è escluso, prende
+          // automaticamente il successivo non escluso (no skip).
+          const excludedList = (automation.excluded_sellers && automation.excluded_sellers.length > 0)
+            ? automation.excluded_sellers
+            : [];
+          const previousSellerResult = await findPreviousSeller(lead, supabase, excludedList);
           
           if (previousSellerResult) {
             const previousSeller = previousSellerResult.seller;
@@ -388,14 +393,14 @@ async function findPreviousSellerWithSourceCheck(lead: any, automationSources: s
     const normalizedEmail = normalizeEmail(lead.email);
     const normalizedPhone = normalizePhone(lead.telefono);
     
-    // Trova i lead precedenti con venditore assegnato
+    // Trova i lead precedenti con venditore assegnato (ordina per ingresso desc)
     const { data: previousLeads, error: leadsError } = await supabase
       .from('lead_generation')
-      .select('venditore, data_assegnazione, fonte, email, telefono')
+      .select('venditore, data_assegnazione, created_at, fonte, email, telefono')
       .eq('market', lead.market)
       .not('venditore', 'is', null)
       .not('data_assegnazione', 'is', null)
-      .order('data_assegnazione', { ascending: false })
+      .order('created_at', { ascending: false })
       .limit(100);
     
     if (leadsError) {
@@ -466,58 +471,59 @@ async function findPreviousSellerWithSourceCheck(lead: any, automationSources: s
 
 // Funzione per trovare il venditore precedente - SENZA LIMITI
 // Restituisce { seller, dataAssegnazione } per evitare query duplicate
-async function findPreviousSeller(lead: any, supabase: any) {
+async function findPreviousSeller(lead: any, supabase: any, excludedSellers: string[] = []) {
   try {
-    console.log(`Finding previous seller for lead: ${lead.email} / ${lead.telefono} in market: ${lead.market}`);
-    
+    console.log(`Finding previous seller for lead: ${lead.email} / ${lead.telefono} in market: ${lead.market} (excluded: ${excludedSellers.length})`);
+
     const normalizedEmail = normalizeEmail(lead.email);
     const normalizedPhone = normalizePhone(lead.telefono);
-    
-    // STEP 1: Cerca per EMAIL (più affidabile) - SENZA LIMITE
-    if (normalizedEmail) {
-      const { data: emailMatches, error: emailError } = await supabase
+
+    // Helper: builds query ordered by ingresso (created_at) DESC — più recente ingresso vince,
+    // non più recente assegnazione. Logica: lead entrato per ultimo "appartiene" al venditore
+    // di quel canale di ingresso, non a chi lo ha lavorato dopo cronologicamente.
+    const buildQuery = (column: 'email' | 'telefono', value: string) => {
+      let q = supabase
         .from('lead_generation')
-        .select('venditore, data_assegnazione, id')
+        .select('venditore, data_assegnazione, created_at, id')
         .eq('market', lead.market)
-        .ilike('email', normalizedEmail)
+        .ilike(column, value)
         .not('venditore', 'is', null)
-        .not('data_assegnazione', 'is', null)
-        .order('data_assegnazione', { ascending: false })
-        .limit(1);
-      
+        .not('data_assegnazione', 'is', null);
+      // Esclusione diretta in query: il match più recente non escluso
+      if (excludedSellers.length > 0) {
+        const escaped = excludedSellers.map(s => `"${String(s).replace(/"/g, '\\"')}"`).join(',');
+        q = q.not('venditore', 'in', `(${escaped})`);
+      }
+      return q.order('created_at', { ascending: false }).limit(1);
+    };
+
+    // STEP 1: per EMAIL
+    if (normalizedEmail) {
+      const { data: emailMatches, error: emailError } = await buildQuery('email', normalizedEmail);
       if (emailError) {
         console.error('Error searching by email:', emailError);
       } else if (emailMatches && emailMatches.length > 0) {
         const match = emailMatches[0];
-        console.log(`✅ Found previous seller by EMAIL: ${match.venditore} (assigned: ${match.data_assegnazione})`);
+        console.log(`✅ Found previous seller by EMAIL: ${match.venditore} (entered: ${match.created_at}, assigned: ${match.data_assegnazione})`);
         const seller = await fetchSellerDetails(match.venditore, lead.market, supabase);
         return seller ? { seller, dataAssegnazione: match.data_assegnazione } : null;
       }
     }
-    
-    // STEP 2: Se non trova per email, cerca per TELEFONO - SENZA LIMITE
+
+    // STEP 2: per TELEFONO
     if (normalizedPhone) {
-      const { data: phoneMatches, error: phoneError } = await supabase
-        .from('lead_generation')
-        .select('venditore, data_assegnazione, id')
-        .eq('market', lead.market)
-        .ilike('telefono', normalizedPhone)
-        .not('venditore', 'is', null)
-        .not('data_assegnazione', 'is', null)
-        .order('data_assegnazione', { ascending: false })
-        .limit(1);
-      
+      const { data: phoneMatches, error: phoneError } = await buildQuery('telefono', normalizedPhone);
       if (phoneError) {
         console.error('Error searching by phone:', phoneError);
       } else if (phoneMatches && phoneMatches.length > 0) {
         const match = phoneMatches[0];
-        console.log(`✅ Found previous seller by PHONE: ${match.venditore} (assigned: ${match.data_assegnazione})`);
+        console.log(`✅ Found previous seller by PHONE: ${match.venditore} (entered: ${match.created_at}, assigned: ${match.data_assegnazione})`);
         const seller = await fetchSellerDetails(match.venditore, lead.market, supabase);
         return seller ? { seller, dataAssegnazione: match.data_assegnazione } : null;
       }
     }
-    
-    console.log('❌ No previous assignment found');
+
+    console.log('❌ No previous assignment found (after excluding: ' + excludedSellers.join(', ') + ')');
     return null;
 
   } catch (error) {
