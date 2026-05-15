@@ -462,21 +462,11 @@ export async function getAllCampagne(market: string = 'IT') {
 
 export async function getUniqueSourcesFromLeads(_market?: string): Promise<string[]> {
   try {
-    console.log(`🔍 getUniqueSourcesFromLeads: Fetching from database_fonti + lead_generation`);
+    console.log(`🔍 getUniqueSourcesFromLeads: market=${_market || 'all'}`);
 
-    // Fetch from database_fonti (curated list)
-    const { data: fontiData, error: fontiError } = await supabase
-      .from('database_fonti')
-      .select('nome')
-      .eq('attivo', true)
-      .order('nome');
-
-    if (fontiError) throw fontiError;
-
-    const fontiSources = new Set((fontiData || []).map(f => f.nome).filter(Boolean));
-
-    // Also fetch recent distinct ultima_fonte from lead_generation to catch new sources not yet in database_fonti
-    // NOTE: we read most recent rows first so newly arrived leads are immediately available in selectors
+    // Fetch distinct ultima_fonte from lead_generation, optionally filtered by market.
+    // When market is set we IGNORE database_fonti (curated list) since it's market-agnostic
+    // and would leak IT sources into the ES tool and vice versa.
     let leadSourcesQuery = supabase
       .from('lead_generation')
       .select('ultima_fonte')
@@ -489,16 +479,26 @@ export async function getUniqueSourcesFromLeads(_market?: string): Promise<strin
     }
 
     const { data: leadSources, error: leadError } = await leadSourcesQuery;
+    if (leadError) throw leadError;
 
-    if (!leadError && leadSources) {
-      const uniqueLeadSources = new Set(leadSources.map(l => l.ultima_fonte).filter(Boolean));
-      for (const src of uniqueLeadSources) {
-        fontiSources.add(src as string);
-      }
+    const sourcesSet = new Set<string>();
+    for (const row of leadSources || []) {
+      if (row.ultima_fonte) sourcesSet.add(row.ultima_fonte as string);
     }
 
-    const sources = Array.from(fontiSources).sort();
-    console.log(`✅ getUniqueSourcesFromLeads: Returning ${sources.length} sources (fonti + lead_generation)`);
+    // Union with curated database_fonti ONLY when market is not specified
+    if (!_market) {
+      const { data: fontiData, error: fontiError } = await supabase
+        .from('database_fonti')
+        .select('nome')
+        .eq('attivo', true)
+        .order('nome');
+      if (fontiError) throw fontiError;
+      for (const f of fontiData || []) if (f.nome) sourcesSet.add(f.nome);
+    }
+
+    const sources = Array.from(sourcesSet).sort();
+    console.log(`✅ getUniqueSourcesFromLeads: Returning ${sources.length} sources for market=${_market || 'all'}`);
     return sources;
   } catch (error) {
     console.error("❌ Error fetching unique sources:", error);
