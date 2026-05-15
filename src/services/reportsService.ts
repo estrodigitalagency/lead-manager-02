@@ -163,11 +163,11 @@ function applyFonteFilters(query: any, filters: ReportFilters, fonteColumn: stri
     return query.or(`${fonteColumn}.ilike.%${cleanFonte}%,${fonteColumn}.ilike.% ${cleanFonte}%,${fonteColumn}.ilike.%${cleanFonte} %`);
   }
 
-  // Applicare filtri di inclusione/esclusione
+  // Applicare filtri di inclusione/esclusione (atomic tag inside cumulative comma-separated string)
   if (filters.sourceMode === 'include' && filters.fontiIncluse && filters.fontiIncluse.length > 0) {
     console.log('Applying include filters:', filters.fontiIncluse, 'on column:', fonteColumn);
-    const includeConditions = filters.fontiIncluse.map(fonte => 
-      `${fonteColumn}.ilike.${fonte}`
+    const includeConditions = filters.fontiIncluse.map(fonte =>
+      `${fonteColumn}.ilike.%${fonte}%`
     ).join(',');
     return query.or(includeConditions);
   }
@@ -175,7 +175,7 @@ function applyFonteFilters(query: any, filters: ReportFilters, fonteColumn: stri
   if (filters.sourceMode === 'exclude' && filters.fontiEscluse && filters.fontiEscluse.length > 0) {
     console.log('Applying exclude filters:', filters.fontiEscluse, 'on column:', fonteColumn);
     filters.fontiEscluse.forEach(fonte => {
-      query = query.not(fonteColumn, 'ilike', fonte);
+      query = query.not(fonteColumn, 'ilike', `%${fonte}%`);
     });
     return query;
   }

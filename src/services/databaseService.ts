@@ -156,12 +156,12 @@ function applyStandardFilters(
 
     const fonteColumn = tableName === 'lead_generation' ? 'ultima_fonte' : 'fonte';
     if (filters.fontiIncluse && filters.fontiIncluse.length > 0) {
-      const conditions = filters.fontiIncluse.map((fonte: string) => `${fonteColumn}.ilike.${fonte}`).join(',');
+      const conditions = filters.fontiIncluse.map((fonte: string) => `${fonteColumn}.ilike.%${fonte}%`).join(',');
       query = query.or(conditions);
     }
     if (filters.fontiEscluse && filters.fontiEscluse.length > 0) {
       filters.fontiEscluse.forEach((fonte: string) => {
-        query = query.not(fonteColumn, 'ilike', fonte);
+        query = query.not(fonteColumn, 'ilike', `%${fonte}%`);
       });
     }
 
@@ -301,14 +301,14 @@ export async function getPaginatedData<T>(
       const fonteColumn = tableName === 'lead_generation' ? 'ultima_fonte' : 'fonte';
       if (filters.fontiIncluse && filters.fontiIncluse.length > 0) {
         console.log('Applying include fonte filter:', filters.fontiIncluse, 'on column:', fonteColumn);
-        const conditions = filters.fontiIncluse.map((fonte: string) => `${fonteColumn}.ilike.${fonte}`).join(',');
+        const conditions = filters.fontiIncluse.map((fonte: string) => `${fonteColumn}.ilike.%${fonte}%`).join(',');
         query = query.or(conditions);
       }
-      
+
       if (filters.fontiEscluse && filters.fontiEscluse.length > 0) {
         console.log('Applying exclude fonte filter:', filters.fontiEscluse);
         filters.fontiEscluse.forEach((fonte: string) => {
-          query = query.not(fonteColumn, 'ilike', fonte);
+          query = query.not(fonteColumn, 'ilike', `%${fonte}%`);
         });
       }
 
@@ -481,9 +481,15 @@ export async function getUniqueSourcesFromLeads(_market?: string): Promise<strin
     const { data: leadSources, error: leadError } = await leadSourcesQuery;
     if (leadError) throw leadError;
 
+    // ultima_fonte is comma-separated cumulative tags (e.g. "spain,vsl1.1,llamada reservada").
+    // Split into atomic tokens so the dropdown shows individual tags.
     const sourcesSet = new Set<string>();
     for (const row of leadSources || []) {
-      if (row.ultima_fonte) sourcesSet.add(row.ultima_fonte as string);
+      if (!row.ultima_fonte) continue;
+      for (const tok of (row.ultima_fonte as string).split(',')) {
+        const t = tok.trim();
+        if (t) sourcesSet.add(t);
+      }
     }
 
     // Union with curated database_fonti ONLY when market is not specified
