@@ -11,6 +11,7 @@ interface UseRealTimeLeadCountProps {
   excludeFromIncluded: string[];
   onlyHotLeads?: boolean;
   newLeadsCutoffISO?: string;
+  newLeadsDirection?: 'newer' | 'older';
 }
 
 export function useRealTimeLeadCount({
@@ -20,7 +21,8 @@ export function useRealTimeLeadCount({
   bypassTimeInterval,
   excludeFromIncluded,
   onlyHotLeads = false,
-  newLeadsCutoffISO
+  newLeadsCutoffISO,
+  newLeadsDirection = 'newer'
 }: UseRealTimeLeadCountProps) {
   const { selectedMarket } = useMarket();
   const [count, setCount] = useState(0);
@@ -56,7 +58,8 @@ export function useRealTimeLeadCount({
         excludeFromIncluded,
         onlyHotLeads,
         selectedMarket,
-        newLeadsCutoffISO
+        newLeadsCutoffISO,
+        newLeadsDirection
       );
 
       // Verifica che la richiesta non sia stata annullata
@@ -74,7 +77,7 @@ export function useRealTimeLeadCount({
         setIsLoading(false);
       }
     }
-  }, [excludedSources, includedSources, sourceMode, bypassTimeInterval, excludeFromIncluded, onlyHotLeads, selectedMarket, newLeadsCutoffISO]);
+  }, [excludedSources, includedSources, sourceMode, bypassTimeInterval, excludeFromIncluded, onlyHotLeads, selectedMarket, newLeadsCutoffISO, newLeadsDirection]);
 
   // Aggiorna il conteggio ogni volta che cambiano i parametri
   useEffect(() => {

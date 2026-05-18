@@ -18,6 +18,7 @@ export interface Campaign {
   solo_lead_nuovi_enabled?: boolean;
   solo_lead_nuovi_giorni?: number | null;
   solo_lead_nuovi_da_data?: string | null; // ISO YYYY-MM-DD
+  solo_lead_nuovi_direzione?: 'newer' | 'older';
 }
 
 export const useCampaignsData = () => {
@@ -57,6 +58,7 @@ export const useCampaignsData = () => {
     solo_lead_nuovi_enabled?: boolean;
     solo_lead_nuovi_giorni?: number | null;
     solo_lead_nuovi_da_data?: string | null;
+    solo_lead_nuovi_direzione?: 'newer' | 'older';
   }) => {
     try {
       const { error }: { error: any } = await supabase

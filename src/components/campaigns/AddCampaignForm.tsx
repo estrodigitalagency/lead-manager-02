@@ -24,6 +24,7 @@ interface AddCampaignFormProps {
     solo_lead_nuovi_enabled?: boolean;
     solo_lead_nuovi_giorni?: number | null;
     solo_lead_nuovi_da_data?: string | null;
+    solo_lead_nuovi_direzione?: 'newer' | 'older';
   }) => Promise<void>;
 }
 
@@ -41,6 +42,7 @@ const AddCampaignForm = ({ onSubmit }: AddCampaignFormProps) => {
   const [soloLeadNuoviEnabled, setSoloLeadNuoviEnabled] = useState(false);
   const [soloLeadNuoviGiorni, setSoloLeadNuoviGiorni] = useState<number | null>(7);
   const [soloLeadNuoviDaData, setSoloLeadNuoviDaData] = useState<string | null>(null);
+  const [soloLeadNuoviDirezione, setSoloLeadNuoviDirezione] = useState<'newer' | 'older'>('newer');
 
   useEffect(() => {
     loadUniqueSources();
@@ -81,7 +83,8 @@ const loadUniqueSources = async () => {
         bypass_time_interval: bypassTimeInterval,
         solo_lead_nuovi_enabled: soloLeadNuoviEnabled,
         solo_lead_nuovi_giorni: soloLeadNuoviEnabled ? soloLeadNuoviGiorni : null,
-        solo_lead_nuovi_da_data: soloLeadNuoviEnabled ? soloLeadNuoviDaData : null
+        solo_lead_nuovi_da_data: soloLeadNuoviEnabled ? soloLeadNuoviDaData : null,
+        solo_lead_nuovi_direzione: soloLeadNuoviDirezione
       });
       setNome('');
       setDescrizione('');
@@ -92,6 +95,7 @@ const loadUniqueSources = async () => {
       setSoloLeadNuoviEnabled(false);
       setSoloLeadNuoviGiorni(7);
       setSoloLeadNuoviDaData(null);
+      setSoloLeadNuoviDirezione('newer');
     } finally {
       setIsSubmitting(false);
     }
@@ -178,10 +182,12 @@ const loadUniqueSources = async () => {
             enabled={soloLeadNuoviEnabled}
             giorni={soloLeadNuoviGiorni}
             daData={soloLeadNuoviDaData}
-            onChange={({ enabled, giorni, daData }) => {
+            direzione={soloLeadNuoviDirezione}
+            onChange={({ enabled, giorni, daData, direzione }) => {
               setSoloLeadNuoviEnabled(enabled);
               setSoloLeadNuoviGiorni(giorni);
               setSoloLeadNuoviDaData(daData);
+              setSoloLeadNuoviDirezione(direzione);
             }}
           />
           

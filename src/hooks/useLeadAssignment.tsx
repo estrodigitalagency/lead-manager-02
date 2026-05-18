@@ -25,7 +25,7 @@ export function useLeadAssignment() {
   const [bypassTimeInterval, setBypassTimeInterval] = useState(false);
   const [onlyHotLeads, setOnlyHotLeads] = useState(false);
 
-  // "Solo lead nuovi" filter
+  // "Solo lead nuovi/vecchi" filter
   const [newLeadsEnabled, setNewLeadsEnabled] = useState(false);
   const [newLeadsMode, setNewLeadsMode] = useState<'days' | 'date'>('days');
   const [newLeadsDays, setNewLeadsDays] = useState<number>(7);
@@ -33,6 +33,7 @@ export function useLeadAssignment() {
     const d = new Date(Date.now() - 7 * 86400000);
     return d.toISOString().slice(0, 10);
   });
+  const [newLeadsDirection, setNewLeadsDirection] = useState<'newer' | 'older'>('newer');
   
   // State for already assigned leads conflict
   const [showAlreadyAssignedDialog, setShowAlreadyAssignedDialog] = useState(false);
@@ -62,7 +63,8 @@ export function useLeadAssignment() {
     bypassTimeInterval,
     excludeFromIncluded,
     onlyHotLeads,
-    newLeadsCutoffISO
+    newLeadsCutoffISO,
+    newLeadsDirection
   });
 
   useEffect(() => {
@@ -187,9 +189,10 @@ const fetchUniqueSources = async () => {
       setBypassTimeInterval(campaign.bypass_time_interval);
     }
 
-    // Apply "solo lead nuovi" default
+    // Apply "solo lead nuovi/vecchi" default
     if (campaign.solo_lead_nuovi_enabled) {
       setNewLeadsEnabled(true);
+      setNewLeadsDirection(campaign.solo_lead_nuovi_direzione || 'newer');
       if (campaign.solo_lead_nuovi_giorni != null) {
         setNewLeadsMode('days');
         setNewLeadsDays(campaign.solo_lead_nuovi_giorni);
@@ -314,6 +317,7 @@ const fetchUniqueSources = async () => {
         excludeFromIncluded,
         onlyHotLeads,
         newLeadsCutoffISO,
+        newLeadsDirection,
         market: selectedMarket
       };
 
@@ -525,11 +529,13 @@ const fetchUniqueSources = async () => {
     newLeadsMode,
     newLeadsDays,
     newLeadsFromDate,
+    newLeadsDirection,
     newLeadsCutoffISO,
     toggleNewLeads: () => setNewLeadsEnabled(v => !v),
     setNewLeadsMode,
     setNewLeadsDays,
     setNewLeadsFromDate,
+    setNewLeadsDirection,
     // Already assigned leads dialog
     showAlreadyAssignedDialog,
     alreadyAssignedLeads,

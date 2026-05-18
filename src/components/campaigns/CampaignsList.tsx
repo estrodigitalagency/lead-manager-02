@@ -30,6 +30,7 @@ interface CampaignsListProps {
     solo_lead_nuovi_enabled?: boolean;
     solo_lead_nuovi_giorni?: number | null;
     solo_lead_nuovi_da_data?: string | null;
+    solo_lead_nuovi_direzione?: 'newer' | 'older';
   }) => Promise<void>;
 }
 
@@ -48,6 +49,7 @@ const CampaignsList = ({ campaigns, onUpdate, onDelete, onDuplicate }: Campaigns
   const [editSoloLeadNuoviEnabled, setEditSoloLeadNuoviEnabled] = useState(false);
   const [editSoloLeadNuoviGiorni, setEditSoloLeadNuoviGiorni] = useState<number | null>(7);
   const [editSoloLeadNuoviDaData, setEditSoloLeadNuoviDaData] = useState<string | null>(null);
+  const [editSoloLeadNuoviDirezione, setEditSoloLeadNuoviDirezione] = useState<'newer' | 'older'>('newer');
 
   useEffect(() => {
     loadUniqueSources();
@@ -86,6 +88,7 @@ const loadUniqueSources = async () => {
     setEditSoloLeadNuoviEnabled(campaign.solo_lead_nuovi_enabled || false);
     setEditSoloLeadNuoviGiorni(campaign.solo_lead_nuovi_giorni ?? 7);
     setEditSoloLeadNuoviDaData(campaign.solo_lead_nuovi_da_data || null);
+    setEditSoloLeadNuoviDirezione(campaign.solo_lead_nuovi_direzione || 'newer');
   };
 
   const handleUpdate = async () => {
@@ -103,7 +106,8 @@ const loadUniqueSources = async () => {
         bypass_time_interval: editBypassTimeInterval,
         solo_lead_nuovi_enabled: editSoloLeadNuoviEnabled,
         solo_lead_nuovi_giorni: editSoloLeadNuoviEnabled ? editSoloLeadNuoviGiorni : null,
-        solo_lead_nuovi_da_data: editSoloLeadNuoviEnabled ? editSoloLeadNuoviDaData : null
+        solo_lead_nuovi_da_data: editSoloLeadNuoviEnabled ? editSoloLeadNuoviDaData : null,
+        solo_lead_nuovi_direzione: editSoloLeadNuoviDirezione
       });
       setEditingCampaign(null);
     } finally {
@@ -173,7 +177,8 @@ const loadUniqueSources = async () => {
       bypass_time_interval: campaign.bypass_time_interval,
       solo_lead_nuovi_enabled: campaign.solo_lead_nuovi_enabled,
       solo_lead_nuovi_giorni: campaign.solo_lead_nuovi_giorni,
-      solo_lead_nuovi_da_data: campaign.solo_lead_nuovi_da_data
+      solo_lead_nuovi_da_data: campaign.solo_lead_nuovi_da_data,
+      solo_lead_nuovi_direzione: campaign.solo_lead_nuovi_direzione
     });
   };
 
@@ -304,10 +309,12 @@ const loadUniqueSources = async () => {
                           enabled={editSoloLeadNuoviEnabled}
                           giorni={editSoloLeadNuoviGiorni}
                           daData={editSoloLeadNuoviDaData}
-                          onChange={({ enabled, giorni, daData }) => {
+                          direzione={editSoloLeadNuoviDirezione}
+                          onChange={({ enabled, giorni, daData, direzione }) => {
                             setEditSoloLeadNuoviEnabled(enabled);
                             setEditSoloLeadNuoviGiorni(giorni);
                             setEditSoloLeadNuoviDaData(daData);
+                            setEditSoloLeadNuoviDirezione(direzione);
                           }}
                         />
 

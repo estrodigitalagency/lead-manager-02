@@ -1,21 +1,24 @@
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { Sparkles, Info } from "lucide-react";
+import { Sparkles, Info, ArrowDownToLine, ArrowUpFromLine } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
 
 export type NewLeadsMode = 'days' | 'date';
+export type NewLeadsDirection = 'newer' | 'older';
 
 interface NewLeadsControlProps {
   enabled: boolean;
   mode: NewLeadsMode;
   days: number;
   fromDate: string; // ISO YYYY-MM-DD
+  direction: NewLeadsDirection;
   onToggleEnabled: () => void;
   onChangeMode: (mode: NewLeadsMode) => void;
   onChangeDays: (n: number) => void;
   onChangeFromDate: (d: string) => void;
+  onChangeDirection: (dir: NewLeadsDirection) => void;
   disabled?: boolean;
 }
 
@@ -24,17 +27,23 @@ export const NewLeadsControl = ({
   mode,
   days,
   fromDate,
+  direction,
   onToggleEnabled,
   onChangeMode,
   onChangeDays,
   onChangeFromDate,
+  onChangeDirection,
   disabled = false,
 }: NewLeadsControlProps) => {
+  const title = direction === 'newer' ? 'Solo lead nuovi' : 'Solo lead vecchi';
+  const daysSuffix = direction === 'newer' ? 'più recenti' : 'più vecchi di';
+  const dateLabel = direction === 'newer' ? 'Da' : 'Fino a';
+
   return (
     <div className="space-y-2">
       <div className="flex items-center gap-2">
         <Sparkles className="h-4 w-4 text-primary" />
-        <h3 className="text-sm sm:text-base font-semibold">Solo lead nuovi</h3>
+        <h3 className="text-sm sm:text-base font-semibold">{title}</h3>
       </div>
 
       <div className="p-3 sm:p-4 rounded-xl bg-muted/30 space-y-3">
@@ -63,7 +72,7 @@ export const NewLeadsControl = ({
               </TooltipTrigger>
               <TooltipContent>
                 <p className="max-w-xs text-sm">
-                  Considera solo lead generati nel periodo scelto (ultimi N giorni) o da una data specifica.
+                  Filtra i lead in base alla data di ingresso. Scegli la direzione (nuovi/vecchi), la modalità (giorni o data) e il valore.
                 </p>
               </TooltipContent>
             </Tooltip>
@@ -72,6 +81,29 @@ export const NewLeadsControl = ({
 
         {enabled && (
           <>
+            <div className="flex gap-1.5">
+              <Button
+                type="button"
+                size="sm"
+                variant={direction === 'newer' ? 'default' : 'outline'}
+                className="flex-1 h-8 text-xs flex items-center gap-1"
+                onClick={() => onChangeDirection('newer')}
+              >
+                <ArrowDownToLine className="h-3 w-3" />
+                Nuovi (≥)
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant={direction === 'older' ? 'default' : 'outline'}
+                className="flex-1 h-8 text-xs flex items-center gap-1"
+                onClick={() => onChangeDirection('older')}
+              >
+                <ArrowUpFromLine className="h-3 w-3" />
+                Vecchi (≤)
+              </Button>
+            </div>
+
             <div className="flex gap-1.5">
               <Button
                 type="button"
@@ -89,7 +121,7 @@ export const NewLeadsControl = ({
                 className="flex-1 h-8 text-xs"
                 onClick={() => onChangeMode('date')}
               >
-                Da data
+                {direction === 'newer' ? 'Da data' : 'Fino a data'}
               </Button>
             </div>
 
@@ -105,7 +137,7 @@ export const NewLeadsControl = ({
                     onChange={(e) => onChangeDays(Math.max(1, parseInt(e.target.value) || 1))}
                     className="h-8 text-sm w-24"
                   />
-                  <span className="text-sm text-muted-foreground">giorni</span>
+                  <span className="text-sm text-muted-foreground">giorni {daysSuffix}</span>
                 </div>
                 <div className="flex gap-1">
                   {[1, 7, 14, 30].map((d) => (
@@ -124,7 +156,7 @@ export const NewLeadsControl = ({
               </div>
             ) : (
               <div className="space-y-1">
-                <Label htmlFor="new-leads-from-date" className="text-xs text-muted-foreground">Da</Label>
+                <Label htmlFor="new-leads-from-date" className="text-xs text-muted-foreground">{dateLabel}</Label>
                 <Input
                   id="new-leads-from-date"
                   type="date"

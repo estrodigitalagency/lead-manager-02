@@ -32,8 +32,8 @@ const LeadAssignmentWithExclusions = () => {
     removeIncludedSource, addExcludeFromIncluded, removeExcludeFromIncluded,
     toggleSourceMode, toggleBypassTimeInterval, toggleOnlyHotLeads,
     handleAssign, updateAvailableLeads, refreshUniqueSources,
-    newLeadsEnabled, newLeadsMode, newLeadsDays, newLeadsFromDate,
-    toggleNewLeads, setNewLeadsMode, setNewLeadsDays, setNewLeadsFromDate,
+    newLeadsEnabled, newLeadsMode, newLeadsDays, newLeadsFromDate, newLeadsDirection,
+    toggleNewLeads, setNewLeadsMode, setNewLeadsDays, setNewLeadsFromDate, setNewLeadsDirection,
     showAlreadyAssignedDialog, alreadyAssignedLeads,
     handleConfirmAssignments, handleCloseAlreadyAssignedDialog
   } = useLeadAssignment();
@@ -219,10 +219,12 @@ const LeadAssignmentWithExclusions = () => {
                 mode={newLeadsMode}
                 days={newLeadsDays}
                 fromDate={newLeadsFromDate}
+                direction={newLeadsDirection}
                 onToggleEnabled={toggleNewLeads}
                 onChangeMode={setNewLeadsMode}
                 onChangeDays={setNewLeadsDays}
                 onChangeFromDate={setNewLeadsFromDate}
+                onChangeDirection={setNewLeadsDirection}
                 disabled={isFormDisabled}
               />
 

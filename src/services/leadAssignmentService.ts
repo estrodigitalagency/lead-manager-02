@@ -12,7 +12,8 @@ export interface LeadAssignmentData {
   bypassTimeInterval?: boolean;
   excludeFromIncluded?: string[];
   onlyHotLeads?: boolean;
-  newLeadsCutoffISO?: string; // Only leads with created_at >= this ISO
+  newLeadsCutoffISO?: string; // Cutoff (ISO)
+  newLeadsDirection?: 'newer' | 'older'; // 'newer' → created_at >= cutoff; 'older' → created_at <= cutoff
   market?: 'IT' | 'ES';
   specificLeadIds?: string[]; // For replay functionality
   skipAlreadyAssignedCheck?: boolean; // Skip pre-assignment check
@@ -192,6 +193,7 @@ export async function assignLeadsWithExclusions(data: LeadAssignmentData) {
     excludeFromIncluded = [],
     onlyHotLeads = false,
     newLeadsCutoffISO,
+    newLeadsDirection = 'newer',
     market = 'IT',
     specificLeadIds // For replay functionality
   } = data;
@@ -348,7 +350,11 @@ export async function assignLeadsWithExclusions(data: LeadAssignmentData) {
       }
 
       if (newLeadsCutoffISO) {
-        query = query.gte('created_at', newLeadsCutoffISO);
+        if (newLeadsDirection === 'older') {
+          query = query.lte('created_at', newLeadsCutoffISO);
+        } else {
+          query = query.gte('created_at', newLeadsCutoffISO);
+        }
       }
 
       if (sourceMode === 'include' && includedSources.length > 0) {
@@ -512,7 +518,8 @@ export async function getAvailableLeadsCount(
   excludeFromIncluded: string[] = [],
   onlyHotLeads: boolean = false,
   market: 'IT' | 'ES' = 'IT',
-  newLeadsCutoffISO?: string
+  newLeadsCutoffISO?: string,
+  newLeadsDirection: 'newer' | 'older' = 'newer'
 ): Promise<number> {
   try {
     console.log('getAvailableLeadsCount called with:', {
@@ -553,7 +560,11 @@ export async function getAvailableLeadsCount(
       }
 
       if (newLeadsCutoffISO) {
-        countQuery = countQuery.gte('created_at', newLeadsCutoffISO);
+        if (newLeadsDirection === 'older') {
+          countQuery = countQuery.lte('created_at', newLeadsCutoffISO);
+        } else {
+          countQuery = countQuery.gte('created_at', newLeadsCutoffISO);
+        }
       }
 
       const includeFilters = includedSources.map(source => `ultima_fonte.like.%${source}%`).join(',');
@@ -585,7 +596,11 @@ export async function getAvailableLeadsCount(
       }
 
       if (newLeadsCutoffISO) {
-        countQuery = countQuery.gte('created_at', newLeadsCutoffISO);
+        if (newLeadsDirection === 'older') {
+          countQuery = countQuery.lte('created_at', newLeadsCutoffISO);
+        } else {
+          countQuery = countQuery.gte('created_at', newLeadsCutoffISO);
+        }
       }
 
       const { count, error } = await countQuery;
@@ -620,7 +635,11 @@ export async function getAvailableLeadsCount(
       }
 
       if (newLeadsCutoffISO) {
-        query = query.gte('created_at', newLeadsCutoffISO);
+        if (newLeadsDirection === 'older') {
+          query = query.lte('created_at', newLeadsCutoffISO);
+        } else {
+          query = query.gte('created_at', newLeadsCutoffISO);
+        }
       }
 
       if (sourceMode === 'include') {
@@ -726,6 +745,7 @@ export async function checkLeadsForPreviousAssignment(
     excludeFromIncluded = [],
     onlyHotLeads = false,
     newLeadsCutoffISO,
+    newLeadsDirection = 'newer',
     market = 'IT',
   } = data;
 
@@ -763,7 +783,11 @@ export async function checkLeadsForPreviousAssignment(
       }
 
       if (newLeadsCutoffISO) {
-        query = query.gte('created_at', newLeadsCutoffISO);
+        if (newLeadsDirection === 'older') {
+          query = query.lte('created_at', newLeadsCutoffISO);
+        } else {
+          query = query.gte('created_at', newLeadsCutoffISO);
+        }
       }
 
       if (sourceMode === 'include' && includedSources.length > 0) {

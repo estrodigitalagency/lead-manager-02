@@ -3,27 +3,31 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { InfoIcon, Sparkles } from 'lucide-react';
+import { InfoIcon, Sparkles, ArrowDownToLine, ArrowUpFromLine } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface CampaignNewLeadsConfigProps {
   enabled: boolean;
   giorni: number | null;
   daData: string | null;
-  onChange: (next: { enabled: boolean; giorni: number | null; daData: string | null }) => void;
+  direzione: 'newer' | 'older';
+  onChange: (next: { enabled: boolean; giorni: number | null; daData: string | null; direzione: 'newer' | 'older' }) => void;
 }
 
-const CampaignNewLeadsConfig = ({ enabled, giorni, daData, onChange }: CampaignNewLeadsConfigProps) => {
+const CampaignNewLeadsConfig = ({ enabled, giorni, daData, direzione, onChange }: CampaignNewLeadsConfigProps) => {
   const mode: 'days' | 'date' = giorni != null ? 'days' : daData != null ? 'date' : 'days';
+  const title = direzione === 'newer' ? 'Solo Lead Nuovi (Opzionale)' : 'Solo Lead Vecchi (Opzionale)';
+  const daysSuffix = direzione === 'newer' ? 'più recenti' : 'più vecchi di';
+  const dateLabel = direzione === 'newer' ? 'Da' : 'Fino a';
 
   return (
     <div className="space-y-3">
       <div className="flex items-center gap-2">
         <Sparkles className="h-4 w-4 text-primary" />
-        <Label className="text-base font-semibold">Solo Lead Nuovi (Opzionale)</Label>
+        <Label className="text-base font-semibold">{title}</Label>
       </div>
       <p className="text-sm text-muted-foreground">
-        Quando selezioni questa campagna, il filtro "lead nuovi" si attiverà automaticamente con questi parametri.
+        Quando selezioni questa campagna, il filtro per data di ingresso si attiverà automaticamente con questi parametri.
       </p>
 
       <div className="p-4 border rounded-lg space-y-3">
@@ -31,7 +35,12 @@ const CampaignNewLeadsConfig = ({ enabled, giorni, daData, onChange }: CampaignN
           <div className="flex items-center gap-2">
             <Switch
               checked={enabled}
-              onCheckedChange={(checked) => onChange({ enabled: checked, giorni: checked ? (giorni ?? 7) : null, daData: null })}
+              onCheckedChange={(checked) => onChange({
+                enabled: checked,
+                giorni: checked ? (giorni ?? 7) : null,
+                daData: null,
+                direzione
+              })}
             />
             <Label className="text-sm font-medium">Filtra per data di ingresso</Label>
             <TooltipProvider>
@@ -40,7 +49,7 @@ const CampaignNewLeadsConfig = ({ enabled, giorni, daData, onChange }: CampaignN
                   <InfoIcon className="h-4 w-4 text-muted-foreground cursor-help" />
                 </TooltipTrigger>
                 <TooltipContent className="max-w-xs">
-                  <p>Considera solo lead generati nel periodo scelto (ultimi N giorni) o da una data specifica.</p>
+                  <p>Considera solo lead generati nel periodo scelto (ultimi N giorni / prima di X) o da/fino a una data specifica.</p>
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
@@ -53,9 +62,32 @@ const CampaignNewLeadsConfig = ({ enabled, giorni, daData, onChange }: CampaignN
               <Button
                 type="button"
                 size="sm"
+                variant={direzione === 'newer' ? 'default' : 'outline'}
+                className="flex-1 h-8 text-xs flex items-center gap-1"
+                onClick={() => onChange({ enabled, giorni, daData, direzione: 'newer' })}
+              >
+                <ArrowDownToLine className="h-3 w-3" />
+                Nuovi (≥)
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant={direzione === 'older' ? 'default' : 'outline'}
+                className="flex-1 h-8 text-xs flex items-center gap-1"
+                onClick={() => onChange({ enabled, giorni, daData, direzione: 'older' })}
+              >
+                <ArrowUpFromLine className="h-3 w-3" />
+                Vecchi (≤)
+              </Button>
+            </div>
+
+            <div className="flex gap-1.5">
+              <Button
+                type="button"
+                size="sm"
                 variant={mode === 'days' ? 'default' : 'outline'}
                 className="flex-1 h-8 text-xs"
-                onClick={() => onChange({ enabled: true, giorni: giorni ?? 7, daData: null })}
+                onClick={() => onChange({ enabled: true, giorni: giorni ?? 7, daData: null, direzione })}
               >
                 Ultimi N giorni
               </Button>
@@ -64,9 +96,9 @@ const CampaignNewLeadsConfig = ({ enabled, giorni, daData, onChange }: CampaignN
                 size="sm"
                 variant={mode === 'date' ? 'default' : 'outline'}
                 className="flex-1 h-8 text-xs"
-                onClick={() => onChange({ enabled: true, giorni: null, daData: daData ?? new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10) })}
+                onClick={() => onChange({ enabled: true, giorni: null, daData: daData ?? new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10), direzione })}
               >
-                Da data
+                {direzione === 'newer' ? 'Da data' : 'Fino a data'}
               </Button>
             </div>
 
@@ -77,10 +109,10 @@ const CampaignNewLeadsConfig = ({ enabled, giorni, daData, onChange }: CampaignN
                   min={1}
                   max={365}
                   value={giorni ?? 7}
-                  onChange={(e) => onChange({ enabled: true, giorni: Math.max(1, parseInt(e.target.value) || 1), daData: null })}
+                  onChange={(e) => onChange({ enabled: true, giorni: Math.max(1, parseInt(e.target.value) || 1), daData: null, direzione })}
                   className="h-8 text-sm w-24"
                 />
-                <span className="text-sm text-muted-foreground">giorni</span>
+                <span className="text-sm text-muted-foreground">giorni {daysSuffix}</span>
                 <div className="flex gap-1 ml-2">
                   {[1, 7, 14, 30].map((d) => (
                     <Button
@@ -89,7 +121,7 @@ const CampaignNewLeadsConfig = ({ enabled, giorni, daData, onChange }: CampaignN
                       size="sm"
                       variant={giorni === d ? 'secondary' : 'ghost'}
                       className="h-6 px-2 text-[10px]"
-                      onClick={() => onChange({ enabled: true, giorni: d, daData: null })}
+                      onClick={() => onChange({ enabled: true, giorni: d, daData: null, direzione })}
                     >
                       {d === 1 ? '24h' : `${d}g`}
                     </Button>
@@ -98,11 +130,11 @@ const CampaignNewLeadsConfig = ({ enabled, giorni, daData, onChange }: CampaignN
               </div>
             ) : (
               <div className="space-y-1">
-                <Label className="text-xs text-muted-foreground">Da</Label>
+                <Label className="text-xs text-muted-foreground">{dateLabel}</Label>
                 <Input
                   type="date"
                   value={daData ?? ''}
-                  onChange={(e) => onChange({ enabled: true, giorni: null, daData: e.target.value || null })}
+                  onChange={(e) => onChange({ enabled: true, giorni: null, daData: e.target.value || null, direzione })}
                   className="h-8 text-sm"
                 />
               </div>
