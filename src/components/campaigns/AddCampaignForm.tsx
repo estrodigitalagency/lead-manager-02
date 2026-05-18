@@ -10,16 +10,20 @@ import { supabase } from '@/integrations/supabase/client';
 import { useMarket } from '@/contexts/MarketContext';
 import CampaignSourcesConfig from './CampaignSourcesConfig';
 import CampaignBypassConfig from './CampaignBypassConfig';
+import CampaignNewLeadsConfig from './CampaignNewLeadsConfig';
 
 interface AddCampaignFormProps {
-  onSubmit: (data: { 
-    nome: string; 
+  onSubmit: (data: {
+    nome: string;
     descrizione?: string;
     fonti_incluse?: string[];
     fonti_escluse?: string[];
     source_mode?: 'exclude' | 'include';
     exclude_from_included?: string[];
     bypass_time_interval?: boolean;
+    solo_lead_nuovi_enabled?: boolean;
+    solo_lead_nuovi_giorni?: number | null;
+    solo_lead_nuovi_da_data?: string | null;
   }) => Promise<void>;
 }
 
@@ -34,6 +38,9 @@ const AddCampaignForm = ({ onSubmit }: AddCampaignFormProps) => {
   const [excludeFromIncluded, setExcludeFromIncluded] = useState<string[]>([]);
   const [sourceMode, setSourceMode] = useState<'exclude' | 'include'>('exclude');
   const [bypassTimeInterval, setBypassTimeInterval] = useState(false);
+  const [soloLeadNuoviEnabled, setSoloLeadNuoviEnabled] = useState(false);
+  const [soloLeadNuoviGiorni, setSoloLeadNuoviGiorni] = useState<number | null>(7);
+  const [soloLeadNuoviDaData, setSoloLeadNuoviDaData] = useState<string | null>(null);
 
   useEffect(() => {
     loadUniqueSources();
@@ -71,7 +78,10 @@ const loadUniqueSources = async () => {
         fonti_incluse: includedSources.length > 0 ? includedSources : undefined,
         fonti_escluse: excludedSources.length > 0 ? excludedSources : undefined,
         source_mode: sourceMode,
-        bypass_time_interval: bypassTimeInterval
+        bypass_time_interval: bypassTimeInterval,
+        solo_lead_nuovi_enabled: soloLeadNuoviEnabled,
+        solo_lead_nuovi_giorni: soloLeadNuoviEnabled ? soloLeadNuoviGiorni : null,
+        solo_lead_nuovi_da_data: soloLeadNuoviEnabled ? soloLeadNuoviDaData : null
       });
       setNome('');
       setDescrizione('');
@@ -79,6 +89,9 @@ const loadUniqueSources = async () => {
       setIncludedSources([]);
       setExcludeFromIncluded([]);
       setBypassTimeInterval(false);
+      setSoloLeadNuoviEnabled(false);
+      setSoloLeadNuoviGiorni(7);
+      setSoloLeadNuoviDaData(null);
     } finally {
       setIsSubmitting(false);
     }
@@ -159,6 +172,17 @@ const loadUniqueSources = async () => {
           <CampaignBypassConfig
             bypassTimeInterval={bypassTimeInterval}
             onToggleBypass={setBypassTimeInterval}
+          />
+
+          <CampaignNewLeadsConfig
+            enabled={soloLeadNuoviEnabled}
+            giorni={soloLeadNuoviGiorni}
+            daData={soloLeadNuoviDaData}
+            onChange={({ enabled, giorni, daData }) => {
+              setSoloLeadNuoviEnabled(enabled);
+              setSoloLeadNuoviGiorni(giorni);
+              setSoloLeadNuoviDaData(daData);
+            }}
           />
           
           <Button

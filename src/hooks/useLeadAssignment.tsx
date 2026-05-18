@@ -186,7 +186,21 @@ const fetchUniqueSources = async () => {
     if (campaign.bypass_time_interval !== undefined) {
       setBypassTimeInterval(campaign.bypass_time_interval);
     }
-    
+
+    // Apply "solo lead nuovi" default
+    if (campaign.solo_lead_nuovi_enabled) {
+      setNewLeadsEnabled(true);
+      if (campaign.solo_lead_nuovi_giorni != null) {
+        setNewLeadsMode('days');
+        setNewLeadsDays(campaign.solo_lead_nuovi_giorni);
+      } else if (campaign.solo_lead_nuovi_da_data) {
+        setNewLeadsMode('date');
+        setNewLeadsFromDate(campaign.solo_lead_nuovi_da_data);
+      }
+    } else {
+      setNewLeadsEnabled(false);
+    }
+
     // Apply source filters
     if (campaign.source_mode === 'exclude' && campaign.fonti_escluse) {
       setExcludedSources(campaign.fonti_escluse);
@@ -197,13 +211,16 @@ const fetchUniqueSources = async () => {
       setExcludedSources([]);
       setExcludeFromIncluded(campaign.exclude_from_included || []);
     }
-    
+
     console.log(`✅ Applied campaign settings:`, {
       sourceMode: campaign.source_mode,
       excludedSources: campaign.fonti_escluse,
       includedSources: campaign.fonti_incluse,
       excludeFromIncluded: campaign.exclude_from_included,
-      bypassTimeInterval: campaign.bypass_time_interval
+      bypassTimeInterval: campaign.bypass_time_interval,
+      soloLeadNuoviEnabled: campaign.solo_lead_nuovi_enabled,
+      soloLeadNuoviGiorni: campaign.solo_lead_nuovi_giorni,
+      soloLeadNuoviDaData: campaign.solo_lead_nuovi_da_data
     });
   };
 

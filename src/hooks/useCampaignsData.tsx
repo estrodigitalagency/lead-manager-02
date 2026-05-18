@@ -15,6 +15,9 @@ export interface Campaign {
   source_mode?: 'exclude' | 'include';
   exclude_from_included?: string[];
   bypass_time_interval?: boolean;
+  solo_lead_nuovi_enabled?: boolean;
+  solo_lead_nuovi_giorni?: number | null;
+  solo_lead_nuovi_da_data?: string | null; // ISO YYYY-MM-DD
 }
 
 export const useCampaignsData = () => {
@@ -43,14 +46,17 @@ export const useCampaignsData = () => {
     }
   };
 
-  const addCampaign = async (campaignData: { 
-    nome: string; 
+  const addCampaign = async (campaignData: {
+    nome: string;
     descrizione?: string;
     fonti_incluse?: string[];
     fonti_escluse?: string[];
     source_mode?: 'exclude' | 'include';
     exclude_from_included?: string[];
     bypass_time_interval?: boolean;
+    solo_lead_nuovi_enabled?: boolean;
+    solo_lead_nuovi_giorni?: number | null;
+    solo_lead_nuovi_da_data?: string | null;
   }) => {
     try {
       const { error }: { error: any } = await supabase

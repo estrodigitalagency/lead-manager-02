@@ -13,6 +13,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useMarket } from '@/contexts/MarketContext';
 import CampaignSourcesConfig from './CampaignSourcesConfig';
 import CampaignBypassConfig from './CampaignBypassConfig';
+import CampaignNewLeadsConfig from './CampaignNewLeadsConfig';
 
 interface CampaignsListProps {
   campaigns: Campaign[];
@@ -32,6 +33,9 @@ const CampaignsList = ({ campaigns, onUpdate, onDelete }: CampaignsListProps) =>
   const [editExcludeFromIncluded, setEditExcludeFromIncluded] = useState<string[]>([]);
   const [editSourceMode, setEditSourceMode] = useState<'exclude' | 'include'>('exclude');
   const [editBypassTimeInterval, setEditBypassTimeInterval] = useState(false);
+  const [editSoloLeadNuoviEnabled, setEditSoloLeadNuoviEnabled] = useState(false);
+  const [editSoloLeadNuoviGiorni, setEditSoloLeadNuoviGiorni] = useState<number | null>(7);
+  const [editSoloLeadNuoviDaData, setEditSoloLeadNuoviDaData] = useState<string | null>(null);
 
   useEffect(() => {
     loadUniqueSources();
@@ -67,6 +71,9 @@ const loadUniqueSources = async () => {
     setEditExcludeFromIncluded(campaign.exclude_from_included || []);
     setEditSourceMode(campaign.source_mode || 'exclude');
     setEditBypassTimeInterval(campaign.bypass_time_interval || false);
+    setEditSoloLeadNuoviEnabled(campaign.solo_lead_nuovi_enabled || false);
+    setEditSoloLeadNuoviGiorni(campaign.solo_lead_nuovi_giorni ?? 7);
+    setEditSoloLeadNuoviDaData(campaign.solo_lead_nuovi_da_data || null);
   };
 
   const handleUpdate = async () => {
@@ -81,7 +88,10 @@ const loadUniqueSources = async () => {
         fonti_escluse: editExcludedSources.length > 0 ? editExcludedSources : [],
         source_mode: editSourceMode,
         exclude_from_included: editExcludeFromIncluded.length > 0 ? editExcludeFromIncluded : [],
-        bypass_time_interval: editBypassTimeInterval
+        bypass_time_interval: editBypassTimeInterval,
+        solo_lead_nuovi_enabled: editSoloLeadNuoviEnabled,
+        solo_lead_nuovi_giorni: editSoloLeadNuoviEnabled ? editSoloLeadNuoviGiorni : null,
+        solo_lead_nuovi_da_data: editSoloLeadNuoviEnabled ? editSoloLeadNuoviDaData : null
       });
       setEditingCampaign(null);
     } finally {
@@ -252,7 +262,18 @@ const loadUniqueSources = async () => {
                           bypassTimeInterval={editBypassTimeInterval}
                           onToggleBypass={setEditBypassTimeInterval}
                         />
-                        
+
+                        <CampaignNewLeadsConfig
+                          enabled={editSoloLeadNuoviEnabled}
+                          giorni={editSoloLeadNuoviGiorni}
+                          daData={editSoloLeadNuoviDaData}
+                          onChange={({ enabled, giorni, daData }) => {
+                            setEditSoloLeadNuoviEnabled(enabled);
+                            setEditSoloLeadNuoviGiorni(giorni);
+                            setEditSoloLeadNuoviDaData(daData);
+                          }}
+                        />
+
                         <Button
                           onClick={handleUpdate}
                           disabled={isSubmitting || !editNome.trim()}
