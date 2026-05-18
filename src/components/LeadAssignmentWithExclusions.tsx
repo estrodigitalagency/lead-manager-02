@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SourceFilter } from "@/components/lead-assignment/SourceFilter";
 import { BypassTimeIntervalControl } from "@/components/lead-assignment/BypassTimeIntervalControl";
+import { NewLeadsControl } from "@/components/lead-assignment/NewLeadsControl";
 import { LeadScoreHotFilter } from "@/components/lead-assignment/LeadScoreHotFilter";
 import { AvailableLeadsCounter } from "@/components/lead-assignment/AvailableLeadsCounter";
 import { AlreadyAssignedLeadsDialog } from "@/components/lead-assignment/AlreadyAssignedLeadsDialog";
@@ -31,6 +32,8 @@ const LeadAssignmentWithExclusions = () => {
     removeIncludedSource, addExcludeFromIncluded, removeExcludeFromIncluded,
     toggleSourceMode, toggleBypassTimeInterval, toggleOnlyHotLeads,
     handleAssign, updateAvailableLeads, refreshUniqueSources,
+    newLeadsEnabled, newLeadsMode, newLeadsDays, newLeadsFromDate,
+    toggleNewLeads, setNewLeadsMode, setNewLeadsDays, setNewLeadsFromDate,
     showAlreadyAssignedDialog, alreadyAssignedLeads,
     handleConfirmAssignments, handleCloseAlreadyAssignedDialog
   } = useLeadAssignment();
@@ -80,7 +83,7 @@ const LeadAssignmentWithExclusions = () => {
     return `Assegna ${numLead} lead`;
   };
 
-  const activeFilterCount = (excludedSources.length || 0) + (includedSources.length || 0) + (bypassTimeInterval ? 1 : 0) + (onlyHotLeads ? 1 : 0);
+  const activeFilterCount = (excludedSources.length || 0) + (includedSources.length || 0) + (bypassTimeInterval ? 1 : 0) + (onlyHotLeads ? 1 : 0) + (newLeadsEnabled ? 1 : 0);
   const hasAdvancedFilters = activeFilterCount > 0;
 
   return (
@@ -210,6 +213,18 @@ const LeadAssignmentWithExclusions = () => {
                   disabled={isFormDisabled}
                 />
               </div>
+
+              <NewLeadsControl
+                enabled={newLeadsEnabled}
+                mode={newLeadsMode}
+                days={newLeadsDays}
+                fromDate={newLeadsFromDate}
+                onToggleEnabled={toggleNewLeads}
+                onChangeMode={setNewLeadsMode}
+                onChangeDays={setNewLeadsDays}
+                onChangeFromDate={setNewLeadsFromDate}
+                disabled={isFormDisabled}
+              />
 
               <LeadScoreHotFilter
                 onlyHotLeads={onlyHotLeads}

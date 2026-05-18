@@ -12,6 +12,7 @@ export interface LeadAssignmentData {
   bypassTimeInterval?: boolean;
   excludeFromIncluded?: string[];
   onlyHotLeads?: boolean;
+  newLeadsCutoffISO?: string; // Only leads with created_at >= this ISO
   market?: 'IT' | 'ES';
   specificLeadIds?: string[]; // For replay functionality
   skipAlreadyAssignedCheck?: boolean; // Skip pre-assignment check
@@ -180,16 +181,17 @@ async function processAssignmentCompletion(
 }
 
 export async function assignLeadsWithExclusions(data: LeadAssignmentData) {
-  const { 
-    numLead, 
-    venditore, 
-    campagna, 
-    excludedSources = [], 
-    includedSources = [], 
+  const {
+    numLead,
+    venditore,
+    campagna,
+    excludedSources = [],
+    includedSources = [],
     sourceMode = 'exclude',
     bypassTimeInterval = false,
-    excludeFromIncluded = [], 
+    excludeFromIncluded = [],
     onlyHotLeads = false,
+    newLeadsCutoffISO,
     market = 'IT',
     specificLeadIds // For replay functionality
   } = data;
@@ -340,9 +342,13 @@ export async function assignLeadsWithExclusions(data: LeadAssignmentData) {
         .eq('market', market)
         .order('created_at', { ascending: true })
         .range(page * pageSize, (page + 1) * pageSize - 1);
-        
+
       if (onlyHotLeads) {
         query = query.eq('lead_score', 'Hot');
+      }
+
+      if (newLeadsCutoffISO) {
+        query = query.gte('created_at', newLeadsCutoffISO);
       }
 
       if (sourceMode === 'include' && includedSources.length > 0) {
@@ -499,13 +505,14 @@ export async function assignLeadsWithExclusions(data: LeadAssignmentData) {
 }
 
 export async function getAvailableLeadsCount(
-  excludedSources: string[] = [], 
-  includedSources: string[] = [], 
+  excludedSources: string[] = [],
+  includedSources: string[] = [],
   sourceMode: 'exclude' | 'include' = 'exclude',
   bypassTimeInterval: boolean = false,
-  excludeFromIncluded: string[] = [], 
+  excludeFromIncluded: string[] = [],
   onlyHotLeads: boolean = false,
-  market: 'IT' | 'ES' = 'IT'
+  market: 'IT' | 'ES' = 'IT',
+  newLeadsCutoffISO?: string
 ): Promise<number> {
   try {
     console.log('getAvailableLeadsCount called with:', {
@@ -545,11 +552,15 @@ export async function getAvailableLeadsCount(
         countQuery = countQuery.eq('lead_score', 'Hot');
       }
 
+      if (newLeadsCutoffISO) {
+        countQuery = countQuery.gte('created_at', newLeadsCutoffISO);
+      }
+
       const includeFilters = includedSources.map(source => `ultima_fonte.like.%${source}%`).join(',');
       countQuery = countQuery.or(includeFilters);
 
       const { count, error } = await countQuery;
-      
+
       if (error) {
         console.error('Error counting available leads:', error);
         return 0;
@@ -573,8 +584,12 @@ export async function getAvailableLeadsCount(
         countQuery = countQuery.eq('lead_score', 'Hot');
       }
 
+      if (newLeadsCutoffISO) {
+        countQuery = countQuery.gte('created_at', newLeadsCutoffISO);
+      }
+
       const { count, error } = await countQuery;
-      
+
       if (error) {
         console.error('Error counting available leads:', error);
         return 0;
@@ -599,9 +614,13 @@ export async function getAvailableLeadsCount(
         .eq('manually_not_assignable', false)
         .eq('market', market)
         .range(page * pageSize, (page + 1) * pageSize - 1);
-        
+
       if (onlyHotLeads) {
         query = query.eq('lead_score', 'Hot');
+      }
+
+      if (newLeadsCutoffISO) {
+        query = query.gte('created_at', newLeadsCutoffISO);
       }
 
       if (sourceMode === 'include') {
@@ -697,15 +716,16 @@ export async function getAvailableLeadsCount(
 export async function checkLeadsForPreviousAssignment(
   data: LeadAssignmentData
 ): Promise<PreAssignmentCheckResult> {
-  const { 
-    numLead, 
+  const {
+    numLead,
     venditore,
-    excludedSources = [], 
-    includedSources = [], 
+    excludedSources = [],
+    includedSources = [],
     sourceMode = 'exclude',
     bypassTimeInterval = false,
-    excludeFromIncluded = [], 
+    excludeFromIncluded = [],
     onlyHotLeads = false,
+    newLeadsCutoffISO,
     market = 'IT',
   } = data;
 
@@ -737,9 +757,13 @@ export async function checkLeadsForPreviousAssignment(
         .eq('market', market)
         .order('created_at', { ascending: true })
         .range(page * pageSize, (page + 1) * pageSize - 1);
-        
+
       if (onlyHotLeads) {
         query = query.eq('lead_score', 'Hot');
+      }
+
+      if (newLeadsCutoffISO) {
+        query = query.gte('created_at', newLeadsCutoffISO);
       }
 
       if (sourceMode === 'include' && includedSources.length > 0) {

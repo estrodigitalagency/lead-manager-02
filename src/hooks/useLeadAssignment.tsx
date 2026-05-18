@@ -24,6 +24,15 @@ export function useLeadAssignment() {
   const [uniqueSources, setUniqueSources] = useState<string[]>([]);
   const [bypassTimeInterval, setBypassTimeInterval] = useState(false);
   const [onlyHotLeads, setOnlyHotLeads] = useState(false);
+
+  // "Solo lead nuovi" filter
+  const [newLeadsEnabled, setNewLeadsEnabled] = useState(false);
+  const [newLeadsMode, setNewLeadsMode] = useState<'days' | 'date'>('days');
+  const [newLeadsDays, setNewLeadsDays] = useState<number>(7);
+  const [newLeadsFromDate, setNewLeadsFromDate] = useState<string>(() => {
+    const d = new Date(Date.now() - 7 * 86400000);
+    return d.toISOString().slice(0, 10);
+  });
   
   // State for already assigned leads conflict
   const [showAlreadyAssignedDialog, setShowAlreadyAssignedDialog] = useState(false);
@@ -31,17 +40,29 @@ export function useLeadAssignment() {
   const [pendingAssignmentData, setPendingAssignmentData] = useState<LeadAssignmentData | null>(null);
 
   // Usa il nuovo hook per il conteggio in tempo reale con tutti i parametri
-  const { 
-    count: availableLeads, 
-    isLoading: isUpdatingCount, 
-    refreshCount: updateAvailableLeads 
+  // Compute effective cutoff date (ISO) from the new-leads filter, or undefined
+  const newLeadsCutoffISO: string | undefined = (() => {
+    if (!newLeadsEnabled) return undefined;
+    if (newLeadsMode === 'days') {
+      return new Date(Date.now() - newLeadsDays * 86400000).toISOString();
+    }
+    // date mode: start of selected day
+    if (!newLeadsFromDate) return undefined;
+    return new Date(`${newLeadsFromDate}T00:00:00`).toISOString();
+  })();
+
+  const {
+    count: availableLeads,
+    isLoading: isUpdatingCount,
+    refreshCount: updateAvailableLeads
   } = useRealTimeLeadCount({
     excludedSources,
     includedSources,
     sourceMode,
     bypassTimeInterval,
     excludeFromIncluded,
-    onlyHotLeads
+    onlyHotLeads,
+    newLeadsCutoffISO
   });
 
   useEffect(() => {
@@ -275,6 +296,7 @@ const fetchUniqueSources = async () => {
         bypassTimeInterval,
         excludeFromIncluded,
         onlyHotLeads,
+        newLeadsCutoffISO,
         market: selectedMarket
       };
 
@@ -481,6 +503,16 @@ const fetchUniqueSources = async () => {
     handleAssign,
     updateAvailableLeads,
     refreshUniqueSources: fetchUniqueSources,
+    // New leads filter
+    newLeadsEnabled,
+    newLeadsMode,
+    newLeadsDays,
+    newLeadsFromDate,
+    newLeadsCutoffISO,
+    toggleNewLeads: () => setNewLeadsEnabled(v => !v),
+    setNewLeadsMode,
+    setNewLeadsDays,
+    setNewLeadsFromDate,
     // Already assigned leads dialog
     showAlreadyAssignedDialog,
     alreadyAssignedLeads,
