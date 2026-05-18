@@ -13,10 +13,11 @@ const CampaignsSettings = () => {
   return (
     <CardContent className="space-y-6">
       <AddCampaignForm onSubmit={addCampaign} />
-      <CampaignsList 
-        campaigns={campaigns} 
+      <CampaignsList
+        campaigns={campaigns}
         onUpdate={updateCampaign}
         onDelete={deleteCampaign}
+        onDuplicate={addCampaign}
       />
     </CardContent>
   );

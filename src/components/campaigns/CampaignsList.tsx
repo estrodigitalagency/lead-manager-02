@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Switch } from '@/components/ui/switch';
-import { Pencil, Trash2 } from 'lucide-react';
+import { Pencil, Trash2, Copy } from 'lucide-react';
 import { Campaign } from '@/hooks/useCampaignsData';
 import { getUniqueSourcesFromLeads } from '@/services/databaseService';
 import { supabase } from '@/integrations/supabase/client';
@@ -19,9 +19,21 @@ interface CampaignsListProps {
   campaigns: Campaign[];
   onUpdate: (id: string, updates: Partial<Campaign>) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
+  onDuplicate?: (data: {
+    nome: string;
+    descrizione?: string;
+    fonti_incluse?: string[];
+    fonti_escluse?: string[];
+    source_mode?: 'exclude' | 'include';
+    exclude_from_included?: string[];
+    bypass_time_interval?: boolean;
+    solo_lead_nuovi_enabled?: boolean;
+    solo_lead_nuovi_giorni?: number | null;
+    solo_lead_nuovi_da_data?: string | null;
+  }) => Promise<void>;
 }
 
-const CampaignsList = ({ campaigns, onUpdate, onDelete }: CampaignsListProps) => {
+const CampaignsList = ({ campaigns, onUpdate, onDelete, onDuplicate }: CampaignsListProps) => {
   const { selectedMarket } = useMarket();
   const [editingCampaign, setEditingCampaign] = useState<Campaign | null>(null);
   const [editNome, setEditNome] = useState('');
@@ -138,6 +150,31 @@ const loadUniqueSources = async () => {
     if (window.confirm(`Sei sicuro di voler eliminare la campagna "${campaign.nome}"?`)) {
       await onDelete(campaign.id);
     }
+  };
+
+  const handleDuplicate = async (campaign: Campaign) => {
+    if (!onDuplicate) return;
+    // Build unique copy name: "<nome> (Copia)" or "<nome> (Copia N)" if conflict
+    const baseName = `${campaign.nome} (Copia)`;
+    const existing = new Set(campaigns.map(c => c.nome));
+    let newName = baseName;
+    let i = 2;
+    while (existing.has(newName)) {
+      newName = `${campaign.nome} (Copia ${i})`;
+      i++;
+    }
+    await onDuplicate({
+      nome: newName,
+      descrizione: campaign.descrizione,
+      fonti_incluse: campaign.fonti_incluse,
+      fonti_escluse: campaign.fonti_escluse,
+      source_mode: campaign.source_mode,
+      exclude_from_included: campaign.exclude_from_included,
+      bypass_time_interval: campaign.bypass_time_interval,
+      solo_lead_nuovi_enabled: campaign.solo_lead_nuovi_enabled,
+      solo_lead_nuovi_giorni: campaign.solo_lead_nuovi_giorni,
+      solo_lead_nuovi_da_data: campaign.solo_lead_nuovi_da_data
+    });
   };
 
   if (campaigns.length === 0) {
@@ -285,9 +322,21 @@ const loadUniqueSources = async () => {
                     </DialogContent>
                   </Dialog>
 
+                  {onDuplicate && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      title="Duplica campagna"
+                      onClick={() => handleDuplicate(campaign)}
+                    >
+                      <Copy className="h-4 w-4" />
+                    </Button>
+                  )}
+
                   <Button
                     variant="outline"
                     size="sm"
+                    title="Elimina campagna"
                     onClick={() => handleDelete(campaign)}
                   >
                     <Trash2 className="h-4 w-4" />
