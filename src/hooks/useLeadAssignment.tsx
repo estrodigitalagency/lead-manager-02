@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { getAllFonti, getAllCampagne, getUniqueSourcesFromLeads } from "@/services/databaseService";
@@ -41,16 +41,21 @@ export function useLeadAssignment() {
   const [pendingAssignmentData, setPendingAssignmentData] = useState<LeadAssignmentData | null>(null);
 
   // Usa il nuovo hook per il conteggio in tempo reale con tutti i parametri
-  // Compute effective cutoff date (ISO) from the new-leads filter, or undefined
-  const newLeadsCutoffISO: string | undefined = (() => {
+  // Compute effective cutoff date (ISO) from the new-leads filter, or undefined.
+  // Memoized so it stays stable between renders (Date.now() would otherwise change
+  // every render → infinite count refresh loop). For 'days' mode we anchor to the
+  // start of the current day so the value only changes when the date actually rolls over.
+  const newLeadsCutoffISO: string | undefined = useMemo(() => {
     if (!newLeadsEnabled) return undefined;
     if (newLeadsMode === 'days') {
-      return new Date(Date.now() - newLeadsDays * 86400000).toISOString();
+      const now = new Date();
+      const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      return new Date(startOfToday.getTime() - (newLeadsDays - 1) * 86400000).toISOString();
     }
     // date mode: start of selected day
     if (!newLeadsFromDate) return undefined;
     return new Date(`${newLeadsFromDate}T00:00:00`).toISOString();
-  })();
+  }, [newLeadsEnabled, newLeadsMode, newLeadsDays, newLeadsFromDate]);
 
   const {
     count: availableLeads,
