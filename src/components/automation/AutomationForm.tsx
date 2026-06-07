@@ -439,9 +439,9 @@ export function AutomationForm({ open, onOpenChange, onSubmit, automation, isLoa
                               <SelectValue placeholder="Seleziona venditore da escludere" />
                             </SelectTrigger>
                             <SelectContent>
-                              {venditori.map((venditore) => (
-                                <SelectItem 
-                                  key={venditore.id} 
+                              {venditori.filter(v => v.stato === 'attivo').map((venditore) => (
+                                <SelectItem
+                                  key={venditore.id}
                                   value={`${venditore.nome} ${venditore.cognome}`.trim()}
                                   disabled={field.value?.includes(`${venditore.nome} ${venditore.cognome}`.trim())}
                                 >
