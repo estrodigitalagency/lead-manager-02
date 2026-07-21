@@ -492,6 +492,75 @@ export async function getLeadsBySource(
   }
 }
 
+export interface LeadsBySalespersonItem {
+  venditore: string;
+  count: number;
+  percentage: number;
+}
+
+export async function getLeadsBySalesperson(
+  filters: ReportFilters
+): Promise<{ items: LeadsBySalespersonItem[]; totaleGenerati: number; totaleLavorati: number }> {
+  try {
+    // Espande campagna in fonti (riusa stessa logica di getFilteredLeads)
+    filters = (await expandCampagnaToFilters(filters as any, filters.market || 'IT')) as ReportFilters;
+
+    const pageSize = 1000;
+    let page = 0;
+    let hasMore = true;
+    let totaleGenerati = 0;
+    const counts: Record<string, number> = {};
+
+    while (hasMore) {
+      let query = supabase
+        .from('lead_generation')
+        .select('venditore');
+
+      if (filters.market) query = query.eq('market', filters.market);
+      if (filters.startDate) query = query.gte('created_at', getStartOfDay(filters.startDate));
+      if (filters.endDate) query = query.lt('created_at', getNextDayStart(filters.endDate));
+
+      query = applyFonteFilters(query, filters);
+      query = applyCampagnaFilter(query, filters);
+
+      if (filters.venditore && filters.venditore.trim() !== '') {
+        const cleanVenditore = filters.venditore.trim();
+        query = query.or(`venditore.eq.${cleanVenditore},venditore.eq. ${cleanVenditore},venditore.eq.${cleanVenditore} `);
+      }
+
+      query = query.range(page * pageSize, (page + 1) * pageSize - 1);
+
+      const { data, error } = await query;
+      if (error) throw error;
+
+      if (data && data.length > 0) {
+        for (const row of data) {
+          totaleGenerati++;
+          const v = (row.venditore || '').trim();
+          if (v) counts[v] = (counts[v] || 0) + 1;
+        }
+      }
+
+      hasMore = (data?.length || 0) === pageSize;
+      page++;
+    }
+
+    const totaleLavorati = Object.values(counts).reduce((a, b) => a + b, 0);
+    const items: LeadsBySalespersonItem[] = Object.entries(counts)
+      .map(([venditore, count]) => ({
+        venditore,
+        count,
+        percentage: totaleGenerati > 0 ? Math.round((count / totaleGenerati) * 1000) / 10 : 0,
+      }))
+      .sort((a, b) => b.count - a.count);
+
+    return { items, totaleGenerati, totaleLavorati };
+  } catch (error) {
+    console.error('Error fetching leads by salesperson:', error);
+    return { items: [], totaleGenerati: 0, totaleLavorati: 0 };
+  }
+}
+
 export interface ReportLeadDetail {
   id: string;
   created_at: string | null;
