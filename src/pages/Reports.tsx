@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useMarket } from "@/contexts/MarketContext";
 import { ReportFilters, ReportMetrics, getReportMetrics } from "@/services/reportsService";
@@ -8,6 +8,7 @@ import ReportMetricsComponent from "@/components/reports/ReportMetrics";
 import { LeadsBySourceChart } from "@/components/LeadsBySourceChart";
 import { LeadsBySalespersonChart } from "@/components/LeadsBySalespersonChart";
 import ReportLeadsList from "@/components/reports/ReportLeadsList";
+import ExportReportButton from "@/components/reports/ExportReportButton";
 
 const ReportsPage = () => {
   const isMobile = useIsMobile();
@@ -43,10 +44,15 @@ const ReportsPage = () => {
     setRefreshTrigger(prev => prev + 1);
   };
 
+  const reportRef = useRef<HTMLDivElement>(null);
+
   return (
     <div className={`container mx-auto max-w-7xl ${isMobile ? 'px-4 py-5 pt-16 pb-24' : 'px-6 py-8 pt-[72px]'}`}>
-      <h1 className="text-xl md:text-2xl font-semibold text-foreground mb-5">Report</h1>
-      <div className="space-y-5">
+      <div className="flex items-center justify-between mb-5 gap-2 flex-wrap">
+        <h1 className="text-xl md:text-2xl font-semibold text-foreground">Report</h1>
+        <ExportReportButton targetRef={reportRef} filenameBase={`report_${selectedMarket}`} />
+      </div>
+      <div ref={reportRef} className="space-y-5">
         {/* Filtri - now compact with collapsible details */}
         <ReportFiltersComponent
           filters={filters}
