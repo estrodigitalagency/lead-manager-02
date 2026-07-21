@@ -17,14 +17,38 @@ const ExportReportButton = ({ targetRef, filenameBase = "report" }: ExportReport
     const el = targetRef.current;
     if (!el) throw new Error("Elemento report non trovato");
     // Wait a tick to let charts settle
-    await new Promise(r => setTimeout(r, 100));
+    await new Promise(r => setTimeout(r, 200));
     return html2canvas(el, {
       backgroundColor: getComputedStyle(document.body).backgroundColor || "#ffffff",
       scale: 2,
       useCORS: true,
       logging: false,
+      // Use the full rendered size, not viewport
+      width: el.scrollWidth,
+      height: el.scrollHeight,
       windowWidth: el.scrollWidth,
       windowHeight: el.scrollHeight,
+      // Clone modification: expand any scrollable/max-height containers so nothing is clipped
+      onclone: (clonedDoc: Document) => {
+        // Remove max-height + overflow constraints on all cloned nodes
+        const all = clonedDoc.querySelectorAll<HTMLElement>('*');
+        all.forEach((node) => {
+          const cs = clonedDoc.defaultView?.getComputedStyle(node);
+          if (!cs) return;
+          const overflow = cs.overflow + cs.overflowX + cs.overflowY;
+          if (/auto|scroll|hidden/.test(overflow)) {
+            node.style.overflow = 'visible';
+            node.style.overflowX = 'visible';
+            node.style.overflowY = 'visible';
+          }
+          if (cs.maxHeight && cs.maxHeight !== 'none') {
+            node.style.maxHeight = 'none';
+          }
+          if (cs.height && /^\d+px$/.test(cs.height) && parseInt(cs.height) < node.scrollHeight) {
+            node.style.height = 'auto';
+          }
+        });
+      },
     });
   };
 
@@ -55,22 +79,41 @@ const ExportReportButton = ({ targetRef, filenameBase = "report" }: ExportReport
     try {
       const canvas = await captureAsCanvas();
       const { jsPDF } = await import("jspdf");
-      const imgWidth = 210; // A4 mm
-      const pageHeight = 297;
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+      // A4 dimensions (mm)
+      const A4_W = 210;
+      const A4_H = 297;
+      const MARGIN = 8; // mm
+      const usableW = A4_W - MARGIN * 2;
+      const usableH = A4_H - MARGIN * 2;
+
+      // Slice canvas into page-sized chunks (in canvas pixels)
+      const pxPerMm = canvas.width / usableW;
+      const sliceHeightPx = Math.floor(usableH * pxPerMm);
+
       const pdf = new jsPDF("p", "mm", "a4");
-      let position = 0;
-      let heightLeft = imgHeight;
-      const imgData = canvas.toDataURL("image/png");
+      let renderedPx = 0;
+      let firstPage = true;
 
-      pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
-      heightLeft -= pageHeight;
+      while (renderedPx < canvas.height) {
+        const remaining = canvas.height - renderedPx;
+        const currentSlicePx = Math.min(sliceHeightPx, remaining);
 
-      while (heightLeft > 0) {
-        position = heightLeft - imgHeight;
-        pdf.addPage();
-        pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
-        heightLeft -= pageHeight;
+        // Create temporary canvas for the slice
+        const slice = document.createElement("canvas");
+        slice.width = canvas.width;
+        slice.height = currentSlicePx;
+        const ctx = slice.getContext("2d");
+        if (ctx) {
+          ctx.drawImage(canvas, 0, renderedPx, canvas.width, currentSlicePx, 0, 0, canvas.width, currentSlicePx);
+        }
+        const sliceMmHeight = currentSlicePx / pxPerMm;
+
+        if (!firstPage) pdf.addPage();
+        firstPage = false;
+        pdf.addImage(slice.toDataURL("image/png"), "PNG", MARGIN, MARGIN, usableW, sliceMmHeight);
+
+        renderedPx += currentSlicePx;
       }
 
       pdf.save(`${filenameBase}_${stamp()}.pdf`);
