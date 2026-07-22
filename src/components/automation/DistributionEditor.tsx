@@ -17,8 +17,6 @@ interface Venditore {
 interface DistributionEditorProps {
   mode: DistributionMode;
   onModeChange: (mode: DistributionMode) => void;
-  capTotal: number | null | undefined;
-  onCapTotalChange: (v: number | null) => void;
   slots: DistributionSlot[];
   onSlotsChange: (slots: DistributionSlot[]) => void;
   venditori: Venditore[]; // solo attivi filtrati esternamente
@@ -28,8 +26,6 @@ interface DistributionEditorProps {
 export const DistributionEditor = ({
   mode,
   onModeChange,
-  capTotal,
-  onCapTotalChange,
   slots,
   onSlotsChange,
   venditori,
@@ -52,7 +48,6 @@ export const DistributionEditor = ({
     : 0;
 
   const weightValid = mode !== 'percentage' || totalWeight === 100;
-  const capValid = mode !== 'percentage' || !capTotal || capTotal > 0;
   const countValid = mode !== 'count' || slots.every(s => (s.count_target ?? 0) > 0);
 
   const addSlot = () => {
@@ -61,6 +56,7 @@ export const DistributionEditor = ({
       venditore_id: availableForNewSlot[0].id,
       weight: mode === 'percentage' ? 0 : null,
       count_target: mode === 'count' ? 100 : null,
+      cap: null,
     };
     onSlotsChange([...slots, next]);
   };
@@ -114,24 +110,9 @@ export const DistributionEditor = ({
         </Button>
       </div>
 
-      {mode === 'percentage' && (
-        <div className="space-y-1">
-          <Label className="text-xs text-muted-foreground">Tetto massimo lead (opzionale)</Label>
-          <Input
-            type="number"
-            min={0}
-            placeholder="Nessun tetto"
-            value={capTotal ?? ''}
-            onChange={e => onCapTotalChange(e.target.value === '' ? null : Math.max(0, parseInt(e.target.value) || 0))}
-            className="h-8 text-sm"
-          />
-          <p className="text-[11px] text-muted-foreground">Se impostato, l'automation si ferma quando raggiunge questo totale.</p>
-        </div>
-      )}
-
       <div className="space-y-2">
         {slots.map((slot, idx) => (
-          <Card key={idx} className="p-3">
+          <Card key={idx} className="p-3 space-y-2">
             <div className="flex items-center gap-2">
               <div className="flex-1">
                 <Select
@@ -151,7 +132,7 @@ export const DistributionEditor = ({
                 </Select>
               </div>
               {mode === 'percentage' ? (
-                <div className="flex items-center gap-1 w-28">
+                <div className="flex items-center gap-1 w-24">
                   <Input
                     type="number"
                     min={0}
@@ -163,7 +144,7 @@ export const DistributionEditor = ({
                   <span className="text-sm text-muted-foreground">%</span>
                 </div>
               ) : (
-                <div className="flex items-center gap-1 w-32">
+                <div className="flex items-center gap-1 w-28">
                   <Input
                     type="number"
                     min={1}
@@ -177,6 +158,18 @@ export const DistributionEditor = ({
               <Button type="button" size="icon" variant="ghost" onClick={() => removeSlot(idx)}>
                 <Trash2 className="h-4 w-4 text-destructive" />
               </Button>
+            </div>
+            <div className="flex items-center gap-2 pl-1">
+              <Label className="text-[11px] text-muted-foreground shrink-0">Tetto max individuale (opzionale):</Label>
+              <Input
+                type="number"
+                min={0}
+                placeholder="nessuno"
+                value={slot.cap ?? ''}
+                onChange={e => updateSlot(idx, { cap: e.target.value === '' ? null : Math.max(0, parseInt(e.target.value) || 0) })}
+                className="h-7 text-xs w-28"
+              />
+              <span className="text-[11px] text-muted-foreground">lead massimi</span>
             </div>
           </Card>
         ))}
@@ -212,11 +205,6 @@ export const DistributionEditor = ({
           {!countValid && (
             <span className="text-amber-600 flex items-center gap-1 text-xs">
               <AlertTriangle className="h-3 w-3" /> {"Ogni quota deve essere > 0"}
-            </span>
-          )}
-          {!capValid && (
-            <span className="text-amber-600 flex items-center gap-1 text-xs">
-              <AlertTriangle className="h-3 w-3" /> Tetto invalido
             </span>
           )}
         </div>

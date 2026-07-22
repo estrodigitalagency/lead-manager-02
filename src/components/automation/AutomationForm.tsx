@@ -588,8 +588,6 @@ export function AutomationForm({ open, onOpenChange, onSubmit, automation, isLoa
                 <DistributionEditor
                   mode={distMode as DistributionMode}
                   onModeChange={(m) => form.setValue("distribution_mode", m, { shouldDirty: true })}
-                  capTotal={distCap}
-                  onCapTotalChange={(v) => form.setValue("distribution_cap_total", v, { shouldDirty: true })}
                   slots={distConfig as DistributionSlot[]}
                   onSlotsChange={(next) => form.setValue("distribution_config", next, { shouldDirty: true })}
                   venditori={venditori}

@@ -812,6 +812,7 @@ async function assignLeadAutomatically(lead: any, seller: any, sheetsTabName: st
 }
 
 // Seleziona venditore da distribuzione (percentage o count) con state tracking atomico
+// Rispetta cap individuali per slot (opzionali) e count_target per mode=count.
 async function pickSellerFromDistribution(automation: any, supabase: any): Promise<any | null> {
   try {
     const config: any[] = automation.distribution_config || [];
@@ -822,12 +823,6 @@ async function pickSellerFromDistribution(automation: any, supabase: any): Promi
     const counts: Record<string, number> = state.count_assigned || {};
     const total: number = state.total_assigned || 0;
 
-    // Cap totale (solo percentage)
-    if (mode === 'percentage' && automation.distribution_cap_total && total >= automation.distribution_cap_total) {
-      console.log(`Distribution cap reached: ${total}/${automation.distribution_cap_total}`);
-      return null;
-    }
-
     // Fetch tutti i venditori delle slot
     const sellerIds = config.map((s: any) => s.venditore_id);
     const { data: sellers } = await supabase
@@ -836,47 +831,70 @@ async function pickSellerFromDistribution(automation: any, supabase: any): Promi
       .in('id', sellerIds);
 
     const activeSellers = (sellers || []).filter((s: any) => s.stato === 'attivo');
-    if (activeSellers.length === 0) return null;
+    if (activeSellers.length === 0) {
+      console.log('[distribution] No active sellers in slots');
+      return null;
+    }
 
-    // Filtra slot con venditori attivi
+    // Filtra slot con venditori attivi + cap individuale non raggiunto
     let eligible = config
       .filter((slot: any) => activeSellers.find((s: any) => s.id === slot.venditore_id))
-      .map((slot: any) => ({ slot, seller: activeSellers.find((s: any) => s.id === slot.venditore_id) }));
+      .map((slot: any) => ({ slot, seller: activeSellers.find((s: any) => s.id === slot.venditore_id) }))
+      .filter((e: any) => {
+        const cap = e.slot.cap;
+        if (!cap || cap <= 0) return true;
+        const current = counts[e.slot.venditore_id] || 0;
+        const withinCap = current < cap;
+        if (!withinCap) console.log(`[distribution] Slot ${e.seller.nome} ${e.seller.cognome} cap raggiunto: ${current}/${cap}`);
+        return withinCap;
+      });
 
     if (mode === 'count') {
       // Escludi quelli con quota raggiunta
       eligible = eligible.filter((e: any) => {
         const target = e.slot.count_target || 0;
         const current = counts[e.slot.venditore_id] || 0;
-        return current < target;
+        const withinTarget = current < target;
+        if (!withinTarget) console.log(`[distribution] Slot ${e.seller.nome} ${e.seller.cognome} quota raggiunta: ${current}/${target}`);
+        return withinTarget;
       });
       if (eligible.length === 0) {
-        console.log('All distribution quotas full');
+        console.log('[distribution] All quotas/caps full');
         return null;
       }
       // Random uniforme tra quelli non-piena
       const pick = eligible[Math.floor(Math.random() * eligible.length)];
       await incrementDistributionState(automation.id, pick.slot.venditore_id, counts, total, supabase);
+      console.log(`[distribution] mode=count pick=${pick.seller.nome} ${pick.seller.cognome}`);
       return pick.seller;
     }
 
-    // Percentage: weighted random
+    // Percentage: weighted random tra eligible (cap-filtered)
+    if (eligible.length === 0) {
+      console.log('[distribution] No eligible sellers left (all caps reached)');
+      return null;
+    }
     const totalWeight = eligible.reduce((sum: number, e: any) => sum + (e.slot.weight || 0), 0);
-    if (totalWeight <= 0) return null;
+    if (totalWeight <= 0) {
+      console.log('[distribution] Total weight 0, cannot pick');
+      return null;
+    }
     let r = Math.random() * totalWeight;
     for (const e of eligible) {
       r -= (e.slot.weight || 0);
       if (r <= 0) {
         await incrementDistributionState(automation.id, e.slot.venditore_id, counts, total, supabase);
+        console.log(`[distribution] mode=percentage pick=${e.seller.nome} ${e.seller.cognome} weight=${e.slot.weight}%`);
         return e.seller;
       }
     }
     // Fallback
     const last = eligible[eligible.length - 1];
     await incrementDistributionState(automation.id, last.slot.venditore_id, counts, total, supabase);
+    console.log(`[distribution] mode=percentage fallback pick=${last.seller.nome} ${last.seller.cognome}`);
     return last.seller;
   } catch (error) {
-    console.error('Error in pickSellerFromDistribution:', error);
+    console.error('[distribution] Error in pickSellerFromDistribution:', error);
     return null;
   }
 }

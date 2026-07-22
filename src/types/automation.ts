@@ -4,6 +4,7 @@ export interface DistributionSlot {
   venditore_id: string;
   weight?: number | null;       // per mode='percentage' (0-100, somma = 100)
   count_target?: number | null; // per mode='count'
+  cap?: number | null;          // tetto massimo INDIVIDUALE (opzionale, funziona in entrambe le modalità)
 }
 
 export interface DistributionState {
