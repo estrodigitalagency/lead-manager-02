@@ -73,11 +73,11 @@ const AddSalespersonForm = ({ onSuccess }: AddSalespersonFormProps) => {
   };
 
   return (
-    <div className="space-y-4">
-      <h3 className="text-[15px] font-semibold tracking-tight">Aggiungi Nuovo Venditore</h3>
-      
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div>
+    <div className="space-y-3">
+      <h3 className="text-[13px] font-semibold tracking-tight">Aggiungi nuovo venditore</h3>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-3 gap-y-2.5">
+        <div className="space-y-1">
           <Label htmlFor="nome">Nome *</Label>
           <Input
             id="nome"
@@ -86,8 +86,8 @@ const AddSalespersonForm = ({ onSuccess }: AddSalespersonFormProps) => {
             placeholder="Nome venditore"
           />
         </div>
-        
-        <div>
+
+        <div className="space-y-1">
           <Label htmlFor="cognome">Cognome</Label>
           <Input
             id="cognome"
@@ -97,7 +97,7 @@ const AddSalespersonForm = ({ onSuccess }: AddSalespersonFormProps) => {
           />
         </div>
 
-        <div>
+        <div className="space-y-1">
           <Label htmlFor="email">Email</Label>
           <Input
             id="email"
@@ -108,7 +108,7 @@ const AddSalespersonForm = ({ onSuccess }: AddSalespersonFormProps) => {
           />
         </div>
 
-        <div>
+        <div className="space-y-1">
           <Label htmlFor="telefono">Telefono (con prefisso)</Label>
           <Input
             id="telefono"
@@ -118,7 +118,7 @@ const AddSalespersonForm = ({ onSuccess }: AddSalespersonFormProps) => {
           />
         </div>
 
-        <div>
+        <div className="space-y-1">
           <Label htmlFor="sheets_file_id">Google Sheets ID File *</Label>
           <Input
             id="sheets_file_id"
@@ -128,7 +128,7 @@ const AddSalespersonForm = ({ onSuccess }: AddSalespersonFormProps) => {
           />
         </div>
 
-        <div>
+        <div className="space-y-1">
           <Label htmlFor="sheets_tab_name">Nome Tab Google Sheets *</Label>
           <Input
             id="sheets_tab_name"
@@ -140,8 +140,8 @@ const AddSalespersonForm = ({ onSuccess }: AddSalespersonFormProps) => {
       </div>
 
       <Button onClick={handleAddVenditore} className="w-full">
-        <Plus className="h-4 w-4 mr-2" />
-        Aggiungi Venditore
+        <Plus className="h-3.5 w-3.5 mr-1.5" />
+        Aggiungi venditore
       </Button>
     </div>
   );
