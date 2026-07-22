@@ -4,9 +4,17 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
-import { MoreHorizontal, Edit, Trash2, GripVertical } from "lucide-react";
+import { MoreHorizontal, Edit, Trash2, GripVertical, RotateCcw, Users } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { LeadAssignmentAutomation } from "@/types/automation";
+import { Progress } from "@/components/ui/progress";
+
+interface VenditoreLite {
+  id: string;
+  nome: string;
+  cognome: string;
+  stato: string;
+}
 
 interface AutomationListProps {
   automations: LeadAssignmentAutomation[];
@@ -14,6 +22,8 @@ interface AutomationListProps {
   onEdit: (automation: LeadAssignmentAutomation) => void;
   onDelete: (id: string) => void;
   onReorder: (result: any) => void;
+  onResetDistribution?: (id: string) => Promise<void> | void;
+  venditori?: VenditoreLite[];
 }
 
 const triggerFieldLabels = {
@@ -37,11 +47,23 @@ const conditionTypeLabels = {
 
 const actionTypeLabels = {
   assign_to_seller: "Assegna a venditore specifico",
-  assign_to_previous_seller: "Assegna al venditore precedente"
+  assign_to_previous_seller: "Assegna al venditore precedente",
+  weighted_distribution: "Distribuzione tra più venditori (%/quota)"
 };
 
-export function AutomationList({ automations, onToggle, onEdit, onDelete, onReorder }: AutomationListProps) {
+export function AutomationList({ automations, onToggle, onEdit, onDelete, onReorder, onResetDistribution, venditori = [] }: AutomationListProps) {
   const [isDragging, setIsDragging] = useState(false);
+
+  const nameOf = (id: string) => {
+    const v = venditori.find(x => x.id === id);
+    return v ? `${v.nome} ${v.cognome}` : id.slice(0, 8);
+  };
+
+  const handleReset = async (automation: LeadAssignmentAutomation) => {
+    if (!onResetDistribution) return;
+    if (!confirm(`Azzerare tutti i contatori di distribuzione per "${automation.nome}"? I limiti individuali/quote ripartiranno da zero.`)) return;
+    await onResetDistribution(automation.id);
+  };
 
   const handleDragEnd = (result: any) => {
     setIsDragging(false);
@@ -129,7 +151,13 @@ export function AutomationList({ automations, onToggle, onEdit, onDelete, onReor
                                    <Edit className="h-4 w-4 mr-2" />
                                    Modifica
                                  </DropdownMenuItem>
-                                 <DropdownMenuItem 
+                                 {automation.action_type === 'weighted_distribution' && onResetDistribution && (
+                                   <DropdownMenuItem onClick={() => handleReset(automation)}>
+                                     <RotateCcw className="h-4 w-4 mr-2" />
+                                     Azzera contatori distribuzione
+                                   </DropdownMenuItem>
+                                 )}
+                                 <DropdownMenuItem
                                    onClick={() => onDelete(automation.id)}
                                    className="text-destructive"
                                  >
@@ -174,6 +202,51 @@ export function AutomationList({ automations, onToggle, onEdit, onDelete, onReor
                                </div>
                              )}
                            </div>
+
+                           {/* Monitoring: distribuzione live counters */}
+                           {automation.action_type === 'weighted_distribution' && automation.distribution_config && automation.distribution_config.length > 0 && (
+                             <div className="mt-3 rounded-lg border bg-muted/20 p-3 space-y-2">
+                               <div className="flex items-center justify-between">
+                                 <div className="flex items-center gap-2 text-foreground">
+                                   <Users className="h-3.5 w-3.5 text-primary" />
+                                   <span className="text-xs font-semibold uppercase tracking-wide">Distribuzione live</span>
+                                 </div>
+                                 <span className="text-[11px] text-muted-foreground">
+                                   Totale: <strong className="text-foreground">{automation.distribution_state?.total_assigned || 0}</strong>
+                                   {automation.distribution_state?.last_updated && (
+                                     <span> · agg. {new Date(automation.distribution_state.last_updated).toLocaleString('it-IT')}</span>
+                                   )}
+                                 </span>
+                               </div>
+                               <div className="space-y-1.5">
+                                 {automation.distribution_config.map((slot: any, i: number) => {
+                                   const current = automation.distribution_state?.count_assigned?.[slot.venditore_id] || 0;
+                                   const target = automation.distribution_mode === 'count' ? (slot.count_target || 0) : (slot.cap || 0);
+                                   const pct = target > 0 ? Math.min(100, (current / target) * 100) : 0;
+                                   const full = target > 0 && current >= target;
+                                   return (
+                                     <div key={i} className="text-[11px] space-y-0.5">
+                                       <div className="flex items-center justify-between gap-2">
+                                         <span className={`font-medium ${full ? 'text-amber-600' : 'text-foreground'}`}>
+                                           {nameOf(slot.venditore_id)}
+                                           {automation.distribution_mode === 'percentage' && slot.weight != null && (
+                                             <span className="ml-1.5 text-muted-foreground">({slot.weight}%)</span>
+                                           )}
+                                         </span>
+                                         <span className={`tabular-nums ${full ? 'text-amber-600 font-semibold' : 'text-muted-foreground'}`}>
+                                           {current}{target > 0 ? ` / ${target}` : ''}
+                                           {full && ' · PIENO'}
+                                         </span>
+                                       </div>
+                                       {target > 0 && (
+                                         <Progress value={pct} className="h-1" />
+                                       )}
+                                     </div>
+                                   );
+                                 })}
+                               </div>
+                             </div>
+                           )}
                          </div>
                        </div>
                      </CardContent>

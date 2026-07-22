@@ -7,19 +7,22 @@ import { AutomationList } from "./AutomationList";
 import { AutomationForm } from "./AutomationForm";
 import { AutomationExecutionHistory } from "./AutomationExecutionHistory";
 import { useAutomationsData } from "@/hooks/useAutomationsData";
+import { useSalespeopleData } from "@/hooks/useSalespeopleData";
 import { LeadAssignmentAutomation, NewAutomationForm } from "@/types/automation";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
 export function AutomationSettings() {
-  const { 
-    automations, 
-    isLoading, 
-    createAutomation, 
-    updateAutomation, 
-    deleteAutomation, 
+  const {
+    automations,
+    isLoading,
+    createAutomation,
+    updateAutomation,
+    deleteAutomation,
     toggleAutomation,
-    updatePriorities 
+    updatePriorities,
+    resetDistributionState
   } = useAutomationsData();
+  const { venditori } = useSalespeopleData();
 
   const [showForm, setShowForm] = useState(false);
   const [editingAutomation, setEditingAutomation] = useState<LeadAssignmentAutomation | undefined>();
@@ -126,6 +129,8 @@ export function AutomationSettings() {
                 onEdit={setEditingAutomation}
                 onDelete={handleDeleteAutomation}
                 onReorder={handleReorder}
+                onResetDistribution={resetDistributionState}
+                venditori={venditori}
               />
             </CardContent>
           </Card>

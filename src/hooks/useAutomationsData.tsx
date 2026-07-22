@@ -133,6 +133,21 @@ export const useAutomationsData = () => {
     fetchAutomations();
   }, [selectedMarket]); // Refetch when market changes
 
+  const resetDistributionState = async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from('lead_assignment_automations')
+        .update({ distribution_state: { count_assigned: {}, total_assigned: 0, last_updated: new Date().toISOString() } as any })
+        .eq('id', id);
+      if (error) throw error;
+      await fetchAutomations();
+      toast.success('Contatori distribuzione azzerati');
+    } catch (err) {
+      console.error(err);
+      toast.error('Errore azzeramento contatori');
+    }
+  };
+
   return {
     automations,
     isLoading,
@@ -141,6 +156,7 @@ export const useAutomationsData = () => {
     deleteAutomation,
     toggleAutomation,
     updatePriorities,
+    resetDistributionState,
     refetch: fetchAutomations
   };
 };
