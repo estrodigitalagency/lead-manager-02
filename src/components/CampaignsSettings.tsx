@@ -1,4 +1,3 @@
-import { CardContent } from '@/components/ui/card';
 import { useCampaignsData } from '@/hooks/useCampaignsData';
 import AddCampaignForm from './campaigns/AddCampaignForm';
 import CampaignsList from './campaigns/CampaignsList';
@@ -7,11 +6,11 @@ const CampaignsSettings = () => {
   const { campaigns, isLoading, addCampaign, updateCampaign, deleteCampaign } = useCampaignsData();
 
   if (isLoading) {
-    return <div className="flex justify-center p-8">Caricamento campagne...</div>;
+    return <div className="flex justify-center p-8 text-sm text-muted-foreground">Caricamento campagne...</div>;
   }
 
   return (
-    <CardContent className="space-y-6">
+    <div className="space-y-4 min-w-0">
       <AddCampaignForm onSubmit={addCampaign} />
       <CampaignsList
         campaigns={campaigns}
@@ -19,7 +18,7 @@ const CampaignsSettings = () => {
         onDelete={deleteCampaign}
         onDuplicate={addCampaign}
       />
-    </CardContent>
+    </div>
   );
 };
 

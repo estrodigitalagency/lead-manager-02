@@ -1,5 +1,5 @@
 
-import { CardContent } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { useSalespeopleData } from "@/hooks/useSalespeopleData";
 import AddSalespersonForm from "./salespeople/AddSalespersonForm";
 import SalespersonList from "./salespeople/SalespersonList";
@@ -8,14 +8,16 @@ const SalespeopleSettings = () => {
   const { venditori, isLoading, refetch } = useSalespeopleData();
 
   if (isLoading) {
-    return <div className="flex justify-center p-8">Caricamento...</div>;
+    return <div className="flex justify-center p-8 text-sm text-muted-foreground">Caricamento...</div>;
   }
 
   return (
-    <CardContent className="space-y-6">
-      <AddSalespersonForm onSuccess={refetch} />
+    <div className="space-y-4">
+      <Card className="p-4">
+        <AddSalespersonForm onSuccess={refetch} />
+      </Card>
       <SalespersonList venditori={venditori} onUpdate={refetch} />
-    </CardContent>
+    </div>
   );
 };
 

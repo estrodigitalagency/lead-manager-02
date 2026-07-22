@@ -10,7 +10,7 @@ interface SalespersonListProps {
 const SalespersonList = ({ venditori, onUpdate }: SalespersonListProps) => {
   return (
     <div className="space-y-4">
-      <h3 className="text-lg font-semibold">Venditori Esistenti</h3>
+      <h3 className="text-[15px] font-semibold tracking-tight">Venditori Esistenti</h3>
       
       {venditori.length === 0 ? (
         <p className="text-muted-foreground text-center py-8">

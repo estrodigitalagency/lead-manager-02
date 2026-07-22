@@ -186,15 +186,11 @@ const SettingsContent = () => (
     </TabsContent>
 
     <TabsContent value="salespeople" className="mt-0">
-      <Card>
-        <SalespeopleSettings />
-      </Card>
+      <SalespeopleSettings />
     </TabsContent>
 
     <TabsContent value="campaigns" className="mt-0">
-      <Card>
-        <CampaignsSettings />
-      </Card>
+      <CampaignsSettings />
     </TabsContent>
 
     <TabsContent value="automations" className="mt-0">

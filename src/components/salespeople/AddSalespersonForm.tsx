@@ -74,7 +74,7 @@ const AddSalespersonForm = ({ onSuccess }: AddSalespersonFormProps) => {
 
   return (
     <div className="space-y-4">
-      <h3 className="text-lg font-semibold">Aggiungi Nuovo Venditore</h3>
+      <h3 className="text-[15px] font-semibold tracking-tight">Aggiungi Nuovo Venditore</h3>
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>

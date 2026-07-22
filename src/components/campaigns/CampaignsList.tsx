@@ -194,7 +194,7 @@ const loadUniqueSources = async () => {
 
   return (
     <div className="space-y-4">
-      <h3 className="text-lg font-semibold">Campagne Esistenti ({campaigns.length})</h3>
+      <h3 className="text-[15px] font-semibold tracking-tight">Campagne Esistenti ({campaigns.length})</h3>
       
       <div className="grid gap-4">
         {campaigns.map((campaign) => (
