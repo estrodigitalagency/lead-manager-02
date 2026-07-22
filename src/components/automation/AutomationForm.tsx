@@ -11,8 +11,10 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { X } from "lucide-react";
 import { useSalespeopleData } from "@/hooks/useSalespeopleData";
-import { NewAutomationForm, LeadAssignmentAutomation } from "@/types/automation";
+import { NewAutomationForm, LeadAssignmentAutomation, DistributionMode, DistributionSlot } from "@/types/automation";
 import { supabase } from "@/integrations/supabase/client";
+import { Switch } from "@/components/ui/switch";
+import DistributionEditor from "./DistributionEditor";
 
 const automationSchema = z.object({
   nome: z.string().min(1, "Il nome è obbligatorio"),
@@ -20,7 +22,7 @@ const automationSchema = z.object({
   trigger_field: z.enum(['ultima_fonte', 'fonte', 'nome', 'email', 'telefono', 'campagna', 'lead_score', 'created_at']),
   condition_type: z.enum(['contains', 'equals', 'starts_with', 'ends_with', 'not_contains']),
   condition_value: z.array(z.string()).min(1, "Seleziona almeno una fonte"),
-  action_type: z.enum(['assign_to_seller', 'assign_to_previous_seller']),
+  action_type: z.enum(['assign_to_seller', 'assign_to_previous_seller', 'weighted_distribution']),
   target_seller_id: z.string().optional(),
   sheets_tab_name: z.string().optional(),
   campagna: z.string().optional(),
@@ -28,6 +30,15 @@ const automationSchema = z.object({
   excluded_sellers: z.array(z.string()).optional(),
   lock_period_enabled: z.boolean().optional(),
   lock_period_days: z.number().optional(),
+  use_previous_seller_first: z.boolean().optional(),
+  distribution_enabled: z.boolean().optional(),
+  distribution_mode: z.enum(['percentage', 'count']).optional(),
+  distribution_cap_total: z.number().nullable().optional(),
+  distribution_config: z.array(z.object({
+    venditore_id: z.string(),
+    weight: z.number().nullable().optional(),
+    count_target: z.number().nullable().optional(),
+  })).optional(),
 });
 
 interface AutomationFormProps {
@@ -59,7 +70,8 @@ const conditionTypeLabels = {
 
 const actionTypeLabels = {
   assign_to_seller: "Assegna a venditore specifico",
-  assign_to_previous_seller: "Assegna al venditore precedente"
+  assign_to_previous_seller: "Assegna al venditore precedente",
+  weighted_distribution: "Distribuzione tra più venditori (%/quota)"
 };
 
 export function AutomationForm({ open, onOpenChange, onSubmit, automation, isLoading }: AutomationFormProps) {
@@ -83,12 +95,22 @@ export function AutomationForm({ open, onOpenChange, onSubmit, automation, isLoa
       excluded_sellers: automation?.excluded_sellers || [],
       lock_period_enabled: automation?.lock_period_days !== undefined && automation?.lock_period_days !== null,
       lock_period_days: automation?.lock_period_days || 30,
+      use_previous_seller_first: automation?.use_previous_seller_first ?? false,
+      distribution_enabled: automation?.distribution_enabled ?? false,
+      distribution_mode: automation?.distribution_mode ?? 'percentage',
+      distribution_cap_total: automation?.distribution_cap_total ?? null,
+      distribution_config: automation?.distribution_config ?? [],
     },
   });
 
   const actionType = form.watch("action_type");
   const triggerField = form.watch("trigger_field");
   const lockPeriodEnabled = form.watch("lock_period_enabled");
+  const usePrevFirst = form.watch("use_previous_seller_first");
+  const distMode = form.watch("distribution_mode") ?? 'percentage';
+  const distCap = form.watch("distribution_cap_total");
+  const distConfig = form.watch("distribution_config") ?? [];
+  const excludedSellers = form.watch("excluded_sellers") ?? [];
 
   // Reset form when automation prop changes
   useEffect(() => {
@@ -107,6 +129,11 @@ export function AutomationForm({ open, onOpenChange, onSubmit, automation, isLoa
         excluded_sellers: automation.excluded_sellers || [],
         lock_period_enabled: automation.lock_period_days !== undefined && automation.lock_period_days !== null,
         lock_period_days: automation.lock_period_days || 30,
+        use_previous_seller_first: automation.use_previous_seller_first ?? false,
+        distribution_enabled: automation.distribution_enabled ?? false,
+        distribution_mode: automation.distribution_mode ?? 'percentage',
+        distribution_cap_total: automation.distribution_cap_total ?? null,
+        distribution_config: automation.distribution_config ?? [],
       });
     } else {
       form.reset({
@@ -130,18 +157,33 @@ export function AutomationForm({ open, onOpenChange, onSubmit, automation, isLoa
   const handleSubmit = async (data: NewAutomationForm) => {
     try {
       setIsSubmitting(true);
-      
-      // Remove lock_period_enabled from the data and set lock_period_days to undefined if not enabled
+
       const { lock_period_enabled, ...submissionData } = data;
       if (!lock_period_enabled) {
         submissionData.lock_period_days = undefined;
       }
-      
+
+      // Se action = weighted_distribution attiva flag + validazioni
+      if (submissionData.action_type === 'weighted_distribution') {
+        submissionData.distribution_enabled = true;
+        const cfg = submissionData.distribution_config || [];
+        if (cfg.length === 0) throw new Error('Aggiungi almeno un venditore alla distribuzione');
+        if (submissionData.distribution_mode === 'percentage') {
+          const sum = cfg.reduce((s, x) => s + (x.weight ?? 0), 0);
+          if (sum !== 100) throw new Error(`La somma delle percentuali deve essere 100 (attualmente ${sum})`);
+        } else if (submissionData.distribution_mode === 'count') {
+          if (cfg.some(x => !x.count_target || x.count_target <= 0)) throw new Error('Ogni quota deve essere > 0');
+        }
+      } else {
+        submissionData.distribution_enabled = false;
+      }
+
       await onSubmit(submissionData);
       form.reset();
       onOpenChange(false);
     } catch (error) {
       console.error("Error submitting automation:", error);
+      alert(error instanceof Error ? error.message : 'Errore nel salvataggio');
     } finally {
       setIsSubmitting(false);
     }
@@ -481,6 +523,78 @@ export function AutomationForm({ open, onOpenChange, onSubmit, automation, isLoa
                   )}
                 />
               </>
+            )}
+
+            {actionType === "weighted_distribution" && (
+              <div className="space-y-4 border rounded-lg p-4 bg-muted/20">
+                <FormField
+                  control={form.control}
+                  name="use_previous_seller_first"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 bg-background">
+                      <div className="space-y-0.5">
+                        <FormLabel className="text-base">Prima cerca venditore precedente</FormLabel>
+                        <p className="text-xs text-muted-foreground">
+                          Se attivo, se il lead ha già un venditore precedente non-escluso lo riassegna a lui. Altrimenti applica distribuzione.
+                        </p>
+                      </div>
+                      <FormControl>
+                        <Switch checked={field.value ?? false} onCheckedChange={field.onChange} />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+
+                {usePrevFirst && (
+                  <FormField
+                    control={form.control}
+                    name="lock_period_enabled"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 bg-background">
+                        <div className="space-y-0.5">
+                          <FormLabel className="text-base">Lock period sul previous seller</FormLabel>
+                          <p className="text-xs text-muted-foreground">
+                            Se ultimo lead assegnato oltre X giorni fa, non riassegnare al precedente → applica distribuzione.
+                          </p>
+                        </div>
+                        <FormControl>
+                          <Switch checked={field.value ?? false} onCheckedChange={field.onChange} />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+                )}
+                {usePrevFirst && lockPeriodEnabled && (
+                  <FormField
+                    control={form.control}
+                    name="lock_period_days"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Giorni lock period</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="number"
+                            placeholder="es. 30"
+                            {...field}
+                            onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
+                            value={field.value || ""}
+                          />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+                )}
+
+                <DistributionEditor
+                  mode={distMode as DistributionMode}
+                  onModeChange={(m) => form.setValue("distribution_mode", m, { shouldDirty: true })}
+                  capTotal={distCap}
+                  onCapTotalChange={(v) => form.setValue("distribution_cap_total", v, { shouldDirty: true })}
+                  slots={distConfig as DistributionSlot[]}
+                  onSlotsChange={(next) => form.setValue("distribution_config", next, { shouldDirty: true })}
+                  venditori={venditori}
+                />
+              </div>
             )}
 
             <FormField

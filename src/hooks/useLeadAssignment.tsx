@@ -165,8 +165,9 @@ const fetchUniqueSources = async () => {
       if (error) throw error;
       const campaignsData = data?.map(campaign => ({
         ...campaign,
-        source_mode: campaign.source_mode as 'exclude' | 'include' | undefined
-      })) || [];
+        source_mode: campaign.source_mode as 'exclude' | 'include' | undefined,
+        solo_lead_nuovi_direzione: campaign.solo_lead_nuovi_direzione as 'newer' | 'older' | undefined,
+      })) as any || [];
       
       setCampagne(campaignsData);
       console.log(`📊 Loaded ${campaignsData.length} campagne for market ${selectedMarket}`);

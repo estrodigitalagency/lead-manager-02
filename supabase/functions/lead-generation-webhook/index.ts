@@ -235,7 +235,41 @@ async function checkAndApplyAutomations(lead: any, supabase: any) {
           // Assegna al venditore specificato
           targetSeller = automation.venditori;
           sheetsTabName = automation.sheets_tab_name || automation.venditori?.sheets_tab_name;
-          
+
+        } else if (automation.action_type === 'weighted_distribution') {
+          // Se toggle 'use_previous_seller_first' attivo: prova prima previous
+          if (automation.use_previous_seller_first) {
+            const excludedList = automation.excluded_sellers || [];
+            const prev = await findPreviousSeller(lead, supabase, excludedList);
+            if (prev) {
+              const prevSeller = prev.seller;
+              const dataAssegnazione = prev.dataAssegnazione;
+              // check lock period se presente
+              if (automation.lock_period_days && automation.lock_period_days > 0 && dataAssegnazione) {
+                const days = calculateDaysSince(dataAssegnazione);
+                if (days < automation.lock_period_days) {
+                  targetSeller = prevSeller;
+                  sheetsTabName = automation.sheets_tab_name || prevSeller.sheets_tab_name;
+                  targetSeller.originalDataAssegnazione = dataAssegnazione;
+                }
+              } else {
+                targetSeller = prevSeller;
+                sheetsTabName = automation.sheets_tab_name || prevSeller.sheets_tab_name;
+              }
+            }
+          }
+
+          if (!targetSeller) {
+            // Distribuzione pesata
+            const pickedSeller = await pickSellerFromDistribution(automation, supabase);
+            if (!pickedSeller) {
+              await logAutomationExecution(lead, automation, null, 'no_seller_found',
+                'Distribution quota full or no eligible sellers', 'webhook', supabase);
+              continue;
+            }
+            targetSeller = pickedSeller;
+            sheetsTabName = automation.sheets_tab_name || pickedSeller.sheets_tab_name;
+          }
         } else if (automation.action_type === 'assign_to_previous_seller') {
           // Cerca tra TUTTI i lead precedenti (qualsiasi fonte), ordinati per ingresso desc
           // e già filtrati dagli excluded_sellers — così se il più recente è escluso, prende
@@ -775,4 +809,93 @@ async function assignLeadAutomatically(lead: any, seller: any, sheetsTabName: st
     console.error('Error in assignLeadAutomatically:', error);
     await logAutomationExecution(lead, automation, seller, 'error', (error as Error).message, 'webhook', supabase);
   }
+}
+
+// Seleziona venditore da distribuzione (percentage o count) con state tracking atomico
+async function pickSellerFromDistribution(automation: any, supabase: any): Promise<any | null> {
+  try {
+    const config: any[] = automation.distribution_config || [];
+    if (config.length === 0) return null;
+
+    const mode: 'percentage' | 'count' = automation.distribution_mode || 'percentage';
+    const state: any = automation.distribution_state || {};
+    const counts: Record<string, number> = state.count_assigned || {};
+    const total: number = state.total_assigned || 0;
+
+    // Cap totale (solo percentage)
+    if (mode === 'percentage' && automation.distribution_cap_total && total >= automation.distribution_cap_total) {
+      console.log(`Distribution cap reached: ${total}/${automation.distribution_cap_total}`);
+      return null;
+    }
+
+    // Fetch tutti i venditori delle slot
+    const sellerIds = config.map((s: any) => s.venditore_id);
+    const { data: sellers } = await supabase
+      .from('venditori')
+      .select('id, nome, cognome, email, telefono, sheets_file_id, sheets_tab_name, stato')
+      .in('id', sellerIds);
+
+    const activeSellers = (sellers || []).filter((s: any) => s.stato === 'attivo');
+    if (activeSellers.length === 0) return null;
+
+    // Filtra slot con venditori attivi
+    let eligible = config
+      .filter((slot: any) => activeSellers.find((s: any) => s.id === slot.venditore_id))
+      .map((slot: any) => ({ slot, seller: activeSellers.find((s: any) => s.id === slot.venditore_id) }));
+
+    if (mode === 'count') {
+      // Escludi quelli con quota raggiunta
+      eligible = eligible.filter((e: any) => {
+        const target = e.slot.count_target || 0;
+        const current = counts[e.slot.venditore_id] || 0;
+        return current < target;
+      });
+      if (eligible.length === 0) {
+        console.log('All distribution quotas full');
+        return null;
+      }
+      // Random uniforme tra quelli non-piena
+      const pick = eligible[Math.floor(Math.random() * eligible.length)];
+      await incrementDistributionState(automation.id, pick.slot.venditore_id, counts, total, supabase);
+      return pick.seller;
+    }
+
+    // Percentage: weighted random
+    const totalWeight = eligible.reduce((sum: number, e: any) => sum + (e.slot.weight || 0), 0);
+    if (totalWeight <= 0) return null;
+    let r = Math.random() * totalWeight;
+    for (const e of eligible) {
+      r -= (e.slot.weight || 0);
+      if (r <= 0) {
+        await incrementDistributionState(automation.id, e.slot.venditore_id, counts, total, supabase);
+        return e.seller;
+      }
+    }
+    // Fallback
+    const last = eligible[eligible.length - 1];
+    await incrementDistributionState(automation.id, last.slot.venditore_id, counts, total, supabase);
+    return last.seller;
+  } catch (error) {
+    console.error('Error in pickSellerFromDistribution:', error);
+    return null;
+  }
+}
+
+async function incrementDistributionState(
+  automationId: string,
+  venditoreId: string,
+  counts: Record<string, number>,
+  total: number,
+  supabase: any
+) {
+  const newCounts = { ...counts, [venditoreId]: (counts[venditoreId] || 0) + 1 };
+  const newState = {
+    count_assigned: newCounts,
+    total_assigned: total + 1,
+    last_updated: new Date().toISOString(),
+  };
+  await supabase
+    .from('lead_assignment_automations')
+    .update({ distribution_state: newState })
+    .eq('id', automationId);
 }

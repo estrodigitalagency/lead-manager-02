@@ -412,6 +412,10 @@ export type Database = {
           id: string
           market: string
           nome: string
+          solo_lead_nuovi_da_data: string | null
+          solo_lead_nuovi_direzione: string
+          solo_lead_nuovi_enabled: boolean
+          solo_lead_nuovi_giorni: number | null
           source_mode: string | null
           updated_at: string
         }
@@ -426,6 +430,10 @@ export type Database = {
           id?: string
           market?: string
           nome: string
+          solo_lead_nuovi_da_data?: string | null
+          solo_lead_nuovi_direzione?: string
+          solo_lead_nuovi_enabled?: boolean
+          solo_lead_nuovi_giorni?: number | null
           source_mode?: string | null
           updated_at?: string
         }
@@ -440,6 +448,10 @@ export type Database = {
           id?: string
           market?: string
           nome?: string
+          solo_lead_nuovi_da_data?: string | null
+          solo_lead_nuovi_direzione?: string
+          solo_lead_nuovi_enabled?: boolean
+          solo_lead_nuovi_giorni?: number | null
           source_mode?: string | null
           updated_at?: string
         }
@@ -814,6 +826,11 @@ export type Database = {
           condition_type: Database["public"]["Enums"]["automation_condition_type"]
           condition_value: string[]
           created_at: string
+          distribution_cap_total: number | null
+          distribution_config: Json | null
+          distribution_enabled: boolean
+          distribution_mode: string | null
+          distribution_state: Json | null
           excluded_sellers: string[] | null
           id: string
           lock_period_days: number | null
@@ -826,6 +843,7 @@ export type Database = {
           trigger_sources: string[] | null
           trigger_when: string
           updated_at: string
+          use_previous_seller_first: boolean
           webhook_enabled: boolean
         }
         Insert: {
@@ -835,6 +853,11 @@ export type Database = {
           condition_type: Database["public"]["Enums"]["automation_condition_type"]
           condition_value: string[]
           created_at?: string
+          distribution_cap_total?: number | null
+          distribution_config?: Json | null
+          distribution_enabled?: boolean
+          distribution_mode?: string | null
+          distribution_state?: Json | null
           excluded_sellers?: string[] | null
           id?: string
           lock_period_days?: number | null
@@ -847,6 +870,7 @@ export type Database = {
           trigger_sources?: string[] | null
           trigger_when?: string
           updated_at?: string
+          use_previous_seller_first?: boolean
           webhook_enabled?: boolean
         }
         Update: {
@@ -856,6 +880,11 @@ export type Database = {
           condition_type?: Database["public"]["Enums"]["automation_condition_type"]
           condition_value?: string[]
           created_at?: string
+          distribution_cap_total?: number | null
+          distribution_config?: Json | null
+          distribution_enabled?: boolean
+          distribution_mode?: string | null
+          distribution_state?: Json | null
           excluded_sellers?: string[] | null
           id?: string
           lock_period_days?: number | null
@@ -868,6 +897,7 @@ export type Database = {
           trigger_sources?: string[] | null
           trigger_when?: string
           updated_at?: string
+          use_previous_seller_first?: boolean
           webhook_enabled?: boolean
         }
         Relationships: [
@@ -1218,6 +1248,7 @@ export type Database = {
           id: string
           market: string
           nome_venditore: string
+          skip_webinar: boolean
           updated_at: string
         }
         Insert: {
@@ -1227,6 +1258,7 @@ export type Database = {
           id?: string
           market?: string
           nome_venditore: string
+          skip_webinar?: boolean
           updated_at?: string
         }
         Update: {
@@ -1236,6 +1268,7 @@ export type Database = {
           id?: string
           market?: string
           nome_venditore?: string
+          skip_webinar?: boolean
           updated_at?: string
         }
         Relationships: []
@@ -1246,6 +1279,16 @@ export type Database = {
     }
     Functions: {
       check_leads_assignability: { Args: never; Returns: undefined }
+      forms_stats: {
+        Args: { d_from?: string; d_to?: string }
+        Returns: {
+          bookings: number
+          form_id: string
+          leads: number
+          starts: number
+          views: number
+        }[]
+      }
       get_current_user_role: { Args: never; Returns: string }
       has_role: {
         Args: {
@@ -1253,6 +1296,14 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      landing_pages_stats: {
+        Args: { d_from?: string; d_to?: string }
+        Returns: {
+          clicks: number
+          landing_page_id: string
+          views: number
+        }[]
       }
       schedule_sync_job: {
         Args: { anon_key: string; cron_expr: string; function_url: string }
@@ -1262,7 +1313,10 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "user"
-      automation_action_type: "assign_to_seller" | "assign_to_previous_seller"
+      automation_action_type:
+        | "assign_to_seller"
+        | "assign_to_previous_seller"
+        | "weighted_distribution"
       automation_condition_type:
         | "contains"
         | "equals"
@@ -1397,7 +1451,11 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "user"],
-      automation_action_type: ["assign_to_seller", "assign_to_previous_seller"],
+      automation_action_type: [
+        "assign_to_seller",
+        "assign_to_previous_seller",
+        "weighted_distribution",
+      ],
       automation_condition_type: [
         "contains",
         "equals",

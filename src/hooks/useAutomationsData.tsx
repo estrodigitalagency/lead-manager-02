@@ -20,13 +20,14 @@ export const useAutomationsData = () => {
       
       if (error) throw error;
       
-      const typedData: LeadAssignmentAutomation[] = (data || []).map(item => ({
+      const typedData = (data || []).map(item => ({
         ...item,
         trigger_when: item.trigger_when as 'new_lead' | 'duplicate_different_source',
         trigger_field: item.trigger_field as 'ultima_fonte' | 'fonte' | 'nome' | 'email' | 'telefono' | 'campagna' | 'lead_score' | 'created_at',
         condition_type: item.condition_type as 'contains' | 'equals' | 'starts_with' | 'ends_with' | 'not_contains',
-        action_type: item.action_type as 'assign_to_seller' | 'assign_to_previous_seller'
-      }));
+        action_type: item.action_type as 'assign_to_seller' | 'assign_to_previous_seller' | 'weighted_distribution',
+        distribution_mode: (item as any).distribution_mode as any,
+      })) as unknown as LeadAssignmentAutomation[];
       
       setAutomations(typedData);
     } catch (error) {
@@ -49,7 +50,7 @@ export const useAutomationsData = () => {
 
       const { data, error } = await supabase
         .from('lead_assignment_automations')
-        .insert([cleanedAutomation])
+        .insert([cleanedAutomation as any])
         .select()
         .single();
       
@@ -69,7 +70,7 @@ export const useAutomationsData = () => {
     try {
       const { error } = await supabase
         .from('lead_assignment_automations')
-        .update(updates)
+        .update(updates as any)
         .eq('id', id);
       
       if (error) throw error;
