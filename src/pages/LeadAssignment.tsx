@@ -210,7 +210,7 @@ const LeadAssignment = () => {
   };
   
   return (
-    <div className="min-h-screen bg-background px-4 py-5 pt-16 md:pt-[72px] md:px-6 md:py-8">
+    <div className="min-h-screen bg-background px-4 py-5 pt-16 md:pt-16 md:px-6 md:py-8">
       <div className="flex items-center justify-center min-h-[calc(100vh-6rem)]">
         <div className="w-full max-w-md space-y-4">
           {assignmentSuccess && (

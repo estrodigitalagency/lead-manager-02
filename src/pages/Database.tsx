@@ -238,7 +238,7 @@ const DatabasePage = () => {
   };
 
   return (
-    <div className={`container mx-auto max-w-7xl ${isMobile ? 'px-4 py-5 pt-16 pb-24' : 'px-6 py-8 pt-[72px]'}`}>
+    <div className={`container mx-auto max-w-7xl ${isMobile ? 'px-4 py-5 pt-16 pb-24' : 'px-6 py-8 pt-16'}`}>
       <div className="flex items-center justify-between mb-5">
         <h1 className="text-xl md:text-2xl font-semibold text-foreground">Database</h1>
         <div className="flex gap-2">

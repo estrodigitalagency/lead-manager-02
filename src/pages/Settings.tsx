@@ -52,7 +52,7 @@ const Settings = () => {
   const ActiveIcon = activeItem?.icon;
 
   return (
-    <div className={`w-full min-h-screen max-w-7xl mx-auto ${isMobile ? 'pt-16 pb-24 px-4' : 'pt-[72px] px-6 py-8'}`}>
+    <div className={`w-full min-h-screen max-w-7xl mx-auto ${isMobile ? 'pt-16 pb-24 px-4' : 'pt-16 px-6 py-8'}`}>
       <h1 className="text-xl md:text-2xl font-semibold text-foreground mb-5">Impostazioni</h1>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full" orientation={isMobile ? "horizontal" : "vertical"}>

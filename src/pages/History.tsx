@@ -30,7 +30,7 @@ const History = () => {
   };
 
   return (
-    <div className={`container mx-auto max-w-7xl ${isMobile ? 'px-4 py-5 pt-16 pb-24' : 'px-6 py-8 pt-[72px]'}`}>
+    <div className={`container mx-auto max-w-7xl ${isMobile ? 'px-4 py-5 pt-16 pb-24' : 'px-6 py-8 pt-16'}`}>
       <Card>
         <CardHeader className={isMobile ? 'px-3 py-4' : ''}>
           <div className={`flex items-center justify-between ${isMobile ? 'flex-col gap-3' : ''}`}>

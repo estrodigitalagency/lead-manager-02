@@ -82,28 +82,31 @@ const PersistentNavigation = () => {
   }
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-card/85 backdrop-blur-xl border-b border-border/50">
-      <div className="container mx-auto">
-        <div className="flex items-center justify-between h-14">
-          <div className="flex items-center gap-10 min-w-0 flex-1">
-            <Link to="/" className="flex-shrink-0">
-              <span className="text-xl font-extrabold tracking-tight text-foreground whitespace-nowrap">
-                Lead<span className="text-primary">Manager</span>
+    <nav className="fixed top-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-md border-b border-border">
+      <div className="container mx-auto px-4">
+        <div className="flex items-center justify-between h-12">
+          <div className="flex items-center gap-8 min-w-0 flex-1">
+            <Link to="/" className="flex-shrink-0 flex items-center gap-2">
+              <div className="w-6 h-6 rounded-md bg-primary flex items-center justify-center">
+                <span className="text-primary-foreground text-[11px] font-bold">L</span>
+              </div>
+              <span className="text-[13px] font-semibold tracking-tight text-foreground whitespace-nowrap">
+                Lead Manager
               </span>
             </Link>
-            <div className="flex items-center gap-1 overflow-x-auto flex-1 min-w-0">
+            <div className="flex items-center gap-0.5 overflow-x-auto flex-1 min-w-0">
               {navigationItems.map((item) => {
                 const Icon = item.icon;
                 return (
                   <Link key={item.to} to={item.to}>
                     <button
-                      className={`flex items-center gap-2 whitespace-nowrap px-3.5 py-2 h-9 rounded-xl text-sm font-medium transition-all duration-200 ${
+                      className={`flex items-center gap-1.5 whitespace-nowrap px-2.5 py-1.5 h-8 rounded-md text-[12.5px] font-medium transition-colors duration-150 ${
                         item.isActive
-                          ? 'bg-primary/8 text-primary'
-                          : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'
+                          ? 'bg-secondary text-foreground'
+                          : 'text-muted-foreground hover:text-foreground hover:bg-secondary/60'
                       }`}
                     >
-                      <Icon className={`h-4 w-4 flex-shrink-0 ${item.isActive ? 'stroke-[2.5]' : ''}`} />
+                      <Icon className="h-3.5 w-3.5 flex-shrink-0 stroke-[1.75]" />
                       <span>{item.label}</span>
                     </button>
                   </Link>
@@ -113,15 +116,15 @@ const PersistentNavigation = () => {
           </div>
           <div className="flex items-center gap-2 flex-shrink-0">
             <MarketSelector />
-            <div className="w-px h-5 bg-border" />
+            <div className="w-px h-4 bg-border" />
             <Button
               variant="ghost"
               size="sm"
               onClick={signOut}
-              className="text-muted-foreground hover:text-destructive hover:bg-destructive/8 h-9 px-3 rounded-xl"
+              className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 h-8 px-2.5 rounded-md text-[12.5px]"
             >
-              <LogOut className="h-4 w-4" />
-              <span className="hidden lg:inline ml-1.5 text-sm">Esci</span>
+              <LogOut className="h-3.5 w-3.5" />
+              <span className="hidden lg:inline ml-1.5">Esci</span>
             </Button>
           </div>
         </div>

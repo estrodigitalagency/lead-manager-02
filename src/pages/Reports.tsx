@@ -47,7 +47,7 @@ const ReportsPage = () => {
   const reportRef = useRef<HTMLDivElement>(null);
 
   return (
-    <div className={`container mx-auto max-w-7xl ${isMobile ? 'px-4 py-5 pt-16 pb-24' : 'px-6 py-8 pt-[72px]'}`}>
+    <div className={`container mx-auto max-w-7xl ${isMobile ? 'px-4 py-5 pt-16 pb-24' : 'px-6 py-8 pt-16'}`}>
       <div className="flex items-center justify-between mb-5 gap-2 flex-wrap">
         <h1 className="text-xl md:text-2xl font-semibold text-foreground">Report</h1>
         <ExportReportButton targetRef={reportRef} filenameBase={`report_${selectedMarket}`} />
