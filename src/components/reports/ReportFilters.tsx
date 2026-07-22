@@ -136,52 +136,65 @@ const ReportFiltersComponent = ({ filters, onFiltersChange, onApplyFilters }: Re
   return (
     <Card>
       <CardContent className="p-0">
-        {/* Compact header bar - always visible */}
-        <div className="flex items-center justify-between p-3 sm:p-4">
-          <div className="flex items-center gap-2 flex-1 min-w-0">
-            <div className="icon-container-sm bg-primary/8">
-              <FilterIcon className="h-4 w-4 text-primary" />
+        {/* Compact header bar Linear-style \u2014 chip label+value */}
+        <div className="flex items-center justify-between px-3 py-2.5 gap-2 flex-wrap">
+          <div className="flex items-center gap-1.5 flex-1 min-w-0 flex-wrap">
+            <div className="flex items-center gap-1.5 shrink-0">
+              <FilterIcon className="h-3.5 w-3.5 text-muted-foreground" />
+              <span className="label-eyebrow">Filtri</span>
+              {activeFilterCount > 0 && (
+                <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-primary text-primary-foreground num min-w-[18px] text-center">
+                  {activeFilterCount}
+                </span>
+              )}
             </div>
-            <span className="text-sm font-semibold">Filtri</span>
-            {activeFilterCount > 0 && (
-              <Badge variant="default" className="text-[10px] px-1.5 py-0 h-5">
-                {activeFilterCount}
-              </Badge>
-            )}
 
-            {/* Active filters badges - inline */}
+            {/* Active filters chips Linear-style */}
             {hasActiveFilters && (
-              <div className="hidden sm:flex items-center gap-1.5 flex-wrap ml-1">
+              <div className="hidden sm:flex items-center gap-1 flex-wrap">
                 {(filters.startDate || filters.endDate) && (
-                  <Badge variant="secondary" className="text-[10px] gap-1 h-5">
-                    {filters.startDate && new Date(filters.startDate).toLocaleDateString('it-IT', { day: '2-digit', month: 'short' })}
-                    {filters.startDate && filters.endDate && ' \u2192 '}
-                    {filters.endDate && new Date(filters.endDate).toLocaleDateString('it-IT', { day: '2-digit', month: 'short' })}
-                  </Badge>
+                  <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded border border-border bg-secondary text-[11px]">
+                    <span className="text-muted-foreground">Periodo</span>
+                    <span className="font-medium text-foreground num">
+                      {filters.startDate && new Date(filters.startDate).toLocaleDateString('it-IT', { day: '2-digit', month: 'short' })}
+                      {filters.startDate && filters.endDate && ' \u2192 '}
+                      {filters.endDate && new Date(filters.endDate).toLocaleDateString('it-IT', { day: '2-digit', month: 'short' })}
+                    </span>
+                  </span>
                 )}
                 {filters.venditore && (
-                  <Badge variant="secondary" className="text-[10px] h-5">{filters.venditore}</Badge>
+                  <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded border border-border bg-secondary text-[11px]">
+                    <span className="text-muted-foreground">Venditore</span>
+                    <span className="font-medium text-foreground">{filters.venditore}</span>
+                  </span>
                 )}
                 {filters.campagna && (
-                  <Badge variant="default" className="text-[10px] h-5 bg-primary">Campagna: {filters.campagna}</Badge>
+                  <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded border border-primary/40 bg-primary/10 text-[11px]">
+                    <span className="text-primary/70">Campagna</span>
+                    <span className="font-medium text-primary">{filters.campagna}</span>
+                  </span>
                 )}
                 {filters.fontiIncluse && filters.fontiIncluse.length > 0 && filters.fontiIncluse.map(f => (
-                  <Badge key={`inc-${f}`} variant="default" className="text-[10px] h-5 bg-primary/15 text-primary border border-primary/30">{f}</Badge>
+                  <span key={`inc-${f}`} className="inline-flex items-center gap-1 px-2 py-0.5 rounded border border-primary/30 bg-primary/10 text-primary text-[11px] font-medium">
+                    +{f}
+                  </span>
                 ))}
                 {filters.fontiEscluse && filters.fontiEscluse.length > 0 && filters.fontiEscluse.map(f => (
-                  <Badge key={`exc-${f}`} variant="secondary" className="text-[10px] h-5 bg-destructive/10 text-destructive border border-destructive/20">{f}</Badge>
+                  <span key={`exc-${f}`} className="inline-flex items-center gap-1 px-2 py-0.5 rounded border border-destructive/30 bg-destructive/10 text-destructive text-[11px] font-medium">
+                    \u2212{f}
+                  </span>
                 ))}
               </div>
             )}
           </div>
 
-          <div className="flex items-center gap-1.5 shrink-0">
+          <div className="flex items-center gap-1 shrink-0">
             {hasActiveFilters && (
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={clearFilters}
-                className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground"
+                className="h-7 px-2 text-[11.5px] text-muted-foreground hover:text-foreground rounded-md"
               >
                 <X className="h-3 w-3 mr-1" />
                 Azzera
@@ -191,9 +204,9 @@ const ReportFiltersComponent = ({ filters, onFiltersChange, onApplyFilters }: Re
               variant="ghost"
               size="sm"
               onClick={() => setIsExpanded(!isExpanded)}
-              className="h-7 px-2"
+              className="h-7 px-2 rounded-md"
             >
-              <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`} />
+              <ChevronDown className={`h-3.5 w-3.5 transition-transform duration-150 ${isExpanded ? 'rotate-180' : ''}`} />
             </Button>
           </div>
         </div>

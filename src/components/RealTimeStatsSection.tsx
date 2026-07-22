@@ -111,40 +111,37 @@ export const RealTimeStatsSection = () => {
 
   return (
     <section className="animate-fade-in">
-      <div className="flex items-baseline justify-between mb-4 sm:mb-5">
-        <div>
-          <h2 className="text-lg sm:text-xl font-bold text-foreground">
+      <div className="flex items-baseline justify-between mb-3">
+        <div className="flex items-baseline gap-3">
+          <h2 className="text-[15px] font-semibold text-foreground tracking-tight">
             Performance
           </h2>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            Ultimi 30 giorni
-            {isRefreshing && <span className="ml-2 text-primary animate-pulse">Aggiornamento...</span>}
-          </p>
+          <span className="label-eyebrow">Ultimi 30 giorni</span>
+          {isRefreshing && <span className="text-[11px] text-primary animate-pulse">Sync…</span>}
         </div>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        {statsConfig.map((stat, i) => (
-          <Card key={stat.title} className={`stat-card group stagger-${i + 1} animate-slide-up`}>
-            <CardContent className="p-4 sm:p-5">
-              <div className="flex items-start justify-between mb-3 sm:mb-4">
-                <div className={`icon-container-sm ${stat.bgColor}`}>
-                  <stat.icon className={`h-4 w-4 ${stat.accentColor}`} />
-                </div>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5">
+        {statsConfig.map((stat) => (
+          <Card key={stat.title} className="stat-card">
+            <CardContent className="p-4 flex flex-col gap-1.5">
+              <div className="flex items-center gap-2">
+                <stat.icon className={`h-3.5 w-3.5 ${stat.accentColor}`} />
+                <span className="label-eyebrow">{stat.title}</span>
               </div>
               {stat.loading ? (
-                <div className="space-y-2.5">
-                  <Skeleton className="h-8 w-16 rounded-lg" />
-                  <Skeleton className="h-3 w-20 rounded-md" />
-                </div>
+                <>
+                  <Skeleton className="h-7 w-20 rounded" />
+                  <Skeleton className="h-3 w-16 rounded" />
+                </>
               ) : (
                 <>
-                  <div className="text-2xl sm:text-3xl font-extrabold text-foreground tabular-nums tracking-tight">
+                  <div className="text-[26px] font-semibold text-foreground num leading-none tracking-tight">
                     {stat.value}
                   </div>
-                  <p className="text-[11px] sm:text-xs text-muted-foreground mt-1 font-medium">
-                    {stat.title}
-                  </p>
+                  {stat.subtitle && (
+                    <p className="text-[11px] text-muted-foreground num">{stat.subtitle}</p>
+                  )}
                 </>
               )}
             </CardContent>
