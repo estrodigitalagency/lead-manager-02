@@ -3,10 +3,11 @@ import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel } from "@/components/ui/select";
-import { Webhook, ArrowRightLeft, Users, Database, Tag, Zap, RefreshCw } from "lucide-react";
+import { Webhook, ArrowRightLeft, Users, Database, Tag, Zap, RefreshCw, MessageCircle } from "lucide-react";
 import SalespeopleSettings from "@/components/SalespeopleSettings";
 import CampaignsSettings from "@/components/CampaignsSettings";
 import DatabaseSection from "@/components/settings/DatabaseSection";
+import WhatsAppTemplatesSection from "@/components/settings/WhatsAppTemplatesSection";
 import AttributionWindowSettings from "@/components/settings/AttributionWindowSettings";
 import WebhookSettings from "@/components/settings/WebhookSettings";
 import { AutomationSettings } from "@/components/automation/AutomationSettings";
@@ -30,6 +31,7 @@ const sections = [
       { value: "automations", icon: Zap, label: "Automazioni" },
       { value: "webhooks", icon: Webhook, label: "Webhook" },
       { value: "fontemapping", icon: ArrowRightLeft, label: "Mapping Fonte" },
+      { value: "whatsapp", icon: MessageCircle, label: "WhatsApp Link" },
     ]
   },
   {
@@ -130,6 +132,10 @@ const SettingsContent = () => (
   <>
     <TabsContent value="database">
       <DatabaseSection />
+    </TabsContent>
+
+    <TabsContent value="whatsapp">
+      <WhatsAppTemplatesSection />
     </TabsContent>
 
     <TabsContent value="attribution">

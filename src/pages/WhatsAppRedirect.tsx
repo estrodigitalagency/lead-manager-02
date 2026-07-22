@@ -1,54 +1,64 @@
 import { useEffect, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2, AlertCircle, MessageCircle } from "lucide-react";
 
 /**
- * Redirect pubblico: legge nome/email/telefono da query string,
- * cerca il venditore assegnato al lead nel DB, apre WhatsApp del venditore.
+ * Redirect pubblico WhatsApp: cerca lead → apre WhatsApp del venditore.
  *
- * URL supportati:
- *   /wa?email=X@Y.com
- *   /wa?telefono=+393401234567
- *   /wa?email=X&nome=Mario&telefono=... (tutti opzionali, basta email o telefono)
- *   /wa?market=IT (opzionale, default IT)
- *   /wa?text=... (testo pre-compilato opzionale, altrimenti default)
+ * Route:
+ *   /wa              → messaggio default
+ *   /wa/:slug        → messaggio da template DB
+ *
+ * Query:
+ *   email, telefono/phone, nome, market (IT/ES), text (override)
+ *
+ * Log click in whatsapp_click_logs.
  */
+
 const digitsOnly = (s: string | null | undefined) => (s || "").replace(/\D/g, "");
 
-/**
- * Normalizza telefono in E.164 senza prefisso + iniziale.
- * Casi gestiti:
- * - "+39 340 123 4567" → "393401234567"
- * - "3401234567" (IT senza prefisso) → assume 39 + prefixIfMissing
- * - "0039 340..." → "39340..."
- * - "0034 6..." (ES) → "346..."
- */
 const normalizePhone = (phone: string, defaultCountryCode = "39"): string => {
   let d = digitsOnly(phone);
   if (!d) return "";
-  // strip leading 00
   if (d.startsWith("00")) d = d.slice(2);
-  // se lunghezza <= 10 assume mancante country code
   if (d.length <= 10 && !d.startsWith(defaultCountryCode)) {
     d = defaultCountryCode + d;
   }
   return d;
 };
 
-const buildDefaultMessage = (nomeLead: string) => {
-  const nome = nomeLead ? nomeLead.trim().split(/\s+/)[0] : "";
-  if (nome) return `Ciao ${nome}, grazie per esserti registrato/a! Ti scrivo qui su WhatsApp.`;
-  return "Ciao, grazie per esserti registrato/a! Ti scrivo qui su WhatsApp.";
+const substitutePlaceholders = (tpl: string, ctx: Record<string, string>) => {
+  return tpl.replace(/\{\{\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*\}\}/g, (_, key) => ctx[key] ?? "");
+};
+
+const defaultMessage = (nome: string) => {
+  const primo = nome ? nome.trim().split(/\s+/)[0] : "";
+  return primo
+    ? `Ciao ${primo}, grazie per esserti registrato/a! Ti scrivo qui su WhatsApp.`
+    : "Ciao, grazie per esserti registrato/a! Ti scrivo qui su WhatsApp.";
 };
 
 const WhatsAppRedirect = () => {
   const [params] = useSearchParams();
+  const { slug } = useParams<{ slug?: string }>();
   const [status, setStatus] = useState<"loading" | "error" | "redirecting">("loading");
   const [errorMsg, setErrorMsg] = useState<string>("");
   const [venditore, setVenditore] = useState<{ nome: string; cognome: string } | null>(null);
 
   useEffect(() => {
+    const logClick = async (payload: Record<string, any>) => {
+      try {
+        await supabase.from("whatsapp_click_logs").insert({
+          ...payload,
+          referrer: document.referrer || null,
+          user_agent: navigator.userAgent || null,
+        });
+      } catch (e) {
+        console.warn("Click log fallito:", e);
+      }
+    };
+
     const run = async () => {
       try {
         const email = (params.get("email") || "").trim().toLowerCase();
@@ -63,16 +73,39 @@ const WhatsAppRedirect = () => {
         if (!email && !phoneNorm) {
           setStatus("error");
           setErrorMsg("Parametri mancanti: serve almeno email o telefono.");
+          await logClick({ template_slug: slug || null, market, status: "error", error_reason: "missing_params", lead_email: email || null, lead_phone: telParam || null, lead_nome: nome || null });
           return;
         }
 
-        // Cerca lead più recente per email o telefono nel mercato
+        // Fetch template se slug presente
+        let templateText: string | null = null;
+        let templateMarket: string | null = null;
+        if (slug) {
+          const { data: tpl } = await supabase
+            .from("whatsapp_templates")
+            .select("messaggio_template, market")
+            .eq("slug", slug)
+            .eq("attivo", true)
+            .maybeSingle();
+          if (!tpl) {
+            setStatus("error");
+            setErrorMsg("Template non trovato o disattivato.");
+            await logClick({ template_slug: slug, market, status: "error", error_reason: "template_not_found", lead_email: email || null, lead_phone: telParam || null, lead_nome: nome || null });
+            return;
+          }
+          templateText = tpl.messaggio_template;
+          templateMarket = tpl.market;
+        }
+
+        const effectiveMarket = (templateMarket || market) as "IT" | "ES";
+
+        // Cerca lead più recente per email o telefono
         let lead: any = null;
         if (email) {
           const { data } = await supabase
             .from("lead_generation")
-            .select("id, venditore, market, created_at, telefono, email, nome, cognome")
-            .eq("market", market)
+            .select("id, venditore, market, created_at, telefono, email, nome, cognome, ultima_fonte, campagna")
+            .eq("market", effectiveMarket)
             .ilike("email", email)
             .not("venditore", "is", null)
             .order("created_at", { ascending: false })
@@ -80,12 +113,11 @@ const WhatsAppRedirect = () => {
           lead = data?.[0] || null;
         }
         if (!lead && phoneNorm) {
-          // Cerca con match ultimi 9 digits (tollera prefissi + spazi in DB)
           const suffix = phoneNorm.slice(-9);
           const { data } = await supabase
             .from("lead_generation")
-            .select("id, venditore, market, created_at, telefono, email, nome, cognome")
-            .eq("market", market)
+            .select("id, venditore, market, created_at, telefono, email, nome, cognome, ultima_fonte, campagna")
+            .eq("market", effectiveMarket)
             .ilike("telefono", `%${suffix}%`)
             .not("venditore", "is", null)
             .order("created_at", { ascending: false })
@@ -96,27 +128,24 @@ const WhatsAppRedirect = () => {
         if (!lead || !lead.venditore) {
           setStatus("error");
           setErrorMsg("Nessun venditore assegnato trovato per questo lead.");
+          await logClick({ template_slug: slug || null, market: effectiveMarket, status: "error", error_reason: "no_lead_or_venditore", lead_email: email || null, lead_phone: telParam || null, lead_nome: nome || null });
           return;
         }
 
-        // Fetch venditore.telefono per lo stesso mercato
-        const parts = lead.venditore.trim().split(/\s+/);
-        const nomeVend = parts[0] || "";
-        const cognomeVend = parts.slice(1).join(" ") || "";
+        // Fetch venditore.telefono
         const { data: vendList } = await supabase
           .from("venditori")
           .select("nome, cognome, telefono, stato")
           .eq("market", lead.market)
           .eq("stato", "attivo");
         const match = (vendList || []).find(
-          (v: any) =>
-            (`${v.nome} ${v.cognome}`.trim().toLowerCase()) === lead.venditore.trim().toLowerCase() ||
-            (v.nome?.toLowerCase() === nomeVend.toLowerCase() && (v.cognome || "").toLowerCase() === cognomeVend.toLowerCase())
+          (v: any) => (`${v.nome} ${v.cognome}`.trim().toLowerCase()) === lead.venditore.trim().toLowerCase()
         );
 
         if (!match || !match.telefono) {
           setStatus("error");
           setErrorMsg(`Venditore ${lead.venditore} non ha telefono configurato.`);
+          await logClick({ template_slug: slug || null, lead_id: lead.id, lead_email: lead.email, lead_phone: lead.telefono, lead_nome: lead.nome, venditore_nome: lead.venditore, market: lead.market, status: "error", error_reason: "no_venditore_phone" });
           return;
         }
 
@@ -124,16 +153,57 @@ const WhatsAppRedirect = () => {
         if (!vendPhone) {
           setStatus("error");
           setErrorMsg("Numero venditore non valido.");
+          await logClick({ template_slug: slug || null, lead_id: lead.id, lead_email: lead.email, lead_phone: lead.telefono, lead_nome: lead.nome, venditore_nome: lead.venditore, market: lead.market, status: "error", error_reason: "invalid_venditore_phone" });
           return;
         }
 
-        const nomeForMsg = nome || lead.nome || "";
-        const text = encodeURIComponent(customText || buildDefaultMessage(nomeForMsg));
+        // Costruisce messaggio
+        const nomeForCtx = (nome || lead.nome || "").trim();
+        const ctx = {
+          nome: nomeForCtx.split(/\s+/)[0] || "",
+          nome_completo: nomeForCtx,
+          cognome: lead.cognome || "",
+          venditore: `${match.nome} ${match.cognome}`.trim(),
+          venditore_nome: match.nome || "",
+          fonte: lead.ultima_fonte || "",
+          campagna: lead.campagna || "",
+          market: lead.market || "",
+        };
+
+        let messaggio: string;
+        if (customText) messaggio = customText;
+        else if (templateText) messaggio = substitutePlaceholders(templateText, ctx);
+        else messaggio = defaultMessage(nomeForCtx);
+
+        const text = encodeURIComponent(messaggio);
         const waUrl = `https://wa.me/${vendPhone}?text=${text}`;
 
         setVenditore({ nome: match.nome, cognome: match.cognome });
         setStatus("redirecting");
-        // Redirect immediato
+
+        // Log success + increment template counter
+        await logClick({
+          template_slug: slug || null,
+          lead_id: lead.id,
+          lead_email: lead.email,
+          lead_phone: lead.telefono,
+          lead_nome: lead.nome,
+          venditore_nome: lead.venditore,
+          venditore_phone_used: vendPhone,
+          market: lead.market,
+          status: "ok",
+        });
+
+        if (slug) {
+          // Increment click_count non atomico via update — best effort
+          try {
+            const { data: cur } = await supabase.from("whatsapp_templates").select("id, click_count").eq("slug", slug).maybeSingle();
+            if (cur) {
+              await supabase.from("whatsapp_templates").update({ click_count: (cur.click_count || 0) + 1 }).eq("id", cur.id);
+            }
+          } catch { /* no-op */ }
+        }
+
         window.location.replace(waUrl);
       } catch (err) {
         console.error(err);
@@ -142,7 +212,7 @@ const WhatsAppRedirect = () => {
       }
     };
     run();
-  }, [params]);
+  }, [params, slug]);
 
   return (
     <div className="min-h-[100dvh] flex items-center justify-center bg-background px-4">
@@ -151,9 +221,7 @@ const WhatsAppRedirect = () => {
           <>
             <Loader2 className="h-10 w-10 mx-auto text-primary animate-spin" />
             <h1 className="text-lg font-semibold">Ti stiamo indirizzando...</h1>
-            <p className="text-sm text-muted-foreground">
-              Un momento, stiamo trovando il tuo referente.
-            </p>
+            <p className="text-sm text-muted-foreground">Un momento, stiamo trovando il tuo referente.</p>
           </>
         )}
         {status === "redirecting" && (
@@ -163,9 +231,7 @@ const WhatsAppRedirect = () => {
             <p className="text-sm text-muted-foreground">
               Ti stiamo mettendo in contatto con {venditore?.nome} {venditore?.cognome}.
             </p>
-            <p className="text-[11px] text-muted-foreground">
-              Se non si apre automaticamente ricarica la pagina.
-            </p>
+            <p className="text-[11px] text-muted-foreground">Se non si apre automaticamente ricarica la pagina.</p>
           </>
         )}
         {status === "error" && (

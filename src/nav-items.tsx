@@ -49,4 +49,8 @@ export const publicRoutes = [
     to: "/wa",
     page: <WhatsAppRedirect />,
   },
+  {
+    to: "/wa/:slug",
+    page: <WhatsAppRedirect />,
+  },
 ];

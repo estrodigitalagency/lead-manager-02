@@ -1273,6 +1273,93 @@ export type Database = {
         }
         Relationships: []
       }
+      whatsapp_click_logs: {
+        Row: {
+          clicked_at: string
+          error_reason: string | null
+          id: string
+          lead_email: string | null
+          lead_id: string | null
+          lead_nome: string | null
+          lead_phone: string | null
+          market: string | null
+          referrer: string | null
+          status: string | null
+          template_slug: string | null
+          user_agent: string | null
+          venditore_nome: string | null
+          venditore_phone_used: string | null
+        }
+        Insert: {
+          clicked_at?: string
+          error_reason?: string | null
+          id?: string
+          lead_email?: string | null
+          lead_id?: string | null
+          lead_nome?: string | null
+          lead_phone?: string | null
+          market?: string | null
+          referrer?: string | null
+          status?: string | null
+          template_slug?: string | null
+          user_agent?: string | null
+          venditore_nome?: string | null
+          venditore_phone_used?: string | null
+        }
+        Update: {
+          clicked_at?: string
+          error_reason?: string | null
+          id?: string
+          lead_email?: string | null
+          lead_id?: string | null
+          lead_nome?: string | null
+          lead_phone?: string | null
+          market?: string | null
+          referrer?: string | null
+          status?: string | null
+          template_slug?: string | null
+          user_agent?: string | null
+          venditore_nome?: string | null
+          venditore_phone_used?: string | null
+        }
+        Relationships: []
+      }
+      whatsapp_templates: {
+        Row: {
+          attivo: boolean
+          click_count: number
+          created_at: string
+          id: string
+          market: string
+          messaggio_template: string
+          nome: string
+          slug: string
+          updated_at: string
+        }
+        Insert: {
+          attivo?: boolean
+          click_count?: number
+          created_at?: string
+          id?: string
+          market?: string
+          messaggio_template: string
+          nome: string
+          slug: string
+          updated_at?: string
+        }
+        Update: {
+          attivo?: boolean
+          click_count?: number
+          created_at?: string
+          id?: string
+          market?: string
+          messaggio_template?: string
+          nome?: string
+          slug?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
