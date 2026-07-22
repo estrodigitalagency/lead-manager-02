@@ -27,3 +27,4 @@ dist-ssr
 supabase/.temp/
 supabase/.branches/
 .claude/scheduled_tasks.lock
+.vercel
