@@ -59,16 +59,41 @@ const WhatsAppRedirect = () => {
       }
     };
 
+    // Prova a estrarre param da referrer se query attuale non li ha.
+    // Utile quando thank-you page non può passare query nell'href (es. link statico su piattaforma no-code).
+    const referrerParams: URLSearchParams | null = (() => {
+      try {
+        if (!document.referrer) return null;
+        return new URL(document.referrer).searchParams;
+      } catch {
+        return null;
+      }
+    })();
+
+    const getParam = (...keys: string[]): string => {
+      for (const k of keys) {
+        const v = params.get(k);
+        if (v && v.trim()) return v.trim();
+      }
+      if (referrerParams) {
+        for (const k of keys) {
+          const v = referrerParams.get(k);
+          if (v && v.trim()) return v.trim();
+        }
+      }
+      return "";
+    };
+
     const run = async () => {
       try {
-        const email = (params.get("email") || "").trim().toLowerCase();
-        const telParam = params.get("telefono") || params.get("phone") || "";
-        const nome = params.get("nome") || "";
-        const marketParam = (params.get("market") || "IT").toUpperCase();
+        const email = getParam("email", "e-mail", "mail").toLowerCase();
+        const telParam = getParam("telefono", "phone", "tel", "cellulare", "mobile");
+        const nome = getParam("nome", "name", "first_name", "firstname");
+        const marketParam = (getParam("market") || "IT").toUpperCase();
         const market = marketParam === "ES" ? "ES" : "IT";
         const defaultCountry = market === "ES" ? "34" : "39";
         const phoneNorm = normalizePhone(telParam, defaultCountry);
-        const customText = params.get("text") || "";
+        const customText = getParam("text");
 
         if (!email && !phoneNorm) {
           setStatus("error");

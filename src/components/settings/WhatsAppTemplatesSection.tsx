@@ -298,10 +298,22 @@ const WhatsAppTemplatesSection = () => {
           </div>
         )}
 
-        <div className="mt-4 p-3 rounded-lg bg-muted/40 text-[11px] text-muted-foreground space-y-1">
-          <p><strong>Come usarli</strong>: incolla il link nella thank-you page sostituendo i placeholder con i dati del lead reale.</p>
-          <p>Esempio Systeme.io / Kajabi / ecc.: <code>{baseUrl}/wa/mio-slug?email=[email]&nome=[first_name]&telefono=[phone]</code></p>
-          <p>Placeholder disponibili nel messaggio: <code>{"{{nome}}"}</code>, <code>{"{{venditore}}"}</code>, <code>{"{{fonte}}"}</code>, <code>{"{{campagna}}"}</code></p>
+        <div className="mt-4 p-3 rounded-lg bg-muted/40 text-[11px] text-muted-foreground space-y-2">
+          <p><strong>2 modi per usarli</strong>:</p>
+          <div>
+            <p><strong>Metodo A — placeholder piattaforma (raccomandato):</strong></p>
+            <p>Incolla nel link della thank-you page e la piattaforma sostituisce i placeholder al volo:</p>
+            <code className="block bg-background/60 px-2 py-1 rounded mt-1">{baseUrl}/wa/mio-slug?email=[email]&nome=[first_name]&telefono=[phone]</code>
+            <p className="mt-1">Sostituisci <code>[email]</code>, <code>[first_name]</code>, <code>[phone]</code> con le variabili della tua piattaforma (Systeme.io, Kajabi, GHL, ecc.).</p>
+          </div>
+          <div>
+            <p><strong>Metodo B — link statico:</strong></p>
+            <p>Se la thank-you page ha già email/nome/telefono nel suo URL (es. <code>?email=X&nome=Y</code>), puoi usare link statico senza query:</p>
+            <code className="block bg-background/60 px-2 py-1 rounded mt-1">{baseUrl}/wa/mio-slug</code>
+            <p className="mt-1">Il tool leggerà i parametri direttamente dall'URL della pagina di provenienza (<code>document.referrer</code>).</p>
+          </div>
+          <p className="mt-2"><strong>Nomi param supportati</strong>: <code>email</code>/<code>e-mail</code>/<code>mail</code> · <code>nome</code>/<code>name</code>/<code>first_name</code>/<code>firstname</code> · <code>telefono</code>/<code>phone</code>/<code>tel</code>/<code>cellulare</code>/<code>mobile</code> · <code>market</code> (IT/ES)</p>
+          <p><strong>Placeholder nel messaggio</strong>: <code>{"{{nome}}"}</code>, <code>{"{{venditore}}"}</code>, <code>{"{{fonte}}"}</code>, <code>{"{{campagna}}"}</code></p>
         </div>
       </CardContent>
     </Card>
