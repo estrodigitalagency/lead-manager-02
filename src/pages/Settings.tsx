@@ -135,8 +135,8 @@ const Settings = () => {
               ))}
             </div>
 
-            {/* Content */}
-            <div className="flex-1 min-w-0">
+            {/* Content — width-stable: flex-1 + w-0 + overflow-hidden impedisce a contenuti larghi di allargare il box */}
+            <div className="flex-1 w-0 min-w-0 overflow-x-hidden">
               {/* Section header */}
               {activeItem && (
                 <div className="mb-5 pb-4 border-b border-border">
@@ -147,7 +147,9 @@ const Settings = () => {
                   <p className="text-[12.5px] text-muted-foreground max-w-2xl">{activeItem.desc}</p>
                 </div>
               )}
-              <SettingsContent />
+              <div className="w-full max-w-[880px]">
+                <SettingsContent />
+              </div>
             </div>
           </div>
         )}
