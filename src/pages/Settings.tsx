@@ -1,9 +1,11 @@
-
 import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel } from "@/components/ui/select";
-import { Webhook, ArrowRightLeft, Users, Database, Tag, Zap, RefreshCw, MessageCircle } from "lucide-react";
+import {
+  Webhook, ArrowRightLeft, Users, Database, Tag, Zap, RefreshCw, MessageCircle,
+  Clock, Send,
+} from "lucide-react";
 import SalespeopleSettings from "@/components/SalespeopleSettings";
 import CampaignsSettings from "@/components/CampaignsSettings";
 import DatabaseSection from "@/components/settings/DatabaseSection";
@@ -15,52 +17,73 @@ import { RoundRobinFixSection } from "@/components/settings/RoundRobinFixSection
 import FonteMappingSettings from "@/components/settings/FonteMappingSettings";
 import { useIsMobile } from "@/hooks/use-mobile";
 
-const sections = [
+interface SettingItem {
+  value: string;
+  icon: typeof Users;
+  label: string;
+  desc: string;
+}
+interface SettingGroup {
+  group: string;
+  items: SettingItem[];
+}
+
+const sections: SettingGroup[] = [
   {
-    group: "Team",
+    group: "Team & Campagne",
     items: [
-      { value: "salespeople", icon: Users, label: "Venditori" },
-      { value: "campaigns", icon: Tag, label: "Campagne" },
-      { value: "roundrobin", icon: RefreshCw, label: "Round Robin" },
-    ]
+      { value: "salespeople", icon: Users, label: "Venditori", desc: "Anagrafica venditori, fogli Google, capacità e stato." },
+      { value: "campaigns", icon: Tag, label: "Campagne", desc: "Preset di filtri fonte, lock period e distribuzione riutilizzabili." },
+    ],
   },
   {
-    group: "Automazioni",
+    group: "Regole di assegnazione",
     items: [
-      { value: "attribution", icon: Webhook, label: "Attribuzione" },
-      { value: "automations", icon: Zap, label: "Automazioni" },
-      { value: "webhooks", icon: Webhook, label: "Webhook" },
-      { value: "fontemapping", icon: ArrowRightLeft, label: "Mapping Fonte" },
-      { value: "whatsapp", icon: MessageCircle, label: "WhatsApp Link" },
-    ]
+      { value: "automations", icon: Zap, label: "Automazioni", desc: "Assegnazione automatica al venditore precedente o distribuzione tra più venditori." },
+      { value: "roundrobin", icon: RefreshCw, label: "Round Robin", desc: "Correzione e ribilanciamento delle assegnazioni round-robin." },
+      { value: "attribution", icon: Clock, label: "Finestra attribuzione", desc: "Giorni entro cui una call viene attribuita alla fonte del lead." },
+    ],
+  },
+  {
+    group: "Integrazioni",
+    items: [
+      { value: "webhooks", icon: Webhook, label: "Webhook", desc: "URL Make.com per l'invio dei dati di assegnazione ai fogli." },
+      { value: "whatsapp", icon: MessageCircle, label: "Link WhatsApp", desc: "Link personalizzati che portano i lead sul WhatsApp del venditore assegnato." },
+      { value: "fontemapping", icon: ArrowRightLeft, label: "Mapping fonte", desc: "Corrispondenze tra le fonti del lead e quelle del calendario." },
+    ],
   },
   {
     group: "Sistema",
     items: [
-      { value: "database", icon: Database, label: "Database" },
-    ]
-  }
+      { value: "database", icon: Database, label: "Database", desc: "Manutenzione, pulizia e diagnostica dei dati." },
+    ],
+  },
 ];
 
-const allItems = sections.flatMap(s => s.items);
+const allItems = sections.flatMap((s) => s.items);
 
 const Settings = () => {
   const isMobile = useIsMobile();
-  const [activeTab, setActiveTab] = useState("attribution");
+  const [activeTab, setActiveTab] = useState("automations");
 
-  const activeItem = allItems.find(item => item.value === activeTab);
+  const activeItem = allItems.find((item) => item.value === activeTab);
   const ActiveIcon = activeItem?.icon;
 
   return (
-    <div className={`w-full min-h-screen max-w-7xl mx-auto ${isMobile ? 'pt-16 pb-24 px-4' : 'pt-16 px-6 py-8'}`}>
-      <h1 className="text-xl md:text-2xl font-semibold text-foreground mb-5">Impostazioni</h1>
+    <div className={`w-full min-h-screen max-w-7xl mx-auto ${isMobile ? "pt-16 pb-24 px-4" : "pt-16 px-6 py-8"}`}>
+      <div className="flex items-center gap-2.5 mb-1">
+        <Send className="h-4 w-4 text-primary" />
+        <h1 className="text-[18px] font-semibold text-foreground tracking-tight">Impostazioni</h1>
+      </div>
+      <p className="text-[12.5px] text-muted-foreground mb-6">
+        Configura team, regole di assegnazione e integrazioni.
+      </p>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full" orientation={isMobile ? "horizontal" : "vertical"}>
         {isMobile ? (
-          /* Mobile: dropdown selector instead of cramped tabs */
           <div className="mb-4">
             <Select value={activeTab} onValueChange={setActiveTab}>
-              <SelectTrigger className="w-full h-11 rounded-xl">
+              <SelectTrigger className="w-full h-10 rounded-md">
                 <div className="flex items-center gap-2">
                   {ActiveIcon && <ActiveIcon className="h-4 w-4 text-primary" />}
                   <SelectValue />
@@ -69,9 +92,7 @@ const Settings = () => {
               <SelectContent>
                 {sections.map((section) => (
                   <SelectGroup key={section.group}>
-                    <SelectLabel className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                      {section.group}
-                    </SelectLabel>
+                    <SelectLabel className="label-eyebrow px-2 py-1.5">{section.group}</SelectLabel>
                     {section.items.map((tab) => {
                       const Icon = tab.icon;
                       return (
@@ -89,14 +110,12 @@ const Settings = () => {
             </Select>
           </div>
         ) : (
-          /* Desktop: vertical sidebar with grouped sections */
           <div className="flex gap-6 min-h-[600px]">
-            <div className="w-56 flex-shrink-0 space-y-4">
+            {/* Sidebar navigation */}
+            <div className="w-60 flex-shrink-0 space-y-5">
               {sections.map((section) => (
                 <div key={section.group}>
-                  <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5 px-2">
-                    {section.group}
-                  </p>
+                  <p className="label-eyebrow mb-1.5 px-2">{section.group}</p>
                   <TabsList className="flex flex-col h-auto w-full bg-transparent p-0 gap-0.5">
                     {section.items.map((tab) => {
                       const Icon = tab.icon;
@@ -104,9 +123,9 @@ const Settings = () => {
                         <TabsTrigger
                           key={tab.value}
                           value={tab.value}
-                          className="w-full justify-start gap-2.5 px-3 py-2 h-9 text-sm font-normal text-muted-foreground data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:font-medium hover:text-foreground hover:bg-muted/50 rounded-lg transition-colors"
+                          className="w-full justify-start gap-2.5 px-2.5 py-1.5 h-8 text-[12.5px] font-medium text-muted-foreground data-[state=active]:bg-secondary data-[state=active]:text-foreground data-[state=active]:shadow-none hover:text-foreground hover:bg-secondary/60 rounded-md transition-colors"
                         >
-                          <Icon className="h-4 w-4 flex-shrink-0" />
+                          <Icon className="h-3.5 w-3.5 flex-shrink-0 stroke-[1.75]" />
                           {tab.label}
                         </TabsTrigger>
                       );
@@ -116,13 +135,33 @@ const Settings = () => {
               ))}
             </div>
 
+            {/* Content */}
             <div className="flex-1 min-w-0">
+              {/* Section header */}
+              {activeItem && (
+                <div className="mb-5 pb-4 border-b border-border">
+                  <div className="flex items-center gap-2 mb-1">
+                    {ActiveIcon && <ActiveIcon className="h-4 w-4 text-primary" />}
+                    <h2 className="text-[15px] font-semibold text-foreground tracking-tight">{activeItem.label}</h2>
+                  </div>
+                  <p className="text-[12.5px] text-muted-foreground max-w-2xl">{activeItem.desc}</p>
+                </div>
+              )}
               <SettingsContent />
             </div>
           </div>
         )}
 
-        {isMobile && <SettingsContent />}
+        {isMobile && (
+          <>
+            {activeItem && (
+              <div className="mb-4 pb-3 border-b border-border">
+                <p className="text-[12.5px] text-muted-foreground">{activeItem.desc}</p>
+              </div>
+            )}
+            <SettingsContent />
+          </>
+        )}
       </Tabs>
     </div>
   );
@@ -130,43 +169,43 @@ const Settings = () => {
 
 const SettingsContent = () => (
   <>
-    <TabsContent value="database">
+    <TabsContent value="database" className="mt-0">
       <DatabaseSection />
     </TabsContent>
 
-    <TabsContent value="whatsapp">
+    <TabsContent value="whatsapp" className="mt-0">
       <WhatsAppTemplatesSection />
     </TabsContent>
 
-    <TabsContent value="attribution">
+    <TabsContent value="attribution" className="mt-0">
       <AttributionWindowSettings />
     </TabsContent>
 
-    <TabsContent value="webhooks">
+    <TabsContent value="webhooks" className="mt-0">
       <WebhookSettings />
     </TabsContent>
 
-    <TabsContent value="salespeople">
-      <Card className="border">
+    <TabsContent value="salespeople" className="mt-0">
+      <Card>
         <SalespeopleSettings />
       </Card>
     </TabsContent>
 
-    <TabsContent value="campaigns">
-      <Card className="border">
+    <TabsContent value="campaigns" className="mt-0">
+      <Card>
         <CampaignsSettings />
       </Card>
     </TabsContent>
 
-    <TabsContent value="automations">
+    <TabsContent value="automations" className="mt-0">
       <AutomationSettings />
     </TabsContent>
 
-    <TabsContent value="roundrobin">
+    <TabsContent value="roundrobin" className="mt-0">
       <RoundRobinFixSection />
     </TabsContent>
 
-    <TabsContent value="fontemapping">
+    <TabsContent value="fontemapping" className="mt-0">
       <FonteMappingSettings />
     </TabsContent>
   </>
