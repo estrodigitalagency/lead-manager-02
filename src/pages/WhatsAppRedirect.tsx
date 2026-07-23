@@ -95,20 +95,15 @@ const WhatsAppRedirect = () => {
         const phoneNorm = normalizePhone(telParam, defaultCountry);
         const customText = getParam("text");
 
-        if (!email && !phoneNorm) {
-          setStatus("error");
-          setErrorMsg("Parametri mancanti: serve almeno email o telefono.");
-          await logClick({ template_slug: slug || null, market, status: "error", error_reason: "missing_params", lead_email: email || null, lead_phone: telParam || null, lead_nome: nome || null });
-          return;
-        }
-
         // Fetch template se slug presente
         let templateText: string | null = null;
         let templateMarket: string | null = null;
+        let fallbackPhone: string | null = null;
+        let fallbackMessage: string | null = null;
         if (slug) {
           const { data: tpl } = await supabase
             .from("whatsapp_templates")
-            .select("messaggio_template, market")
+            .select("messaggio_template, market, fallback_phone, fallback_message")
             .eq("slug", slug)
             .eq("attivo", true)
             .maybeSingle();
@@ -120,6 +115,48 @@ const WhatsAppRedirect = () => {
           }
           templateText = tpl.messaggio_template;
           templateMarket = tpl.market;
+          fallbackPhone = (tpl as any).fallback_phone || null;
+          fallbackMessage = (tpl as any).fallback_message || null;
+        }
+
+        // Helper: redirect al numero di fallback se configurato
+        const goFallback = async (reason: string, ctxNome: string) => {
+          if (!fallbackPhone) return false;
+          const fbPhone = normalizePhone(fallbackPhone, defaultCountry);
+          if (!fbPhone) return false;
+          const msg = customText || fallbackMessage || templateText || defaultMessage(ctxNome);
+          const finalMsg = substitutePlaceholders(msg, {
+            nome: ctxNome.split(/\s+/)[0] || "",
+            nome_completo: ctxNome,
+            venditore: "",
+            venditore_nome: "",
+            fonte: "",
+            campagna: "",
+            market,
+          });
+          setVenditore(null);
+          setStatus("redirecting");
+          await logClick({
+            template_slug: slug || null,
+            lead_email: email || null,
+            lead_phone: telParam || null,
+            lead_nome: ctxNome || null,
+            venditore_phone_used: fbPhone,
+            market,
+            status: "fallback",
+            error_reason: reason,
+          });
+          window.location.replace(`https://wa.me/${fbPhone}?text=${encodeURIComponent(finalMsg)}`);
+          return true;
+        };
+
+        // Parametri mancanti → prova fallback, altrimenti errore
+        if (!email && !phoneNorm) {
+          if (await goFallback("missing_params", nome)) return;
+          setStatus("error");
+          setErrorMsg("Parametri mancanti: serve almeno email o telefono.");
+          await logClick({ template_slug: slug || null, market, status: "error", error_reason: "missing_params", lead_email: null, lead_phone: null, lead_nome: nome || null });
+          return;
         }
 
         const effectiveMarket = (templateMarket || market) as "IT" | "ES";
@@ -151,6 +188,7 @@ const WhatsAppRedirect = () => {
         }
 
         if (!lead || !lead.venditore) {
+          if (await goFallback("no_lead_or_venditore", nome)) return;
           setStatus("error");
           setErrorMsg("Nessun venditore assegnato trovato per questo lead.");
           await logClick({ template_slug: slug || null, market: effectiveMarket, status: "error", error_reason: "no_lead_or_venditore", lead_email: email || null, lead_phone: telParam || null, lead_nome: nome || null });
@@ -168,6 +206,7 @@ const WhatsAppRedirect = () => {
         );
 
         if (!match || !match.telefono) {
+          if (await goFallback("no_venditore_phone", nome || lead.nome || "")) return;
           setStatus("error");
           setErrorMsg(`Venditore ${lead.venditore} non ha telefono configurato.`);
           await logClick({ template_slug: slug || null, lead_id: lead.id, lead_email: lead.email, lead_phone: lead.telefono, lead_nome: lead.nome, venditore_nome: lead.venditore, market: lead.market, status: "error", error_reason: "no_venditore_phone" });
@@ -176,6 +215,7 @@ const WhatsAppRedirect = () => {
 
         const vendPhone = normalizePhone(match.telefono, defaultCountry);
         if (!vendPhone) {
+          if (await goFallback("invalid_venditore_phone", nome || lead.nome || "")) return;
           setStatus("error");
           setErrorMsg("Numero venditore non valido.");
           await logClick({ template_slug: slug || null, lead_id: lead.id, lead_email: lead.email, lead_phone: lead.telefono, lead_nome: lead.nome, venditore_nome: lead.venditore, market: lead.market, status: "error", error_reason: "invalid_venditore_phone" });

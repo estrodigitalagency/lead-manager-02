@@ -1329,6 +1329,8 @@ export type Database = {
           attivo: boolean
           click_count: number
           created_at: string
+          fallback_message: string | null
+          fallback_phone: string | null
           id: string
           market: string
           messaggio_template: string
@@ -1340,6 +1342,8 @@ export type Database = {
           attivo?: boolean
           click_count?: number
           created_at?: string
+          fallback_message?: string | null
+          fallback_phone?: string | null
           id?: string
           market?: string
           messaggio_template: string
@@ -1351,6 +1355,8 @@ export type Database = {
           attivo?: boolean
           click_count?: number
           created_at?: string
+          fallback_message?: string | null
+          fallback_phone?: string | null
           id?: string
           market?: string
           messaggio_template?: string

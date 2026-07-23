@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Copy, Edit, Trash2, Plus, MessageCircle, ExternalLink, TrendingUp } from "lucide-react";
+import { Copy, Edit, Trash2, Plus, MessageCircle, ExternalLink, TrendingUp, AlertTriangle, ShieldCheck } from "lucide-react";
 import { useMarket } from "@/contexts/MarketContext";
 
 interface Template {
@@ -21,6 +21,8 @@ interface Template {
   market: string;
   attivo: boolean;
   click_count: number;
+  fallback_phone: string | null;
+  fallback_message: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -55,6 +57,8 @@ const WhatsAppTemplatesSection = () => {
     messaggio_template: "Ciao {{nome}}, grazie per esserti registrato/a! Come posso aiutarti?",
     market: selectedMarket,
     attivo: true,
+    fallback_phone: "",
+    fallback_message: "",
   });
 
   const baseUrl = typeof window !== "undefined" ? window.location.origin : "";
@@ -82,6 +86,8 @@ const WhatsAppTemplatesSection = () => {
       messaggio_template: "Ciao {{nome}}, grazie per esserti registrato/a! Come posso aiutarti?",
       market: selectedMarket,
       attivo: true,
+      fallback_phone: "",
+      fallback_message: "",
     });
     setDialogOpen(true);
   };
@@ -94,6 +100,8 @@ const WhatsAppTemplatesSection = () => {
       messaggio_template: t.messaggio_template,
       market: t.market as "IT" | "ES",
       attivo: t.attivo,
+      fallback_phone: t.fallback_phone || "",
+      fallback_message: t.fallback_message || "",
     });
     setDialogOpen(true);
   };
@@ -109,28 +117,25 @@ const WhatsAppTemplatesSection = () => {
       return;
     }
     try {
+      const payload = {
+        slug,
+        nome: form.nome.trim(),
+        messaggio_template: form.messaggio_template,
+        market: form.market,
+        attivo: form.attivo,
+        fallback_phone: form.fallback_phone.trim() || null,
+        fallback_message: form.fallback_message.trim() || null,
+      };
+
       if (editing) {
         const { error } = await supabase
           .from("whatsapp_templates")
-          .update({
-            slug,
-            nome: form.nome.trim(),
-            messaggio_template: form.messaggio_template,
-            market: form.market,
-            attivo: form.attivo,
-            updated_at: new Date().toISOString(),
-          } as any)
+          .update({ ...payload, updated_at: new Date().toISOString() } as any)
           .eq("id", editing.id);
         if (error) throw error;
         toast.success("Template aggiornato");
       } else {
-        const { error } = await supabase.from("whatsapp_templates").insert({
-          slug,
-          nome: form.nome.trim(),
-          messaggio_template: form.messaggio_template,
-          market: form.market,
-          attivo: form.attivo,
-        } as any);
+        const { error } = await supabase.from("whatsapp_templates").insert(payload as any);
         if (error) throw error;
         toast.success("Template creato");
       }
@@ -225,7 +230,7 @@ const WhatsAppTemplatesSection = () => {
                 </div>
               </div>
               <div className="flex items-center gap-4">
-                <div className="flex-1">
+                <div className="flex-1 space-y-1">
                   <Label>Market</Label>
                   <Select value={form.market} onValueChange={(v) => setForm({ ...form, market: v as "IT" | "ES" })}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
@@ -238,6 +243,34 @@ const WhatsAppTemplatesSection = () => {
                 <div className="flex items-center gap-2 pt-6">
                   <Switch checked={form.attivo} onCheckedChange={(v) => setForm({ ...form, attivo: v })} />
                   <Label>Attivo</Label>
+                </div>
+              </div>
+
+              {/* Fallback */}
+              <div className="pt-3 border-t space-y-3">
+                <div className="flex items-center gap-2">
+                  <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />
+                  <span className="label-eyebrow">Fallback (se il lead non ha venditore)</span>
+                </div>
+                <div className="space-y-1">
+                  <Label>Numero WhatsApp di riserva</Label>
+                  <Input
+                    value={form.fallback_phone}
+                    onChange={(e) => setForm({ ...form, fallback_phone: e.target.value })}
+                    placeholder="+39 340 123 4567"
+                  />
+                  <p className="text-[11px] text-muted-foreground">
+                    Se il lead non viene trovato o il venditore assegnato non ha telefono, il redirect va su questo numero invece di mostrare errore. Lascia vuoto per mostrare l'errore.
+                  </p>
+                </div>
+                <div className="space-y-1">
+                  <Label>Messaggio di riserva (opzionale)</Label>
+                  <Textarea
+                    rows={2}
+                    value={form.fallback_message}
+                    onChange={(e) => setForm({ ...form, fallback_message: e.target.value })}
+                    placeholder="Se vuoto usa il messaggio principale"
+                  />
                 </div>
               </div>
             </div>
@@ -270,6 +303,15 @@ const WhatsAppTemplatesSection = () => {
                       <span className="text-[10px] text-muted-foreground flex items-center gap-1">
                         <TrendingUp className="h-3 w-3" /> {t.click_count} click
                       </span>
+                      {t.fallback_phone ? (
+                        <span className="text-[10px] text-emerald-500 flex items-center gap-1" title={`Fallback: ${t.fallback_phone}`}>
+                          <ShieldCheck className="h-3 w-3" /> fallback
+                        </span>
+                      ) : (
+                        <span className="text-[10px] text-amber-500 flex items-center gap-1" title="Nessun numero di riserva: se il lead non ha venditore vedrà un errore">
+                          <AlertTriangle className="h-3 w-3" /> no fallback
+                        </span>
+                      )}
                     </div>
                     <p className="text-[11px] text-muted-foreground mt-0.5">
                       <code className="bg-muted px-1 py-0.5 rounded">{baseUrl}/wa/{t.slug}</code>
