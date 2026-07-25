@@ -16,6 +16,7 @@ import { AutomationSettings } from "@/components/automation/AutomationSettings";
 import { RoundRobinFixSection } from "@/components/settings/RoundRobinFixSection";
 import FonteMappingSettings from "@/components/settings/FonteMappingSettings";
 import RankingSettingsSection from "@/components/settings/RankingSettingsSection";
+import ValoreCallView from "@/components/settings/ValoreCallView";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 interface SettingItem {
@@ -35,7 +36,7 @@ const sections: SettingGroup[] = [
     items: [
       { value: "salespeople", icon: Users, label: "Venditori", desc: "Anagrafica venditori, fogli Google, capacità e stato." },
       { value: "campaigns", icon: Tag, label: "Campagne", desc: "Preset di filtri fonte, lock period e distribuzione riutilizzabili." },
-      { value: "ranking", icon: Trophy, label: "Ranking", desc: "Classifica commerciale live da Google Sheets: foglio, limite, hall of fame e link personali." },
+      { value: "ranking", icon: Trophy, label: "Ranking & Valore call", desc: "Valore call/lead per fonte (live dai fogli venditore) e configurazione della classifica commerciale pubblica." },
     ],
   },
   {
@@ -198,7 +199,18 @@ const SettingsContent = () => (
     </TabsContent>
 
     <TabsContent value="ranking" className="mt-0">
-      <RankingSettingsSection />
+      <Tabs defaultValue="valore-call" className="w-full">
+        <TabsList className="mb-4">
+          <TabsTrigger value="valore-call">Valore call / lead</TabsTrigger>
+          <TabsTrigger value="config">Configurazione classifica</TabsTrigger>
+        </TabsList>
+        <TabsContent value="valore-call" className="mt-0">
+          <ValoreCallView />
+        </TabsContent>
+        <TabsContent value="config" className="mt-0">
+          <RankingSettingsSection />
+        </TabsContent>
+      </Tabs>
     </TabsContent>
 
     <TabsContent value="automations" className="mt-0">
