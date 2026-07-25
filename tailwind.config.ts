@@ -25,6 +25,9 @@ export default {
 				ring: 'hsl(var(--ring))',
 				background: 'hsl(var(--background))',
 				foreground: 'hsl(var(--foreground))',
+				gold: { DEFAULT: 'hsl(var(--gold))', glow: 'hsl(var(--gold-glow))' },
+				silver: { DEFAULT: 'hsl(var(--silver))', glow: 'hsl(var(--silver-glow))' },
+				bronze: { DEFAULT: 'hsl(var(--bronze))', glow: 'hsl(var(--bronze-glow))' },
 				primary: {
 					DEFAULT: 'hsl(var(--primary))',
 					foreground: 'hsl(var(--primary-foreground))'

@@ -61,6 +61,14 @@
     --success: 142 71% 45%;           /* #22C55E */
     --warning: 38 92% 50%;            /* #F59E0B */
     --info: 232 100% 74%;
+
+    /* Ranking podium colors */
+    --gold: 45 93% 58%;
+    --gold-glow: 45 100% 70%;
+    --silver: 210 10% 70%;
+    --silver-glow: 210 15% 82%;
+    --bronze: 25 60% 50%;
+    --bronze-glow: 25 70% 62%;
   }
 
   /* Custom scrollbar — dark-mode native */

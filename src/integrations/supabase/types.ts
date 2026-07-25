@@ -1111,6 +1111,24 @@ export type Database = {
         }
         Relationships: []
       }
+      ranking_settings: {
+        Row: {
+          key: string
+          updated_at: string | null
+          value: string
+        }
+        Insert: {
+          key: string
+          updated_at?: string | null
+          value: string
+        }
+        Update: {
+          key?: string
+          updated_at?: string | null
+          value?: string
+        }
+        Relationships: []
+      }
       system_settings: {
         Row: {
           descrizione: string | null

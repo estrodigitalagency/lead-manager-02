@@ -7,6 +7,7 @@ import Settings from "./pages/Settings";
 import LeadAssignment from "./pages/LeadAssignment";
 import Login from "./pages/Login";
 import WhatsAppRedirect from "./pages/WhatsAppRedirect";
+import Ranking from "./pages/Ranking";
 
 export const navItems = [
   {
@@ -52,5 +53,9 @@ export const publicRoutes = [
   {
     to: "/wa/:slug",
     page: <WhatsAppRedirect />,
+  },
+  {
+    to: "/ranking",
+    page: <Ranking />,
   },
 ];

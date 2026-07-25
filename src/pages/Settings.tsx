@@ -4,7 +4,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel } from "@/components/ui/select";
 import {
   Webhook, ArrowRightLeft, Users, Database, Tag, Zap, RefreshCw, MessageCircle,
-  Clock, Send,
+  Clock, Send, Trophy,
 } from "lucide-react";
 import SalespeopleSettings from "@/components/SalespeopleSettings";
 import CampaignsSettings from "@/components/CampaignsSettings";
@@ -15,6 +15,7 @@ import WebhookSettings from "@/components/settings/WebhookSettings";
 import { AutomationSettings } from "@/components/automation/AutomationSettings";
 import { RoundRobinFixSection } from "@/components/settings/RoundRobinFixSection";
 import FonteMappingSettings from "@/components/settings/FonteMappingSettings";
+import RankingSettingsSection from "@/components/settings/RankingSettingsSection";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 interface SettingItem {
@@ -34,6 +35,7 @@ const sections: SettingGroup[] = [
     items: [
       { value: "salespeople", icon: Users, label: "Venditori", desc: "Anagrafica venditori, fogli Google, capacità e stato." },
       { value: "campaigns", icon: Tag, label: "Campagne", desc: "Preset di filtri fonte, lock period e distribuzione riutilizzabili." },
+      { value: "ranking", icon: Trophy, label: "Ranking", desc: "Classifica commerciale live da Google Sheets: foglio, limite, hall of fame e link personali." },
     ],
   },
   {
@@ -193,6 +195,10 @@ const SettingsContent = () => (
 
     <TabsContent value="campaigns" className="mt-0">
       <CampaignsSettings />
+    </TabsContent>
+
+    <TabsContent value="ranking" className="mt-0">
+      <RankingSettingsSection />
     </TabsContent>
 
     <TabsContent value="automations" className="mt-0">

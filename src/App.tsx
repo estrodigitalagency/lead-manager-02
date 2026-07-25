@@ -16,7 +16,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { isAuthenticated, loading } = useAuth();
   const location = useLocation();
   
-  const isPublicRoute = publicRoutes.some(route => route.to === location.pathname) || location.pathname.startsWith('/wa/') || location.pathname === '/wa';
+  const isPublicRoute = publicRoutes.some(route => route.to === location.pathname) || location.pathname.startsWith('/wa/') || location.pathname === '/wa' || location.pathname === '/ranking';
   const isStandaloneRoute = standaloneRoutes.some(route => route.to === location.pathname);
   const isLeadAssignmentPage = location.pathname === '/lead-assignment';
   
@@ -42,7 +42,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 const AppContent = () => {
   const location = useLocation();
   const isStandalonePage = standaloneRoutes.some(route => route.to === location.pathname);
-  const isPublicPage = publicRoutes.some(route => route.to === location.pathname) || location.pathname.startsWith('/wa/') || location.pathname === '/wa';
+  const isPublicPage = publicRoutes.some(route => route.to === location.pathname) || location.pathname.startsWith('/wa/') || location.pathname === '/wa' || location.pathname === '/ranking';
 
   return (
     <ProtectedRoute>
