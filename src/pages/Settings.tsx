@@ -137,8 +137,8 @@ const Settings = () => {
               ))}
             </div>
 
-            {/* Content — width-stable: flex-1 + w-0 + overflow-hidden impedisce a contenuti larghi di allargare il box */}
-            <div className="flex-1 w-0 min-w-0 overflow-x-hidden">
+            {/* Content — flex-1 + min-w-0 + overflow-hidden: larghezza stabile senza collassare */}
+            <div className="flex-1 min-w-0 overflow-x-hidden">
               {/* Section header */}
               {activeItem && (
                 <div className="mb-5 pb-4 border-b border-border">
