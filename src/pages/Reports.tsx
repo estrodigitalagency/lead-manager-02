@@ -7,6 +7,7 @@ import ReportFiltersComponent from "@/components/reports/ReportFilters";
 import ReportMetricsComponent from "@/components/reports/ReportMetrics";
 import { LeadsBySourceChart } from "@/components/LeadsBySourceChart";
 import { LeadsBySalespersonChart } from "@/components/LeadsBySalespersonChart";
+import ReportValoreCall from "@/components/reports/ReportValoreCall";
 import ReportLeadsList from "@/components/reports/ReportLeadsList";
 import ExportReportButton from "@/components/reports/ExportReportButton";
 
@@ -68,6 +69,9 @@ const ReportsPage = () => {
 
         {/* Lavorazione per Venditore (count + % sul totale generati) */}
         <LeadsBySalespersonChart filters={filters} refreshTrigger={refreshTrigger} />
+
+        {/* Valore call per fonte (live fogli venditore, grafico + selettore venditore) */}
+        <ReportValoreCall refreshTrigger={refreshTrigger} />
 
         {/* Dettaglio Lead Filtrati */}
         <ReportLeadsList filters={filters} refreshTrigger={refreshTrigger} />

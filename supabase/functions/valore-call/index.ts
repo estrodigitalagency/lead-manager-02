@@ -166,12 +166,18 @@ Deno.serve(async (req) => {
     const token = await getAccessToken();
     const gh = { Authorization: "Bearer " + token };
 
-    // agg[bucket][mkey] = { fatt, nette, fatte, vlead }
-    const agg: Record<string, Record<string, { fatt: number; nette: number; fatte: number; vlead: number }>> = {};
-    for (const b of BUCKETS) {
-      agg[b] = {};
-      for (const mk of MKEYS) agg[b][mk] = { fatt: 0, nette: 0, fatte: 0, vlead: 0 };
-    }
+    type Cell = { fatt: number; nette: number; fatte: number; vlead: number };
+    const newAgg = () => {
+      const a: Record<string, Record<string, Cell>> = {};
+      for (const b of BUCKETS) {
+        a[b] = {};
+        for (const mk of MKEYS) a[b][mk] = { fatt: 0, nette: 0, fatte: 0, vlead: 0 };
+      }
+      return a;
+    };
+    // globale + per venditore
+    const agg = newAgg();
+    const aggSeller: Record<string, Record<string, Record<string, Cell>>> = {};
     const unmapped: Record<string, number> = {};
     let usedSellers = 0;
     const errors: string[] = [];
@@ -202,6 +208,8 @@ Deno.serve(async (req) => {
           const vals = (await valRes.json()).values as any[][] | undefined;
           if (!vals || vals.length === 0) return;
           usedSellers++;
+          const sellerName = `${v.nome} ${v.cognome || ""}`.trim();
+          if (!aggSeller[sellerName]) aggSeller[sellerName] = newAgg();
 
           for (const row of vals) {
             if (row.length < 4) continue;
@@ -217,10 +225,10 @@ Deno.serve(async (req) => {
               continue;
             }
             const cell = (idx: number) => (row.length > idx ? row[idx] : "");
-            agg[b][mk].fatt += euro(cell(3));
-            agg[b][mk].nette += euro(cell(23));
-            agg[b][mk].fatte += euro(cell(19));
-            agg[b][mk].vlead += euro(cell(29));
+            const f = euro(cell(3)), nt = euro(cell(23)), ft = euro(cell(19)), vl = euro(cell(29));
+            agg[b][mk].fatt += f; agg[b][mk].nette += nt; agg[b][mk].fatte += ft; agg[b][mk].vlead += vl;
+            const sa = aggSeller[sellerName][b][mk];
+            sa.fatt += f; sa.nette += nt; sa.fatte += ft; sa.vlead += vl;
           }
         } catch (e) {
           errors.push(`${v.nome}: ${(e as Error).message}`);
@@ -228,23 +236,28 @@ Deno.serve(async (req) => {
       }));
     }
 
-    // Costruisci risultato
-    const result = cfg.buckets.map((bdef) => {
-      const b = bdef.id;
-      const perMonth = MKEYS.map((mk) => {
-        const d = agg[b][mk];
-        return {
-          mese: mk,
-          valore_call: d.fatte > 0 ? Math.round(d.fatt / d.fatte) : 0,
-          n_call: Math.round(d.fatte),
-          fatturato: Math.round(d.fatt),
-          call_nette: Math.round(d.nette),
-          valore_lead: Math.round(d.vlead),
-        };
+    // Helper: costruisce l'array bucket da una aggregazione
+    const buildBuckets = (a: Record<string, Record<string, Cell>>) =>
+      cfg.buckets.map((bdef) => {
+        const b = bdef.id;
+        const perMonth = MKEYS.map((mk) => {
+          const d = a[b][mk];
+          return {
+            mese: mk,
+            valore_call: d.fatte > 0 ? Math.round(d.fatt / d.fatte) : 0,
+            n_call: Math.round(d.fatte),
+            fatturato: Math.round(d.fatt),
+            call_nette: Math.round(d.nette),
+            valore_lead: Math.round(d.vlead),
+          };
+        });
+        return { bucket: b, label: bdef.label, mesi: perMonth, trend: trend(perMonth.map((m) => m.valore_call)) };
       });
-      const vcSeries = perMonth.map((m) => m.valore_call);
-      return { bucket: b, label: bdef.label, mesi: perMonth, trend: trend(vcSeries) };
-    });
+
+    const result = buildBuckets(agg);
+    const perSeller = Object.entries(aggSeller)
+      .map(([venditore, a]) => ({ venditore, data: buildBuckets(a) }))
+      .sort((x, y) => x.venditore.localeCompare(y.venditore));
 
     return new Response(JSON.stringify({
       market,
@@ -252,6 +265,7 @@ Deno.serve(async (req) => {
       sellers_used: usedSellers,
       sellers_total: list.length,
       data: result,
+      per_seller: perSeller,
       unmapped,
       errors: errors.slice(0, 20),
       generated_at: new Date().toISOString(),
