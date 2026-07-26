@@ -56,6 +56,29 @@ const avgValoreCall = (b: BucketData) => {
 };
 const totCall = (b: BucketData) => b.mesi.reduce((s, m) => s + m.n_call, 0);
 
+/** Micro sparkline SVG: evoluzione valore call sui mesi */
+const Sparkline = ({ values, color }: { values: number[]; color: string }) => {
+  const w = 48, h = 14, pad = 1.5;
+  const pts = values.filter((v) => v != null);
+  if (pts.length < 2 || pts.every((v) => v === 0)) return null;
+  const max = Math.max(...pts), min = Math.min(...pts);
+  const range = max - min || 1;
+  const step = (w - pad * 2) / (pts.length - 1);
+  const coords = pts.map((v, i) => {
+    const x = pad + i * step;
+    const y = h - pad - ((v - min) / range) * (h - pad * 2);
+    return [x, y] as const;
+  });
+  const d = coords.map(([x, y], i) => `${i === 0 ? "M" : "L"}${x.toFixed(1)},${y.toFixed(1)}`).join(" ");
+  const [lx, ly] = coords[coords.length - 1];
+  return (
+    <svg width={w} height={h} className="inline-block align-middle" viewBox={`0 0 ${w} ${h}`}>
+      <path d={d} fill="none" stroke={color} strokeWidth={1.25} strokeLinecap="round" strokeLinejoin="round" />
+      <circle cx={lx} cy={ly} r={1.6} fill={color} />
+    </svg>
+  );
+};
+
 const TrendInline = ({ t }: { t: string }) => {
   if (t === "asc") return <span className="inline-flex items-center gap-0.5 text-emerald-500 text-[10px]"><TrendingUp className="h-2.5 w-2.5" /> asc</span>;
   if (t === "desc") return <span className="inline-flex items-center gap-0.5 text-destructive text-[10px]"><TrendingDown className="h-2.5 w-2.5" /> disc</span>;
@@ -99,11 +122,11 @@ const ReportValoreCall = ({ refreshTrigger }: Props) => {
     if (!resp) return [];
     return resp.per_seller
       .map((s) => {
-        const byBucket: Record<string, { vc: number; n: number; trend: string }> = {};
+        const byBucket: Record<string, { vc: number; n: number; trend: string; series: number[] }> = {};
         let totN = 0;
         for (const b of s.data) {
           const n = totCall(b);
-          byBucket[b.bucket] = { vc: avgValoreCall(b), n, trend: b.trend };
+          byBucket[b.bucket] = { vc: avgValoreCall(b), n, trend: b.trend, series: b.mesi.map((m) => m.valore_call) };
           totN += n;
         }
         return { venditore: s.venditore, byBucket, totN };
@@ -115,8 +138,8 @@ const ReportValoreCall = ({ refreshTrigger }: Props) => {
   // Riga TOTALE (globale)
   const totalRow = useMemo(() => {
     if (!resp) return null;
-    const byBucket: Record<string, { vc: number; n: number; trend: string }> = {};
-    for (const b of resp.data) byBucket[b.bucket] = { vc: avgValoreCall(b), n: totCall(b), trend: b.trend };
+    const byBucket: Record<string, { vc: number; n: number; trend: string; series: number[] }> = {};
+    for (const b of resp.data) byBucket[b.bucket] = { vc: avgValoreCall(b), n: totCall(b), trend: b.trend, series: b.mesi.map((m) => m.valore_call) };
     return byBucket;
   }, [resp]);
 
@@ -193,6 +216,7 @@ const ReportValoreCall = ({ refreshTrigger }: Props) => {
                         return (
                           <td key={c.id} className="table-body-cell text-right num">
                             <span className="font-semibold">{cell?.vc > 0 ? eur(cell.vc) : "—"}</span>
+                            {cell?.series && <span className="block leading-none"><Sparkline values={cell.series} color={BUCKET_COLORS[c.id]} /></span>}
                             <span className="block"><TrendInline t={cell?.trend || "—"} /></span>
                           </td>
                         );
@@ -210,6 +234,7 @@ const ReportValoreCall = ({ refreshTrigger }: Props) => {
                               <>
                                 <span className="font-semibold">{cell.vc > 0 ? eur(cell.vc) : "—"}</span>
                                 <span className="block text-[9px] text-muted-foreground">{cell.n} call</span>
+                                <span className="block leading-none"><Sparkline values={cell.series} color={BUCKET_COLORS[c.id]} /></span>
                                 <span className="block"><TrendInline t={cell.trend} /></span>
                               </>
                             ) : (
