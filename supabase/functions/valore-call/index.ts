@@ -21,17 +21,39 @@ const corsHeaders = {
 };
 
 const N_MONTHS = 3;
-const BUCKETS = ["3sfere", "setter_ig", "setter_new", "vsl", "outbound"] as const;
-type Bucket = (typeof BUCKETS)[number];
 
-function bucketOf(src: string): Bucket | null {
-  const s = src.trim().toLowerCase();
-  if (s === "3sfere") return "3sfere";
-  if (["typeform", "setter", "setter ig", "setter_ig"].includes(s)) return "setter_ig";
-  if (["setter_new", "setter new"].includes(s)) return "setter_new";
-  if (s.startsWith("vsl") || s.startsWith("guida") || ["mail", "funnel video", "podcast", "email"].includes(s)) return "vsl";
-  if (s === "outbound") return "outbound";
-  return null;
+interface BucketDef { id: string; label: string; sources: string[]; }
+interface BucketConfig { buckets: BucketDef[]; ignore: string[]; }
+
+const DEFAULT_CONFIG: BucketConfig = {
+  buckets: [
+    { id: "3sfere", label: "3Sfere", sources: ["3sfere"] },
+    { id: "setter_ig", label: "Setter IG", sources: ["typeform", "setter", "setter ig", "setter_ig"] },
+    { id: "setter_new", label: "Setter New", sources: ["setter_new", "setter new"] },
+    { id: "vsl", label: "VSL / Funnel", sources: ["vsl*", "guida*", "mail", "email", "funnel video", "podcast"] },
+    { id: "outbound", label: "Outbound", sources: ["outbound"] },
+  ],
+  ignore: ["totale", "rischedulate", "upsell", "altro"],
+};
+
+/** Match fonte → bucket. Supporta wildcard prefisso con '*' (es. "vsl*"). */
+function makeBucketMatcher(cfg: BucketConfig) {
+  return (src: string): string | null => {
+    const s = src.trim().toLowerCase();
+    if (!s) return null;
+    for (const b of cfg.buckets) {
+      for (const pat of b.sources) {
+        const p = pat.trim().toLowerCase();
+        if (!p) continue;
+        if (p.endsWith("*")) {
+          if (s.startsWith(p.slice(0, -1))) return b.id;
+        } else if (s === p) {
+          return b.id;
+        }
+      }
+    }
+    return null;
+  };
 }
 
 function euro(x: unknown): number {
@@ -113,6 +135,23 @@ Deno.serve(async (req) => {
     const url = new URL(req.url);
     const market = (url.searchParams.get("market") || "IT").toUpperCase();
 
+    // Carica config bucket dal DB (customizzabile via UI), fallback al default
+    let cfg = DEFAULT_CONFIG;
+    try {
+      const { data: cfgRow } = await supabase
+        .from("ranking_settings")
+        .select("value")
+        .eq("key", "valore_call_buckets")
+        .maybeSingle();
+      if (cfgRow?.value) {
+        const parsed = JSON.parse(cfgRow.value);
+        if (parsed?.buckets?.length) cfg = parsed;
+      }
+    } catch { /* usa default */ }
+    const BUCKETS = cfg.buckets.map((b) => b.id);
+    const IGNORE = (cfg.ignore || []).map((x) => x.trim().toLowerCase());
+    const bucketOf = makeBucketMatcher(cfg);
+
     // Venditori attivi, SOLO sales (is_sales=true), con foglio
     const { data: vend, error: vErr } = await supabase
       .from("venditori")
@@ -172,7 +211,7 @@ Deno.serve(async (req) => {
             const b = bucketOf(src);
             if (!b) {
               const low = src.trim().toLowerCase();
-              if (!["totale", "rischedulate", "upsell", "altro", ""].includes(low)) {
+              if (low && !IGNORE.includes(low)) {
                 unmapped[low] = (unmapped[low] || 0) + 1;
               }
               continue;
@@ -190,7 +229,8 @@ Deno.serve(async (req) => {
     }
 
     // Costruisci risultato
-    const result = BUCKETS.map((b) => {
+    const result = cfg.buckets.map((bdef) => {
+      const b = bdef.id;
       const perMonth = MKEYS.map((mk) => {
         const d = agg[b][mk];
         return {
@@ -203,7 +243,7 @@ Deno.serve(async (req) => {
         };
       });
       const vcSeries = perMonth.map((m) => m.valore_call);
-      return { bucket: b, mesi: perMonth, trend: trend(vcSeries) };
+      return { bucket: b, label: bdef.label, mesi: perMonth, trend: trend(vcSeries) };
     });
 
     return new Response(JSON.stringify({
