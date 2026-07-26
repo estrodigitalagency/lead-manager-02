@@ -64,17 +64,21 @@ const ReportsPage = () => {
         {/* Metriche */}
         <ReportMetricsComponent metrics={metrics} isLoading={isLoading} />
 
-        {/* Grafico Lead per Fonte */}
+        {/* ─── SEZIONE LEAD ─── */}
+        <div className="flex items-center gap-3 pt-2">
+          <span className="label-eyebrow">Lavorazione lead</span>
+          <div className="flex-1 h-px bg-border" />
+        </div>
         <LeadsBySourceChart filters={filters} refreshTrigger={refreshTrigger} />
-
-        {/* Lavorazione per Venditore (count + % sul totale generati) */}
         <LeadsBySalespersonChart filters={filters} refreshTrigger={refreshTrigger} />
-
-        {/* Valore call per fonte (live fogli venditore, grafico + selettore venditore) */}
-        <ReportValoreCall refreshTrigger={refreshTrigger} />
-
-        {/* Dettaglio Lead Filtrati */}
         <ReportLeadsList filters={filters} refreshTrigger={refreshTrigger} />
+
+        {/* ─── SEZIONE CALL ─── */}
+        <div className="flex items-center gap-3 pt-4">
+          <span className="label-eyebrow">Call · valore call per fonte</span>
+          <div className="flex-1 h-px bg-border" />
+        </div>
+        <ReportValoreCall refreshTrigger={refreshTrigger} />
       </div>
     </div>
   );
