@@ -113,12 +113,13 @@ Deno.serve(async (req) => {
     const url = new URL(req.url);
     const market = (url.searchParams.get("market") || "IT").toUpperCase();
 
-    // Venditori attivi con foglio
+    // Venditori attivi, SOLO sales (is_sales=true), con foglio
     const { data: vend, error: vErr } = await supabase
       .from("venditori")
-      .select("nome, cognome, sheets_file_id, stato, market")
+      .select("nome, cognome, sheets_file_id, stato, market, is_sales")
       .eq("market", market)
       .eq("stato", "attivo")
+      .eq("is_sales", true)
       .not("sheets_file_id", "is", null);
     if (vErr) throw vErr;
 

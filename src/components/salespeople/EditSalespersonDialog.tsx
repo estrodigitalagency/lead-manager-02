@@ -30,7 +30,8 @@ const EditSalespersonDialog = ({ venditore, onUpdate }: EditSalespersonDialogPro
     telefono: venditore.telefono || '',
     sheets_file_id: venditore.sheets_file_id,
     sheets_tab_name: venditore.sheets_tab_name,
-    stato: venditore.stato
+    stato: venditore.stato,
+    is_sales: (venditore as any).is_sales ?? true
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -61,8 +62,9 @@ const EditSalespersonDialog = ({ venditore, onUpdate }: EditSalespersonDialogPro
           sheets_file_id: formData.sheets_file_id.trim(),
           sheets_tab_name: formData.sheets_tab_name.trim(),
           stato: formData.stato,
+          is_sales: formData.is_sales,
           updated_at: new Date().toISOString()
-        })
+        } as any)
         .eq('id', venditore.id);
 
       if (error) throw error;
@@ -176,11 +178,25 @@ const EditSalespersonDialog = ({ venditore, onUpdate }: EditSalespersonDialogPro
             <Switch
               id="stato"
               checked={formData.stato === 'attivo'}
-              onCheckedChange={(checked) => 
+              onCheckedChange={(checked) =>
                 setFormData(prev => ({ ...prev, stato: checked ? 'attivo' : 'inattivo' }))
               }
             />
             <Label htmlFor="stato">Attivo</Label>
+          </div>
+
+          <div className="flex items-center justify-between rounded-md border border-border p-3">
+            <div className="space-y-0.5">
+              <Label htmlFor="is_sales">È un sales</Label>
+              <p className="text-[11px] text-muted-foreground">
+                Se disattivo (es. setter, CRM, round robin) viene escluso da ranking e analytics valore call. Resta usabile per le assegnazioni.
+              </p>
+            </div>
+            <Switch
+              id="is_sales"
+              checked={formData.is_sales}
+              onCheckedChange={(checked) => setFormData(prev => ({ ...prev, is_sales: checked }))}
+            />
           </div>
 
           <div className="flex justify-end space-x-2">

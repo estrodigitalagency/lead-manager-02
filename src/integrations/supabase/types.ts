@@ -1211,6 +1211,7 @@ export type Database = {
           delivery_method: string
           email: string | null
           id: string
+          is_sales: boolean
           lead_attuali: number | null
           lead_capacity: number | null
           market: string
@@ -1228,6 +1229,7 @@ export type Database = {
           delivery_method?: string
           email?: string | null
           id?: string
+          is_sales?: boolean
           lead_attuali?: number | null
           lead_capacity?: number | null
           market?: string
@@ -1245,6 +1247,7 @@ export type Database = {
           delivery_method?: string
           email?: string | null
           id?: string
+          is_sales?: boolean
           lead_attuali?: number | null
           lead_capacity?: number | null
           market?: string
