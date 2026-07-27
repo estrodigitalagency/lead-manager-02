@@ -10,7 +10,6 @@ import ReportMetricsComponent from "@/components/reports/ReportMetrics";
 import { LeadsBySourceChart } from "@/components/LeadsBySourceChart";
 import { LeadsBySalespersonChart } from "@/components/LeadsBySalespersonChart";
 import ReportValoreCall from "@/components/reports/ReportValoreCall";
-import FonteRankingBlocks from "@/components/ranking/FonteRankingBlocks";
 import ReportLeadsList from "@/components/reports/ReportLeadsList";
 import ExportReportButton from "@/components/reports/ExportReportButton";
 
@@ -81,13 +80,6 @@ const ReportsPage = () => {
         {/* ─── TAB CALL ─── */}
         <TabsContent value="call" className="mt-0 space-y-5">
           <ReportValoreCall refreshTrigger={refreshTrigger} />
-          <div>
-            <div className="flex items-center gap-3 mb-3">
-              <span className="label-eyebrow">Classifica valore call per fonte (escl. outbound)</span>
-              <div className="flex-1 h-px bg-border" />
-            </div>
-            <FonteRankingBlocks market={selectedMarket} refreshTrigger={refreshTrigger} />
-          </div>
         </TabsContent>
       </Tabs>
     </div>

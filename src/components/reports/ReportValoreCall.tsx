@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { RefreshCw, TrendingUp, TrendingDown, Minus, Loader2, AlertCircle, Phone, Maximize2 } from "lucide-react";
+import { RefreshCw, TrendingUp, TrendingDown, Minus, Loader2, AlertCircle, Phone, Maximize2, ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
 import { useMarket } from "@/contexts/MarketContext";
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
@@ -116,6 +116,8 @@ const ReportValoreCall = ({ refreshTrigger }: Props) => {
   const [chartSeller, setChartSeller] = useState<string>("__all__");
   const [expanded, setExpanded] = useState(false);
   const [cellDetail, setCellDetail] = useState<{ title: string; color: string; mesi: MonthData[] } | null>(null);
+  const [sortBucket, setSortBucket] = useState<string | null>(null); // colonna di ordinamento
+  const [sortDir, setSortDir] = useState<"desc" | "asc">("desc");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -136,21 +138,39 @@ const ReportValoreCall = ({ refreshTrigger }: Props) => {
 
   useEffect(() => { load(); }, [load, refreshTrigger]);
 
-  const bucketCols = useMemo(() => resp?.data.map((b) => ({ id: b.bucket, label: b.label || b.bucket })) ?? [], [resp]);
+  // Colonne = fonti ESCLUSO outbound
+  const bucketCols = useMemo(
+    () => resp?.data.filter((b) => b.bucket !== "outbound").map((b) => ({ id: b.bucket, label: b.label || b.bucket })) ?? [],
+    [resp]
+  );
 
-  // Righe: venditori con almeno una call, ordinati per n_call totale
+  const toggleSort = (bucketId: string) => {
+    if (sortBucket === bucketId) setSortDir((d) => (d === "desc" ? "asc" : "desc"));
+    else { setSortBucket(bucketId); setSortDir("desc"); }
+  };
+
+  // Righe: venditori con almeno una call. Ordinamento: per colonna selezionata (valore call), altrimenti per n_call totale
   const rows = useMemo(() => {
     if (!resp) return [];
-    return resp.per_seller
+    const base = resp.per_seller
       .map((s) => {
         const byBucket: Record<string, BucketData> = {};
         let totN = 0;
-        for (const b of s.data) { byBucket[b.bucket] = b; totN += b.n_call; }
+        for (const b of s.data) { byBucket[b.bucket] = b; if (b.bucket !== "outbound") totN += b.n_call; }
         return { venditore: s.venditore, byBucket, totN };
       })
-      .filter((r) => r.totN > 0)
-      .sort((a, b) => b.totN - a.totN);
-  }, [resp]);
+      .filter((r) => r.totN > 0);
+    if (sortBucket) {
+      base.sort((a, b) => {
+        const va = a.byBucket[sortBucket]?.has_call ? a.byBucket[sortBucket].valore_call : -1;
+        const vb = b.byBucket[sortBucket]?.has_call ? b.byBucket[sortBucket].valore_call : -1;
+        return sortDir === "desc" ? vb - va : va - vb;
+      });
+    } else {
+      base.sort((a, b) => b.totN - a.totN);
+    }
+    return base;
+  }, [resp, sortBucket, sortDir]);
 
   const totalRow = useMemo(() => {
     if (!resp) return null;
@@ -159,11 +179,11 @@ const ReportValoreCall = ({ refreshTrigger }: Props) => {
     return byBucket;
   }, [resp]);
 
-  // Grafico: bucket del venditore/team selezionato
+  // Grafico: bucket del venditore/team selezionato, ESCLUSO outbound
   const chartBuckets: BucketData[] = useMemo(() => {
     if (!resp) return [];
-    if (chartSeller === "__all__") return resp.data;
-    return resp.per_seller.find((s) => s.venditore === chartSeller)?.data ?? [];
+    const src = chartSeller === "__all__" ? resp.data : (resp.per_seller.find((s) => s.venditore === chartSeller)?.data ?? []);
+    return src.filter((b) => b.bucket !== "outbound");
   }, [resp, chartSeller]);
 
   // X = unione mesi utili di tutti i bucket del selezionato (ordine cronologico)
@@ -247,10 +267,11 @@ const ReportValoreCall = ({ refreshTrigger }: Props) => {
                     <th className="table-header-cell text-left sticky left-0 top-0 bg-card z-30">Venditore</th>
                     {bucketCols.map((c) => (
                       <th key={c.id} className="table-header-cell text-right whitespace-nowrap sticky top-0 bg-card z-20">
-                        <span className="inline-flex items-center gap-1.5">
+                        <button type="button" onClick={() => toggleSort(c.id)} className="inline-flex items-center gap-1.5 hover:text-foreground transition-colors" title="Ordina per questa fonte">
                           <span className="w-2 h-2 rounded-sm" style={{ background: colorOf(c.id) }} />
                           {c.label}
-                        </span>
+                          {sortBucket === c.id ? (sortDir === "desc" ? <ArrowDown className="h-3 w-3" /> : <ArrowUp className="h-3 w-3" />) : <ArrowUpDown className="h-3 w-3 opacity-30" />}
+                        </button>
                       </th>
                     ))}
                   </tr>
@@ -300,30 +321,6 @@ const ReportValoreCall = ({ refreshTrigger }: Props) => {
               </div>
             </div>
 
-            {/* Valore lead outbound team */}
-            {(() => {
-              const ob = resp.data.find((d) => d.bucket === "outbound");
-              if (!ob || !ob.has_call) return null;
-              return (
-                <div className="border-t border-border pt-3 overflow-x-auto">
-                  <div className="label-eyebrow mb-2">Valore lead — Outbound (team)</div>
-                  <table className="w-full text-[12.5px]">
-                    <thead>
-                      <tr>
-                        <th className="table-header-cell text-left">Metrica</th>
-                        {ob.mesi.map((m) => <th key={m.mese} className="table-header-cell text-right">{monthLabel(m.mese)}</th>)}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr>
-                        <td className="table-body-cell font-medium">Valore lead</td>
-                        {ob.mesi.map((m) => <td key={m.mese} className="table-body-cell text-right num font-semibold">{m.valore_lead > 0 ? eur(m.valore_lead) : "—"}</td>)}
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-              );
-            })()}
           </>
         ) : null}
       </CardContent>
