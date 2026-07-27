@@ -34,7 +34,6 @@ interface Props { metric: MetricKey; memberCode?: string; market?: "IT" | "ES"; 
 const FontePodium = ({ metric, memberCode, market = "IT", data }: Props) => {
   const [respInner, setRespInner] = useState<Resp | null>(null);
   const [loading, setLoading] = useState(false);
-  const [fonte, setFonte] = useState<string>("3sfere");
   // Se i dati arrivano dal parent (fetch condiviso), niente fetch qui
   const resp = data !== undefined ? data : respInner;
 
@@ -49,69 +48,76 @@ const FontePodium = ({ metric, memberCode, market = "IT", data }: Props) => {
   }, [market, data]);
   useEffect(() => { load(); }, [load]);
 
-  const labelOf = (f: string) => resp?.data.find((b) => b.bucket === f)?.label || f;
-
-  // Classifica venditori per (fonte, metrica) → RankedMember[]
-  const ranked: RankedMember[] = useMemo(() => {
-    if (!resp) return [];
-    const field = FIELD[metric];
-    const list = resp.per_seller
-      .map((s) => {
-        const b = s.data.find((x) => x.bucket === fonte);
-        if (!b || !b.has_call) return null;
-        return { name: s.venditore, val: Number(b[field]) || 0 };
-      })
-      .filter(Boolean) as { name: string; val: number }[];
-    list.sort((a, b) => b.val - a.val);
-    return list.map((x, i) => ({
-      name: x.name,
-      rank: i + 1,
-      fatturato: metric === "fatturato" ? x.val : 0,
-      incassato: metric === "incassato" ? x.val : 0,
-      cr: metric === "cr" ? x.val : 0,
-      valoreCall: metric === "valoreCall" ? x.val : 0,
-    }));
-  }, [resp, fonte, metric]);
+  const labelOf = useCallback((f: string) => resp?.data.find((b) => b.bucket === f)?.label || f, [resp]);
 
   const myName = useMemo(() => {
     if (!memberCode || !resp) return null;
     return resp.per_seller.map((s) => s.venditore).find((n) => generateMemberCode(n) === memberCode) || null;
   }, [memberCode, resp]);
 
+  // Classifica venditori per OGNI fonte → { fonte, ranked, myRank }
+  const blocks = useMemo(() => {
+    if (!resp) return [];
+    const field = FIELD[metric];
+    return FONTI.map((fonte) => {
+      const list = resp.per_seller
+        .map((s) => {
+          const b = s.data.find((x) => x.bucket === fonte);
+          if (!b || !b.has_call) return null;
+          return { name: s.venditore, val: Number(b[field]) || 0 };
+        })
+        .filter(Boolean) as { name: string; val: number }[];
+      list.sort((a, b) => b.val - a.val);
+      const ranked: RankedMember[] = list.map((x, i) => ({
+        name: x.name,
+        rank: i + 1,
+        fatturato: metric === "fatturato" ? x.val : 0,
+        incassato: metric === "incassato" ? x.val : 0,
+        cr: metric === "cr" ? x.val : 0,
+        valoreCall: metric === "valoreCall" ? x.val : 0,
+      }));
+      const myRank = myName ? ranked.findIndex((r) => r.name === myName) : -1;
+      return { fonte, ranked, myRank };
+    });
+  }, [resp, metric, myName]);
+
   if (loading && !resp) return <div className="flex items-center justify-center py-8 text-muted-foreground"><Loader2 className="h-5 w-5 animate-spin" /></div>;
   if (!resp) return null;
 
-  const podium = ranked.slice(0, 3);
-  const fourth = ranked.slice(3, 4);
-  const myIdx = myName ? ranked.findIndex((r) => r.name === myName) : -1;
-  const extra = myIdx >= 4 ? [ranked[myIdx]] : [];
-  const rest = [...fourth, ...extra];
-
   return (
-    <div className="pt-2">
-      <div className="flex flex-wrap gap-1.5 justify-center mb-5">
-        {FONTI.map((f) => (
-          <button
-            key={f}
-            onClick={() => setFonte(f)}
-            className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full border text-[12.5px] transition-colors ${
-              fonte === f ? "border-primary bg-primary/15 text-primary font-medium" : "border-border bg-secondary hover:border-border/80"
-            }`}
-          >
-            <span className="w-2 h-2 rounded-sm" style={{ background: BUCKET_COLORS[f] }} />
-            {labelOf(f)}
-          </button>
-        ))}
-      </div>
+    <div className="space-y-10">
+      {blocks.map(({ fonte, ranked, myRank }) => {
+        const podium = ranked.slice(0, 3);
+        const fourth = ranked.slice(3, 4);
+        const extra = myRank >= 4 ? [ranked[myRank]] : [];
+        const rest = [...fourth, ...extra];
+        const color = BUCKET_COLORS[fonte];
+        return (
+          <div key={fonte} className="rounded-xl border border-border/60 bg-card/40 p-4 sm:p-5">
+            {/* Intestazione fonte chiara */}
+            <div className="flex items-center justify-between gap-2 mb-4">
+              <div className="flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-sm" style={{ background: color }} />
+                <h4 className="text-base font-bold text-foreground">{labelOf(fonte)}</h4>
+              </div>
+              {myName && (
+                myRank >= 0
+                  ? <span className="text-[12px] font-semibold px-2 py-0.5 rounded-full" style={{ background: `${color}22`, color }}>Sei {myRank + 1}° su {ranked.length}</span>
+                  : <span className="text-[12px] text-muted-foreground px-2 py-0.5 rounded-full bg-secondary">Nessuna call qui</span>
+              )}
+            </div>
 
-      {ranked.length === 0 ? (
-        <p className="text-center text-muted-foreground text-sm py-6">Nessun dato per {labelOf(fonte)}.</p>
-      ) : (
-        <div className="space-y-6">
-          <Podium members={podium} metric={metric} />
-          <LeaderboardTable members={rest} metric={metric} highlightName={myName} />
-        </div>
-      )}
+            {ranked.length === 0 ? (
+              <p className="text-center text-muted-foreground text-sm py-4">Nessun dato per {labelOf(fonte)}.</p>
+            ) : (
+              <div className="space-y-5">
+                <Podium members={podium} metric={metric} />
+                <LeaderboardTable members={rest} metric={metric} highlightName={myName} />
+              </div>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 };
