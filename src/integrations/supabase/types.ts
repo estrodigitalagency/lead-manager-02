@@ -364,6 +364,30 @@ export type Database = {
         }
         Relationships: []
       }
+      call_report_filters: {
+        Row: {
+          config: Json
+          created_at: string
+          id: string
+          market: string
+          nome: string
+        }
+        Insert: {
+          config?: Json
+          created_at?: string
+          id?: string
+          market?: string
+          nome: string
+        }
+        Update: {
+          config?: Json
+          created_at?: string
+          id?: string
+          market?: string
+          nome?: string
+        }
+        Relationships: []
+      }
       conferma_partecipazione_webinar: {
         Row: {
           cognome: string | null
@@ -1423,6 +1447,8 @@ export type Database = {
         Args: { anon_key: string; cron_expr: string; function_url: string }
         Returns: undefined
       }
+      show_limit: { Args: never; Returns: number }
+      show_trgm: { Args: { "": string }; Returns: string[] }
       unschedule_sync_job: { Args: never; Returns: undefined }
     }
     Enums: {

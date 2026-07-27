@@ -10,6 +10,7 @@ import ReportMetricsComponent from "@/components/reports/ReportMetrics";
 import { LeadsBySourceChart } from "@/components/LeadsBySourceChart";
 import { LeadsBySalespersonChart } from "@/components/LeadsBySalespersonChart";
 import ReportValoreCall from "@/components/reports/ReportValoreCall";
+import CallWeekly from "@/components/reports/CallWeekly";
 import ReportLeadsList from "@/components/reports/ReportLeadsList";
 import ExportReportButton from "@/components/reports/ExportReportButton";
 
@@ -79,6 +80,7 @@ const ReportsPage = () => {
 
         {/* ─── TAB CALL ─── */}
         <TabsContent value="call" className="mt-0 space-y-5">
+          <CallWeekly refreshTrigger={refreshTrigger} />
           <ReportValoreCall refreshTrigger={refreshTrigger} />
         </TabsContent>
       </Tabs>
