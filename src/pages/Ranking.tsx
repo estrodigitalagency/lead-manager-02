@@ -116,7 +116,7 @@ const Ranking = () => {
                   <div className="pt-4 border-t border-border/40">
                     <h3 className="text-sm font-bold text-foreground mb-1 text-center">{METRIC_LABELS[key].label} per fonte</h3>
                     <p className="text-muted-foreground text-xs text-center mb-4">Classifica per provenienza · ultimi 3 mesi con call</p>
-                    <FontePodium metric={key} memberCode={memberCode} data={vcData} />
+                    <FontePodium metric={key} memberCode={memberCode} myName={myName} data={vcData} />
                   </div>
                 </TabsContent>
               );

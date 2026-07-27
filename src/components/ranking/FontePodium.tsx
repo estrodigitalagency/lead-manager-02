@@ -29,9 +29,22 @@ const FIELD: Record<MetricKey, keyof BucketData> = {
   valoreCall: "valore_call",
 };
 
-interface Props { metric: MetricKey; memberCode?: string; market?: "IT" | "ES"; data?: Resp | null; }
+interface Props { metric: MetricKey; memberCode?: string; myName?: string | null; market?: "IT" | "ES"; data?: Resp | null; }
 
-const FontePodium = ({ metric, memberCode, market = "IT", data }: Props) => {
+// Match nome sales robusto: i nomi del foglio Google e dell'edge valore-call
+// possono differire (ordine nome/cognome, spazi). Confronto per token-set.
+const norm = (s: string) => s.toLowerCase().trim().replace(/\s+/g, " ");
+const toks = (s: string) => new Set(norm(s).split(" ").filter(Boolean));
+const sameSales = (a: string, b: string) => {
+  if (norm(a) === norm(b)) return true;
+  const ta = toks(a), tb = toks(b);
+  if (!ta.size || !tb.size) return false;
+  const [small, big] = ta.size <= tb.size ? [ta, tb] : [tb, ta];
+  for (const t of small) if (!big.has(t)) return false;
+  return true; // uno è sottoinsieme dell'altro (es. "Stefania" ⊂ "Stefania Rocco")
+};
+
+const FontePodium = ({ metric, memberCode, myName: myNameProp, market = "IT", data }: Props) => {
   const [respInner, setRespInner] = useState<Resp | null>(null);
   const [loading, setLoading] = useState(false);
   // Se i dati arrivano dal parent (fetch condiviso), niente fetch qui
@@ -50,10 +63,14 @@ const FontePodium = ({ metric, memberCode, market = "IT", data }: Props) => {
 
   const labelOf = useCallback((f: string) => resp?.data.find((b) => b.bucket === f)?.label || f, [resp]);
 
+  // Nome del sales corrente, risolto al nome esatto usato nell'edge (per highlight/rank).
   const myName = useMemo(() => {
-    if (!memberCode || !resp) return null;
-    return resp.per_seller.map((s) => s.venditore).find((n) => generateMemberCode(n) === memberCode) || null;
-  }, [memberCode, resp]);
+    if (!resp) return null;
+    const names = resp.per_seller.map((s) => s.venditore);
+    if (myNameProp) return names.find((n) => sameSales(n, myNameProp)) || myNameProp;
+    if (memberCode) return names.find((n) => generateMemberCode(n) === memberCode) || null;
+    return null;
+  }, [myNameProp, memberCode, resp]);
 
   // Classifica venditori per OGNI fonte → { fonte, ranked, myRank }
   const blocks = useMemo(() => {
