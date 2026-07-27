@@ -83,10 +83,21 @@ const Sparkline = ({ values, color }: { values: number[]; color: string }) => {
   );
 };
 
-const TrendInline = ({ t }: { t: string }) => {
-  if (t === "asc") return <span className="inline-flex items-center gap-0.5 text-emerald-500 text-[10px]"><TrendingUp className="h-2.5 w-2.5" /> asc</span>;
-  if (t === "desc") return <span className="inline-flex items-center gap-0.5 text-destructive text-[10px]"><TrendingDown className="h-2.5 w-2.5" /> disc</span>;
-  if (t === "stable") return <span className="inline-flex items-center gap-0.5 text-muted-foreground text-[10px]"><Minus className="h-2.5 w-2.5" /> stab</span>;
+/** Variazione % dal primo all'ultimo mese utile della serie */
+const deltaPct = (series: number[]): number | null => {
+  const s = series.filter((v) => v != null);
+  if (s.length < 2) return null;
+  const first = s[0], last = s[s.length - 1];
+  if (first <= 0) return null;
+  return Math.round(((last - first) / first) * 100);
+};
+
+const TrendInline = ({ t, series }: { t: string; series?: number[] }) => {
+  const d = series ? deltaPct(series) : null;
+  const pct = d != null ? ` (${d > 0 ? "+" : ""}${d}%)` : "";
+  if (t === "asc") return <span className="inline-flex items-center gap-0.5 text-emerald-500 text-[10px]"><TrendingUp className="h-2.5 w-2.5" /> asc{pct}</span>;
+  if (t === "desc") return <span className="inline-flex items-center gap-0.5 text-destructive text-[10px]"><TrendingDown className="h-2.5 w-2.5" /> disc{pct}</span>;
+  if (t === "stable") return <span className="inline-flex items-center gap-0.5 text-muted-foreground text-[10px]"><Minus className="h-2.5 w-2.5" /> stab{pct}</span>;
   return <span className="text-muted-foreground text-[10px]">—</span>;
 };
 
@@ -190,7 +201,7 @@ const ReportValoreCall = ({ refreshTrigger }: Props) => {
         <span className="font-semibold">{eur(b.valore_call)}</span>
         <span className="block text-[9px] text-muted-foreground">{b.n_call} call · {b.mesi.length}m</span>
         <span className="block leading-none"><Sparkline values={b.mesi.map((m) => m.valore_call)} color={colorOf(id)} /></span>
-        <span className="block"><TrendInline t={b.trend} /></span>
+        <span className="block"><TrendInline t={b.trend} series={b.mesi.map((m) => m.valore_call)} /></span>
       </button>
     );
   };
