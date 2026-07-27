@@ -181,12 +181,12 @@ Deno.serve(async (req) => {
     const token = await getAccessToken();
     const gh = { Authorization: "Bearer " + token };
 
-    type Cell = { fatt: number; nette: number; fatte: number; vlead: number };
+    type Cell = { fatt: number; nette: number; fatte: number; vlead: number; inc: number; chiu: number };
     const newAgg = () => {
       const a: Record<string, Record<string, Cell>> = {};
       for (const b of BUCKETS) {
         a[b] = {};
-        for (const mk of MKEYS) a[b][mk] = { fatt: 0, nette: 0, fatte: 0, vlead: 0 };
+        for (const mk of MKEYS) a[b][mk] = { fatt: 0, nette: 0, fatte: 0, vlead: 0, inc: 0, chiu: 0 };
       }
       return a;
     };
@@ -234,10 +234,11 @@ Deno.serve(async (req) => {
               continue;
             }
             const cell = (idx: number) => (row.length > idx ? row[idx] : "");
-            const f = euro(cell(3)), nt = euro(cell(23)), ft = euro(cell(19)), vl = euro(cell(29));
-            agg[b][mk].fatt += f; agg[b][mk].nette += nt; agg[b][mk].fatte += ft; agg[b][mk].vlead += vl;
+            // D=3 Fatturato | E=4 Incassato | T=19 Call fatte | X=23 Call nette | Y=24 Chiusure | AD=29 Valore Lead
+            const f = euro(cell(3)), inc = euro(cell(4)), nt = euro(cell(23)), ft = euro(cell(19)), chiu = euro(cell(24)), vl = euro(cell(29));
+            agg[b][mk].fatt += f; agg[b][mk].inc += inc; agg[b][mk].nette += nt; agg[b][mk].fatte += ft; agg[b][mk].chiu += chiu; agg[b][mk].vlead += vl;
             const sa = aggSeller[sellerName][b][mk];
-            sa.fatt += f; sa.nette += nt; sa.fatte += ft; sa.vlead += vl;
+            sa.fatt += f; sa.inc += inc; sa.nette += nt; sa.fatte += ft; sa.chiu += chiu; sa.vlead += vl;
           }
         } catch (e) {
           errors.push(`${v.nome}: ${(e as Error).message}`);
@@ -268,6 +269,9 @@ Deno.serve(async (req) => {
         const totFatt = utili.reduce((s, m) => s + m.fatt, 0);
         const totFatte = utili.reduce((s, m) => s + m.fatte, 0);
         const totVlead = utili.reduce((s, m) => s + m.vlead, 0);
+        const totInc = utili.reduce((s, m) => s + m.inc, 0);
+        const totNette = utili.reduce((s, m) => s + m.nette, 0);
+        const totChiu = utili.reduce((s, m) => s + m.chiu, 0);
         return {
           bucket: b,
           label: bdef.label,
@@ -275,6 +279,9 @@ Deno.serve(async (req) => {
           valore_call: totFatte > 0 ? Math.round(totFatt / totFatte) : 0,
           n_call: Math.round(totFatte),
           valore_lead: Math.round(totVlead),
+          fatturato: Math.round(totFatt),
+          incassato: Math.round(totInc),
+          cr: totNette > 0 ? Math.round((totChiu / totNette) * 1000) / 10 : 0, // % chiusure/call nette
           trend: trend(mesi.map((m) => m.valore_call)),
           mesi, // solo mesi utili (max USE_MONTHS)
         };

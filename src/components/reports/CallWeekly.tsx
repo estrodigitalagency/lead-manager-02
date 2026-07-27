@@ -16,9 +16,42 @@ const PALETTE = [
 ];
 
 interface BC { fonte: string | null; venditore: string | null; created_at: string; }
-interface SavedFilter { id: string; nome: string; config: { fonti?: string[]; weeks?: number } }
+interface SavedFilter { id: string; nome: string; config: { fonti?: string[]; period?: string; cFrom?: string; cTo?: string } }
 const fonteOf = (r: BC) => (r.fonte || "—").trim() || "—";
 const sellerOf = (r: BC) => (r.venditore || "—").trim() || "—";
+
+// ── Periodi ──
+const PERIODS: Record<string, string> = {
+  this_week: "Questa settimana",
+  last_week: "Settimana scorsa",
+  this_month: "Questo mese",
+  last_month: "Mese scorso",
+  last_4w: "Ultime 4 sett.",
+  last_8w: "Ultime 8 sett.",
+  last_12w: "Ultime 12 sett.",
+  last_26w: "Ultime 26 sett.",
+  custom: "Personalizzato",
+};
+const startOfWeekMon = (d: Date) => { const x = new Date(d); const day = (x.getDay() + 6) % 7; x.setDate(x.getDate() - day); x.setHours(0, 0, 0, 0); return x; };
+const computeRange = (period: string, cFrom: string, cTo: string): { from: string; to: string } => {
+  const now = new Date();
+  const end = new Date(now); end.setHours(23, 59, 59, 999);
+  let from = new Date(now);
+  switch (period) {
+    case "this_week": from = startOfWeekMon(now); break;
+    case "last_week": { const s = startOfWeekMon(now); s.setDate(s.getDate() - 7); from = s; const e = new Date(s); e.setDate(e.getDate() + 6); e.setHours(23, 59, 59, 999); return { from: s.toISOString(), to: e.toISOString() }; }
+    case "this_month": from = new Date(now.getFullYear(), now.getMonth(), 1); break;
+    case "last_month": { const s = new Date(now.getFullYear(), now.getMonth() - 1, 1); const e = new Date(now.getFullYear(), now.getMonth(), 0); e.setHours(23, 59, 59, 999); return { from: s.toISOString(), to: e.toISOString() }; }
+    case "last_4w": from = new Date(now.getTime() - 28 * 86400000); break;
+    case "last_8w": from = new Date(now.getTime() - 56 * 86400000); break;
+    case "last_12w": from = new Date(now.getTime() - 84 * 86400000); break;
+    case "last_26w": from = new Date(now.getTime() - 182 * 86400000); break;
+    case "custom":
+      return { from: cFrom ? new Date(cFrom + "T00:00:00").toISOString() : new Date(now.getTime() - 56 * 86400000).toISOString(), to: cTo ? new Date(cTo + "T23:59:59").toISOString() : end.toISOString() };
+  }
+  from.setHours(0, 0, 0, 0);
+  return { from: from.toISOString(), to: end.toISOString() };
+};
 
 // lunedì della settimana (ISO), formato YYYY-MM-DD
 const weekStart = (iso: string): string => {
@@ -38,14 +71,18 @@ const CallWeekly = ({ refreshTrigger }: Props) => {
   const { selectedMarket } = useMarket();
   const [rows, setRows] = useState<BC[]>([]);
   const [loading, setLoading] = useState(false);
-  const [weeks, setWeeks] = useState(12);
+  const [period, setPeriod] = useState("last_8w");
+  const [cFrom, setCFrom] = useState("");
+  const [cTo, setCTo] = useState("");
+  const [chartSeller, setChartSeller] = useState("__all__"); // grafico per singolo venditore
   const [fontiSel, setFontiSel] = useState<string[]>([]); // provenienze selezionate (colonne pivot). vuoto = solo totale
   const [saved, setSaved] = useState<SavedFilter[]>([]);
   const [filterName, setFilterName] = useState("");
 
+  const range = useMemo(() => computeRange(period, cFrom, cTo), [period, cFrom, cTo]);
+
   const load = useCallback(async () => {
     setLoading(true);
-    const since = new Date(Date.now() - weeks * 7 * 86400000).toISOString();
     let all: BC[] = [];
     let from = 0;
     while (true) {
@@ -53,7 +90,8 @@ const CallWeekly = ({ refreshTrigger }: Props) => {
         .from("booked_call")
         .select("fonte, venditore, created_at")
         .eq("market", selectedMarket)
-        .gte("created_at", since)
+        .gte("created_at", range.from)
+        .lte("created_at", range.to)
         .range(from, from + 999);
       if (!data || data.length === 0) break;
       all = all.concat(data as BC[]);
@@ -62,7 +100,7 @@ const CallWeekly = ({ refreshTrigger }: Props) => {
     }
     setRows(all);
     setLoading(false);
-  }, [selectedMarket, weeks]);
+  }, [selectedMarket, range.from, range.to]);
 
   const loadSaved = useCallback(async () => {
     const { data } = await supabase.from("call_report_filters").select("*").eq("market", selectedMarket).order("created_at", { ascending: false });
@@ -72,12 +110,24 @@ const CallWeekly = ({ refreshTrigger }: Props) => {
   useEffect(() => { load(); }, [load, refreshTrigger]);
   useEffect(() => { loadSaved(); }, [loadSaved]);
 
-  // provenienze disponibili ordinate per volume
+  // provenienze presenti NEL PERIODO (se non ci sono, non compaiono)
   const fontiAvail = useMemo(() => {
     const c: Record<string, number> = {};
     for (const r of rows) { const f = fonteOf(r); c[f] = (c[f] || 0) + 1; }
     return Object.entries(c).sort((a, b) => b[1] - a[1]).map(([f]) => f);
   }, [rows]);
+
+  // venditori presenti nel periodo (per selettore grafico)
+  const sellersAvail = useMemo(() => {
+    const c: Record<string, number> = {};
+    for (const r of rows) { const s = sellerOf(r); c[s] = (c[s] || 0) + 1; }
+    return Object.entries(c).sort((a, b) => b[1] - a[1]).map(([s]) => s);
+  }, [rows]);
+
+  // Se una fonte selezionata non è più presente nel periodo, la deseleziono
+  useEffect(() => {
+    setFontiSel((prev) => prev.filter((f) => fontiAvail.includes(f)));
+  }, [fontiAvail]);
 
   // Pivot: righe = sales, colonne = provenienze selezionate (+ totale). Cella = n call nel periodo
   const pivot = useMemo(() => {
@@ -116,6 +166,7 @@ const CallWeekly = ({ refreshTrigger }: Props) => {
     const byWeek: Record<string, Record<string, number>> = {};
     for (const wk of weekKeys) byWeek[wk] = {};
     for (const r of rows) {
+      if (chartSeller !== "__all__" && sellerOf(r) !== chartSeller) continue; // grafico per singolo venditore
       const wk = weekStart(r.created_at);
       const f = fonteOf(r);
       if (fontiSel.length > 0) {
@@ -126,21 +177,23 @@ const CallWeekly = ({ refreshTrigger }: Props) => {
       }
     }
     return weekKeys.map((wk) => ({ settimana: weekLabel(wk), ...byWeek[wk] }));
-  }, [rows, weekKeys, fontiSel]);
+  }, [rows, weekKeys, fontiSel, chartSeller]);
 
   const toggleFonte = (f: string) => setFontiSel((prev) => prev.includes(f) ? prev.filter((x) => x !== f) : [...prev, f]);
 
   const saveFilter = async () => {
     if (!filterName.trim()) { toast.error("Dai un nome al filtro"); return; }
-    const { error } = await supabase.from("call_report_filters").insert({ nome: filterName.trim(), config: { fonti: fontiSel, weeks }, market: selectedMarket } as any);
+    const { error } = await supabase.from("call_report_filters").insert({ nome: filterName.trim(), config: { fonti: fontiSel, period, cFrom, cTo }, market: selectedMarket } as any);
     if (error) { toast.error("Errore salvataggio"); return; }
     toast.success("Filtro salvato");
     setFilterName("");
     loadSaved();
   };
   const applyFilter = (f: SavedFilter) => {
+    if (f.config.period) setPeriod(f.config.period);
+    if (f.config.cFrom !== undefined) setCFrom(f.config.cFrom || "");
+    if (f.config.cTo !== undefined) setCTo(f.config.cTo || "");
     setFontiSel(f.config.fonti || []);
-    if (f.config.weeks) setWeeks(f.config.weeks);
   };
   const deleteFilter = async (id: string) => {
     await supabase.from("call_report_filters").delete().eq("id", id);
@@ -154,17 +207,23 @@ const CallWeekly = ({ refreshTrigger }: Props) => {
       <CardHeader className="flex flex-row items-start justify-between gap-3 flex-wrap">
         <div>
           <CardTitle className="flex items-center gap-2"><CalendarDays className="h-4 w-4 text-primary" /> Call per settimana e provenienza</CardTitle>
-          <p className="text-[12px] text-muted-foreground mt-1">Call entrate per settimana, per provenienza. {totale} call negli ultimi {weeks} settimane.</p>
+          <p className="text-[12px] text-muted-foreground mt-1">Call entrate per settimana, per provenienza. {totale} call nel periodo — {PERIODS[period]}.</p>
         </div>
-        <Select value={String(weeks)} onValueChange={(v) => setWeeks(parseInt(v))}>
-          <SelectTrigger className="h-8 w-[150px] text-[12.5px]"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="8">Ultime 8 sett.</SelectItem>
-            <SelectItem value="12">Ultime 12 sett.</SelectItem>
-            <SelectItem value="26">Ultime 26 sett.</SelectItem>
-            <SelectItem value="52">Ultime 52 sett.</SelectItem>
-          </SelectContent>
-        </Select>
+        <div className="flex gap-2 items-center flex-wrap justify-end">
+          <Select value={period} onValueChange={setPeriod}>
+            <SelectTrigger className="h-8 w-[170px] text-[12.5px]"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {Object.entries(PERIODS).map(([k, label]) => <SelectItem key={k} value={k}>{label}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          {period === "custom" && (
+            <div className="flex items-center gap-1">
+              <Input type="date" value={cFrom} onChange={(e) => setCFrom(e.target.value)} className="h-8 w-[140px] text-[12px]" />
+              <span className="text-muted-foreground text-[12px]">→</span>
+              <Input type="date" value={cTo} onChange={(e) => setCTo(e.target.value)} className="h-8 w-[140px] text-[12px]" />
+            </div>
+          )}
+        </div>
       </CardHeader>
       <CardContent className="space-y-4">
         {/* Filtri salvati */}
@@ -202,6 +261,17 @@ const CallWeekly = ({ refreshTrigger }: Props) => {
           <div className="flex items-center justify-center py-12 text-muted-foreground"><Loader2 className="h-6 w-6 animate-spin" /></div>
         ) : (
           <>
+            {/* Selettore venditore per il grafico */}
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <span className="label-eyebrow">Grafico settimanale {chartSeller !== "__all__" && `· ${chartSeller}`}</span>
+              <Select value={chartSeller} onValueChange={setChartSeller}>
+                <SelectTrigger className="h-7 w-[200px] text-[12px]"><SelectValue placeholder="Tutti i venditori" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__all__">Tutti i venditori</SelectItem>
+                  {sellersAvail.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
             <div className="h-[300px] w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={chartData} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
@@ -219,7 +289,7 @@ const CallWeekly = ({ refreshTrigger }: Props) => {
 
             {/* Tabella pivot: SALES (righe) × PROVENIENZE selezionate (colonne) */}
             <div className="border-t border-border pt-3">
-              <div className="label-eyebrow mb-2">Call per sales × provenienza {fontiSel.length > 0 ? `(${fontiSel.length} provenienze)` : "(totale)"} · ultime {weeks} sett.</div>
+              <div className="label-eyebrow mb-2">Call per sales × provenienza {fontiSel.length > 0 ? `(${fontiSel.length} provenienze)` : "(totale)"} · {PERIODS[period]}</div>
               <div className="max-h-[50vh] overflow-auto rounded-md border border-border">
                 <table className="w-full text-[12px] border-collapse">
                   <thead>
