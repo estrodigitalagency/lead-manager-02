@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RTooltip, ResponsiveContainer, Legend } from "recharts";
-import { CalendarDays, Loader2, Save, Trash2, X, Check } from "lucide-react";
+import { CalendarDays, Loader2, Save, Trash2, X, Check, Bookmark } from "lucide-react";
 import { useMarket } from "@/contexts/MarketContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -287,12 +287,16 @@ const CallWeekly = ({ refreshTrigger }: Props) => {
       <CardContent className="space-y-4">
         {/* Filtri salvati */}
         {saved.length > 0 && (
-          <div className="flex flex-wrap gap-1.5 items-center">
-            <span className="label-eyebrow mr-1">Salvati:</span>
+          <div className="flex flex-wrap gap-2 items-center">
+            <span className="label-eyebrow mr-1">Filtri salvati</span>
             {saved.map((f) => (
-              <span key={f.id} className="inline-flex items-center gap-1 pl-2 pr-1 py-0.5 rounded border border-border bg-secondary text-[11px]">
-                <button onClick={() => applyFilter(f)} className="hover:text-primary font-medium">{f.nome}</button>
-                <button onClick={() => deleteFilter(f.id)} className="hover:text-destructive"><Trash2 className="h-3 w-3" /></button>
+              <span key={f.id} className="inline-flex items-center rounded-lg border border-border bg-secondary overflow-hidden transition-colors hover:border-primary/50">
+                <button onClick={() => applyFilter(f)} title="Applica filtro" className="inline-flex items-center gap-1.5 pl-2.5 pr-2 py-1 text-[12.5px] font-medium hover:text-primary transition-colors">
+                  <Bookmark className="h-3.5 w-3.5 opacity-70" />{f.nome}
+                </button>
+                <button onClick={() => deleteFilter(f.id)} title="Elimina filtro" className="px-1.5 self-stretch flex items-center border-l border-border text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors">
+                  <Trash2 className="h-3.5 w-3.5" />
+                </button>
               </span>
             ))}
           </div>
