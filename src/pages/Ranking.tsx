@@ -3,14 +3,12 @@ import { useSearchParams } from "react-router-dom";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Podium } from "@/components/ranking/Podium";
 import { LeaderboardTable } from "@/components/ranking/LeaderboardTable";
-import { PersonalStats } from "@/components/ranking/PersonalStats";
 import { fetchSheetData, rankByMetric, TeamMember, MetricKey, METRIC_LABELS } from "@/lib/ranking/googleSheets";
 import { fetchSettings, getDefaultSheetUrl } from "@/lib/ranking/adminConfig";
 import { findMemberByCode } from "@/lib/ranking/hashUtils";
 import { HallOfFame } from "@/components/ranking/HallOfFame";
 import { InfoBox } from "@/components/ranking/InfoBox";
 import { FloatingMoney } from "@/components/ranking/FloatingMoney";
-import FonteRankingBlocks from "@/components/ranking/FonteRankingBlocks";
 import logo from "@/assets/ranking-logo.png";
 import { toast } from "sonner";
 
@@ -107,22 +105,6 @@ const Ranking = () => {
             })}
           </Tabs>
         )}
-
-        {(() => {
-          const resolvedName = memberCode
-            ? findMemberByCode(memberCode, members)
-            : memberLegacy || null;
-          return resolvedName && members.length > 0 ? (
-            <PersonalStats memberName={resolvedName} allMembers={members} />
-          ) : null;
-        })()}
-
-        {/* Classifiche valore call per fonte (escl. outbound) */}
-        <div className="mt-10">
-          <h2 className="text-lg font-bold text-foreground mb-1 text-center">Valore call per fonte 📞</h2>
-          <p className="text-muted-foreground text-xs text-center mb-4">Classifica per fonte · ultimi 3 mesi con call</p>
-          <FonteRankingBlocks market="IT" memberCode={memberCode} />
-        </div>
 
         <InfoBox text={infoBox} />
 
