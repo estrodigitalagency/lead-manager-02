@@ -74,7 +74,7 @@ const CallWeekly = ({ refreshTrigger }: Props) => {
   const [period, setPeriod] = useState("last_8w");
   const [cFrom, setCFrom] = useState("");
   const [cTo, setCTo] = useState("");
-  const [chartSeller, setChartSeller] = useState("__all__"); // grafico per singolo venditore
+  const [chartSeller, setChartSeller] = useState(""); // grafico per singolo venditore (default: primo per volume)
   const [fontiSel, setFontiSel] = useState<string[]>([]); // provenienze selezionate (colonne pivot). vuoto = solo totale
   const [saved, setSaved] = useState<SavedFilter[]>([]);
   const [filterName, setFilterName] = useState("");
@@ -129,6 +129,11 @@ const CallWeekly = ({ refreshTrigger }: Props) => {
     setFontiSel((prev) => prev.filter((f) => fontiAvail.includes(f)));
   }, [fontiAvail]);
 
+  // Default venditore grafico = primo per volume; se quello scelto non c'è più, ripiega
+  useEffect(() => {
+    if (sellersAvail.length > 0 && !sellersAvail.includes(chartSeller)) setChartSeller(sellersAvail[0]);
+  }, [sellersAvail, chartSeller]);
+
   // Pivot: righe = sales, colonne = provenienze selezionate (+ totale). Cella = n call nel periodo
   const pivot = useMemo(() => {
     const bySeller: Record<string, { tot: number; byFonte: Record<string, number> }> = {};
@@ -166,7 +171,7 @@ const CallWeekly = ({ refreshTrigger }: Props) => {
     const byWeek: Record<string, Record<string, number>> = {};
     for (const wk of weekKeys) byWeek[wk] = {};
     for (const r of rows) {
-      if (chartSeller !== "__all__" && sellerOf(r) !== chartSeller) continue; // grafico per singolo venditore
+      if (chartSeller && sellerOf(r) !== chartSeller) continue; // grafico per singolo venditore
       const wk = weekStart(r.created_at);
       const f = fonteOf(r);
       if (fontiSel.length > 0) {
@@ -261,13 +266,12 @@ const CallWeekly = ({ refreshTrigger }: Props) => {
           <div className="flex items-center justify-center py-12 text-muted-foreground"><Loader2 className="h-6 w-6 animate-spin" /></div>
         ) : (
           <>
-            {/* Selettore venditore per il grafico */}
+            {/* Selettore venditore per il grafico (sempre per singolo venditore) */}
             <div className="flex items-center justify-between gap-2 flex-wrap">
-              <span className="label-eyebrow">Grafico settimanale {chartSeller !== "__all__" && `· ${chartSeller}`}</span>
+              <span className="label-eyebrow">Grafico settimanale · venditore</span>
               <Select value={chartSeller} onValueChange={setChartSeller}>
-                <SelectTrigger className="h-7 w-[200px] text-[12px]"><SelectValue placeholder="Tutti i venditori" /></SelectTrigger>
+                <SelectTrigger className="h-7 w-[220px] text-[12px]"><SelectValue placeholder="Seleziona venditore" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="__all__">Tutti i venditori</SelectItem>
                   {sellersAvail.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
                 </SelectContent>
               </Select>

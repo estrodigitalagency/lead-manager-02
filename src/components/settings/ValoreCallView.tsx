@@ -118,11 +118,11 @@ const ValoreCallView = () => {
     setCfg({ ...cfg, buckets: cfg.buckets.map(b => b.id === bucketId ? { ...b, sources: b.sources.filter(x => x !== src) } : b) });
   };
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (force = false) => {
     setLoading(true);
     setErr(null);
     try {
-      const r = await fetch(`${SUPA_URL}/functions/v1/valore-call?market=${selectedMarket}`, {
+      const r = await fetch(`${SUPA_URL}/functions/v1/valore-call?market=${selectedMarket}${force ? "&nocache=1" : ""}`, {
         headers: { Authorization: `Bearer ${ANON}` },
       });
       const j = await r.json();
@@ -154,7 +154,7 @@ const ValoreCallView = () => {
           <Button variant="outline" size="sm" onClick={() => setShowConfig(v => !v)}>
             <Settings2 className="h-3.5 w-3.5 mr-1.5" /> Configura fonti
           </Button>
-          <Button variant="outline" size="sm" onClick={load} disabled={loading}>
+          <Button variant="outline" size="sm" onClick={() => load(true)} disabled={loading}>
             {loading ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5 mr-1.5" />}
             Aggiorna
           </Button>

@@ -149,6 +149,22 @@ Deno.serve(async (req) => {
 
     const url = new URL(req.url);
     const market = (url.searchParams.get("market") || "IT").toUpperCase();
+    const noCache = url.searchParams.get("nocache") === "1";
+    const CACHE_KEY = `valore_call_cache_${market}`;
+    const CACHE_TTL_MS = 10 * 60 * 1000; // 10 minuti
+
+    // Cache: se fresh, ritorna subito (evita di rileggere 21 fogli Google ~15-30s)
+    if (!noCache) {
+      try {
+        const { data: cRow } = await supabase.from("ranking_settings").select("value").eq("key", CACHE_KEY).maybeSingle();
+        if (cRow?.value) {
+          const cached = JSON.parse(cRow.value);
+          if (cached?.ts && Date.now() - cached.ts < CACHE_TTL_MS && cached.payload) {
+            return new Response(JSON.stringify({ ...cached.payload, cached: true }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+          }
+        }
+      } catch { /* ignora, ricalcola */ }
+    }
 
     // Carica config bucket dal DB (customizzabile via UI), fallback al default
     let cfg = DEFAULT_CONFIG;
@@ -292,7 +308,7 @@ Deno.serve(async (req) => {
       .map(([venditore, a]) => ({ venditore, data: buildBuckets(a) }))
       .sort((x, y) => x.venditore.localeCompare(y.venditore));
 
-    return new Response(JSON.stringify({
+    const payload = {
       market,
       history_months: HISTORY_MONTHS,
       use_months: USE_MONTHS,
@@ -303,7 +319,17 @@ Deno.serve(async (req) => {
       unmapped,
       errors: errors.slice(0, 20),
       generated_at: new Date().toISOString(),
-    }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    };
+
+    // Salva cache (best effort)
+    try {
+      await supabase.from("ranking_settings").upsert(
+        { key: CACHE_KEY, value: JSON.stringify({ ts: Date.now(), payload }), updated_at: new Date().toISOString() },
+        { onConflict: "key" },
+      );
+    } catch { /* no-op */ }
+
+    return new Response(JSON.stringify(payload), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (e) {
     return new Response(JSON.stringify({ error: (e as Error).message }), {
       status: 500,

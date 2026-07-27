@@ -119,11 +119,11 @@ const ReportValoreCall = ({ refreshTrigger }: Props) => {
   const [sortBucket, setSortBucket] = useState<string | null>(null); // colonna di ordinamento
   const [sortDir, setSortDir] = useState<"desc" | "asc">("desc");
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (force = false) => {
     setLoading(true);
     setErr(null);
     try {
-      const r = await fetch(`${SUPA_URL}/functions/v1/valore-call?market=${selectedMarket}`, {
+      const r = await fetch(`${SUPA_URL}/functions/v1/valore-call?market=${selectedMarket}${force ? "&nocache=1" : ""}`, {
         headers: { Authorization: `Bearer ${ANON}` },
       });
       const j = await r.json();
@@ -243,7 +243,7 @@ const ReportValoreCall = ({ refreshTrigger }: Props) => {
             {resp && <span> · {resp.sellers_used}/{resp.sellers_total} venditori</span>}
           </p>
         </div>
-        <Button variant="outline" size="sm" onClick={load} disabled={loading}>
+        <Button variant="outline" size="sm" onClick={() => load(true)} disabled={loading}>
           {loading ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5 mr-1.5" />}
           Aggiorna
         </Button>

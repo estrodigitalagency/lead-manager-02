@@ -26,6 +26,14 @@ const Ranking = () => {
   const [sheetUrl, setSheetUrl] = useState(getDefaultSheetUrl());
   const [isLoading, setIsLoading] = useState(false);
   const [activeMetric, setActiveMetric] = useState<string>("fatturato");
+  const [vcData, setVcData] = useState<any | null>(null); // dati valore-call condivisi (1 solo fetch)
+
+  // Fetch valore-call UNA volta (evita 4 chiamate pesanti, una per tab metrica)
+  useEffect(() => {
+    const ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ0Y3dtdXllbW1raXRlcWxvcGNlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY4NzIxMTIsImV4cCI6MjA2MjQ0ODExMn0.NYTXODd9HEglk4b1RKOt1XyrGMiOOs4ltfFyeZknfBE";
+    fetch("https://btcwmuyemmkiteqlopce.supabase.co/functions/v1/valore-call?market=IT", { headers: { Authorization: `Bearer ${ANON}` } })
+      .then((r) => r.json()).then((j) => { if (!j.error) setVcData(j); }).catch(() => {});
+  }, []);
 
   useEffect(() => {
     fetchSettings()
@@ -108,7 +116,7 @@ const Ranking = () => {
                   <div className="pt-4 border-t border-border/40">
                     <h3 className="text-sm font-bold text-foreground mb-1 text-center">{METRIC_LABELS[key].label} per fonte</h3>
                     <p className="text-muted-foreground text-xs text-center mb-4">Classifica per provenienza · ultimi 3 mesi con call</p>
-                    <FontePodium metric={key} memberCode={memberCode} />
+                    <FontePodium metric={key} memberCode={memberCode} data={vcData} />
                   </div>
                 </TabsContent>
               );

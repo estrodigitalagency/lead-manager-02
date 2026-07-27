@@ -29,21 +29,24 @@ const FIELD: Record<MetricKey, keyof BucketData> = {
   valoreCall: "valore_call",
 };
 
-interface Props { metric: MetricKey; memberCode?: string; market?: "IT" | "ES"; }
+interface Props { metric: MetricKey; memberCode?: string; market?: "IT" | "ES"; data?: Resp | null; }
 
-const FontePodium = ({ metric, memberCode, market = "IT" }: Props) => {
-  const [resp, setResp] = useState<Resp | null>(null);
+const FontePodium = ({ metric, memberCode, market = "IT", data }: Props) => {
+  const [respInner, setRespInner] = useState<Resp | null>(null);
   const [loading, setLoading] = useState(false);
   const [fonte, setFonte] = useState<string>("3sfere");
+  // Se i dati arrivano dal parent (fetch condiviso), niente fetch qui
+  const resp = data !== undefined ? data : respInner;
 
   const load = useCallback(async () => {
+    if (data !== undefined) return; // dati dal parent
     setLoading(true);
     try {
       const r = await fetch(`${SUPA_URL}/functions/v1/valore-call?market=${market}`, { headers: { Authorization: `Bearer ${ANON}` } });
       const j = await r.json();
-      if (!j.error) setResp(j);
+      if (!j.error) setRespInner(j);
     } finally { setLoading(false); }
-  }, [market]);
+  }, [market, data]);
   useEffect(() => { load(); }, [load]);
 
   const labelOf = (f: string) => resp?.data.find((b) => b.bucket === f)?.label || f;
