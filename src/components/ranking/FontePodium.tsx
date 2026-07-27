@@ -31,17 +31,25 @@ const FIELD: Record<MetricKey, keyof BucketData> = {
 
 interface Props { metric: MetricKey; memberCode?: string; myName?: string | null; market?: "IT" | "ES"; data?: Resp | null; }
 
-// Match nome sales robusto: i nomi del foglio Google e dell'edge valore-call
-// possono differire (ordine nome/cognome, spazi). Confronto per token-set.
-const norm = (s: string) => s.toLowerCase().trim().replace(/\s+/g, " ");
-const toks = (s: string) => new Set(norm(s).split(" ").filter(Boolean));
-const sameSales = (a: string, b: string) => {
-  if (norm(a) === norm(b)) return true;
-  const ta = toks(a), tb = toks(b);
-  if (!ta.size || !tb.size) return false;
-  const [small, big] = ta.size <= tb.size ? [ta, tb] : [tb, ta];
-  for (const t of small) if (!big.has(t)) return false;
-  return true; // uno è sottoinsieme dell'altro (es. "Stefania" ⊂ "Stefania Rocco")
+// Match nome sales robusto. I nomi del foglio ranking sono brevi/soprannomi con
+// accenti (es. "Desiree", "Rocco", "Vincenzo"), quelli dell'edge valore-call sono
+// completi (es. "Desirée Masiero", "Rocco Alicchio"). Serve: togliere accenti +
+// confronto esatto → token-set (ordine invertito) → sottoinsieme (nome ⊂ completo).
+const fold = (s: string) => s.normalize("NFD").replace(/\p{Diacritic}/gu, "").toLowerCase().trim().replace(/\s+/g, " ");
+const tokset = (s: string) => new Set(fold(s).split(" ").filter(Boolean));
+const resolveSales = (target: string, candidates: string[]): string | null => {
+  const ft = fold(target);
+  let hit = candidates.find((c) => fold(c) === ft);
+  if (hit) return hit;
+  const tt = tokset(target);
+  hit = candidates.find((c) => { const s = tokset(c); return s.size === tt.size && [...tt].every((x) => s.has(x)); });
+  if (hit) return hit;
+  // target ⊆ candidate (es. "Rocco" ⊆ "Rocco Alicchio")
+  const subs = candidates.filter((c) => { const s = tokset(c); return [...tt].every((x) => s.has(x)); });
+  if (subs.length) return subs[0];
+  // candidate ⊆ target (es. "Stefania" ⊆ "Rocco Stefania")
+  const subs2 = candidates.filter((c) => { const s = tokset(c); return [...s].every((x) => tt.has(x)); });
+  return subs2[0] ?? null;
 };
 
 const FontePodium = ({ metric, memberCode, myName: myNameProp, market = "IT", data }: Props) => {
@@ -67,7 +75,7 @@ const FontePodium = ({ metric, memberCode, myName: myNameProp, market = "IT", da
   const myName = useMemo(() => {
     if (!resp) return null;
     const names = resp.per_seller.map((s) => s.venditore);
-    if (myNameProp) return names.find((n) => sameSales(n, myNameProp)) || myNameProp;
+    if (myNameProp) return resolveSales(myNameProp, names);
     if (memberCode) return names.find((n) => generateMemberCode(n) === memberCode) || null;
     return null;
   }, [myNameProp, memberCode, resp]);
