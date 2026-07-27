@@ -10,6 +10,7 @@ import { findMemberByCode } from "@/lib/ranking/hashUtils";
 import { HallOfFame } from "@/components/ranking/HallOfFame";
 import { InfoBox } from "@/components/ranking/InfoBox";
 import { FloatingMoney } from "@/components/ranking/FloatingMoney";
+import FonteRankingBlocks from "@/components/ranking/FonteRankingBlocks";
 import logo from "@/assets/ranking-logo.png";
 import { toast } from "sonner";
 
@@ -110,6 +111,13 @@ const Ranking = () => {
             <PersonalStats memberName={resolvedName} allMembers={members} />
           ) : null;
         })()}
+
+        {/* Classifiche valore call per fonte (escl. outbound) */}
+        <div className="mt-10">
+          <h2 className="text-lg font-bold text-foreground mb-1 text-center">Valore call per fonte 📞</h2>
+          <p className="text-muted-foreground text-xs text-center mb-4">Classifica per fonte · ultimi 3 mesi con call</p>
+          <FonteRankingBlocks market="IT" memberCode={memberCode} />
+        </div>
 
         <InfoBox text={infoBox} />
 
