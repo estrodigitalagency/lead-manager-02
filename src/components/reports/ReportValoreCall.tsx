@@ -222,13 +222,13 @@ const ReportValoreCall = ({ refreshTrigger }: Props) => {
         ) : resp ? (
           <>
             {/* TABELLA COMPARATIVA sales × fonte */}
-            <div className="overflow-x-auto">
+            <div className="max-h-[65vh] overflow-auto rounded-md border border-border">
               <table className="w-full text-[12px] border-collapse">
                 <thead>
                   <tr>
-                    <th className="table-header-cell text-left sticky left-0 bg-card z-10">Venditore</th>
+                    <th className="table-header-cell text-left sticky left-0 top-0 bg-card z-30">Venditore</th>
                     {bucketCols.map((c) => (
-                      <th key={c.id} className="table-header-cell text-right whitespace-nowrap">
+                      <th key={c.id} className="table-header-cell text-right whitespace-nowrap sticky top-0 bg-card z-20">
                         <span className="inline-flex items-center gap-1.5">
                           <span className="w-2 h-2 rounded-sm" style={{ background: colorOf(c.id) }} />
                           {c.label}
