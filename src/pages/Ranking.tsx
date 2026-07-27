@@ -9,8 +9,10 @@ import { findMemberByCode } from "@/lib/ranking/hashUtils";
 import { HallOfFame } from "@/components/ranking/HallOfFame";
 import { InfoBox } from "@/components/ranking/InfoBox";
 import { FloatingMoney } from "@/components/ranking/FloatingMoney";
+import FonteRankingBlocks from "@/components/ranking/FonteRankingBlocks";
 import logo from "@/assets/ranking-logo.png";
 import { toast } from "sonner";
+import { Info } from "lucide-react";
 
 const Ranking = () => {
   const [searchParams] = useSearchParams();
@@ -23,7 +25,7 @@ const Ranking = () => {
   const [maxRank, setMaxRank] = useState(0);
   const [sheetUrl, setSheetUrl] = useState(getDefaultSheetUrl());
   const [isLoading, setIsLoading] = useState(false);
-  const [activeMetric, setActiveMetric] = useState<MetricKey>("fatturato");
+  const [activeMetric, setActiveMetric] = useState<string>("fatturato");
 
   useEffect(() => {
     fetchSettings()
@@ -77,21 +79,23 @@ const Ranking = () => {
         </div>
 
         {members.length > 0 && (
-          <Tabs value={activeMetric} onValueChange={(v) => setActiveMetric(v as MetricKey)}>
-            <TabsList className="w-full grid grid-cols-4 mb-8 bg-secondary">
+          <Tabs value={activeMetric} onValueChange={(v) => setActiveMetric(v as any)}>
+            <TabsList className="w-full grid grid-cols-5 mb-8 bg-secondary">
               {(Object.keys(METRIC_LABELS) as MetricKey[]).map((key) => (
                 <TabsTrigger key={key} value={key} className="text-xs sm:text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
                   <span className="mr-1 hidden sm:inline">{METRIC_LABELS[key].icon}</span>
                   {METRIC_LABELS[key].label}
                 </TabsTrigger>
               ))}
+              <TabsTrigger value="info" className="text-xs sm:text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+                <Info className="mr-1 h-3.5 w-3.5 hidden sm:inline" /> Info
+              </TabsTrigger>
             </TabsList>
 
             {(Object.keys(METRIC_LABELS) as MetricKey[]).map((key) => {
-              const fullRanked = rankByMetric(members, key); // classifica completa (per posizione reale)
+              const fullRanked = rankByMetric(members, key);
               const podium = fullRanked.slice(0, 3);
-              const fourth = fullRanked.slice(3, 4); // sempre il 4°
-              // Se link individuale e il venditore è oltre il 4° → mostra la sua riga sotto
+              const fourth = fullRanked.slice(3, 4);
               const myName = memberCode ? findMemberByCode(memberCode, members) : (memberLegacy || null);
               const myIdx = myName ? fullRanked.findIndex((r) => r.name === myName) : -1;
               const extra = myIdx >= 4 ? [fullRanked[myIdx]] : [];
@@ -100,13 +104,23 @@ const Ranking = () => {
                 <TabsContent key={key} value={key} className="space-y-8">
                   <Podium members={podium} metric={key} />
                   <LeaderboardTable members={rest} metric={key} highlightName={myName} />
+                  {/* Sotto il tab Valore Call: classifica per fonte (escl. outbound) */}
+                  {key === "valoreCall" && (
+                    <div className="pt-2">
+                      <h3 className="text-sm font-bold text-foreground mb-3 text-center">Classifica per fonte 📞</h3>
+                      <FonteRankingBlocks market="IT" memberCode={memberCode} />
+                    </div>
+                  )}
                 </TabsContent>
               );
             })}
+
+            {/* Tab Informazioni importanti */}
+            <TabsContent value="info">
+              <InfoBox text={infoBox} />
+            </TabsContent>
           </Tabs>
         )}
-
-        <InfoBox text={infoBox} />
 
         <HallOfFame images={hofImages} />
 
