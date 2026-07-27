@@ -83,21 +83,26 @@ const Sparkline = ({ values, color }: { values: number[]; color: string }) => {
   );
 };
 
-/** Variazione % dal primo all'ultimo mese utile della serie */
-const deltaPct = (series: number[]): number | null => {
+/** Variazione dal primo all'ultimo mese utile: % + assoluto € */
+const delta = (series: number[]): { pct: number | null; abs: number } | null => {
   const s = series.filter((v) => v != null);
   if (s.length < 2) return null;
   const first = s[0], last = s[s.length - 1];
-  if (first <= 0) return null;
-  return Math.round(((last - first) / first) * 100);
+  const abs = Math.round(last - first);
+  return { pct: first > 0 ? Math.round(((last - first) / first) * 100) : null, abs };
 };
 
 const TrendInline = ({ t, series }: { t: string; series?: number[] }) => {
-  const d = series ? deltaPct(series) : null;
-  const pct = d != null ? ` (${d > 0 ? "+" : ""}${d}%)` : "";
-  if (t === "asc") return <span className="inline-flex items-center gap-0.5 text-emerald-500 text-[10px]"><TrendingUp className="h-2.5 w-2.5" /> asc{pct}</span>;
-  if (t === "desc") return <span className="inline-flex items-center gap-0.5 text-destructive text-[10px]"><TrendingDown className="h-2.5 w-2.5" /> disc{pct}</span>;
-  if (t === "stable") return <span className="inline-flex items-center gap-0.5 text-muted-foreground text-[10px]"><Minus className="h-2.5 w-2.5" /> stab{pct}</span>;
+  const d = series ? delta(series) : null;
+  let variation = "";
+  if (d) {
+    const absStr = `${d.abs > 0 ? "+" : ""}€${Math.abs(d.abs).toLocaleString("it-IT")}`;
+    const pctStr = d.pct != null ? `${d.pct > 0 ? "+" : ""}${d.pct}%` : "";
+    variation = pctStr ? ` (${absStr} · ${pctStr})` : ` (${absStr})`;
+  }
+  if (t === "asc") return <span className="inline-flex items-center gap-0.5 text-emerald-500 text-[10px]"><TrendingUp className="h-2.5 w-2.5" /> asc{variation}</span>;
+  if (t === "desc") return <span className="inline-flex items-center gap-0.5 text-destructive text-[10px]"><TrendingDown className="h-2.5 w-2.5" /> disc{variation}</span>;
+  if (t === "stable") return <span className="inline-flex items-center gap-0.5 text-muted-foreground text-[10px]"><Minus className="h-2.5 w-2.5" /> stab{variation}</span>;
   return <span className="text-muted-foreground text-[10px]">—</span>;
 };
 
