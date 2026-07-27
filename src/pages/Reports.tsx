@@ -2,6 +2,8 @@
 import { useState, useEffect, useRef } from "react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useMarket } from "@/contexts/MarketContext";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Users, Phone } from "lucide-react";
 import { ReportFilters, ReportMetrics, getReportMetrics } from "@/services/reportsService";
 import ReportFiltersComponent from "@/components/reports/ReportFilters";
 import ReportMetricsComponent from "@/components/reports/ReportMetrics";
@@ -53,33 +55,33 @@ const ReportsPage = () => {
         <h1 className="text-xl md:text-2xl font-semibold text-foreground">Report</h1>
         <ExportReportButton targetRef={reportRef} filenameBase={`report_${selectedMarket}`} />
       </div>
-      <div ref={reportRef} className="space-y-5">
-        {/* Filtri - now compact with collapsible details */}
-        <ReportFiltersComponent
-          filters={filters}
-          onFiltersChange={setFilters}
-          onApplyFilters={handleApplyFilters}
-        />
 
-        {/* Metriche */}
-        <ReportMetricsComponent metrics={metrics} isLoading={isLoading} />
+      <Tabs defaultValue="lead" className="w-full">
+        <TabsList className="mb-5">
+          <TabsTrigger value="lead" className="gap-1.5"><Users className="h-3.5 w-3.5" /> Lead</TabsTrigger>
+          <TabsTrigger value="call" className="gap-1.5"><Phone className="h-3.5 w-3.5" /> Call</TabsTrigger>
+        </TabsList>
 
-        {/* ─── SEZIONE LEAD ─── */}
-        <div className="flex items-center gap-3 pt-2">
-          <span className="label-eyebrow">Lavorazione lead</span>
-          <div className="flex-1 h-px bg-border" />
-        </div>
-        <LeadsBySourceChart filters={filters} refreshTrigger={refreshTrigger} />
-        <LeadsBySalespersonChart filters={filters} refreshTrigger={refreshTrigger} />
-        <ReportLeadsList filters={filters} refreshTrigger={refreshTrigger} />
+        {/* ─── TAB LEAD ─── */}
+        <TabsContent value="lead" className="mt-0">
+          <div ref={reportRef} className="space-y-5">
+            <ReportFiltersComponent
+              filters={filters}
+              onFiltersChange={setFilters}
+              onApplyFilters={handleApplyFilters}
+            />
+            <ReportMetricsComponent metrics={metrics} isLoading={isLoading} />
+            <LeadsBySourceChart filters={filters} refreshTrigger={refreshTrigger} />
+            <LeadsBySalespersonChart filters={filters} refreshTrigger={refreshTrigger} />
+            <ReportLeadsList filters={filters} refreshTrigger={refreshTrigger} />
+          </div>
+        </TabsContent>
 
-        {/* ─── SEZIONE CALL ─── */}
-        <div className="flex items-center gap-3 pt-4">
-          <span className="label-eyebrow">Call · valore call per fonte</span>
-          <div className="flex-1 h-px bg-border" />
-        </div>
-        <ReportValoreCall refreshTrigger={refreshTrigger} />
-      </div>
+        {/* ─── TAB CALL ─── */}
+        <TabsContent value="call" className="mt-0">
+          <ReportValoreCall refreshTrigger={refreshTrigger} />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };
