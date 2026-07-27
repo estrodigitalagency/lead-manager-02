@@ -20,7 +20,8 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const N_MONTHS = 3;
+const HISTORY_MONTHS = 12; // storico letto dal foglio
+const USE_MONTHS = 3;      // mesi UTILI (con call) da usare per cella
 
 interface BucketDef { id: string; label: string; sources: string[]; }
 interface BucketConfig { buckets: BucketDef[]; ignore: string[]; }
@@ -76,12 +77,12 @@ function mkey(dcell: unknown): string | null {
   return null;
 }
 
-function monthKeys(now: Date): string[] {
-  // ultimi N mesi fino al corrente incluso, dal più vecchio al corrente
+function monthKeys(now: Date, count: number): string[] {
+  // ultimi `count` mesi fino al corrente incluso, dal più vecchio al corrente
   const keys: string[] = [];
   const y = now.getUTCFullYear();
   const mo = now.getUTCMonth(); // 0-based
-  for (let k = N_MONTHS - 1; k >= 0; k--) {
+  for (let k = count - 1; k >= 0; k--) {
     const idx = y * 12 + mo - k;
     const yy = Math.floor(idx / 12);
     const mm = (idx % 12) + 1;
@@ -162,7 +163,7 @@ Deno.serve(async (req) => {
       .not("sheets_file_id", "is", null);
     if (vErr) throw vErr;
 
-    const MKEYS = monthKeys(new Date());
+    const MKEYS = monthKeys(new Date(), HISTORY_MONTHS); // 12 mesi storico
     const token = await getAccessToken();
     const gh = { Authorization: "Bearer " + token };
 
@@ -236,22 +237,39 @@ Deno.serve(async (req) => {
       }));
     }
 
-    // Helper: costruisce l'array bucket da una aggregazione
+    // Helper: costruisce l'array bucket da una aggregazione.
+    // Per ogni bucket prende SOLO i mesi con call (n_call>0), poi gli ultimi USE_MONTHS
+    // più recenti. Se 0 mesi con call → has_call=false ("no call").
     const buildBuckets = (a: Record<string, Record<string, Cell>>) =>
       cfg.buckets.map((bdef) => {
         const b = bdef.id;
-        const perMonth = MKEYS.map((mk) => {
-          const d = a[b][mk];
-          return {
-            mese: mk,
-            valore_call: d.fatte > 0 ? Math.round(d.fatt / d.fatte) : 0,
-            n_call: Math.round(d.fatte),
-            fatturato: Math.round(d.fatt),
-            call_nette: Math.round(d.nette),
-            valore_lead: Math.round(d.vlead),
-          };
-        });
-        return { bucket: b, label: bdef.label, mesi: perMonth, trend: trend(perMonth.map((m) => m.valore_call)) };
+        // tutti i mesi dello storico con call effettive, ordine cronologico (vecchio→nuovo)
+        const withCall = MKEYS
+          .map((mk) => ({ mese: mk, ...a[b][mk] }))
+          .filter((m) => m.fatte > 0);
+        // ultimi USE_MONTHS mesi utili
+        const utili = withCall.slice(-USE_MONTHS);
+        const mesi = utili.map((m) => ({
+          mese: m.mese,
+          valore_call: m.fatte > 0 ? Math.round(m.fatt / m.fatte) : 0,
+          n_call: Math.round(m.fatte),
+          fatturato: Math.round(m.fatt),
+          call_nette: Math.round(m.nette),
+          valore_lead: Math.round(m.vlead),
+        }));
+        const totFatt = utili.reduce((s, m) => s + m.fatt, 0);
+        const totFatte = utili.reduce((s, m) => s + m.fatte, 0);
+        const totVlead = utili.reduce((s, m) => s + m.vlead, 0);
+        return {
+          bucket: b,
+          label: bdef.label,
+          has_call: totFatte > 0,
+          valore_call: totFatte > 0 ? Math.round(totFatt / totFatte) : 0,
+          n_call: Math.round(totFatte),
+          valore_lead: Math.round(totVlead),
+          trend: trend(mesi.map((m) => m.valore_call)),
+          mesi, // solo mesi utili (max USE_MONTHS)
+        };
       });
 
     const result = buildBuckets(agg);
@@ -261,7 +279,8 @@ Deno.serve(async (req) => {
 
     return new Response(JSON.stringify({
       market,
-      months: MKEYS,
+      history_months: HISTORY_MONTHS,
+      use_months: USE_MONTHS,
       sellers_used: usedSellers,
       sellers_total: list.length,
       data: result,
