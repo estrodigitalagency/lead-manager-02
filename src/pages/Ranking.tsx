@@ -1,9 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Podium } from "@/components/ranking/Podium";
-import { LeaderboardTable } from "@/components/ranking/LeaderboardTable";
-import { fetchSheetData, rankByMetric, TeamMember, MetricKey, METRIC_LABELS } from "@/lib/ranking/googleSheets";
+import { fetchSheetData, TeamMember, MetricKey, METRIC_LABELS } from "@/lib/ranking/googleSheets";
 import { fetchSettings, getDefaultSheetUrl } from "@/lib/ranking/adminConfig";
 import { findMemberByCode } from "@/lib/ranking/hashUtils";
 import { HallOfFame } from "@/components/ranking/HallOfFame";
@@ -12,7 +10,7 @@ import { FloatingMoney } from "@/components/ranking/FloatingMoney";
 import FontePodium from "@/components/ranking/FontePodium";
 import logo from "@/assets/ranking-logo.png";
 import { toast } from "sonner";
-import { Info } from "lucide-react";
+import { Info, Trophy } from "lucide-react";
 
 const Ranking = () => {
   const [searchParams] = useSearchParams();
@@ -67,11 +65,6 @@ const Ranking = () => {
     return () => clearInterval(interval);
   }, [loadData]);
 
-  const limitMembers = (ranked: ReturnType<typeof rankByMetric>) => {
-    if (maxRank > 0) return ranked.slice(0, maxRank);
-    return ranked;
-  };
-
   return (
     <div className="min-h-screen bg-background">
       <FloatingMoney />
@@ -88,32 +81,27 @@ const Ranking = () => {
 
         {members.length > 0 && (
           <Tabs value={activeMetric} onValueChange={(v) => setActiveMetric(v as any)}>
-            <TabsList className="w-full grid grid-cols-5 mb-8 bg-secondary">
+            <TabsList className="w-full grid grid-cols-6 mb-8 bg-secondary">
               {(Object.keys(METRIC_LABELS) as MetricKey[]).map((key) => (
                 <TabsTrigger key={key} value={key} className="text-xs sm:text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
                   <span className="mr-1 hidden sm:inline">{METRIC_LABELS[key].icon}</span>
                   {METRIC_LABELS[key].label}
                 </TabsTrigger>
               ))}
+              <TabsTrigger value="hall" className="text-xs sm:text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+                <Trophy className="mr-1 h-3.5 w-3.5 hidden sm:inline" /> Hall of Fame
+              </TabsTrigger>
               <TabsTrigger value="info" className="text-xs sm:text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
                 <Info className="mr-1 h-3.5 w-3.5 hidden sm:inline" /> Info
               </TabsTrigger>
             </TabsList>
 
             {(Object.keys(METRIC_LABELS) as MetricKey[]).map((key) => {
-              const fullRanked = rankByMetric(members, key);
-              const podium = fullRanked.slice(0, 3);
-              const fourth = fullRanked.slice(3, 4);
               const myName = memberCode ? findMemberByCode(memberCode, members) : (memberLegacy || null);
-              const myIdx = myName ? fullRanked.findIndex((r) => r.name === myName) : -1;
-              const extra = myIdx >= 4 ? [fullRanked[myIdx]] : [];
-              const rest = [...fourth, ...extra];
               return (
                 <TabsContent key={key} value={key} className="space-y-8">
-                  <Podium members={podium} metric={key} />
-                  <LeaderboardTable members={rest} metric={key} highlightName={myName} />
-                  {/* Suddivisione per fonte (podio) della stessa metrica */}
-                  <div className="pt-4 border-t border-border/40">
+                  {/* Classifica per fonte della metrica (niente più generico) */}
+                  <div>
                     <h3 className="text-sm font-bold text-foreground mb-1 text-center">{METRIC_LABELS[key].label} per fonte</h3>
                     <p className="text-muted-foreground text-xs text-center mb-4">Classifica per provenienza · ultimi 3 mesi con call</p>
                     <FontePodium metric={key} memberCode={memberCode} myName={myName} data={vcData} />
@@ -122,14 +110,17 @@ const Ranking = () => {
               );
             })}
 
+            {/* Tab Hall of Fame */}
+            <TabsContent value="hall">
+              <HallOfFame images={hofImages} />
+            </TabsContent>
+
             {/* Tab Informazioni importanti */}
             <TabsContent value="info">
               <InfoBox text={infoBox} />
             </TabsContent>
           </Tabs>
         )}
-
-        <HallOfFame images={hofImages} />
 
         {!isLoading && members.length === 0 && (
           <p className="text-center text-muted-foreground mt-8">
