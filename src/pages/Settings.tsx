@@ -15,6 +15,7 @@ import WebhookSettings from "@/components/settings/WebhookSettings";
 import { AutomationSettings } from "@/components/automation/AutomationSettings";
 import { RoundRobinFixSection } from "@/components/settings/RoundRobinFixSection";
 import FonteMappingSettings from "@/components/settings/FonteMappingSettings";
+import CallFonteGroupSettings from "@/components/settings/CallFonteGroupSettings";
 import RankingSettingsSection from "@/components/settings/RankingSettingsSection";
 import ValoreCallView from "@/components/settings/ValoreCallView";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -221,8 +222,9 @@ const SettingsContent = () => (
       <RoundRobinFixSection />
     </TabsContent>
 
-    <TabsContent value="fontemapping" className="mt-0">
+    <TabsContent value="fontemapping" className="mt-0 space-y-6">
       <FonteMappingSettings />
+      <CallFonteGroupSettings />
     </TabsContent>
   </>
 );
