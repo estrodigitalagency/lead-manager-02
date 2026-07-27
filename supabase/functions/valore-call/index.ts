@@ -107,6 +107,20 @@ function trend(series: number[]): string {
   return "stable";
 }
 
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+/** fetch con retry su 429/5xx (exponential backoff) */
+async function fetchRetry(url: string, headers: Record<string, string>, tries = 4): Promise<Response> {
+  let last: Response | null = null;
+  for (let i = 0; i < tries; i++) {
+    const res = await fetch(url, { headers });
+    if (res.status !== 429 && res.status < 500) return res;
+    last = res;
+    await sleep(400 * Math.pow(2, i) + Math.random() * 300); // 400,800,1600,3200ms + jitter
+  }
+  return last!;
+}
+
 async function getAccessToken(): Promise<string> {
   const body = new URLSearchParams({
     client_id: Deno.env.get("GOOGLE_CLIENT_ID")!,
@@ -183,28 +197,22 @@ Deno.serve(async (req) => {
     let usedSellers = 0;
     const errors: string[] = [];
 
-    // Concorrenza limitata
-    const conc = 6;
+    // Concorrenza ridotta (3) + retry per evitare 429 di Google Sheets.
+    // 1 sola chiamata per venditore: values diretto sul tab. Se il tab non esiste → 400 (skip silenzioso).
+    const conc = 3;
     const list = (vend || []).filter((v) => v.sheets_file_id);
     for (let i = 0; i < list.length; i += conc) {
       const chunk = list.slice(i, i + conc);
       await Promise.all(chunk.map(async (v) => {
-        const sid = v.sheets_file_id as string;
+        // sanitize: rimuove slash/spazi/caratteri non validi dall'ID foglio
+        const sid = String(v.sheets_file_id || "").replace(/[^a-zA-Z0-9_-]/g, "");
+        if (!sid) { errors.push(`${v.nome}: sheet_file_id vuoto`); return; }
         try {
-          // Verifica esistenza tab
-          const metaRes = await fetch(
-            `https://sheets.googleapis.com/v4/spreadsheets/${sid}?fields=sheets.properties.title`,
-            { headers: gh },
-          );
-          if (!metaRes.ok) { errors.push(`${v.nome}: meta ${metaRes.status}`); return; }
-          const meta = await metaRes.json();
-          const tabs: string[] = (meta.sheets || []).map((s: any) => s.properties.title);
-          if (!tabs.includes("Analytics Fonte")) return;
-
-          const valRes = await fetch(
+          const valRes = await fetchRetry(
             `https://sheets.googleapis.com/v4/spreadsheets/${sid}/values/${encodeURIComponent("Analytics Fonte!A2:AD")}`,
-            { headers: gh },
+            gh,
           );
+          if (valRes.status === 400) return; // tab "Analytics Fonte" inesistente → skip
           if (!valRes.ok) { errors.push(`${v.nome}: values ${valRes.status}`); return; }
           const vals = (await valRes.json()).values as any[][] | undefined;
           if (!vals || vals.length === 0) return;
