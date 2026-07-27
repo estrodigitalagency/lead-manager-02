@@ -10,7 +10,6 @@ import { FloatingMoney } from "@/components/ranking/FloatingMoney";
 import FontePodium from "@/components/ranking/FontePodium";
 import logo from "@/assets/ranking-logo.png";
 import { toast } from "sonner";
-import { Info, Trophy } from "lucide-react";
 
 const Ranking = () => {
   const [searchParams] = useSearchParams();
@@ -89,10 +88,10 @@ const Ranking = () => {
                 </TabsTrigger>
               ))}
               <TabsTrigger value="hall" className="text-xs sm:text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-                <Trophy className="mr-1 h-3.5 w-3.5 hidden sm:inline" /> Hall of Fame
+                <span className="mr-1 hidden sm:inline">🏆</span> Hall of Fame
               </TabsTrigger>
               <TabsTrigger value="info" className="text-xs sm:text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-                <Info className="mr-1 h-3.5 w-3.5 hidden sm:inline" /> Info
+                <span className="mr-1 hidden sm:inline">ℹ️</span> Info
               </TabsTrigger>
             </TabsList>
 

@@ -143,10 +143,9 @@ const CallWeekly = ({ refreshTrigger }: Props) => {
     return Object.entries(c).sort((a, b) => b[1] - a[1]).map(([f]) => f);
   }, [rows, fonteOf]);
 
-  // Se una fonte selezionata non è più presente nel periodo, la deseleziono
-  useEffect(() => {
-    setFontiSel((prev) => prev.filter((f) => fontiAvail.includes(f)));
-  }, [fontiAvail]);
+  // Colonne mostrate = selezionate ∩ presenti nel periodo. La selezione (fontiSel) resta
+  // intatta: cambiando periodo le colonne assenti spariscono ma tornano se ripristini il periodo.
+  const cols = useMemo(() => fontiSel.filter((f) => fontiAvail.includes(f)), [fontiSel, fontiAvail]);
 
   // settimane ordinate (per gli sparkline riga)
   // Granularità adattiva: periodi corti (≤16gg, es. "settimana scorsa") → per giorno,
@@ -181,7 +180,7 @@ const CallWeekly = ({ refreshTrigger }: Props) => {
     for (const r of rows) {
       const s = sellerOf(r);
       const f = fonteOf(r);
-      if (fontiSel.length > 0 && !fontiSel.includes(f)) continue;
+      if (cols.length > 0 && !cols.includes(f)) continue;
       if (!bySeller[s]) bySeller[s] = { tot: 0, byFonte: {}, series: new Array(weekKeys.length).fill(0), seriesByFonte: {} };
       const wi = idx[bucketOf(r.created_at)];
       if (wi === undefined) continue;
@@ -194,7 +193,7 @@ const CallWeekly = ({ refreshTrigger }: Props) => {
     return Object.entries(bySeller)
       .map(([venditore, v]) => ({ venditore, ...v }))
       .sort((a, b) => b.tot - a.tot);
-  }, [rows, fontiSel, weekKeys, fonteOf, bucketOf]);
+  }, [rows, cols, weekKeys, fonteOf, bucketOf]);
 
   // Totali colonna
   const pivotTotals = useMemo(() => {
@@ -219,23 +218,23 @@ const CallWeekly = ({ refreshTrigger }: Props) => {
     if (!chartRow) return null;
     const row = pivot.find((r) => r.venditore === chartRow);
     if (!row) return null;
-    const fonti = fontiSel.length ? fontiSel : [];
+    const fonti = cols.length ? cols : [];
     const data = weekKeys.map((wk, i) => {
       const o: Record<string, string | number> = { settimana: weekShort(wk), Totale: row.series[i] };
       for (const f of fonti) o[f] = row.seriesByFonte[f]?.[i] ?? 0;
       return o;
     });
     return { venditore: row.venditore, tot: row.tot, fonti, data };
-  }, [chartRow, pivot, fontiSel, weekKeys]);
+  }, [chartRow, pivot, cols, weekKeys]);
 
   // Colore coerente per fonte (legenda = mini sparkline = grafico grande)
-  const colorOfFonte = useCallback((f: string) => PALETTE[Math.max(0, fontiSel.indexOf(f)) % PALETTE.length], [fontiSel]);
-  // Serie mini sparkline riga: una per fonte selezionata, altrimenti solo il totale.
+  const colorOfFonte = useCallback((f: string) => PALETTE[Math.max(0, cols.indexOf(f)) % PALETTE.length], [cols]);
+  // Serie mini sparkline riga: una per fonte mostrata, altrimenti solo il totale.
   const rowSeries = useCallback((sbf: Record<string, number[]>, tot: number[]) =>
-    fontiSel.length
-      ? fontiSel.map((f) => ({ values: sbf[f] ?? new Array(weekKeys.length).fill(0), color: colorOfFonte(f) }))
+    cols.length
+      ? cols.map((f) => ({ values: sbf[f] ?? new Array(weekKeys.length).fill(0), color: colorOfFonte(f) }))
       : [{ values: tot, color: PALETTE[0] }]
-  , [fontiSel, weekKeys, colorOfFonte]);
+  , [cols, weekKeys, colorOfFonte]);
 
   const toggleFonte = (f: string) => setFontiSel((prev) => prev.includes(f) ? prev.filter((x) => x !== f) : [...prev, f]);
 
@@ -326,11 +325,11 @@ const CallWeekly = ({ refreshTrigger }: Props) => {
           <>
             {/* Tabella pivot: SALES (righe) × PROVENIENZE selezionate (colonne) */}
             <div className="border-t border-border pt-3">
-              <div className="label-eyebrow mb-2">Call per sales × provenienza {fontiSel.length > 0 ? `(${fontiSel.length} provenienze)` : "(totale)"} · {PERIODS[period]}</div>
+              <div className="label-eyebrow mb-2">Call per sales × provenienza {cols.length > 0 ? `(${cols.length} provenienze)` : "(totale)"} · {PERIODS[period]}</div>
               {/* Legenda mini-andamento: colore ↔ provenienza (una linea per fonte) */}
               <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mb-2 text-[11px]">
                 <span className="text-muted-foreground uppercase tracking-wide">Andamento:</span>
-                {fontiSel.length > 0 ? fontiSel.map((f) => (
+                {cols.length > 0 ? cols.map((f) => (
                   <span key={f} className="inline-flex items-center gap-1.5">
                     <span className="w-4 h-[2px] rounded" style={{ background: colorOfFonte(f) }} />{f}
                   </span>
@@ -343,20 +342,20 @@ const CallWeekly = ({ refreshTrigger }: Props) => {
                   <thead>
                     <tr className="[&>th]:align-bottom">
                       <th className="table-header-cell text-left sticky left-0 top-0 bg-card z-30">Sales</th>
-                      {fontiSel.map((f) => <th key={f} className="table-header-cell text-right sticky top-0 bg-card z-20 whitespace-normal break-words leading-tight w-[72px]">{f}</th>)}
+                      {cols.map((f) => <th key={f} className="table-header-cell text-right sticky top-0 bg-card z-20 whitespace-normal break-words leading-tight w-[72px]">{f}</th>)}
                       <th className="table-header-cell text-right sticky top-0 bg-card z-20">Totale</th>
                       <th className="table-header-cell text-center sticky top-0 bg-card z-20 whitespace-nowrap">Andamento</th>
                     </tr>
                   </thead>
                   <tbody>
                     {pivot.length === 0 ? (
-                      <tr><td colSpan={fontiSel.length + 3} className="table-body-cell text-center text-muted-foreground py-4">Nessuna call nel periodo</td></tr>
+                      <tr><td colSpan={cols.length + 3} className="table-body-cell text-center text-muted-foreground py-4">Nessuna call nel periodo</td></tr>
                     ) : (
                       <>
                         {pivot.map((r) => (
                           <tr key={r.venditore}>
                             <td className="table-body-cell font-medium sticky left-0 bg-card z-10 whitespace-nowrap">{r.venditore}</td>
-                            {fontiSel.map((f) => (
+                            {cols.map((f) => (
                               <td key={f} className="table-body-cell text-right num">{r.byFonte[f] || <span className="text-muted-foreground/40">0</span>}</td>
                             ))}
                             <td className="table-body-cell text-right num font-semibold">{r.tot}</td>
@@ -369,7 +368,7 @@ const CallWeekly = ({ refreshTrigger }: Props) => {
                         ))}
                         <tr className="bg-secondary/40 font-semibold">
                           <td className="table-body-cell sticky left-0 bg-card z-10">Totale</td>
-                          {fontiSel.map((f) => <td key={f} className="table-body-cell text-right num">{pivotTotals.cols[f] || 0}</td>)}
+                          {cols.map((f) => <td key={f} className="table-body-cell text-right num">{pivotTotals.cols[f] || 0}</td>)}
                           <td className="table-body-cell text-right num">{pivotTotals.tot}</td>
                           <td className="table-body-cell text-center"><SparkMulti series={rowSeries(pivotTotals.seriesByFonte, pivotTotals.series)} /></td>
                         </tr>
