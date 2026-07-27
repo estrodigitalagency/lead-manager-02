@@ -3,6 +3,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RTooltip, ResponsiveContainer, Legend } from "recharts";
 import { CalendarDays, Loader2, Save, Trash2, X, Check } from "lucide-react";
 import { useMarket } from "@/contexts/MarketContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -27,6 +29,10 @@ const Spark = ({ values }: { values: number[] }) => {
     </svg>
   );
 };
+
+// Palette linee grafico dettaglio (una per fonte). Totale usa il primo colore.
+const PALETTE = ["hsl(232 100% 74%)", "hsl(280 70% 62%)", "hsl(180 65% 48%)", "hsl(38 92% 55%)", "hsl(340 75% 60%)", "hsl(150 60% 50%)", "hsl(20 85% 60%)"];
+const weekShort = (ws: string) => { const d = new Date(ws + "T00:00:00Z"); return `${String(d.getUTCDate()).padStart(2, "0")}/${String(d.getUTCMonth() + 1).padStart(2, "0")}`; };
 
 interface BC { fonte: string | null; venditore: string | null; created_at: string; }
 interface SavedFilter { id: string; nome: string; config: { fonti?: string[]; period?: string; cFrom?: string; cTo?: string } }
@@ -86,6 +92,7 @@ const CallWeekly = ({ refreshTrigger }: Props) => {
   const [saved, setSaved] = useState<SavedFilter[]>([]);
   const [filterName, setFilterName] = useState("");
   const [groups, setGroups] = useState<FonteGroupRule[]>([]);
+  const [chartRow, setChartRow] = useState<string | null>(null); // venditore di cui mostrare il dettaglio
 
   useEffect(() => { fetchFonteGroups().then(setGroups); }, []);
   // fonte raggruppata secondo le regole configurabili (Impostazioni → provenienze)
@@ -146,15 +153,18 @@ const CallWeekly = ({ refreshTrigger }: Props) => {
   const pivot = useMemo(() => {
     const idx: Record<string, number> = {};
     weekKeys.forEach((wk, i) => { idx[wk] = i; });
-    const bySeller: Record<string, { tot: number; byFonte: Record<string, number>; series: number[] }> = {};
+    const bySeller: Record<string, { tot: number; byFonte: Record<string, number>; series: number[]; seriesByFonte: Record<string, number[]> }> = {};
     for (const r of rows) {
       const s = sellerOf(r);
       const f = fonteOf(r);
       if (fontiSel.length > 0 && !fontiSel.includes(f)) continue;
-      if (!bySeller[s]) bySeller[s] = { tot: 0, byFonte: {}, series: new Array(weekKeys.length).fill(0) };
+      if (!bySeller[s]) bySeller[s] = { tot: 0, byFonte: {}, series: new Array(weekKeys.length).fill(0), seriesByFonte: {} };
+      const wi = idx[weekStart(r.created_at)];
       bySeller[s].tot++;
       bySeller[s].byFonte[f] = (bySeller[s].byFonte[f] || 0) + 1;
-      bySeller[s].series[idx[weekStart(r.created_at)]]++;
+      bySeller[s].series[wi]++;
+      if (!bySeller[s].seriesByFonte[f]) bySeller[s].seriesByFonte[f] = new Array(weekKeys.length).fill(0);
+      bySeller[s].seriesByFonte[f][wi]++;
     }
     return Object.entries(bySeller)
       .map(([venditore, v]) => ({ venditore, ...v }))
@@ -173,6 +183,20 @@ const CallWeekly = ({ refreshTrigger }: Props) => {
     }
     return { cols, tot, series };
   }, [pivot, weekKeys]);
+
+  // Dati grafico dettaglio del venditore selezionato: Totale + una linea per fonte selezionata.
+  const chart = useMemo(() => {
+    if (!chartRow) return null;
+    const row = pivot.find((r) => r.venditore === chartRow);
+    if (!row) return null;
+    const fonti = fontiSel.length ? fontiSel : [];
+    const data = weekKeys.map((wk, i) => {
+      const o: Record<string, string | number> = { settimana: weekShort(wk), Totale: row.series[i] };
+      for (const f of fonti) o[f] = row.seriesByFonte[f]?.[i] ?? 0;
+      return o;
+    });
+    return { venditore: row.venditore, tot: row.tot, fonti, data };
+  }, [chartRow, pivot, fontiSel, weekKeys]);
 
   const toggleFonte = (f: string) => setFontiSel((prev) => prev.includes(f) ? prev.filter((x) => x !== f) : [...prev, f]);
 
@@ -198,6 +222,7 @@ const CallWeekly = ({ refreshTrigger }: Props) => {
   const totale = rows.length;
 
   return (
+    <>
     <Card>
       <CardHeader className="flex flex-row items-start justify-between gap-3 flex-wrap">
         <div>
@@ -281,7 +306,11 @@ const CallWeekly = ({ refreshTrigger }: Props) => {
                               <td key={f} className="table-body-cell text-right num">{r.byFonte[f] || <span className="text-muted-foreground/40">0</span>}</td>
                             ))}
                             <td className="table-body-cell text-right num font-semibold">{r.tot}</td>
-                            <td className="table-body-cell text-center"><Spark values={r.series} /></td>
+                            <td className="table-body-cell text-center">
+                              <button type="button" onClick={() => setChartRow(r.venditore)} className="hover:bg-secondary/40 rounded px-1 transition-colors cursor-pointer" title="Clicca per il dettaglio">
+                                <Spark values={r.series} />
+                              </button>
+                            </td>
                           </tr>
                         ))}
                         <tr className="bg-secondary/40 font-semibold">
@@ -307,6 +336,38 @@ const CallWeekly = ({ refreshTrigger }: Props) => {
         )}
       </CardContent>
     </Card>
+
+    {/* Dialog dettaglio andamento venditore: Totale + una linea per fonte selezionata */}
+    <Dialog open={!!chartRow} onOpenChange={(o) => !o && setChartRow(null)}>
+      <DialogContent className="max-w-4xl">
+        <DialogHeader>
+          <DialogTitle className="text-[15px]">
+            Andamento call · {chart?.venditore} <span className="text-muted-foreground font-normal">· {PERIODS[period]} · {chart?.tot ?? 0} call</span>
+          </DialogTitle>
+        </DialogHeader>
+        {chart && (
+          <div className="h-[360px] w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={chart.data} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(220 8% 15%)" vertical={false} />
+                <XAxis dataKey="settimana" tick={{ fontSize: 11, fill: "hsl(220 6% 60%)" }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 11, fill: "hsl(220 6% 60%)" }} axisLine={false} tickLine={false} allowDecimals={false} width={32} />
+                <RTooltip contentStyle={{ background: "hsl(220 12% 10.5%)", border: "1px solid hsl(220 8% 15%)", borderRadius: 8, fontSize: 12 }} />
+                <Legend wrapperStyle={{ fontSize: 11 }} />
+                <Line type="monotone" dataKey="Totale" stroke={PALETTE[0]} strokeWidth={chart.fonti.length ? 2 : 3} dot={{ r: 3 }} activeDot={{ r: 6 }} strokeDasharray={chart.fonti.length ? "4 3" : undefined} />
+                {chart.fonti.map((f, i) => (
+                  <Line key={f} type="monotone" dataKey={f} stroke={PALETTE[(i + 1) % PALETTE.length]} strokeWidth={2.5} dot={{ r: 3 }} activeDot={{ r: 6 }} connectNulls />
+                ))}
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        )}
+        {chart && chart.fonti.length === 0 && (
+          <p className="text-[12px] text-muted-foreground -mt-2">Seleziona delle provenienze in alto per vedere una linea per ciascuna.</p>
+        )}
+      </DialogContent>
+    </Dialog>
+    </>
   );
 };
 
