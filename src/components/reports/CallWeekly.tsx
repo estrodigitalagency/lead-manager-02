@@ -11,21 +11,26 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { applyFonteGroups, fetchFonteGroups, FonteGroupRule } from "@/lib/reports/fonteGroups";
 
-// Micro sparkline SVG: andamento call settimanali del venditore
-const Spark = ({ values }: { values: number[] }) => {
-  const w = 70, h = 18, pad = 1.5;
-  const pts = values;
-  if (pts.length < 2 || pts.every((v) => v === 0)) return <span className="text-muted-foreground/30 text-[10px]">—</span>;
-  const max = Math.max(...pts), min = Math.min(...pts);
-  const range = max - min || 1;
-  const step = (w - pad * 2) / (pts.length - 1);
-  const coords = pts.map((v, i) => [pad + i * step, h - pad - ((v - min) / range) * (h - pad * 2)] as const);
-  const d = coords.map(([x, y], i) => `${i === 0 ? "M" : "L"}${x.toFixed(1)},${y.toFixed(1)}`).join(" ");
-  const [lx, ly] = coords[coords.length - 1];
+// Mini sparkline multi-serie: una linea per fonte, scala condivisa così le altezze sono confrontabili.
+const SparkMulti = ({ series }: { series: { values: number[]; color: string }[] }) => {
+  const w = 92, h = 24, pad = 2;
+  const all = series.flatMap((s) => s.values);
+  if (!series.length || all.length < 2 || all.every((v) => v === 0)) return <span className="text-muted-foreground/30 text-[10px]">—</span>;
+  const max = Math.max(...all), min = Math.min(...all), range = max - min || 1;
+  const n = Math.max(...series.map((s) => s.values.length));
+  const step = (w - pad * 2) / Math.max(1, n - 1);
+  const toPath = (vals: number[]) => vals.map((v, i) => `${i === 0 ? "M" : "L"}${(pad + i * step).toFixed(1)},${(h - pad - ((v - min) / range) * (h - pad * 2)).toFixed(1)}`).join(" ");
   return (
     <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} className="inline-block align-middle">
-      <path d={d} fill="none" stroke="hsl(232 100% 74%)" strokeWidth={1.25} strokeLinecap="round" strokeLinejoin="round" />
-      <circle cx={lx} cy={ly} r={1.8} fill="hsl(232 100% 74%)" />
+      {series.map((s, k) => {
+        if (s.values.every((v) => v === 0)) return null;
+        const last = s.values.length - 1;
+        const lx = pad + last * step, ly = h - pad - ((s.values[last] - min) / range) * (h - pad * 2);
+        return (<g key={k}>
+          <path d={toPath(s.values)} fill="none" stroke={s.color} strokeWidth={1.25} strokeLinecap="round" strokeLinejoin="round" />
+          <circle cx={lx} cy={ly} r={1.6} fill={s.color} />
+        </g>);
+      })}
     </svg>
   );
 };
@@ -175,13 +180,18 @@ const CallWeekly = ({ refreshTrigger }: Props) => {
   const pivotTotals = useMemo(() => {
     const cols: Record<string, number> = {};
     const series = new Array(weekKeys.length).fill(0);
+    const seriesByFonte: Record<string, number[]> = {};
     let tot = 0;
     for (const r of pivot) {
       tot += r.tot;
       for (const [f, n] of Object.entries(r.byFonte)) cols[f] = (cols[f] || 0) + n;
       r.series.forEach((n, i) => { series[i] += n; });
+      for (const [f, arr] of Object.entries(r.seriesByFonte)) {
+        if (!seriesByFonte[f]) seriesByFonte[f] = new Array(weekKeys.length).fill(0);
+        arr.forEach((n, i) => { seriesByFonte[f][i] += n; });
+      }
     }
-    return { cols, tot, series };
+    return { cols, tot, series, seriesByFonte };
   }, [pivot, weekKeys]);
 
   // Dati grafico dettaglio del venditore selezionato: Totale + una linea per fonte selezionata.
@@ -197,6 +207,15 @@ const CallWeekly = ({ refreshTrigger }: Props) => {
     });
     return { venditore: row.venditore, tot: row.tot, fonti, data };
   }, [chartRow, pivot, fontiSel, weekKeys]);
+
+  // Colore coerente per fonte (legenda = mini sparkline = grafico grande)
+  const colorOfFonte = useCallback((f: string) => PALETTE[Math.max(0, fontiSel.indexOf(f)) % PALETTE.length], [fontiSel]);
+  // Serie mini sparkline riga: una per fonte selezionata, altrimenti solo il totale.
+  const rowSeries = useCallback((sbf: Record<string, number[]>, tot: number[]) =>
+    fontiSel.length
+      ? fontiSel.map((f) => ({ values: sbf[f] ?? new Array(weekKeys.length).fill(0), color: colorOfFonte(f) }))
+      : [{ values: tot, color: PALETTE[0] }]
+  , [fontiSel, weekKeys, colorOfFonte]);
 
   const toggleFonte = (f: string) => setFontiSel((prev) => prev.includes(f) ? prev.filter((x) => x !== f) : [...prev, f]);
 
@@ -284,6 +303,17 @@ const CallWeekly = ({ refreshTrigger }: Props) => {
             {/* Tabella pivot: SALES (righe) × PROVENIENZE selezionate (colonne) */}
             <div className="border-t border-border pt-3">
               <div className="label-eyebrow mb-2">Call per sales × provenienza {fontiSel.length > 0 ? `(${fontiSel.length} provenienze)` : "(totale)"} · {PERIODS[period]}</div>
+              {/* Legenda mini-andamento: colore ↔ provenienza (una linea per fonte) */}
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mb-2 text-[11px]">
+                <span className="text-muted-foreground uppercase tracking-wide">Andamento:</span>
+                {fontiSel.length > 0 ? fontiSel.map((f) => (
+                  <span key={f} className="inline-flex items-center gap-1.5">
+                    <span className="w-4 h-[2px] rounded" style={{ background: colorOfFonte(f) }} />{f}
+                  </span>
+                )) : (
+                  <span className="inline-flex items-center gap-1.5"><span className="w-4 h-[2px] rounded" style={{ background: PALETTE[0] }} />Totale call</span>
+                )}
+              </div>
               <div className="max-h-[50vh] overflow-auto rounded-md border border-border">
                 <table className="w-full text-[12px] border-collapse">
                   <thead>
@@ -308,7 +338,7 @@ const CallWeekly = ({ refreshTrigger }: Props) => {
                             <td className="table-body-cell text-right num font-semibold">{r.tot}</td>
                             <td className="table-body-cell text-center">
                               <button type="button" onClick={() => setChartRow(r.venditore)} className="hover:bg-secondary/40 rounded px-1 transition-colors cursor-pointer" title="Clicca per il dettaglio">
-                                <Spark values={r.series} />
+                                <SparkMulti series={rowSeries(r.seriesByFonte, r.series)} />
                               </button>
                             </td>
                           </tr>
@@ -317,7 +347,7 @@ const CallWeekly = ({ refreshTrigger }: Props) => {
                           <td className="table-body-cell sticky left-0 bg-card z-10">Totale</td>
                           {fontiSel.map((f) => <td key={f} className="table-body-cell text-right num">{pivotTotals.cols[f] || 0}</td>)}
                           <td className="table-body-cell text-right num">{pivotTotals.tot}</td>
-                          <td className="table-body-cell text-center"><Spark values={pivotTotals.series} /></td>
+                          <td className="table-body-cell text-center"><SparkMulti series={rowSeries(pivotTotals.seriesByFonte, pivotTotals.series)} /></td>
                         </tr>
                       </>
                     )}
@@ -354,9 +384,9 @@ const CallWeekly = ({ refreshTrigger }: Props) => {
                 <YAxis tick={{ fontSize: 11, fill: "hsl(220 6% 60%)" }} axisLine={false} tickLine={false} allowDecimals={false} width={32} />
                 <RTooltip contentStyle={{ background: "hsl(220 12% 10.5%)", border: "1px solid hsl(220 8% 15%)", borderRadius: 8, fontSize: 12 }} />
                 <Legend wrapperStyle={{ fontSize: 11 }} />
-                <Line type="monotone" dataKey="Totale" stroke={PALETTE[0]} strokeWidth={chart.fonti.length ? 2 : 3} dot={{ r: 3 }} activeDot={{ r: 6 }} strokeDasharray={chart.fonti.length ? "4 3" : undefined} />
-                {chart.fonti.map((f, i) => (
-                  <Line key={f} type="monotone" dataKey={f} stroke={PALETTE[(i + 1) % PALETTE.length]} strokeWidth={2.5} dot={{ r: 3 }} activeDot={{ r: 6 }} connectNulls />
+                <Line type="monotone" dataKey="Totale" stroke="hsl(220 6% 72%)" strokeWidth={chart.fonti.length ? 2 : 3} dot={{ r: 3 }} activeDot={{ r: 6 }} strokeDasharray={chart.fonti.length ? "4 3" : undefined} />
+                {chart.fonti.map((f) => (
+                  <Line key={f} type="monotone" dataKey={f} stroke={colorOfFonte(f)} strokeWidth={2.5} dot={{ r: 3 }} activeDot={{ r: 6 }} connectNulls />
                 ))}
               </LineChart>
             </ResponsiveContainer>

@@ -36,20 +36,25 @@ interface Props { metric: MetricKey; memberCode?: string; myName?: string | null
 // completi (es. "Desirée Masiero", "Rocco Alicchio"). Serve: togliere accenti +
 // confronto esatto → token-set (ordine invertito) → sottoinsieme (nome ⊂ completo).
 const fold = (s: string) => s.normalize("NFD").replace(/\p{Diacritic}/gu, "").toLowerCase().trim().replace(/\s+/g, " ");
-const tokset = (s: string) => new Set(fold(s).split(" ").filter(Boolean));
+const toks = (s: string) => fold(s).split(" ").filter(Boolean);
+const isInitial = (t: string) => /^[a-z]\.?$/.test(t); // "a" o "a."
+// Due token combaciano se uguali o se uno è l'iniziale dell'altro (es. "a." ~ "alicchio").
+const tokMatch = (a: string, b: string) => a === b || (isInitial(a) && b[0] === a[0]) || (isInitial(b) && a[0] === b[0]);
+// Bijezione greedy: quanti token del target trovano un token distinto nel candidato.
+const matchCount = (tt: string[], ct: string[]) => {
+  const used = new Array(ct.length).fill(false);
+  let m = 0;
+  for (const t of tt) for (let i = 0; i < ct.length; i++) if (!used[i] && tokMatch(t, ct[i])) { used[i] = true; m++; break; }
+  return m;
+};
+// Nomi ranking abbreviati ("Rocco A.") vs edge completi ("Rocco Alicchio"): match via iniziali + accenti.
 const resolveSales = (target: string, candidates: string[]): string | null => {
-  const ft = fold(target);
-  let hit = candidates.find((c) => fold(c) === ft);
-  if (hit) return hit;
-  const tt = tokset(target);
-  hit = candidates.find((c) => { const s = tokset(c); return s.size === tt.size && [...tt].every((x) => s.has(x)); });
-  if (hit) return hit;
-  // target ⊆ candidate (es. "Rocco" ⊆ "Rocco Alicchio")
-  const subs = candidates.filter((c) => { const s = tokset(c); return [...tt].every((x) => s.has(x)); });
-  if (subs.length) return subs[0];
-  // candidate ⊆ target (es. "Stefania" ⊆ "Rocco Stefania")
-  const subs2 = candidates.filter((c) => { const s = tokset(c); return [...s].every((x) => tt.has(x)); });
-  return subs2[0] ?? null;
+  const tt = toks(target);
+  const scored = candidates.map((c) => { const ct = toks(c); const m = matchCount(tt, ct); return { c, m, full: m === tt.length && m === ct.length }; });
+  const full = scored.filter((s) => s.full);
+  if (full.length) return full[0].c;                       // bijezione completa (caso normale)
+  const cover = scored.filter((s) => s.m === tt.length && tt.length > 0);
+  return cover.sort((a, b) => b.m - a.m)[0]?.c ?? null;    // tutti i token del target coperti
 };
 
 const FontePodium = ({ metric, memberCode, myName: myNameProp, market = "IT", data }: Props) => {
