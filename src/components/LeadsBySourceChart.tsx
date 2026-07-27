@@ -43,7 +43,8 @@ export function LeadsBySourceChart({ filters, refreshTrigger }: LeadsBySourceCha
       filters.sourceMode,
       filters.fontiIncluse,
       filters.fontiEscluse,
-      filters.campagna
+      filters.campagna,
+      filters.venditore
     );
     setData(result);
     setLoading(false);

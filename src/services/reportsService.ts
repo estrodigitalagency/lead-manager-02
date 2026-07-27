@@ -401,7 +401,8 @@ export async function getLeadsBySource(
   sourceMode?: 'include' | 'exclude',
   fontiIncluse?: string[],
   fontiEscluse?: string[],
-  campagna?: string
+  campagna?: string,
+  venditore?: string
 ): Promise<LeadsBySourceItem[]> {
   try {
     // Espande campagna in fonti incluse/escluse (se non ci sono filtri fonte manuali)
@@ -440,6 +441,12 @@ export async function getLeadsBySource(
 
       if (campagna && campagna.trim() !== '' && !campagnaExpanded) {
         query = query.ilike('campagna', `%${campagna.trim()}%`);
+      }
+
+      // Filtro venditore (stesso pattern delle altre query report)
+      if (venditore && venditore.trim() !== '') {
+        const v = venditore.trim();
+        query = query.or(`venditore.eq.${v},venditore.eq. ${v},venditore.eq.${v} `);
       }
 
       // Apply source filters
