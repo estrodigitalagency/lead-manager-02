@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { Loader2, Trophy, TrendingUp, TrendingDown, Minus } from "lucide-react";
+import { Loader2, TrendingUp, TrendingDown, Minus } from "lucide-react";
 import { generateMemberCode } from "@/lib/ranking/hashUtils";
 
 const SUPA_URL = "https://btcwmuyemmkiteqlopce.supabase.co";
@@ -93,30 +93,33 @@ const FonteRankingBlocks = ({ market = "IT", memberCode, refreshTrigger }: Props
               <span className="font-semibold text-[13px]">{labelOf(fonte)}</span>
               <span className="text-[11px] text-muted-foreground ml-auto">{list.length} sales</span>
             </div>
-            <div className="divide-y divide-border/50 max-h-[300px] overflow-auto">
+            <div className="divide-y divide-border/50">
               {list.length === 0 ? (
                 <div className="px-3 py-4 text-[12px] text-muted-foreground text-center">Nessun dato</div>
-              ) : list.map((r, i) => {
-                const isMe = memberCode && r.code === memberCode;
-                const m = medal(i);
-                return (
-                  <div key={r.venditore} className={`flex items-center gap-2 px-3 py-1.5 text-[12.5px] ${isMe ? "bg-primary/15 ring-1 ring-primary/40" : ""}`}>
-                    <span className="w-6 text-center font-semibold num shrink-0" style={m ? { color: m } : { color: "hsl(var(--muted-foreground))" }}>
-                      {i + 1}
-                    </span>
-                    <span className={`flex-1 truncate ${isMe ? "font-semibold text-primary" : ""}`}>{r.venditore}{isMe ? " (tu)" : ""}</span>
-                    <TrendMini t={r.trend} />
-                    <span className="text-[10px] text-muted-foreground num shrink-0">{r.n_call}c</span>
-                    <span className="font-semibold num shrink-0 w-16 text-right">{eur(r.valore_call)}</span>
+              ) : (() => {
+                const rowFor = (r: typeof list[number], idx: number) => {
+                  const isMe = memberCode && r.code === memberCode;
+                  const m = medal(idx);
+                  return (
+                    <div key={r.venditore} className={`flex items-center gap-2 px-3 py-1.5 text-[12.5px] ${isMe ? "bg-primary/15 ring-1 ring-primary/40" : ""}`}>
+                      <span className="w-6 text-center font-semibold num shrink-0" style={m ? { color: m } : { color: "hsl(var(--muted-foreground))" }}>{idx + 1}</span>
+                      <span className={`flex-1 truncate ${isMe ? "font-semibold text-primary" : ""}`}>{r.venditore}{isMe ? " (tu)" : ""}</span>
+                      <TrendMini t={r.trend} />
+                      <span className="text-[10px] text-muted-foreground num shrink-0">{r.n_call}c</span>
+                      <span className="font-semibold num shrink-0 w-16 text-right">{eur(r.valore_call)}</span>
+                    </div>
+                  );
+                };
+                const top4 = list.slice(0, 4).map((r, i) => rowFor(r, i));
+                // se il venditore del link è oltre il 4° → riga extra sotto
+                const extra = myIdx >= 4 ? (
+                  <div key="__me" className="border-t border-dashed border-border">
+                    {rowFor(list[myIdx], myIdx)}
                   </div>
-                );
-              })}
+                ) : null;
+                return <>{top4}{extra}</>;
+              })()}
             </div>
-            {myIdx >= 0 && (
-              <div className="px-3 py-1.5 border-t border-border bg-primary/8 text-[11px] text-primary flex items-center gap-1.5">
-                <Trophy className="h-3 w-3" /> Sei {myIdx + 1}° su {list.length} in {labelOf(fonte)}
-              </div>
-            )}
           </div>
         );
       })}

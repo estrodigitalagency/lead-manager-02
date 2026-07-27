@@ -90,13 +90,18 @@ const Ranking = () => {
             </TabsList>
 
             {(Object.keys(METRIC_LABELS) as MetricKey[]).map((key) => {
-              const ranked = limitMembers(rankByMetric(members, key));
-              const podium = ranked.slice(0, 3);
-              const rest = ranked.slice(3);
+              const fullRanked = rankByMetric(members, key); // classifica completa (per posizione reale)
+              const podium = fullRanked.slice(0, 3);
+              const fourth = fullRanked.slice(3, 4); // sempre il 4°
+              // Se link individuale e il venditore è oltre il 4° → mostra la sua riga sotto
+              const myName = memberCode ? findMemberByCode(memberCode, members) : (memberLegacy || null);
+              const myIdx = myName ? fullRanked.findIndex((r) => r.name === myName) : -1;
+              const extra = myIdx >= 4 ? [fullRanked[myIdx]] : [];
+              const rest = [...fourth, ...extra];
               return (
                 <TabsContent key={key} value={key} className="space-y-8">
                   <Podium members={podium} metric={key} />
-                  <LeaderboardTable members={rest} metric={key} />
+                  <LeaderboardTable members={rest} metric={key} highlightName={myName} />
                 </TabsContent>
               );
             })}
