@@ -10,6 +10,7 @@ import { useMarket } from "@/contexts/MarketContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { applyFonteGroups, fetchFonteGroups, FonteGroupRule } from "@/lib/reports/fonteGroups";
+import { fetchCallFilters, addCallFilter, removeCallFilter } from "@/lib/reports/callFilters";
 
 // Mini sparkline multi-serie: una linea per fonte, scala condivisa così le altezze sono confrontabili.
 const SparkMulti = ({ series }: { series: { values: number[]; color: string }[] }) => {
@@ -84,6 +85,8 @@ const weekStart = (iso: string): string => {
   d.setUTCDate(d.getUTCDate() - day);
   return d.toISOString().slice(0, 10);
 };
+const dayKey = (iso: string): string => new Date(iso).toISOString().slice(0, 10);
+const fmtDate = (iso: string): string => { const d = new Date(iso); return `${String(d.getUTCDate()).padStart(2, "0")}/${String(d.getUTCMonth() + 1).padStart(2, "0")}/${d.getUTCFullYear()}`; };
 interface Props { refreshTrigger?: number; }
 
 const CallWeekly = ({ refreshTrigger }: Props) => {
@@ -127,8 +130,7 @@ const CallWeekly = ({ refreshTrigger }: Props) => {
   }, [selectedMarket, range.from, range.to]);
 
   const loadSaved = useCallback(async () => {
-    const { data } = await supabase.from("call_report_filters").select("*").eq("market", selectedMarket).order("created_at", { ascending: false });
-    setSaved((data as any) || []);
+    setSaved(await fetchCallFilters(selectedMarket));
   }, [selectedMarket]);
 
   useEffect(() => { load(); }, [load, refreshTrigger]);
@@ -147,11 +149,28 @@ const CallWeekly = ({ refreshTrigger }: Props) => {
   }, [fontiAvail]);
 
   // settimane ordinate (per gli sparkline riga)
+  // Granularità adattiva: periodi corti (≤16gg, es. "settimana scorsa") → per giorno,
+  // altrimenti per settimana. Evita mini-andamento con 1 solo punto.
+  const bucketMode: "day" | "week" = useMemo(() => {
+    const span = (new Date(range.to).getTime() - new Date(range.from).getTime()) / 86400000;
+    return span <= 16 ? "day" : "week";
+  }, [range]);
+  const bucketOf = useCallback((iso: string) => (bucketMode === "day" ? dayKey(iso) : weekStart(iso)), [bucketMode]);
+
+  // Chiavi bucket continue sull'intero range (niente buchi → linea sempre disegnabile)
   const weekKeys = useMemo(() => {
-    const s = new Set<string>();
-    for (const r of rows) s.add(weekStart(r.created_at));
-    return [...s].sort();
-  }, [rows]);
+    const keys: string[] = [];
+    const end = new Date(range.to);
+    if (bucketMode === "day") {
+      const d = new Date(dayKey(range.from) + "T00:00:00Z");
+      while (d <= end) { keys.push(d.toISOString().slice(0, 10)); d.setUTCDate(d.getUTCDate() + 1); }
+    } else {
+      const d = new Date(weekStart(range.from) + "T00:00:00Z");
+      const endW = weekStart(range.to);
+      while (true) { const k = d.toISOString().slice(0, 10); keys.push(k); if (k >= endW) break; d.setUTCDate(d.getUTCDate() + 7); }
+    }
+    return keys;
+  }, [range, bucketMode]);
 
   // Pivot: righe = sales, colonne = provenienze selezionate (+ totale). Cella = n call nel periodo.
   // series = call totali (rispettando fontiSel) per settimana → sparkline riga.
@@ -164,7 +183,8 @@ const CallWeekly = ({ refreshTrigger }: Props) => {
       const f = fonteOf(r);
       if (fontiSel.length > 0 && !fontiSel.includes(f)) continue;
       if (!bySeller[s]) bySeller[s] = { tot: 0, byFonte: {}, series: new Array(weekKeys.length).fill(0), seriesByFonte: {} };
-      const wi = idx[weekStart(r.created_at)];
+      const wi = idx[bucketOf(r.created_at)];
+      if (wi === undefined) continue;
       bySeller[s].tot++;
       bySeller[s].byFonte[f] = (bySeller[s].byFonte[f] || 0) + 1;
       bySeller[s].series[wi]++;
@@ -174,7 +194,7 @@ const CallWeekly = ({ refreshTrigger }: Props) => {
     return Object.entries(bySeller)
       .map(([venditore, v]) => ({ venditore, ...v }))
       .sort((a, b) => b.tot - a.tot);
-  }, [rows, fontiSel, weekKeys, fonteOf]);
+  }, [rows, fontiSel, weekKeys, fonteOf, bucketOf]);
 
   // Totali colonna
   const pivotTotals = useMemo(() => {
@@ -221,8 +241,8 @@ const CallWeekly = ({ refreshTrigger }: Props) => {
 
   const saveFilter = async () => {
     if (!filterName.trim()) { toast.error("Dai un nome al filtro"); return; }
-    const { error } = await supabase.from("call_report_filters").insert({ nome: filterName.trim(), config: { fonti: fontiSel, period, cFrom, cTo }, market: selectedMarket } as any);
-    if (error) { toast.error("Errore salvataggio"); return; }
+    const ok = await addCallFilter(selectedMarket, filterName.trim(), { fonti: fontiSel, period, cFrom, cTo });
+    if (!ok) { toast.error("Errore salvataggio"); return; }
     toast.success("Filtro salvato");
     setFilterName("");
     loadSaved();
@@ -234,7 +254,7 @@ const CallWeekly = ({ refreshTrigger }: Props) => {
     setFontiSel(f.config.fonti || []);
   };
   const deleteFilter = async (id: string) => {
-    await supabase.from("call_report_filters").delete().eq("id", id);
+    await removeCallFilter(selectedMarket, id);
     loadSaved();
   };
 
@@ -246,7 +266,7 @@ const CallWeekly = ({ refreshTrigger }: Props) => {
       <CardHeader className="flex flex-row items-start justify-between gap-3 flex-wrap">
         <div>
           <CardTitle className="flex items-center gap-2"><CalendarDays className="h-4 w-4 text-primary" /> Call per settimana e provenienza</CardTitle>
-          <p className="text-[12px] text-muted-foreground mt-1">Call entrate per settimana, per provenienza. {totale} call nel periodo — {PERIODS[period]}.</p>
+          <p className="text-[12px] text-muted-foreground mt-1">Call entrate per {bucketMode === "day" ? "giorno" : "settimana"}, per provenienza. {totale} call · {PERIODS[period]} · <span className="text-foreground/80">{fmtDate(range.from)} – {fmtDate(range.to)}</span>.</p>
         </div>
         <div className="flex gap-2 items-center flex-wrap justify-end">
           <Select value={period} onValueChange={setPeriod}>
@@ -319,7 +339,7 @@ const CallWeekly = ({ refreshTrigger }: Props) => {
                   <thead>
                     <tr>
                       <th className="table-header-cell text-left sticky left-0 top-0 bg-card z-30">Sales</th>
-                      {fontiSel.map((f) => <th key={f} className="table-header-cell text-right sticky top-0 bg-card z-20 whitespace-nowrap">{f}</th>)}
+                      {fontiSel.map((f) => <th key={f} className="table-header-cell text-right sticky top-0 bg-card z-20 whitespace-normal break-words leading-tight align-bottom w-[72px]">{f}</th>)}
                       <th className="table-header-cell text-right sticky top-0 bg-card z-20">Totale</th>
                       <th className="table-header-cell text-center sticky top-0 bg-card z-20 whitespace-nowrap">Andamento</th>
                     </tr>
