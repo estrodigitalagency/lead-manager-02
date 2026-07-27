@@ -308,8 +308,8 @@ const CallWeekly = ({ refreshTrigger }: Props) => {
             {fontiAvail.map((f) => {
               const on = fontiSel.includes(f);
               return (
-                <button key={f} onClick={() => toggleFonte(f)} className={`inline-flex items-center gap-1 px-2 py-0.5 rounded border text-[11px] transition-colors ${on ? "border-primary bg-primary/15 text-primary" : "border-border bg-secondary hover:border-border/80"}`}>
-                  {on && <Check className="h-3 w-3" />}{f}
+                <button key={f} onClick={() => toggleFonte(f)} className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border text-[12.5px] font-medium transition-colors ${on ? "border-primary bg-primary text-primary-foreground" : "border-border bg-secondary text-foreground/85 hover:border-primary/40 hover:text-foreground"}`}>
+                  {on && <Check className="h-3.5 w-3.5" />}{f}
                 </button>
               );
             })}
@@ -337,9 +337,9 @@ const CallWeekly = ({ refreshTrigger }: Props) => {
               <div className="max-h-[50vh] overflow-auto rounded-md border border-border">
                 <table className="w-full text-[12px] border-collapse">
                   <thead>
-                    <tr>
+                    <tr className="[&>th]:align-bottom">
                       <th className="table-header-cell text-left sticky left-0 top-0 bg-card z-30">Sales</th>
-                      {fontiSel.map((f) => <th key={f} className="table-header-cell text-right sticky top-0 bg-card z-20 whitespace-normal break-words leading-tight align-bottom w-[72px]">{f}</th>)}
+                      {fontiSel.map((f) => <th key={f} className="table-header-cell text-right sticky top-0 bg-card z-20 whitespace-normal break-words leading-tight w-[72px]">{f}</th>)}
                       <th className="table-header-cell text-right sticky top-0 bg-card z-20">Totale</th>
                       <th className="table-header-cell text-center sticky top-0 bg-card z-20 whitespace-nowrap">Andamento</th>
                     </tr>

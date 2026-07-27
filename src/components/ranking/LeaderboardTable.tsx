@@ -24,7 +24,7 @@ export function LeaderboardTable({ members, metric, highlightName }: Leaderboard
               isMe ? "bg-primary/15 border-primary/50 ring-1 ring-primary/40" : "bg-card border-border hover:border-primary/30"
             }`}
           >
-            <span className={`font-display font-bold text-lg w-8 text-center ${isMe ? "text-primary" : "text-muted-foreground"}`}>
+            <span className={`font-display font-bold text-base sm:text-lg w-9 h-9 shrink-0 rounded-full flex items-center justify-center ${isMe ? "bg-primary text-primary-foreground" : "bg-secondary text-foreground/80"}`}>
               {member.rank}
             </span>
             <span className={`flex-1 font-medium truncate ${isMe ? "text-primary" : "text-foreground"}`}>

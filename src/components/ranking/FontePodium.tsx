@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { Loader2 } from "lucide-react";
+import { Loader2, Ban } from "lucide-react";
 import { generateMemberCode } from "@/lib/ranking/hashUtils";
 import { RankedMember, MetricKey } from "@/lib/ranking/googleSheets";
 import { Podium } from "@/components/ranking/Podium";
@@ -130,10 +130,10 @@ const FontePodium = ({ metric, memberCode, myName: myNameProp, market = "IT", da
                 <span className="w-2.5 h-2.5 rounded-sm" style={{ background: color }} />
                 <h4 className="text-base font-bold text-foreground">{labelOf(fonte)}</h4>
               </div>
-              {myName && (
-                myRank >= 0
-                  ? <span className="text-[12px] font-semibold px-2 py-0.5 rounded-full" style={{ background: `${color}22`, color }}>Sei {myRank + 1}° su {ranked.length}</span>
-                  : <span className="text-[12px] text-muted-foreground px-2 py-0.5 rounded-full bg-secondary">Nessuna call qui</span>
+              {myName && myRank >= 0 && (
+                <span className="text-[13px] font-bold px-3 py-1 rounded-full border" style={{ background: `${color}26`, borderColor: `${color}66`, color }}>
+                  Sei {myRank + 1}° su {ranked.length}
+                </span>
               )}
             </div>
 
@@ -143,6 +143,13 @@ const FontePodium = ({ metric, memberCode, myName: myNameProp, market = "IT", da
               <div className="space-y-5">
                 <Podium members={podium} metric={metric} />
                 <LeaderboardTable members={rest} metric={metric} highlightName={myName} />
+                {/* Notice chiaro quando il sales non ha call in questa provenienza */}
+                {myName && myRank < 0 && (
+                  <div className="flex items-center gap-2 rounded-lg border border-dashed border-border bg-secondary/40 px-4 py-3 text-sm text-muted-foreground">
+                    <Ban className="h-4 w-4 shrink-0" />
+                    <span><span className="font-semibold text-foreground">Tu</span> — nessuna call da <span className="font-semibold">{labelOf(fonte)}</span> in questo periodo, non sei in classifica qui.</span>
+                  </div>
+                )}
               </div>
             )}
           </div>
