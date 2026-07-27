@@ -15,8 +15,9 @@ const PALETTE = [
   "hsl(90 55% 50%)", "hsl(15 80% 58%)", "hsl(260 60% 62%)", "hsl(160 60% 45%)",
 ];
 
-interface BC { fonte: string | null; created_at: string; }
-interface SavedFilter { id: string; nome: string; config: { fonti?: string[]; weeks?: number }; }
+interface BC { fonte: string | null; venditore: string | null; created_at: string; }
+type GroupBy = "fonte" | "venditore";
+interface SavedFilter { id: string; nome: string; config: { fonti?: string[]; weeks?: number; groupBy?: GroupBy } }
 
 // lunedì della settimana (ISO), formato YYYY-MM-DD
 const weekStart = (iso: string): string => {
@@ -37,6 +38,7 @@ const CallWeekly = ({ refreshTrigger }: Props) => {
   const [rows, setRows] = useState<BC[]>([]);
   const [loading, setLoading] = useState(false);
   const [weeks, setWeeks] = useState(12);
+  const [groupBy, setGroupBy] = useState<GroupBy>("fonte");
   const [fontiSel, setFontiSel] = useState<string[]>([]); // vuoto = tutte (totale)
   const [saved, setSaved] = useState<SavedFilter[]>([]);
   const [filterName, setFilterName] = useState("");
@@ -49,7 +51,7 @@ const CallWeekly = ({ refreshTrigger }: Props) => {
     while (true) {
       const { data } = await supabase
         .from("booked_call")
-        .select("fonte, created_at")
+        .select("fonte, venditore, created_at")
         .eq("market", selectedMarket)
         .gte("created_at", since)
         .range(from, from + 999);
@@ -70,12 +72,14 @@ const CallWeekly = ({ refreshTrigger }: Props) => {
   useEffect(() => { load(); }, [load, refreshTrigger]);
   useEffect(() => { loadSaved(); }, [loadSaved]);
 
-  // fonti disponibili (ordinate per volume)
+  const keyOf = (r: BC) => ((groupBy === "fonte" ? r.fonte : r.venditore) || "—").trim() || "—";
+
+  // valori disponibili (fonti o venditori) ordinati per volume
   const fontiAvail = useMemo(() => {
     const c: Record<string, number> = {};
-    for (const r of rows) { const f = (r.fonte || "—").trim() || "—"; c[f] = (c[f] || 0) + 1; }
+    for (const r of rows) { const f = keyOf(r); c[f] = (c[f] || 0) + 1; }
     return Object.entries(c).sort((a, b) => b[1] - a[1]).map(([f]) => f);
-  }, [rows]);
+  }, [rows, groupBy]);
 
   // settimane ordinate
   const weekKeys = useMemo(() => {
@@ -91,7 +95,7 @@ const CallWeekly = ({ refreshTrigger }: Props) => {
     for (const wk of weekKeys) byWeek[wk] = {};
     for (const r of rows) {
       const wk = weekStart(r.created_at);
-      const f = (r.fonte || "—").trim() || "—";
+      const f = keyOf(r);
       if (fontiSel.length > 0) {
         if (!fontiSel.includes(f)) continue;
         byWeek[wk][f] = (byWeek[wk][f] || 0) + 1;
@@ -100,19 +104,20 @@ const CallWeekly = ({ refreshTrigger }: Props) => {
       }
     }
     return weekKeys.map((wk) => ({ settimana: weekLabel(wk), ...byWeek[wk] }));
-  }, [rows, weekKeys, fontiSel]);
+  }, [rows, weekKeys, fontiSel, groupBy]);
 
   const toggleFonte = (f: string) => setFontiSel((prev) => prev.includes(f) ? prev.filter((x) => x !== f) : [...prev, f]);
 
   const saveFilter = async () => {
     if (!filterName.trim()) { toast.error("Dai un nome al filtro"); return; }
-    const { error } = await supabase.from("call_report_filters").insert({ nome: filterName.trim(), config: { fonti: fontiSel, weeks }, market: selectedMarket } as any);
+    const { error } = await supabase.from("call_report_filters").insert({ nome: filterName.trim(), config: { fonti: fontiSel, weeks, groupBy }, market: selectedMarket } as any);
     if (error) { toast.error("Errore salvataggio"); return; }
     toast.success("Filtro salvato");
     setFilterName("");
     loadSaved();
   };
   const applyFilter = (f: SavedFilter) => {
+    if (f.config.groupBy) setGroupBy(f.config.groupBy);
     setFontiSel(f.config.fonti || []);
     if (f.config.weeks) setWeeks(f.config.weeks);
   };
@@ -130,15 +135,21 @@ const CallWeekly = ({ refreshTrigger }: Props) => {
           <CardTitle className="flex items-center gap-2"><CalendarDays className="h-4 w-4 text-primary" /> Call per settimana e provenienza</CardTitle>
           <p className="text-[12px] text-muted-foreground mt-1">Call entrate per settimana, per provenienza. {totale} call negli ultimi {weeks} settimane.</p>
         </div>
-        <Select value={String(weeks)} onValueChange={(v) => setWeeks(parseInt(v))}>
-          <SelectTrigger className="h-8 w-[150px] text-[12.5px]"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="8">Ultime 8 sett.</SelectItem>
-            <SelectItem value="12">Ultime 12 sett.</SelectItem>
-            <SelectItem value="26">Ultime 26 sett.</SelectItem>
-            <SelectItem value="52">Ultime 52 sett.</SelectItem>
-          </SelectContent>
-        </Select>
+        <div className="flex gap-2 items-center">
+          <div className="inline-flex rounded-md border border-border overflow-hidden text-[12px]">
+            <button onClick={() => { setGroupBy("fonte"); setFontiSel([]); }} className={`px-2.5 py-1.5 ${groupBy === "fonte" ? "bg-primary text-primary-foreground" : "hover:bg-secondary"}`}>Provenienza</button>
+            <button onClick={() => { setGroupBy("venditore"); setFontiSel([]); }} className={`px-2.5 py-1.5 ${groupBy === "venditore" ? "bg-primary text-primary-foreground" : "hover:bg-secondary"}`}>Sales</button>
+          </div>
+          <Select value={String(weeks)} onValueChange={(v) => setWeeks(parseInt(v))}>
+            <SelectTrigger className="h-8 w-[140px] text-[12.5px]"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="8">Ultime 8 sett.</SelectItem>
+              <SelectItem value="12">Ultime 12 sett.</SelectItem>
+              <SelectItem value="26">Ultime 26 sett.</SelectItem>
+              <SelectItem value="52">Ultime 52 sett.</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </CardHeader>
       <CardContent className="space-y-4">
         {/* Filtri salvati */}
@@ -157,7 +168,7 @@ const CallWeekly = ({ refreshTrigger }: Props) => {
         {/* Selettore fonti */}
         <div>
           <div className="flex items-center justify-between mb-1.5">
-            <span className="label-eyebrow">Provenienza call {fontiSel.length === 0 && "(tutte = totale)"}</span>
+            <span className="label-eyebrow">{groupBy === "fonte" ? "Provenienza call" : "Venditore"} {fontiSel.length === 0 && "(tutti = totale)"}</span>
             {fontiSel.length > 0 && <button onClick={() => setFontiSel([])} className="text-[11px] text-muted-foreground hover:text-foreground inline-flex items-center gap-1"><X className="h-3 w-3" /> azzera</button>}
           </div>
           <div className="flex flex-wrap gap-1.5">
