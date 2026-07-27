@@ -29,7 +29,13 @@ const Spark = ({ values }: { values: number[] }) => {
 
 interface BC { fonte: string | null; venditore: string | null; created_at: string; }
 interface SavedFilter { id: string; nome: string; config: { fonti?: string[]; period?: string; cFrom?: string; cTo?: string } }
-const fonteOf = (r: BC) => (r.fonte || "—").trim() || "—";
+// Raggruppamento provenienze: collassa varianti in una colonna unica cumulata.
+// Es. "setter_new nicola/davide/giovanni…" → "setter_new".
+const GROUPS: { test: RegExp; to: string }[] = [
+  { test: /^setter[ _]new\b/i, to: "setter_new" },
+];
+const groupFonte = (f: string) => GROUPS.find((g) => g.test.test(f))?.to ?? f;
+const fonteOf = (r: BC) => groupFonte((r.fonte || "—").trim() || "—");
 const sellerOf = (r: BC) => (r.venditore || "—").trim() || "—";
 
 // ── Periodi ──
