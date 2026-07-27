@@ -99,6 +99,7 @@ const ReportValoreCall = ({ refreshTrigger }: Props) => {
   const [err, setErr] = useState<string | null>(null);
   const [chartSeller, setChartSeller] = useState<string>("__all__");
   const [expanded, setExpanded] = useState(false);
+  const [cellDetail, setCellDetail] = useState<{ title: string; color: string; mesi: MonthData[] } | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -179,17 +180,18 @@ const ReportValoreCall = ({ refreshTrigger }: Props) => {
     </ResponsiveContainer>
   );
 
-  const cell = (b: BucketData | undefined, id: string) => {
+  const cell = (b: BucketData | undefined, id: string, sellerName: string, label: string) => {
     if (!b || !b.has_call) {
       return <span className="text-[10px] text-muted-foreground/60 px-1.5 py-0.5 rounded bg-muted/40">no call</span>;
     }
+    const openDetail = () => setCellDetail({ title: `${sellerName} · ${label}`, color: colorOf(id), mesi: b.mesi });
     return (
-      <>
+      <button type="button" onClick={openDetail} className="w-full text-right hover:bg-secondary/40 rounded px-1 -mx-1 transition-colors cursor-pointer" title="Clicca per ingrandire">
         <span className="font-semibold">{eur(b.valore_call)}</span>
         <span className="block text-[9px] text-muted-foreground">{b.n_call} call · {b.mesi.length}m</span>
         <span className="block leading-none"><Sparkline values={b.mesi.map((m) => m.valore_call)} color={colorOf(id)} /></span>
         <span className="block"><TrendInline t={b.trend} /></span>
-      </>
+      </button>
     );
   };
 
@@ -242,7 +244,7 @@ const ReportValoreCall = ({ refreshTrigger }: Props) => {
                     <tr className="bg-secondary/40">
                       <td className="table-body-cell font-semibold sticky left-0 bg-card z-10">Media team</td>
                       {bucketCols.map((c) => (
-                        <td key={c.id} className="table-body-cell text-right num">{cell(totalRow[c.id], c.id)}</td>
+                        <td key={c.id} className="table-body-cell text-right num">{cell(totalRow[c.id], c.id, "Media team", c.label)}</td>
                       ))}
                     </tr>
                   )}
@@ -250,7 +252,7 @@ const ReportValoreCall = ({ refreshTrigger }: Props) => {
                     <tr key={r.venditore}>
                       <td className="table-body-cell font-medium sticky left-0 bg-card z-10 whitespace-nowrap">{r.venditore}</td>
                       {bucketCols.map((c) => (
-                        <td key={c.id} className="table-body-cell text-right num">{cell(r.byBucket[c.id], c.id)}</td>
+                        <td key={c.id} className="table-body-cell text-right num">{cell(r.byBucket[c.id], c.id, r.venditore, c.label)}</td>
                       ))}
                     </tr>
                   ))}
@@ -330,6 +332,53 @@ const ReportValoreCall = ({ refreshTrigger }: Props) => {
             </Select>
           </div>
           {renderChart(440)}
+        </DialogContent>
+      </Dialog>
+
+      {/* Modale dettaglio singola cella (venditore × fonte) */}
+      <Dialog open={!!cellDetail} onOpenChange={(o) => !o && setCellDetail(null)}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-[15px] flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-sm" style={{ background: cellDetail?.color }} />
+              {cellDetail?.title}
+            </DialogTitle>
+          </DialogHeader>
+          {cellDetail && (
+            <>
+              <div className="h-[320px] w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={cellDetail.mesi.map((m) => ({ mese: monthLabel(m.mese), "Valore call": m.valore_call, n: m.n_call }))} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(220 8% 15%)" vertical={false} />
+                    <XAxis dataKey="mese" tick={{ fontSize: 12, fill: "hsl(220 6% 60%)" }} axisLine={false} tickLine={false} />
+                    <YAxis tick={{ fontSize: 12, fill: "hsl(220 6% 60%)" }} axisLine={false} tickLine={false} tickFormatter={(v) => `€${(v / 1000).toFixed(1)}k`} width={52} />
+                    <Tooltip contentStyle={{ background: "hsl(220 12% 10.5%)", border: "1px solid hsl(220 8% 15%)", borderRadius: 8, fontSize: 12 }} formatter={(v: number) => eur(v)} />
+                    <Line type="monotone" dataKey="Valore call" stroke={cellDetail.color} strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 6 }} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+              <table className="w-full text-[12.5px] mt-2">
+                <thead>
+                  <tr>
+                    <th className="table-header-cell text-left">Mese</th>
+                    <th className="table-header-cell text-right">Valore call</th>
+                    <th className="table-header-cell text-right">N call</th>
+                    <th className="table-header-cell text-right">Fatturato</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {cellDetail.mesi.map((m) => (
+                    <tr key={m.mese}>
+                      <td className="table-body-cell font-medium">{monthLabel(m.mese)}</td>
+                      <td className="table-body-cell text-right num font-semibold">{eur(m.valore_call)}</td>
+                      <td className="table-body-cell text-right num">{m.n_call}</td>
+                      <td className="table-body-cell text-right num text-muted-foreground">{eur(m.fatturato)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </>
+          )}
         </DialogContent>
       </Dialog>
     </Card>
