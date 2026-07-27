@@ -9,7 +9,7 @@ import { findMemberByCode } from "@/lib/ranking/hashUtils";
 import { HallOfFame } from "@/components/ranking/HallOfFame";
 import { InfoBox } from "@/components/ranking/InfoBox";
 import { FloatingMoney } from "@/components/ranking/FloatingMoney";
-import FonteRankingBlocks from "@/components/ranking/FonteRankingBlocks";
+import FontePodium from "@/components/ranking/FontePodium";
 import logo from "@/assets/ranking-logo.png";
 import { toast } from "sonner";
 import { Info } from "lucide-react";
@@ -104,13 +104,12 @@ const Ranking = () => {
                 <TabsContent key={key} value={key} className="space-y-8">
                   <Podium members={podium} metric={key} />
                   <LeaderboardTable members={rest} metric={key} highlightName={myName} />
-                  {/* Sotto il tab Valore Call: classifica per fonte (escl. outbound) */}
-                  {key === "valoreCall" && (
-                    <div className="pt-2">
-                      <h3 className="text-sm font-bold text-foreground mb-3 text-center">Classifica per fonte 📞</h3>
-                      <FonteRankingBlocks market="IT" memberCode={memberCode} />
-                    </div>
-                  )}
+                  {/* Suddivisione per fonte (podio) della stessa metrica */}
+                  <div className="pt-4 border-t border-border/40">
+                    <h3 className="text-sm font-bold text-foreground mb-1 text-center">{METRIC_LABELS[key].label} per fonte</h3>
+                    <p className="text-muted-foreground text-xs text-center mb-4">Classifica per provenienza · ultimi 3 mesi con call</p>
+                    <FontePodium metric={key} memberCode={memberCode} />
+                  </div>
                 </TabsContent>
               );
             })}
