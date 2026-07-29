@@ -40,7 +40,7 @@ const SparkMulti = ({ series }: { series: { values: number[]; color: string }[] 
 const PALETTE = ["hsl(232 100% 74%)", "hsl(280 70% 62%)", "hsl(180 65% 48%)", "hsl(38 92% 55%)", "hsl(340 75% 60%)", "hsl(150 60% 50%)", "hsl(20 85% 60%)"];
 const weekShort = (ws: string) => { const d = new Date(ws + "T00:00:00Z"); return `${String(d.getUTCDate()).padStart(2, "0")}/${String(d.getUTCMonth() + 1).padStart(2, "0")}`; };
 
-interface BC { fonte: string | null; venditore: string | null; created_at: string; }
+interface BC { fonte: string | null; venditore: string | null; data_call: string | null; }
 interface SavedFilter { id: string; nome: string; config: { fonti?: string[]; period?: string; cFrom?: string; cTo?: string } }
 const rawFonteOf = (r: BC) => (r.fonte || "—").trim() || "—";
 const sellerOf = (r: BC) => (r.venditore || "—").trim() || "—";
@@ -115,10 +115,10 @@ const CallWeekly = ({ refreshTrigger }: Props) => {
     while (true) {
       const { data } = await supabase
         .from("booked_call")
-        .select("fonte, venditore, created_at")
+        .select("fonte, venditore, data_call")
         .eq("market", selectedMarket)
-        .gte("created_at", range.from)
-        .lte("created_at", range.to)
+        .gte("data_call", range.from)
+        .lte("data_call", range.to)
         .range(from, from + 999);
       if (!data || data.length === 0) break;
       all = all.concat(data as BC[]);
@@ -182,7 +182,8 @@ const CallWeekly = ({ refreshTrigger }: Props) => {
     for (const r of rows) {
       const s = sellerOf(r);
       const f = fonteOf(r);
-      const wi = idx[bucketOf(r.created_at)];
+      if (!r.data_call) continue;
+      const wi = idx[bucketOf(r.data_call)];
       if (wi === undefined) continue;
       if (!bySeller[s]) bySeller[s] = { tot: 0, byFonte: {}, series: new Array(weekKeys.length).fill(0), seriesByFonte: {} };
       bySeller[s].tot++;
@@ -265,8 +266,8 @@ const CallWeekly = ({ refreshTrigger }: Props) => {
     <Card>
       <CardHeader className="flex flex-row items-start justify-between gap-3 flex-wrap">
         <div>
-          <CardTitle className="flex items-center gap-2"><CalendarDays className="h-4 w-4 text-primary" /> Call per settimana e provenienza</CardTitle>
-          <p className="text-[12px] text-muted-foreground mt-1">Call entrate per {bucketMode === "day" ? "giorno" : "settimana"}, per provenienza. {totale} call · {PERIODS[period]} · <span className="text-foreground/80">{fmtDate(range.from)} – {fmtDate(range.to)}</span>.</p>
+          <CardTitle className="flex items-center gap-2"><CalendarDays className="h-4 w-4 text-primary" /> Call schedulate per provenienza</CardTitle>
+          <p className="text-[12px] text-muted-foreground mt-1">Call schedulate (per data della call) per {bucketMode === "day" ? "giorno" : "settimana"}. {totale} call · {PERIODS[period]} · <span className="text-foreground/80">{fmtDate(range.from)} – {fmtDate(range.to)}</span>.</p>
         </div>
         <div className="flex gap-2 items-center flex-wrap justify-end">
           <Select value={period} onValueChange={setPeriod}>
