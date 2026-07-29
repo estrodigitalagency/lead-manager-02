@@ -171,8 +171,10 @@ const CallWeekly = ({ refreshTrigger }: Props) => {
     return keys;
   }, [range, bucketMode]);
 
-  // Pivot: righe = sales, colonne = provenienze selezionate (+ totale). Cella = n call nel periodo.
-  // series = call totali (rispettando fontiSel) per settimana → sparkline riga.
+  // Pivot: righe = sales, colonne = provenienze selezionate (breakdown). Cella = n call nel periodo.
+  // Totale + series = TUTTE le call del venditore nel periodo (NON solo le fonti selezionate):
+  // le colonne sono un dettaglio, il totale resta il totale reale. byFonte contiene tutte le fonti,
+  // in tabella si renderizzano solo quelle in `cols`.
   const pivot = useMemo(() => {
     const idx: Record<string, number> = {};
     weekKeys.forEach((wk, i) => { idx[wk] = i; });
@@ -180,10 +182,9 @@ const CallWeekly = ({ refreshTrigger }: Props) => {
     for (const r of rows) {
       const s = sellerOf(r);
       const f = fonteOf(r);
-      if (cols.length > 0 && !cols.includes(f)) continue;
-      if (!bySeller[s]) bySeller[s] = { tot: 0, byFonte: {}, series: new Array(weekKeys.length).fill(0), seriesByFonte: {} };
       const wi = idx[bucketOf(r.created_at)];
       if (wi === undefined) continue;
+      if (!bySeller[s]) bySeller[s] = { tot: 0, byFonte: {}, series: new Array(weekKeys.length).fill(0), seriesByFonte: {} };
       bySeller[s].tot++;
       bySeller[s].byFonte[f] = (bySeller[s].byFonte[f] || 0) + 1;
       bySeller[s].series[wi]++;
@@ -193,7 +194,7 @@ const CallWeekly = ({ refreshTrigger }: Props) => {
     return Object.entries(bySeller)
       .map(([venditore, v]) => ({ venditore, ...v }))
       .sort((a, b) => b.tot - a.tot);
-  }, [rows, cols, weekKeys, fonteOf, bucketOf]);
+  }, [rows, weekKeys, fonteOf, bucketOf]);
 
   // Totali colonna
   const pivotTotals = useMemo(() => {
@@ -343,7 +344,7 @@ const CallWeekly = ({ refreshTrigger }: Props) => {
                     <tr className="[&>th]:align-bottom">
                       <th className="table-header-cell text-left sticky left-0 top-0 bg-card z-30">Sales</th>
                       {cols.map((f) => <th key={f} className="table-header-cell text-right sticky top-0 bg-card z-20 whitespace-normal break-words leading-tight w-[72px]">{f}</th>)}
-                      <th className="table-header-cell text-right sticky top-0 bg-card z-20">Totale</th>
+                      <th className="table-header-cell text-right sticky top-0 bg-card z-20" title="Tutte le call del venditore nel periodo (tutte le fonti, non solo quelle selezionate)">Totale</th>
                       <th className="table-header-cell text-center sticky top-0 bg-card z-20 whitespace-nowrap">Andamento</th>
                     </tr>
                   </thead>
