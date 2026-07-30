@@ -4,6 +4,20 @@ import { toast } from "sonner";
 import { LeadAssignmentAutomation } from "@/types/automation";
 import { useMarket } from "@/contexts/MarketContext";
 
+// Soft-delete automazioni: la FK automation_executions.automation_id (RESTRICT) e la RLS
+// impediscono di cancellare un'automazione con storico esecuzioni. Invece di cancellare
+// (e perdere lo storico) la nascondiamo: id in questa lista (system_settings) + attivo=false.
+const HIDDEN_KEY = "automations_hidden";
+const readHiddenAutomations = async (): Promise<string[]> => {
+  const { data } = await supabase.from("system_settings").select("value").eq("key", HIDDEN_KEY).maybeSingle();
+  try {
+    const p = JSON.parse(data?.value || "[]");
+    return Array.isArray(p) ? (p as string[]) : [];
+  } catch {
+    return [];
+  }
+};
+
 export const useAutomationsData = () => {
   const { selectedMarket } = useMarket();
   const [automations, setAutomations] = useState<LeadAssignmentAutomation[]>([]);
@@ -19,8 +33,9 @@ export const useAutomationsData = () => {
         .order('priority', { ascending: true });
       
       if (error) throw error;
-      
-      const typedData = (data || []).map(item => ({
+
+      const hidden = await readHiddenAutomations();
+      const typedData = (data || []).filter(item => !hidden.includes(item.id)).map(item => ({
         ...item,
         trigger_when: item.trigger_when as 'new_lead' | 'duplicate_different_source',
         trigger_field: item.trigger_field as 'ultima_fonte' | 'fonte' | 'nome' | 'email' | 'telefono' | 'campagna' | 'lead_score' | 'created_at',
@@ -28,7 +43,7 @@ export const useAutomationsData = () => {
         action_type: item.action_type as 'assign_to_seller' | 'assign_to_previous_seller' | 'weighted_distribution',
         distribution_mode: (item as any).distribution_mode as any,
       })) as unknown as LeadAssignmentAutomation[];
-      
+
       setAutomations(typedData);
     } catch (error) {
       console.error("Error fetching automations:", error);
@@ -87,17 +102,22 @@ export const useAutomationsData = () => {
 
   const deleteAutomation = async (id: string) => {
     try {
-      // La FK automation_executions.automation_id → lead_assignment_automations.id è senza
-      // ON DELETE CASCADE: se restano esecuzioni collegate il delete viene rifiutato (23503).
-      // Elimino prima il log esecuzioni (audit di un'automazione ormai rimossa), poi l'automazione.
-      await supabase.from('automation_executions').delete().eq('automation_id', id);
-
+      // Soft-delete: disattiva (così smette di girare) e nasconde dalla lista, MANTENENDO
+      // l'automazione e il suo storico esecuzioni. L'hard-delete è impossibile: FK RESTRICT su
+      // automation_executions + RLS che blocca il delete delle esecuzioni.
       const { error } = await supabase
         .from('lead_assignment_automations')
-        .delete()
+        .update({ attivo: false })
         .eq('id', id);
-
       if (error) throw error;
+
+      const hidden = await readHiddenAutomations();
+      if (!hidden.includes(id)) {
+        const { error: hErr } = await supabase
+          .from('system_settings')
+          .upsert({ key: HIDDEN_KEY, value: JSON.stringify([...hidden, id]), descrizione: "Automazioni nascoste (soft-delete)" }, { onConflict: 'key' });
+        if (hErr) throw hErr;
+      }
 
       await fetchAutomations();
       toast.success("Automazione eliminata con successo");
