@@ -71,15 +71,22 @@ const WhatsAppRedirect = () => {
       }
     })();
 
+    // Un valore è "reale" se non è un placeholder non sostituito dalla piattaforma
+    // (es. {{contact.email}}, [email], %7B%7B...). In quel caso lo ignoro e provo il referrer.
+    const isPlaceholder = (v: string) => /\{\{|\}\}|^\[.*\]$|%7b|%7d/i.test(v);
+    const realVal = (v: string | null): string => {
+      const t = (v || "").trim();
+      return t && !isPlaceholder(t) ? t : "";
+    };
     const getParam = (...keys: string[]): string => {
       for (const k of keys) {
-        const v = params.get(k);
-        if (v && v.trim()) return v.trim();
+        const v = realVal(params.get(k));
+        if (v) return v;
       }
       if (referrerParams) {
         for (const k of keys) {
-          const v = referrerParams.get(k);
-          if (v && v.trim()) return v.trim();
+          const v = realVal(referrerParams.get(k));
+          if (v) return v;
         }
       }
       return "";
@@ -157,30 +164,36 @@ const WhatsAppRedirect = () => {
 
         const effectiveMarket = (templateMarket || market) as "IT" | "ES";
 
-        // Cerca lead più recente per email o telefono
-        let lead: any = null;
-        if (email) {
-          const { data } = await supabase
-            .from("lead_generation")
-            .select("id, venditore, market, created_at, telefono, email, nome, cognome, ultima_fonte, campagna")
-            .eq("market", effectiveMarket)
-            .ilike("email", email)
-            .not("venditore", "is", null)
-            .order("created_at", { ascending: false })
-            .limit(1);
-          lead = data?.[0] || null;
-        }
-        if (!lead && phoneNorm) {
-          const suffix = phoneNorm.slice(-9);
-          const { data } = await supabase
-            .from("lead_generation")
-            .select("id, venditore, market, created_at, telefono, email, nome, cognome, ultima_fonte, campagna")
-            .eq("market", effectiveMarket)
-            .ilike("telefono", `%${suffix}%`)
-            .not("venditore", "is", null)
-            .order("created_at", { ascending: false })
-            .limit(1);
-          lead = data?.[0] || null;
+        // Cerca il lead più recente CON venditore assegnato (per email o telefono).
+        const findAssignedLead = async (): Promise<any | null> => {
+          const cols = "id, venditore, market, created_at, telefono, email, nome, cognome, ultima_fonte, campagna";
+          if (email) {
+            const { data } = await supabase
+              .from("lead_generation").select(cols)
+              .eq("market", effectiveMarket).ilike("email", email).not("venditore", "is", null)
+              .order("created_at", { ascending: false }).limit(1);
+            if (data?.[0]) return data[0];
+          }
+          if (phoneNorm) {
+            const suffix = phoneNorm.slice(-9);
+            const { data } = await supabase
+              .from("lead_generation").select(cols)
+              .eq("market", effectiveMarket).ilike("telefono", `%${suffix}%`).not("venditore", "is", null)
+              .order("created_at", { ascending: false }).limit(1);
+            if (data?.[0]) return data[0];
+          }
+          return null;
+        };
+
+        // Race lead-in vs assegnazione: se il lead clicca subito, l'assegnazione può non essere
+        // ancora completata. Riprovo per qualche secondo (loading) prima di cadere sul fallback.
+        const POLL_MS = 600;
+        const MAX_WAIT_MS = 9000;
+        let lead: any = await findAssignedLead();
+        const deadline = Date.now() + MAX_WAIT_MS;
+        while (!lead && Date.now() < deadline) {
+          await new Promise((r) => setTimeout(r, POLL_MS));
+          lead = await findAssignedLead();
         }
 
         if (!lead || !lead.venditore) {
