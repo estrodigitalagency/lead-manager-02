@@ -61,7 +61,8 @@ export const useAutomationsData = () => {
       return data;
     } catch (error) {
       console.error("Error creating automation:", error);
-      toast.error("Errore nella creazione dell'automazione");
+      const e = error as { message?: string; code?: string };
+      toast.error(e?.message ? `Errore creazione: ${e.message}` : "Errore nella creazione dell'automazione");
       throw error;
     }
   };

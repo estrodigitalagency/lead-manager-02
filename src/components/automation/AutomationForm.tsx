@@ -183,7 +183,9 @@ export function AutomationForm({ open, onOpenChange, onSubmit, automation, isLoa
       onOpenChange(false);
     } catch (error) {
       console.error("Error submitting automation:", error);
-      alert(error instanceof Error ? error.message : 'Errore nel salvataggio');
+      const e = error as { message?: string; hint?: string; details?: string; code?: string };
+      const msg = e?.message || e?.details || e?.hint || (typeof error === "string" ? error : "Errore nel salvataggio");
+      alert(e?.code ? `${msg} (${e.code})` : msg);
     } finally {
       setIsSubmitting(false);
     }
