@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { fetchTemplates, saveTemplate, deleteTemplate, WaTemplate } from "@/lib/whatsapp/templates";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,19 +13,7 @@ import { toast } from "sonner";
 import { Copy, Edit, Trash2, Plus, MessageCircle, ExternalLink, TrendingUp, AlertTriangle, ShieldCheck } from "lucide-react";
 import { useMarket } from "@/contexts/MarketContext";
 
-interface Template {
-  id: string;
-  slug: string;
-  nome: string;
-  messaggio_template: string;
-  market: string;
-  attivo: boolean;
-  click_count: number;
-  fallback_phone: string | null;
-  fallback_message: string | null;
-  created_at: string;
-  updated_at: string;
-}
+type Template = WaTemplate;
 
 const PLACEHOLDERS = [
   { k: "{{nome}}", d: "Nome (prima parola)" },
@@ -65,12 +53,7 @@ const WhatsAppTemplatesSection = () => {
 
   const load = async () => {
     setLoading(true);
-    const { data } = await supabase
-      .from("whatsapp_templates")
-      .select("*")
-      .eq("market", selectedMarket)
-      .order("created_at", { ascending: false });
-    setTemplates((data as any) || []);
+    setTemplates(await fetchTemplates(selectedMarket));
     setLoading(false);
   };
 
@@ -116,41 +99,27 @@ const WhatsAppTemplatesSection = () => {
       toast.error("Slug non valido");
       return;
     }
-    try {
-      const payload = {
-        slug,
-        nome: form.nome.trim(),
-        messaggio_template: form.messaggio_template,
-        market: form.market,
-        attivo: form.attivo,
-        fallback_phone: form.fallback_phone.trim() || null,
-        fallback_message: form.fallback_message.trim() || null,
-      };
-
-      if (editing) {
-        const { error } = await supabase
-          .from("whatsapp_templates")
-          .update({ ...payload, updated_at: new Date().toISOString() } as any)
-          .eq("id", editing.id);
-        if (error) throw error;
-        toast.success("Template aggiornato");
-      } else {
-        const { error } = await supabase.from("whatsapp_templates").insert(payload as any);
-        if (error) throw error;
-        toast.success("Template creato");
-      }
-      setDialogOpen(false);
-      await load();
-    } catch (err: any) {
-      console.error(err);
-      toast.error(err.message?.includes("duplicate") ? "Slug già esistente, cambialo" : "Errore salvataggio");
-    }
+    const res = await saveTemplate({
+      id: editing?.id,
+      slug,
+      nome: form.nome.trim(),
+      messaggio_template: form.messaggio_template,
+      market: form.market,
+      attivo: form.attivo,
+      fallback_phone: form.fallback_phone.trim() || null,
+      fallback_message: form.fallback_message.trim() || null,
+    });
+    if (res === "duplicate") { toast.error("Slug già esistente, cambialo"); return; }
+    if (res === "error") { toast.error("Errore salvataggio"); return; }
+    toast.success(editing ? "Template aggiornato" : "Template creato");
+    setDialogOpen(false);
+    await load();
   };
 
   const handleDelete = async (t: Template) => {
     if (!confirm(`Eliminare template "${t.nome}"?`)) return;
-    const { error } = await supabase.from("whatsapp_templates").delete().eq("id", t.id);
-    if (error) toast.error("Errore eliminazione");
+    const ok = await deleteTemplate(t.id);
+    if (!ok) toast.error("Errore eliminazione");
     else {
       toast.success("Template eliminato");
       load();

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useSearchParams, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchTemplateBySlug, incrementTemplateClick } from "@/lib/whatsapp/templates";
 import { Loader2, AlertCircle, MessageCircle } from "lucide-react";
 
 /**
@@ -101,12 +102,7 @@ const WhatsAppRedirect = () => {
         let fallbackPhone: string | null = null;
         let fallbackMessage: string | null = null;
         if (slug) {
-          const { data: tpl } = await supabase
-            .from("whatsapp_templates")
-            .select("messaggio_template, market, fallback_phone, fallback_message")
-            .eq("slug", slug)
-            .eq("attivo", true)
-            .maybeSingle();
+          const tpl = await fetchTemplateBySlug(slug);
           if (!tpl) {
             setStatus("error");
             setErrorMsg("Template non trovato o disattivato.");
@@ -260,13 +256,8 @@ const WhatsAppRedirect = () => {
         });
 
         if (slug) {
-          // Increment click_count non atomico via update — best effort
-          try {
-            const { data: cur } = await supabase.from("whatsapp_templates").select("id, click_count").eq("slug", slug).maybeSingle();
-            if (cur) {
-              await supabase.from("whatsapp_templates").update({ click_count: (cur.click_count || 0) + 1 }).eq("id", cur.id);
-            }
-          } catch { /* no-op */ }
+          // Increment click_count best effort
+          try { await incrementTemplateClick(slug); } catch { /* no-op */ }
         }
 
         window.location.replace(waUrl);
