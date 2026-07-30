@@ -87,18 +87,24 @@ export const useAutomationsData = () => {
 
   const deleteAutomation = async (id: string) => {
     try {
+      // La FK automation_executions.automation_id → lead_assignment_automations.id è senza
+      // ON DELETE CASCADE: se restano esecuzioni collegate il delete viene rifiutato (23503).
+      // Elimino prima il log esecuzioni (audit di un'automazione ormai rimossa), poi l'automazione.
+      await supabase.from('automation_executions').delete().eq('automation_id', id);
+
       const { error } = await supabase
         .from('lead_assignment_automations')
         .delete()
         .eq('id', id);
-      
+
       if (error) throw error;
-      
+
       await fetchAutomations();
       toast.success("Automazione eliminata con successo");
     } catch (error) {
       console.error("Error deleting automation:", error);
-      toast.error("Errore nell'eliminazione dell'automazione");
+      const e = error as { message?: string };
+      toast.error(e?.message ? `Errore eliminazione: ${e.message}` : "Errore nell'eliminazione dell'automazione");
       throw error;
     }
   };
