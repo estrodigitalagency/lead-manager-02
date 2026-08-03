@@ -40,10 +40,12 @@ const SparkMulti = ({ series }: { series: { values: number[]; color: string }[] 
 const PALETTE = ["hsl(232 100% 74%)", "hsl(280 70% 62%)", "hsl(180 65% 48%)", "hsl(38 92% 55%)", "hsl(340 75% 60%)", "hsl(150 60% 50%)", "hsl(20 85% 60%)"];
 const weekShort = (ws: string) => { const d = new Date(ws + "T00:00:00Z"); return `${String(d.getUTCDate()).padStart(2, "0")}/${String(d.getUTCMonth() + 1).padStart(2, "0")}`; };
 
-interface BC { fonte: string | null; venditore: string | null; data_call: string | null; }
+interface BC { fonte: string | null; venditore: string | null; data_call: string | null; email: string | null; }
 interface SavedFilter { id: string; nome: string; config: { fonti?: string[]; period?: string; cFrom?: string; cTo?: string } }
 const rawFonteOf = (r: BC) => (r.fonte || "—").trim() || "—";
 const sellerOf = (r: BC) => (r.venditore || "—").trim() || "—";
+// Una call "rischedulata" (inbound/outbound) eredita la fonte della call ORIGINALE dello stesso lead.
+const isResched = (f: string) => /rischedul/i.test(f);
 
 // ── Periodi ──
 const PERIODS: Record<string, string> = {
@@ -101,10 +103,19 @@ const CallWeekly = ({ refreshTrigger }: Props) => {
   const [filterName, setFilterName] = useState("");
   const [groups, setGroups] = useState<FonteGroupRule[]>([]);
   const [chartRow, setChartRow] = useState<string | null>(null); // venditore di cui mostrare il dettaglio
+  const [origFonte, setOrigFonte] = useState<Record<string, string>>({}); // email → fonte call originale (per rischedulate)
 
   useEffect(() => { fetchFonteGroups().then(setGroups); }, []);
+  // fonte grezza risolta: se è una rischedulate, usa la fonte della call originale dello stesso
+  // lead (match per email; i booked_call rischedulate non hanno lead_id).
+  const resolvedRaw = useCallback((r: BC) => {
+    const raw = rawFonteOf(r);
+    const em = (r.email || "").trim().toLowerCase();
+    if (isResched(raw) && em && origFonte[em]) return origFonte[em];
+    return raw;
+  }, [origFonte]);
   // fonte raggruppata secondo le regole configurabili (Impostazioni → provenienze)
-  const fonteOf = useCallback((r: BC) => applyFonteGroups(rawFonteOf(r), groups), [groups]);
+  const fonteOf = useCallback((r: BC) => applyFonteGroups(resolvedRaw(r), groups), [groups, resolvedRaw]);
 
   const range = useMemo(() => computeRange(period, cFrom, cTo), [period, cFrom, cTo]);
 
@@ -115,7 +126,7 @@ const CallWeekly = ({ refreshTrigger }: Props) => {
     while (true) {
       const { data } = await supabase
         .from("booked_call")
-        .select("fonte, venditore, data_call")
+        .select("fonte, venditore, data_call, email")
         .eq("market", selectedMarket)
         .gte("data_call", range.from)
         .lte("data_call", range.to)
@@ -128,6 +139,34 @@ const CallWeekly = ({ refreshTrigger }: Props) => {
     setRows(all);
     setLoading(false);
   }, [selectedMarket, range.from, range.to]);
+
+  // Per le rischedulate del periodo, recupera la fonte della call ORIGINALE (non-rischedulata,
+  // più recente) dello stesso lead — match per email, anche se fuori periodo.
+  useEffect(() => {
+    const emails = [...new Set(rows.filter((r) => isResched(rawFonteOf(r)) && r.email).map((r) => (r.email as string).trim()).filter(Boolean))];
+    if (emails.length === 0) { setOrigFonte({}); return; }
+    let cancelled = false;
+    (async () => {
+      const map: Record<string, string> = {};
+      for (let i = 0; i < emails.length; i += 150) {
+        const chunk = emails.slice(i, i + 150);
+        const { data } = await supabase
+          .from("booked_call")
+          .select("email, fonte, data_call")
+          .eq("market", selectedMarket)
+          .in("email", chunk)
+          .order("data_call", { ascending: false });
+        for (const row of (data as BC[]) || []) {
+          const f = rawFonteOf(row);
+          const em = (row.email || "").trim().toLowerCase();
+          if (!em || isResched(f)) continue; // salta le rischedulate stesse
+          if (!map[em]) map[em] = f; // prima = più recente (order desc)
+        }
+      }
+      if (!cancelled) setOrigFonte(map);
+    })();
+    return () => { cancelled = true; };
+  }, [rows, selectedMarket]);
 
   const loadSaved = useCallback(async () => {
     setSaved(await fetchCallFilters(selectedMarket));
