@@ -384,7 +384,7 @@ const CallWeekly = ({ refreshTrigger }: Props) => {
                     <tr className="[&>th]:align-bottom">
                       <th className="table-header-cell text-left sticky left-0 top-0 bg-card z-30">Sales</th>
                       {cols.map((f) => <th key={f} className="table-header-cell text-right sticky top-0 bg-card z-20 whitespace-normal break-words leading-tight w-[72px]">{f}</th>)}
-                      <th className="table-header-cell text-right sticky top-0 bg-card z-20" title="Tutte le call del venditore nel periodo (tutte le fonti, non solo quelle selezionate)">Totale</th>
+                      <th className="table-header-cell text-right sticky top-0 bg-card z-20" title={cols.length > 0 ? "Somma delle fonti selezionate (in vista) / totale di tutte le fonti" : "Tutte le call del venditore nel periodo"}>{cols.length > 0 ? "In vista / Totale" : "Totale"}</th>
                       <th className="table-header-cell text-center sticky top-0 bg-card z-20 whitespace-nowrap">Andamento</th>
                     </tr>
                   </thead>
@@ -399,7 +399,11 @@ const CallWeekly = ({ refreshTrigger }: Props) => {
                             {cols.map((f) => (
                               <td key={f} className="table-body-cell text-right num">{r.byFonte[f] || <span className="text-muted-foreground/40">0</span>}</td>
                             ))}
-                            <td className="table-body-cell text-right num font-semibold">{r.tot}</td>
+                            <td className="table-body-cell text-right num font-semibold">
+                              {cols.length > 0
+                                ? <>{cols.reduce((s, f) => s + (r.byFonte[f] || 0), 0)}<span className="text-muted-foreground font-normal"> / {r.tot}</span></>
+                                : r.tot}
+                            </td>
                             <td className="table-body-cell text-center">
                               <button type="button" onClick={() => setChartRow(r.venditore)} className="hover:bg-secondary/40 rounded px-1 transition-colors cursor-pointer" title="Clicca per il dettaglio">
                                 <SparkMulti series={rowSeries(r.seriesByFonte, r.series)} />
@@ -410,7 +414,11 @@ const CallWeekly = ({ refreshTrigger }: Props) => {
                         <tr className="bg-secondary/40 font-semibold">
                           <td className="table-body-cell sticky left-0 bg-card z-10">Totale</td>
                           {cols.map((f) => <td key={f} className="table-body-cell text-right num">{pivotTotals.cols[f] || 0}</td>)}
-                          <td className="table-body-cell text-right num">{pivotTotals.tot}</td>
+                          <td className="table-body-cell text-right num">
+                            {cols.length > 0
+                              ? <>{cols.reduce((s, f) => s + (pivotTotals.cols[f] || 0), 0)}<span className="text-muted-foreground font-normal"> / {pivotTotals.tot}</span></>
+                              : pivotTotals.tot}
+                          </td>
                           <td className="table-body-cell text-center"><SparkMulti series={rowSeries(pivotTotals.seriesByFonte, pivotTotals.series)} /></td>
                         </tr>
                       </>
