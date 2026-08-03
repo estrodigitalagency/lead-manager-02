@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -86,6 +86,18 @@ const ValoreCallView = () => {
   const [showConfig, setShowConfig] = useState(false);
   const [cfg, setCfg] = useState<BucketConfig | null>(null);
   const [savingCfg, setSavingCfg] = useState(false);
+
+  // L'endpoint non restituisce più un array `months` globale: ogni bucket ha i suoi `mesi`
+  // (mesi utili, max 3, potenzialmente diversi). Header = unione ordinata dei mesi dei bucket.
+  const months = useMemo(() => {
+    if (!resp) return [] as string[];
+    const s = new Set<string>();
+    (resp.data || []).forEach((b: any) => (b.mesi || []).forEach((m: any) => { if (m?.mese) s.add(m.mese); }));
+    return [...s].sort((a, b) => {
+      const [ma, ya] = a.split("/"); const [mb, yb] = b.split("/");
+      return (ya + ma).localeCompare(yb + mb);
+    });
+  }, [resp]);
 
   const loadConfig = useCallback(async () => {
     const { data } = await supabase.from("ranking_settings").select("value").eq("key", "valore_call_buckets").maybeSingle();
@@ -239,7 +251,7 @@ const ValoreCallView = () => {
                 <thead>
                   <tr>
                     <th className="table-header-cell text-left">Fonte</th>
-                    {resp.months.map((mk) => (
+                    {months.map((mk) => (
                       <th key={mk} className="table-header-cell text-right">{monthLabel(mk)}</th>
                     ))}
                     <th className="table-header-cell text-right">Trend</th>
@@ -249,12 +261,15 @@ const ValoreCallView = () => {
                   {resp.data.map((b) => (
                     <tr key={b.bucket}>
                       <td className="table-body-cell font-medium">{(b as any).label || BUCKET_LABELS[b.bucket] || b.bucket}</td>
-                      {b.mesi.map((m) => (
-                        <td key={m.mese} className="table-body-cell text-right num">
-                          <span className="font-semibold">{m.valore_call > 0 ? eur(m.valore_call) : "—"}</span>
-                          <span className="block text-[10px] text-muted-foreground">{m.n_call} call</span>
-                        </td>
-                      ))}
+                      {months.map((mk) => {
+                        const m = (b.mesi || []).find((x) => x.mese === mk);
+                        return (
+                          <td key={mk} className="table-body-cell text-right num">
+                            <span className="font-semibold">{m && m.valore_call > 0 ? eur(m.valore_call) : "—"}</span>
+                            <span className="block text-[10px] text-muted-foreground">{m ? `${m.n_call} call` : ""}</span>
+                          </td>
+                        );
+                      })}
                       <td className="table-body-cell text-right"><TrendBadge t={b.trend} /></td>
                     </tr>
                   ))}
@@ -273,7 +288,7 @@ const ValoreCallView = () => {
                 <thead>
                   <tr>
                     <th className="table-header-cell text-left">Metrica</th>
-                    {resp.months.map((mk) => (
+                    {months.map((mk) => (
                       <th key={mk} className="table-header-cell text-right">{monthLabel(mk)}</th>
                     ))}
                   </tr>
@@ -282,21 +297,26 @@ const ValoreCallView = () => {
                   {(() => {
                     const ob = resp.data.find((d) => d.bucket === "outbound");
                     if (!ob) return null;
+                    const byMese = (mk: string) => (ob.mesi || []).find((x) => x.mese === mk);
                     return (
                       <>
                         <tr>
                           <td className="table-body-cell font-medium">Valore lead</td>
-                          {ob.mesi.map((m) => (
-                            <td key={m.mese} className="table-body-cell text-right num font-semibold">
-                              {m.valore_lead > 0 ? eur(m.valore_lead) : "—"}
-                            </td>
-                          ))}
+                          {months.map((mk) => {
+                            const m = byMese(mk);
+                            return (
+                              <td key={mk} className="table-body-cell text-right num font-semibold">
+                                {m && m.valore_lead > 0 ? eur(m.valore_lead) : "—"}
+                              </td>
+                            );
+                          })}
                         </tr>
                         <tr>
                           <td className="table-body-cell text-muted-foreground">Fatturato</td>
-                          {ob.mesi.map((m) => (
-                            <td key={m.mese} className="table-body-cell text-right num text-muted-foreground">{eur(m.fatturato)}</td>
-                          ))}
+                          {months.map((mk) => {
+                            const m = byMese(mk);
+                            return <td key={mk} className="table-body-cell text-right num text-muted-foreground">{m ? eur(m.fatturato) : "—"}</td>;
+                          })}
                         </tr>
                       </>
                     );
