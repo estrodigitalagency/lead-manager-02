@@ -120,9 +120,14 @@ const FontePodium = ({ metric, memberCode, myName: myNameProp, market = "IT", da
     </div>
   );
 
+  // Mostra solo le fonti che hanno avuto call (ranked non vuoto): se un mese una fonte è a zero,
+  // il blocco sparisce del tutto invece di mostrare "Nessun dato".
+  const visibleBlocks = blocks.filter((b) => b.ranked.length > 0);
+  if (visibleBlocks.length === 0) return <p className="text-center text-muted-foreground text-sm py-6">Nessun dato per fonte in questo periodo.</p>;
+
   return (
     <div className="space-y-10">
-      {blocks.map(({ fonte, ranked, myRank }) => {
+      {visibleBlocks.map(({ fonte, ranked, myRank }) => {
         const podium = ranked.slice(0, 3);
         const fourth = ranked.slice(3, 4);
         const extra = myRank >= 4 ? [ranked[myRank]] : [];
