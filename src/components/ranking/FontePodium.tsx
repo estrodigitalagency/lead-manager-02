@@ -104,19 +104,21 @@ const FontePodium = ({ metric, memberCode, myName: myNameProp, market = "IT", da
         .map((s) => {
           const b = s.data.find((x) => x.bucket === fonte);
           if (!b || !b.has_call) return null;
-          // media mensile + valore del mese più recente (dai mesi utili)
+          // Valore principale = MESE CORRENTE (più recente). Sotto: media ultimi 3 mesi utili.
           const mesi = b.mesi || [];
+          const isSum = metric === "fatturato" || metric === "incassato";
+          let current = Number(b[field]) || 0; // fallback: aggregato 3 mesi
           let sub: RankedMember["sub"] | undefined;
           if (mesi.length) {
-            const vals = mesi.map((m) => Number(m[mfield]) || 0);
             const last = mesi[mesi.length - 1];
-            sub = {
-              avg: Math.round(vals.reduce((a, v) => a + v, 0) / vals.length * 10) / 10,
-              current: Number(last[mfield]) || 0,
-              mese: last.mese,
-            };
+            current = Number(last[mfield]) || 0;
+            // media 3 mesi: per fatturato/incassato = somma/n; per valore_call/cr = valore aggregato 3 mesi
+            const avg = isSum
+              ? Math.round((Number(b[field]) || 0) / mesi.length)
+              : Number(b[field]) || 0;
+            sub = { avg, mese: last.mese };
           }
-          return { name: s.venditore, val: Number(b[field]) || 0, sub };
+          return { name: s.venditore, val: current, sub };
         })
         .filter(Boolean) as { name: string; val: number; sub?: RankedMember["sub"] }[];
       list.sort((a, b) => b.val - a.val);

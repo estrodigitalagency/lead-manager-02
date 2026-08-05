@@ -69,7 +69,7 @@ export function Podium({ members, metric }: PodiumProps) {
             </p>
             {member.sub && (
               <p className="text-[10px] text-muted-foreground text-center mb-3 leading-tight">
-                media {format(member.sub.avg)}<br />{member.sub.mese}: {format(member.sub.current)}
+                {member.sub.mese}<br />media 3m {format(member.sub.avg)}
               </p>
             )}
             {!member.sub && <div className="mb-3" />}
