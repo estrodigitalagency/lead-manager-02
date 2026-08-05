@@ -8,6 +8,9 @@ export interface TeamMember {
 
 export interface RankedMember extends TeamMember {
   rank: number;
+  // Dettaglio opzionale (ranking per fonte): media mensile e valore del mese più recente,
+  // mostrati sotto il totale cumulato (3 mesi utili).
+  sub?: { avg: number; current: number; mese: string };
 }
 
 export type MetricKey = "fatturato" | "incassato" | "cr" | "valoreCall";

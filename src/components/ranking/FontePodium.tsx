@@ -14,15 +14,24 @@ const BUCKET_COLORS: Record<string, string> = {
 };
 const FONTI = ["3sfere", "setter_ig", "setter_new", "vsl"];
 
+interface MonthData { mese: string; fatturato: number; incassato: number; cr: number; valore_call: number }
 interface BucketData {
   bucket: string; label?: string; has_call: boolean;
   valore_call: number; fatturato: number; incassato: number; cr: number;
+  mesi?: MonthData[];
 }
 interface SellerData { venditore: string; data: BucketData[]; }
 interface Resp { data: BucketData[]; per_seller: SellerData[]; }
 
-// campo dell'edge per la metrica del ranking
+// campo dell'edge per la metrica del ranking (totale cumulato)
 const FIELD: Record<MetricKey, keyof BucketData> = {
+  fatturato: "fatturato",
+  incassato: "incassato",
+  cr: "cr",
+  valoreCall: "valore_call",
+};
+// campo dentro `mesi` per la stessa metrica (per media + mese corrente)
+const MONTH_FIELD: Record<MetricKey, keyof MonthData> = {
   fatturato: "fatturato",
   incassato: "incassato",
   cr: "cr",
@@ -89,14 +98,27 @@ const FontePodium = ({ metric, memberCode, myName: myNameProp, market = "IT", da
   const blocks = useMemo(() => {
     if (!resp) return [];
     const field = FIELD[metric];
+    const mfield = MONTH_FIELD[metric];
     return FONTI.map((fonte) => {
       const list = resp.per_seller
         .map((s) => {
           const b = s.data.find((x) => x.bucket === fonte);
           if (!b || !b.has_call) return null;
-          return { name: s.venditore, val: Number(b[field]) || 0 };
+          // media mensile + valore del mese più recente (dai mesi utili)
+          const mesi = b.mesi || [];
+          let sub: RankedMember["sub"] | undefined;
+          if (mesi.length) {
+            const vals = mesi.map((m) => Number(m[mfield]) || 0);
+            const last = mesi[mesi.length - 1];
+            sub = {
+              avg: Math.round(vals.reduce((a, v) => a + v, 0) / vals.length * 10) / 10,
+              current: Number(last[mfield]) || 0,
+              mese: last.mese,
+            };
+          }
+          return { name: s.venditore, val: Number(b[field]) || 0, sub };
         })
-        .filter(Boolean) as { name: string; val: number }[];
+        .filter(Boolean) as { name: string; val: number; sub?: RankedMember["sub"] }[];
       list.sort((a, b) => b.val - a.val);
       const ranked: RankedMember[] = list.map((x, i) => ({
         name: x.name,
@@ -105,6 +127,7 @@ const FontePodium = ({ metric, memberCode, myName: myNameProp, market = "IT", da
         incassato: metric === "incassato" ? x.val : 0,
         cr: metric === "cr" ? x.val : 0,
         valoreCall: metric === "valoreCall" ? x.val : 0,
+        sub: x.sub,
       }));
       const myRank = myName ? ranked.findIndex((r) => r.name === myName) : -1;
       return { fonte, ranked, myRank };

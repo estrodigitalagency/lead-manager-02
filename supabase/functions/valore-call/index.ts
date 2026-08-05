@@ -279,7 +279,10 @@ Deno.serve(async (req) => {
           valore_call: m.fatte > 0 ? Math.round(m.fatt / m.fatte) : 0,
           n_call: Math.round(m.fatte),
           fatturato: Math.round(m.fatt),
+          incassato: Math.round(m.inc),
           call_nette: Math.round(m.nette),
+          chiusure: Math.round(m.chiu),
+          cr: m.nette > 0 ? Math.round((m.chiu / m.nette) * 1000) / 10 : 0,
           valore_lead: Math.round(m.vlead),
         }));
         const totFatt = utili.reduce((s, m) => s + m.fatt, 0);

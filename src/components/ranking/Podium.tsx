@@ -64,9 +64,15 @@ export function Podium({ members, metric }: PodiumProps) {
             <p className="font-display font-bold text-sm sm:text-base text-foreground truncate max-w-full text-center">
               {member.name}
             </p>
-            <p className="text-xs sm:text-sm text-muted-foreground font-medium mb-3">
+            <p className="text-xs sm:text-sm text-foreground font-semibold">
               {format(member[metric])}
             </p>
+            {member.sub && (
+              <p className="text-[10px] text-muted-foreground text-center mb-3 leading-tight">
+                media {format(member.sub.avg)}<br />{member.sub.mese}: {format(member.sub.current)}
+              </p>
+            )}
+            {!member.sub && <div className="mb-3" />}
             <div
               className={`w-full ${config.height} rounded-t-lg border-t-2 border-x-2 ${config.colorClass} ${config.bgClass}`}
             />

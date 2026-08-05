@@ -30,8 +30,15 @@ export function LeaderboardTable({ members, metric, highlightName }: Leaderboard
             <span className={`flex-1 font-medium truncate ${isMe ? "text-primary" : "text-foreground"}`}>
               {member.name}{isMe ? " (tu)" : ""}
             </span>
-            <span className="font-display font-semibold text-primary text-sm sm:text-base">
-              {format(member[metric])}
+            <span className="flex flex-col items-end leading-tight">
+              <span className="font-display font-semibold text-primary text-sm sm:text-base">
+                {format(member[metric])}
+              </span>
+              {member.sub && (
+                <span className="text-[10px] text-muted-foreground">
+                  media {format(member.sub.avg)} · {member.sub.mese} {format(member.sub.current)}
+                </span>
+              )}
             </span>
           </motion.div>
         );
