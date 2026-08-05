@@ -111,8 +111,14 @@ const FontePodium = ({ metric, memberCode, myName: myNameProp, market = "IT", da
     });
   }, [resp, metric, myName]);
 
-  if (loading && !resp) return <div className="flex items-center justify-center py-8 text-muted-foreground"><Loader2 className="h-5 w-5 animate-spin" /></div>;
-  if (!resp) return null;
+  // resp null = dati non ancora arrivati (il fetch valore-call rilegge i fogli, può metterci qualche
+  // secondo). Mostra un loading invece del vuoto, così non sembra rotto.
+  if (!resp) return (
+    <div className="flex flex-col items-center justify-center gap-2 py-10 text-muted-foreground">
+      <Loader2 className="h-6 w-6 animate-spin" />
+      <span className="text-sm">Carico i dati per fonte…</span>
+    </div>
+  );
 
   return (
     <div className="space-y-10">
