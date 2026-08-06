@@ -36,7 +36,7 @@ export function LeaderboardTable({ members, metric, highlightName }: Leaderboard
               </span>
               {member.sub && (
                 <span className="text-[10px] text-muted-foreground">
-                  {member.sub.mese} · media 3m {format(member.sub.avg)}
+                  3 mesi · {member.sub.mese}: {format(member.sub.avg)}
                 </span>
               )}
             </span>
