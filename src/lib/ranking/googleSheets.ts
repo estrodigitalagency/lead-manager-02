@@ -6,6 +6,14 @@ export interface TeamMember {
   valoreCall: number;
 }
 
+/** "07/2026" → "lug 2026" */
+export const meseLabel = (mk: string): string => {
+  const [m, y] = (mk || "").split("/");
+  const nomi = ["gen", "feb", "mar", "apr", "mag", "giu", "lug", "ago", "set", "ott", "nov", "dic"];
+  const i = parseInt(m, 10) - 1;
+  return nomi[i] ? `${nomi[i]} ${y}` : mk;
+};
+
 export interface RankedMember extends TeamMember {
   rank: number;
   // Dettaglio opzionale (ranking per fonte): il valore principale è il MESE CORRENTE,

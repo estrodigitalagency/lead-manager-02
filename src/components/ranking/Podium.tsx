@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { RankedMember, MetricKey, METRIC_LABELS } from "@/lib/ranking/googleSheets";
+import { RankedMember, MetricKey, METRIC_LABELS, meseLabel } from "@/lib/ranking/googleSheets";
 import { MoneyBurst } from "./MoneyBurst";
 
 interface PodiumProps {
@@ -67,9 +67,10 @@ export function Podium({ members, metric }: PodiumProps) {
             <p className="text-xs sm:text-sm text-foreground font-semibold">
               {format(member[metric])}
             </p>
+            <p className="text-[9px] uppercase tracking-wide text-muted-foreground/70">totale 3 mesi</p>
             {member.sub && (
-              <p className="text-[10px] text-muted-foreground text-center mb-3 leading-tight">
-                3 mesi<br />{member.sub.mese}: {format(member.sub.avg)}
+              <p className="text-[10px] text-muted-foreground text-center mb-3 leading-tight mt-0.5">
+                {meseLabel(member.sub.mese)}: <span className="text-foreground/80 font-medium">{format(member.sub.avg)}</span>
               </p>
             )}
             {!member.sub && <div className="mb-3" />}
