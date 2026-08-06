@@ -67,11 +67,13 @@ export function Podium({ members, metric }: PodiumProps) {
             <p className="text-xs sm:text-sm text-foreground font-semibold">
               {format(member[metric])}
             </p>
-            <p className="text-[9px] uppercase tracking-wide text-muted-foreground/70">totale 3 mesi</p>
             {member.sub && (
-              <p className="text-[10px] text-muted-foreground text-center mb-3 leading-tight mt-0.5">
-                {meseLabel(member.sub.mese)}: <span className="text-foreground/80 font-medium">{format(member.sub.avg)}</span>
-              </p>
+              <>
+                <p className="text-[9px] uppercase tracking-wide text-muted-foreground/70">{meseLabel(member.sub.mese)}</p>
+                <p className="text-[10px] text-muted-foreground text-center mb-3 leading-tight mt-0.5">
+                  media 3 mesi: <span className="text-foreground/80 font-medium">{format(member.sub.avg)}</span>
+                </p>
+              </>
             )}
             {!member.sub && <div className="mb-3" />}
             <div

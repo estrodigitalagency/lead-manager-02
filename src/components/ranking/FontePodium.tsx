@@ -104,13 +104,16 @@ const FontePodium = ({ metric, memberCode, myName: myNameProp, market = "IT", da
         .map((s) => {
           const b = s.data.find((x) => x.bucket === fonte);
           if (!b || !b.has_call) return null;
-          // Valore principale = totale sui 3 mesi utili (stabile: a inizio mese il mese corrente
-          // è quasi sempre a zero). Sotto: valore del mese più recente.
+          // Valore principale = MESE CORRENTE (mese più recente con call). Sotto: media 3 mesi utili.
+          // Per fatturato/incassato la media è somma/n mesi; per valore call e CR il dato aggregato
+          // sui 3 mesi è già una media pesata, quindi si usa quello.
           const mesi = b.mesi || [];
-          const val = Number(b[field]) || 0;
+          const isSum = metric === "fatturato" || metric === "incassato";
+          const tot = Number(b[field]) || 0;
           const last = mesi.length ? mesi[mesi.length - 1] : null;
-          const sub: RankedMember["sub"] | undefined = last
-            ? { avg: Number(last[mfield]) || 0, mese: last.mese }
+          const val = last ? (Number(last[mfield]) || 0) : tot;
+          const sub: RankedMember["sub"] | undefined = mesi.length
+            ? { avg: isSum ? Math.round(tot / mesi.length) : tot, mese: last!.mese }
             : undefined;
           return { name: s.venditore, val, sub };
         })

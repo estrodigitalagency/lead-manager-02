@@ -16,8 +16,8 @@ export const meseLabel = (mk: string): string => {
 
 export interface RankedMember extends TeamMember {
   rank: number;
-  // Dettaglio opzionale (ranking per fonte): il valore principale è il MESE CORRENTE,
-  // sotto si mostra la media degli ultimi 3 mesi utili.
+  // Ranking per fonte: il valore principale è il MESE CORRENTE (mese più recente con call),
+  // `sub.avg` è la media degli ultimi 3 mesi utili e `sub.mese` il mese mostrato in grande.
   sub?: { avg: number; mese: string };
 }
 

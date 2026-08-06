@@ -13,6 +13,8 @@ export interface LancioConfig {
   campagna?: string;            // campagna in lead_generation (per i lead generati)
   target?: Record<string, number>;
   sales?: string[];             // vuoto = tutti i sales con dati
+  automazione_id?: string;      // automazione di assegnazione collegata (lead_assignment_automations)
+  whatsapp_slug?: string;       // template link WhatsApp collegato
 }
 
 /** Regola di formattazione condizionale su una metrica. */

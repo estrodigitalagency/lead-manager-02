@@ -34,11 +34,13 @@ export function LeaderboardTable({ members, metric, highlightName }: Leaderboard
               <span className="font-display font-semibold text-primary text-sm sm:text-base">
                 {format(member[metric])}
               </span>
-              <span className="text-[9px] uppercase tracking-wide text-muted-foreground/70">totale 3 mesi</span>
               {member.sub && (
-                <span className="text-[10px] text-muted-foreground mt-0.5">
-                  {meseLabel(member.sub.mese)}: <span className="text-foreground/80 font-medium">{format(member.sub.avg)}</span>
-                </span>
+                <>
+                  <span className="text-[9px] uppercase tracking-wide text-muted-foreground/70">{meseLabel(member.sub.mese)}</span>
+                  <span className="text-[10px] text-muted-foreground mt-0.5">
+                    media 3 mesi: <span className="text-foreground/80 font-medium">{format(member.sub.avg)}</span>
+                  </span>
+                </>
               )}
             </span>
           </motion.div>
