@@ -4,7 +4,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel } from "@/components/ui/select";
 import {
   Webhook, ArrowRightLeft, Users, Database, Tag, Zap, RefreshCw, MessageCircle,
-  Clock, Send, Trophy,
+  Clock, Send, Trophy, Rocket,
 } from "lucide-react";
 import SalespeopleSettings from "@/components/SalespeopleSettings";
 import CampaignsSettings from "@/components/CampaignsSettings";
@@ -16,6 +16,7 @@ import { AutomationSettings } from "@/components/automation/AutomationSettings";
 import { RoundRobinFixSection } from "@/components/settings/RoundRobinFixSection";
 import FonteMappingSettings from "@/components/settings/FonteMappingSettings";
 import CallFonteGroupSettings from "@/components/settings/CallFonteGroupSettings";
+import LanciSettings from "@/components/settings/LanciSettings";
 import RankingSettingsSection from "@/components/settings/RankingSettingsSection";
 import ValoreCallView from "@/components/settings/ValoreCallView";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -37,6 +38,7 @@ const sections: SettingGroup[] = [
     items: [
       { value: "salespeople", icon: Users, label: "Venditori", desc: "Anagrafica venditori, fogli Google, capacità e stato." },
       { value: "campaigns", icon: Tag, label: "Campagne", desc: "Preset di filtri fonte, lock period e distribuzione riutilizzabili." },
+      { value: "lanci", icon: Rocket, label: "Lanci", desc: "Configurazione dei lanci: tab call e lead nei fogli sales, target, sales inclusi e formattazione condizionale." },
       { value: "ranking", icon: Trophy, label: "Ranking & Valore call", desc: "Valore call/lead per fonte (live dai fogli venditore) e configurazione della classifica commerciale pubblica." },
     ],
   },
@@ -220,6 +222,10 @@ const SettingsContent = () => (
 
     <TabsContent value="roundrobin" className="mt-0">
       <RoundRobinFixSection />
+    </TabsContent>
+
+    <TabsContent value="lanci" className="mt-0">
+      <LanciSettings />
     </TabsContent>
 
     <TabsContent value="fontemapping" className="mt-0 space-y-6">

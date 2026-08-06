@@ -45,13 +45,53 @@ const RE_CHIUSURA = /^(pagamento a rate|pagamento unico|acconto)$/i;
 const RE_NON_NETTA = /da rischedulare|rischedulato|no show|cancellat/i;
 const RE_DA_FARE = /closing/i;
 
+// Voto qualità lead (col H del tab Lead). Il peso è il numero iniziale dell'etichetta.
+const VOTI = ["1 - Lontano", "2 - IB", "3 - CP", "4 - ISF", "5 - MM"];
+
 interface LancioConfig {
   id: string;
   nome: string;
   provenienza: string;      // es. "3sfere"
   call_tabs: string[];      // es. ["Giugno26 Elenco call/esito", "Luglio26 Elenco call/esito"]
   lead_tab: string;         // es. "Lead Workshop_Giu26"
+  campagna?: string;        // campagna in lead_generation per i lead generati (es. "Workshop Giu26")
   target?: Record<string, number>;
+  sales?: string[];         // sales inclusi nella vista (vuoto = tutti)
+}
+
+/** Lead generati dal DB per la campagna del lancio: totali, per fonte (nuovi/vecchi) e per giorno. */
+async function leadGenerati(supabase: any, campagna: string, market: string) {
+  const perFonte: Record<string, { Nuovo: number; Vecchio: number }> = {};
+  const perGiorno: Record<string, Record<string, number>> = {};
+  let generati = 0, assegnati = 0;
+  for (let off = 0; off < 40000; off += 1000) {
+    const { data } = await supabase
+      .from("lead_generation")
+      .select("created_at, ultima_fonte, stato_del_lead, venditore")
+      .eq("campagna", campagna).eq("market", market)
+      .order("created_at").range(off, off + 999);
+    if (!data || data.length === 0) break;
+    for (const r of data) {
+      generati++;
+      if (r.venditore) assegnati++;
+      const fonte = r.ultima_fonte || "—";
+      const stato = r.stato_del_lead === "Vecchio" ? "Vecchio" : "Nuovo";
+      if (!perFonte[fonte]) perFonte[fonte] = { Nuovo: 0, Vecchio: 0 };
+      perFonte[fonte][stato]++;
+      const day = String(r.created_at ?? "").slice(0, 10);
+      if (day) {
+        if (!perGiorno[day]) perGiorno[day] = {};
+        perGiorno[day][fonte] = (perGiorno[day][fonte] || 0) + 1;
+      }
+    }
+    if (data.length < 1000) break;
+  }
+  const days = Object.keys(perGiorno).sort();
+  const fonti = Object.keys(perFonte).sort((a, b) =>
+    (perFonte[b].Nuovo + perFonte[b].Vecchio) - (perFonte[a].Nuovo + perFonte[a].Vecchio));
+  const series: Record<string, number[]> = {};
+  for (const f of fonti) series[f] = days.map((d) => perGiorno[d][f] || 0);
+  return { generati, assegnati, per_fonte: perFonte, trend: { days, series } };
 }
 
 function euro(x: unknown): number {
@@ -157,7 +197,7 @@ Deno.serve(async (req) => {
         try {
           const wanted = [
             ...cfg.call_tabs.map((t) => ({ tab: t, rng: "B2:L1000" })),
-            { tab: cfg.lead_tab, rng: "B2:G1000" },
+            { tab: cfg.lead_tab, rng: "B2:H1000" },
           ];
           // Caso normale: una sola batchGet. Se un tab non esiste l'API risponde 400 →
           // fallback su letture singole, saltando i tab mancanti (senza chiamata meta extra).
@@ -207,16 +247,36 @@ Deno.serve(async (req) => {
           const leadVals = (vr[cfg.call_tabs.length]?.values ?? []) as any[][];
           const qual: Record<string, number> = {};
           for (const q of QUALIFICHE) qual[q] = 0;
+          const voti: Record<string, number> = {};
+          for (const v of VOTI) voti[v] = 0;
           let conNome = 0;
           for (const r of leadVals) {
             if (String(r[0] ?? "").trim()) conNome++;
             const q = String(r[5] ?? "").trim();
             if (q && q in qual) qual[q]++;
+            const vt = String(r[6] ?? "").trim();   // col H = Voto 1-5
+            if (vt && vt in voti) voti[vt]++;
           }
           const sommaQual = QUALIFICHE.reduce((s, q) => s + qual[q], 0);
           const nonLavorato = Math.max(0, conNome - sommaQual);
           const totLead = sommaQual + nonLavorato;
           const target = cfg.target?.[nome] ?? 0;
+
+          // % qualifica sul totale lead (formula master: qualifica / Tot. Lead Assegnati)
+          const qualPerc: Record<string, number> = {};
+          for (const q of ["Non lavorato", ...QUALIFICHE]) {
+            const v = q === "Non lavorato" ? nonLavorato : qual[q];
+            qualPerc[q] = totLead > 0 ? Math.round((v / totLead) * 1000) / 10 : 0;
+          }
+          const confermato = qual["Confermato"] ?? 0, fixApp = qual["Fix App"] ?? 0;
+          const lavorati = totLead - nonLavorato;
+          // % voto calcolate sui soli Confermati (formula master: voto / Confermato)
+          const votiPerc: Record<string, number> = {};
+          for (const v of VOTI) votiPerc[v] = confermato > 0 ? Math.round((voti[v] / confermato) * 1000) / 10 : 0;
+          const totVoti = VOTI.reduce((s, v) => s + voti[v], 0);
+          const mediaVoto = totVoti > 0
+            ? Math.round((VOTI.reduce((s, v, i) => s + voti[v] * (i + 1), 0) / totVoti) * 100) / 100
+            : 0;
 
           rows.push({
             venditore: nome,
@@ -231,6 +291,10 @@ Deno.serve(async (req) => {
             target, distanza_target: target - totLead,
             tot_lead: totLead,
             qualifiche: { "Non lavorato": nonLavorato, ...qual },
+            qualifiche_perc: qualPerc,
+            app_conferma_lavorati: lavorati > 0 ? Math.round(((confermato + fixApp) / lavorati) * 1000) / 10 : 0,
+            app_conferma: totLead > 0 ? Math.round(((confermato + fixApp) / totLead) * 1000) / 10 : 0,
+            voti, voti_perc: votiPerc, media_voto: mediaVoto,
           });
         } catch (e) {
           errors.push(`${nome}: ${(e as Error).message}`);
@@ -260,11 +324,47 @@ Deno.serve(async (req) => {
       qualifiche: ["Non lavorato", ...QUALIFICHE].reduce((acc, q) => {
         acc[q] = rows.reduce((s, r) => s + (r.qualifiche[q] || 0), 0); return acc;
       }, {} as Record<string, number>),
+      voti: VOTI.reduce((acc, v) => {
+        acc[v] = rows.reduce((s, r) => s + (r.voti[v] || 0), 0); return acc;
+      }, {} as Record<string, number>),
     };
+    // % e medie del Totale, ricalcolate sugli aggregati (non medie di medie)
+    {
+      const nl = totale.qualifiche["Non lavorato"] || 0;
+      const conf = totale.qualifiche["Confermato"] || 0, fx = totale.qualifiche["Fix App"] || 0;
+      const lav = totLeadTeam - nl;
+      totale.qualifiche_perc = ["Non lavorato", ...QUALIFICHE].reduce((acc, q) => {
+        acc[q] = totLeadTeam > 0 ? Math.round(((totale.qualifiche[q] || 0) / totLeadTeam) * 1000) / 10 : 0;
+        return acc;
+      }, {} as Record<string, number>);
+      totale.app_conferma_lavorati = lav > 0 ? Math.round(((conf + fx) / lav) * 1000) / 10 : 0;
+      totale.app_conferma = totLeadTeam > 0 ? Math.round(((conf + fx) / totLeadTeam) * 1000) / 10 : 0;
+      totale.voti_perc = VOTI.reduce((acc, v) => {
+        acc[v] = conf > 0 ? Math.round(((totale.voti[v] || 0) / conf) * 1000) / 10 : 0; return acc;
+      }, {} as Record<string, number>);
+      const tv = VOTI.reduce((s, v) => s + (totale.voti[v] || 0), 0);
+      totale.media_voto = tv > 0
+        ? Math.round((VOTI.reduce((s, v, i) => s + (totale.voti[v] || 0) * (i + 1), 0) / tv) * 100) / 100
+        : 0;
+    }
+
+    // Lead generati dal DB (campagna del lancio): per fonte, nuovi/vecchi, andamento giornaliero
+    let leadgen: any = null;
+    if (cfg.campagna) {
+      try { leadgen = await leadGenerati(supabase, cfg.campagna, market); }
+      catch (e) { errors.push(`lead generati: ${(e as Error).message}`); }
+    }
 
     const payload = {
-      market, lancio: { id: cfg.id, nome: cfg.nome, provenienza: cfg.provenienza, call_tabs: cfg.call_tabs, lead_tab: cfg.lead_tab },
+      market,
+      lancio: {
+        id: cfg.id, nome: cfg.nome, provenienza: cfg.provenienza,
+        call_tabs: cfg.call_tabs, lead_tab: cfg.lead_tab, campagna: cfg.campagna ?? null,
+        sales: cfg.sales ?? [],
+      },
       qualifiche_order: ["Non lavorato", ...QUALIFICHE],
+      voti_order: VOTI,
+      leadgen,
       totale, rows, errors: errors.slice(0, 20),
       generated_at: new Date().toISOString(),
     };

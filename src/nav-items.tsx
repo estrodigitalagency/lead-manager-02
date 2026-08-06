@@ -8,6 +8,7 @@ import LeadAssignment from "./pages/LeadAssignment";
 import Login from "./pages/Login";
 import WhatsAppRedirect from "./pages/WhatsAppRedirect";
 import Ranking from "./pages/Ranking";
+import Lanci from "./pages/Lanci";
 
 export const navItems = [
   {
@@ -25,6 +26,10 @@ export const navItems = [
   {
     to: "/reports", 
     page: <Reports />,
+  },
+  {
+    to: "/lanci",
+    page: <Lanci />,
   },
   {
     to: "/settings",

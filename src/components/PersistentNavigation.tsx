@@ -1,7 +1,7 @@
 
 import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Users, Database, BarChart3, Settings, History, LogOut } from "lucide-react";
+import { Users, Database, BarChart3, Settings, History, LogOut , Rocket } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useAuth } from "@/contexts/AuthContext";
 import MarketSelector from "@/components/MarketSelector";
@@ -16,6 +16,7 @@ const PersistentNavigation = () => {
     { to: "/", icon: Users, label: "Home", isActive: location.pathname === "/" },
     { to: "/database", icon: Database, label: "Database", isActive: location.pathname === "/database" },
     { to: "/reports", icon: BarChart3, label: "Report", isActive: location.pathname === "/reports" },
+    { to: "/lanci", icon: Rocket, label: "Lanci", isActive: location.pathname === "/lanci" },
     { to: "/history", icon: History, label: "Cronologia", isActive: location.pathname === "/history" },
     { to: "/settings", icon: Settings, label: "Impostazioni", isActive: location.pathname === "/settings" }
   ];
