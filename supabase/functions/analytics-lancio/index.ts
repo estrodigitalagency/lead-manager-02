@@ -44,8 +44,10 @@ const QUALIFICHE = [
 
 const RE_CHIUSURA = /^(pagamento a rate|pagamento unico|acconto)$/i;
 const RE_NON_NETTA = /da rischedulare|rischedulato|no show|cancellat/i;
-// Call da fare = entrate con quella provenienza ma non ancora svolte, cioè senza esito compilato.
-const daFareTest = (esito: string) => esito.trim() === "";
+// Call da fare = entrate con quella provenienza ma non ancora svolte: esito vuoto, oppure
+// "prenotato closing"/"closing" (su Pipedrive la call è fissata ma non è ancora stata fatta).
+const RE_DA_FARE = /closing/i;
+const daFareTest = (esito: string) => esito.trim() === "" || RE_DA_FARE.test(esito);
 
 // Voto qualità lead (col H del tab Lead). Il peso è il numero iniziale dell'etichetta.
 const VOTI = ["1 - Lontano", "2 - IB", "3 - CP", "4 - ISF", "5 - MM"];
