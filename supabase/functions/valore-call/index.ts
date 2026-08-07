@@ -169,11 +169,15 @@ Deno.serve(async (req) => {
     // Carica config bucket dal DB (customizzabile via UI), fallback al default
     let cfg = DEFAULT_CONFIG;
     try {
-      const { data: cfgRow } = await supabase
-        .from("ranking_settings")
-        .select("value")
-        .eq("key", "valore_call_buckets")
-        .maybeSingle();
+      let cfgRow: any = null;
+    {
+      const sys = await supabase.from("system_settings").select("value").eq("key", "valore_call_buckets").maybeSingle();
+      cfgRow = sys.data;
+      if (!cfgRow?.value) {
+        const rk = await supabase.from("ranking_settings").select("value").eq("key", "valore_call_buckets").maybeSingle();
+        cfgRow = rk.data;
+      }
+    }
       if (cfgRow?.value) {
         const parsed = JSON.parse(cfgRow.value);
         if (parsed?.buckets?.length) cfg = parsed;

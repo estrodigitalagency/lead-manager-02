@@ -94,6 +94,19 @@ const FontePodium = ({ metric, memberCode, myName: myNameProp, market = "IT", da
     return null;
   }, [myNameProp, memberCode, resp]);
 
+  // Mese di riferimento UNICO per tutta la classifica: il più recente presente nei dati.
+  // (senza questo ogni fonte mostrerebbe un mese diverso — non confrontabile)
+  const meseRif = useMemo(() => {
+    if (!resp) return null;
+    const ord = (mk: string) => { const [m, y] = mk.split("/"); return `${y}${m}`; };
+    let best: string | null = null;
+    for (const s of resp.per_seller)
+      for (const b of s.data)
+        for (const m of b.mesi || [])
+          if (!best || ord(m.mese) > ord(best)) best = m.mese;
+    return best;
+  }, [resp]);
+
   // Classifica venditori per OGNI fonte → { fonte, ranked, myRank }
   const blocks = useMemo(() => {
     if (!resp) return [];
@@ -104,16 +117,17 @@ const FontePodium = ({ metric, memberCode, myName: myNameProp, market = "IT", da
         .map((s) => {
           const b = s.data.find((x) => x.bucket === fonte);
           if (!b || !b.has_call) return null;
-          // Valore principale = MESE CORRENTE (mese più recente con call). Sotto: media 3 mesi utili.
-          // Per fatturato/incassato la media è somma/n mesi; per valore call e CR il dato aggregato
-          // sui 3 mesi è già una media pesata, quindi si usa quello.
+          // Valore principale = valore del MESE DI RIFERIMENTO (uguale per tutti, così è
+          // confrontabile). Sotto: media sui mesi utili del bucket.
+          // Per fatturato/incassato la media è somma/n mesi; per valore call e CR il dato
+          // aggregato sui 3 mesi è già una media pesata, quindi si usa quello.
           const mesi = b.mesi || [];
           const isSum = metric === "fatturato" || metric === "incassato";
           const tot = Number(b[field]) || 0;
-          const last = mesi.length ? mesi[mesi.length - 1] : null;
-          const val = last ? (Number(last[mfield]) || 0) : tot;
+          const mRif = meseRif ? mesi.find((m) => m.mese === meseRif) : null;
+          const val = mRif ? (Number(mRif[mfield]) || 0) : 0;
           const sub: RankedMember["sub"] | undefined = mesi.length
-            ? { avg: isSum ? Math.round(tot / mesi.length) : tot, mese: last!.mese }
+            ? { avg: isSum ? Math.round(tot / mesi.length) : tot, mese: meseRif || mesi[mesi.length - 1].mese }
             : undefined;
           return { name: s.venditore, val, sub };
         })
@@ -131,7 +145,7 @@ const FontePodium = ({ metric, memberCode, myName: myNameProp, market = "IT", da
       const myRank = myName ? ranked.findIndex((r) => r.name === myName) : -1;
       return { fonte, ranked, myRank };
     });
-  }, [resp, metric, myName]);
+  }, [resp, metric, myName, meseRif]);
 
   // resp null = dati non ancora arrivati (il fetch valore-call rilegge i fogli, può metterci qualche
   // secondo). Mostra un loading invece del vuoto, così non sembra rotto.
