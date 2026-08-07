@@ -72,8 +72,6 @@ const LanciSettings = () => {
   };
 
   const ALL_METRICS = [...CALL_METRICS, ...LEAD_METRICS];
-  const nSales = (l: LancioConfig, campo: "lead_sales" | "call_sales") =>
-    (l[campo]?.length ?? 0) > 0 ? `${l[campo]!.length} venditori` : "tutti";
 
   return (
     <Card>
@@ -81,7 +79,7 @@ const LanciSettings = () => {
         <div>
           <CardTitle className="flex items-center gap-2"><Rocket className="h-5 w-5 text-primary" /> Lanci ({selectedMarket})</CardTitle>
           <CardDescription>
-            Ogni lancio si configura in quattro schede: Lead, Call, Automazioni e WhatsApp.
+            Un lancio definisce chi ci lavora, da quali tab leggere i dati, come vengono assegnati i lead e con quale link WhatsApp.
           </CardDescription>
         </div>
         <Button size="sm" onClick={() => setEditing(emptyCfg())}><Plus className="h-4 w-4 mr-1" /> Nuovo lancio</Button>
@@ -104,8 +102,9 @@ const LanciSettings = () => {
                     <div className="min-w-0">
                       <h4 className="font-semibold text-sm">{l.nome}</h4>
                       <div className="grid sm:grid-cols-2 gap-x-6 gap-y-0.5 mt-1 text-[11.5px] text-muted-foreground">
-                        <p>Lead: <b className={l.lead_tab ? "text-foreground/80" : "text-amber-400"}>{l.lead_tab || "tab mancante"}</b> · {nSales(l, "lead_sales")}</p>
-                        <p>Call: <b className={l.provenienza ? "text-foreground/80" : "text-amber-400"}>{l.provenienza || "provenienza mancante"}</b> · {l.call_tabs.length || 0} tab · {nSales(l, "call_sales")}</p>
+                        <p>Venditori: <b className="text-foreground/80">{(l.sales?.length ?? 0) > 0 ? `${l.sales!.length}` : "tutti gli attivi"}</b></p>
+                        <p>Lead: <b className={l.lead_tab ? "text-foreground/80" : "text-amber-400"}>{l.lead_tab || "tab mancante"}</b></p>
+                        <p>Call: <b className={l.provenienza ? "text-foreground/80" : "text-amber-400"}>{l.provenienza || "provenienza mancante"}</b> · {l.call_tabs.length || 0} tab</p>
                         <p>Automazione: <b className={aut ? "text-foreground/80" : "text-amber-400"}>{aut?.nome ?? "nessuna"}</b>{aut && !aut.attivo && <span className="text-amber-400"> (disattiva)</span>}</p>
                         <p>WhatsApp: <b className={l.whatsapp_slug ? "text-foreground/80" : "text-amber-400"}>{l.whatsapp_slug ?? "nessuno"}</b></p>
                       </div>
@@ -136,6 +135,7 @@ const LanciSettings = () => {
           value={editing}
           onSave={handleSave}
           esistenti={lanci.map((l) => l.id)}
+          market={selectedMarket}
         />
       )}
 

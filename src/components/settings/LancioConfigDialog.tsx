@@ -1,17 +1,16 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { Users, Phone, Zap, MessageCircle, Link2 } from "lucide-react";
+import { Users, FileSpreadsheet, Zap, MessageCircle, AlertTriangle, Loader2, Plus } from "lucide-react";
 import { useSalespeopleData } from "@/hooks/useSalespeopleData";
 import { useAutomationsData } from "@/hooks/useAutomationsData";
-import { AutomationSettings } from "@/components/automation/AutomationSettings";
-import WhatsAppTemplatesSection from "@/components/settings/WhatsAppTemplatesSection";
-import { fetchTemplates } from "@/lib/whatsapp/templates";
+import { fetchTemplates, saveTemplate } from "@/lib/whatsapp/templates";
+import { checkConflitti, Conflitto } from "@/lib/lanci/integrazioni";
 import { LancioConfig } from "@/lib/lanci/config";
 
 interface Props {
@@ -19,236 +18,427 @@ interface Props {
   onOpenChange: (o: boolean) => void;
   value: LancioConfig;
   onSave: (cfg: LancioConfig) => Promise<boolean>;
-  esistenti: string[];   // id già usati, per evitare duplicati
+  esistenti: string[];
+  market: string;
 }
 
+type Azione = "weighted_distribution" | "assign_to_previous_seller" | "assign_to_seller";
+
+const slugify = (s: string) => s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "")
+  .replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 48);
+
 /**
- * Configurazione di un lancio in 4 schede.
- * Automazioni e WhatsApp incorporano gli STESSI componenti delle rispettive sezioni di
- * Impostazioni: si può creare da qui o da lì, il risultato è identico. In cima resta il
- * selettore che decide quale regola/link è collegato a questo lancio.
+ * Configurazione di un lancio in un unico flusso: chi ci lavora, da quali tab leggere,
+ * come vengono assegnati i lead e con quale link WhatsApp.
+ * L'automazione viene scritta in `lead_assignment_automations`, la stessa tabella della
+ * sezione Automazioni: quello che si crea qui si ritrova lì e viceversa.
  */
-const LancioConfigDialog = ({ open, onOpenChange, value, onSave, esistenti }: Props) => {
+const LancioConfigDialog = ({ open, onOpenChange, value, onSave, esistenti, market }: Props) => {
   const { venditori } = useSalespeopleData();
-  const { automations } = useAutomationsData();
+  const { automations, createAutomation, updateAutomation, toggleAutomation } = useAutomationsData();
   const [form, setForm] = useState<LancioConfig>(value);
-  const [wa, setWa] = useState<{ slug: string; nome: string; click_count: number }[]>([]);
-  const [tab, setTab] = useState("lead");
   const [saving, setSaving] = useState(false);
 
-  useEffect(() => { if (open) { setForm(value); setTab("lead"); } }, [open, value]);
-  const loadWa = () => fetchTemplates().then((t) => setWa(t as any));
-  useEffect(() => { if (open) loadWa(); }, [open]);
+  // ── automazione ──
+  const [autoOn, setAutoOn] = useState(true);
+  const [aTrigger, setATrigger] = useState<"new_lead" | "duplicate_different_source">("new_lead");
+  const [aFonti, setAFonti] = useState("");
+  const [aAzione, setAAzione] = useState<Azione>("weighted_distribution");
+  const [aPrevFirst, setAPrevFirst] = useState(false);
+  const [aTargetSeller, setATargetSeller] = useState("");
+  const [aModo, setAModo] = useState<"percentage" | "count">("percentage");
+  const [aQuote, setAQuote] = useState<Record<string, number>>({});   // nome venditore → peso/quota
+  const [aSheetTab, setASheetTab] = useState("");
+  const [aCampagna, setACampagna] = useState("");
+  const [aWebhook, setAWebhook] = useState(true);
+  const [conflitti, setConflitti] = useState<Conflitto[]>([]);
 
-  // solo venditori attivi: gli inattivi non devono comparire nella configurazione del lancio
-  const nomi = venditori.filter((v) => v.stato === "attivo").map((v) => `${v.nome} ${v.cognome || ""}`.trim());
-  const automCollegata = automations.find((a) => a.id === form.automazione_id) ?? null;
+  // ── whatsapp ──
+  const [wa, setWa] = useState<{ slug: string; nome: string; click_count: number }[]>([]);
+  const [waNuovo, setWaNuovo] = useState(false);
+  const [waNome, setWaNome] = useState("");
+  const [waMsg, setWaMsg] = useState("");
+  const [waFallback, setWaFallback] = useState("");
 
-  /** Riprende i target dalle quote della regola collegata: quota assoluta = target,
-   *  percentuale = quota % del cap totale (se impostato). */
-  const targetDaAutomazione = () => {
-    if (!automCollegata) return toast.error("Nessuna regola collegata: selezionala nella scheda Automazioni");
-    const cfgDist: any[] = (automCollegata as any).distribution_config ?? [];
-    if (cfgDist.length === 0) return toast.error("La regola collegata non ha una distribuzione tra venditori");
-    const isCount = (automCollegata as any).distribution_mode === "count";
-    const capTot = (automCollegata as any).distribution_cap_total ?? 0;
-    if (!isCount && !capTot) return toast.error("La regola è in percentuale senza cap totale: non si può derivare un target");
-    const next: Record<string, number> = {};
-    for (const slot of cfgDist) {
-      const v = venditori.find((x) => x.id === slot.venditore_id);
-      if (!v) continue;
-      const nome = `${v.nome} ${v.cognome || ""}`.trim();
-      const t = isCount ? (slot.count_target ?? 0) : Math.round(((slot.weight ?? 0) / 100) * capTot);
-      if (t > 0) next[nome] = t;
+  const attivi = useMemo(
+    () => venditori.filter((v) => v.stato === "attivo").map((v) => ({ id: v.id, nome: `${v.nome} ${v.cognome || ""}`.trim() })),
+    [venditori],
+  );
+  const autom = automations.find((a) => a.id === form.automazione_id) ?? null;
+
+  useEffect(() => {
+    if (!open) return;
+    setForm(value);
+    setWaNuovo(false);
+    fetchTemplates().then((t) => setWa(t as any));
+    // precompila l'automazione da quella collegata, altrimenti dai dati del lancio
+    if (autom) {
+      setAutoOn(autom.attivo);
+      setATrigger((autom.trigger_when as any) ?? "new_lead");
+      setAFonti((autom.condition_value ?? []).join(", "));
+      setAAzione((autom.action_type as Azione) ?? "weighted_distribution");
+      setAPrevFirst(!!(autom as any).use_previous_seller_first);
+      setATargetSeller((autom as any).target_seller_id ?? "");
+      setAModo(((autom as any).distribution_mode as any) ?? "percentage");
+      const q: Record<string, number> = {};
+      for (const s of ((autom as any).distribution_config ?? []) as any[]) {
+        const v = venditori.find((x) => x.id === s.venditore_id);
+        if (v) q[`${v.nome} ${v.cognome || ""}`.trim()] = (s.count_target ?? s.weight ?? 0);
+      }
+      setAQuote(q);
+      setASheetTab((autom as any).sheets_tab_name ?? "");
+      setACampagna((autom as any).campagna ?? value.campagna ?? "");
+      setAWebhook((autom as any).webhook_enabled !== false);
+    } else {
+      setAutoOn(true); setATrigger("new_lead"); setAAzione("weighted_distribution");
+      setAFonti(value.campagna ? slugify(value.campagna).replace(/-/g, "_") : "");
+      setAPrevFirst(false); setATargetSeller(""); setAModo("percentage"); setAQuote({});
+      setASheetTab(""); setACampagna(value.campagna ?? ""); setAWebhook(true);
     }
-    if (Object.keys(next).length === 0) return toast.error("Nessuna quota utilizzabile nella regola");
-    setForm((f) => ({ ...f, target: next }));
-    toast.success(`Target ripresi dalla regola (${Object.keys(next).length} venditori)`);
-  };
-  const toggle = (campo: "lead_sales" | "call_sales", nome: string) =>
-    setForm((f) => {
-      const cur = f[campo] ?? [];
-      return { ...f, [campo]: cur.includes(nome) ? cur.filter((x) => x !== nome) : [...cur, nome] };
-    });
-  const setAll = (campo: "lead_sales" | "call_sales", all: boolean) =>
-    setForm((f) => ({ ...f, [campo]: all ? [...nomi] : [] }));
+  }, [open, value, autom?.id]);   // eslint-disable-line react-hooks/exhaustive-deps
 
-  const SalesPicker = ({ campo }: { campo: "lead_sales" | "call_sales" }) => {
-    const sel = form[campo] ?? [];
-    return (
-      <div>
-        <div className="flex items-center justify-between mb-1.5">
-          <Label>Venditori inclusi <span className="text-muted-foreground font-normal">({sel.length || "tutti"})</span></Label>
-          <div className="flex gap-1.5">
-            <Button size="sm" variant="outline" className="h-6 text-[11px]" onClick={() => setAll(campo, true)}>Tutti</Button>
-            <Button size="sm" variant="outline" className="h-6 text-[11px]" onClick={() => setAll(campo, false)}>Nessuno</Button>
-          </div>
-        </div>
-        <div className="flex flex-wrap gap-1.5 max-h-[190px] overflow-y-auto p-2 rounded-md border border-border bg-secondary/30">
-          {nomi.map((nome) => (
-            <button key={nome} type="button" onClick={() => toggle(campo, nome)}
-              className={`px-2 py-0.5 rounded-full border text-[11.5px] ${sel.includes(nome)
-                ? "border-primary bg-primary/15 text-primary font-medium" : "border-border bg-card text-muted-foreground"}`}>
-              {nome}
-            </button>
-          ))}
-        </div>
-        {sel.length === 0 && <p className="text-[11px] text-muted-foreground mt-1">Nessuna selezione = tutti i venditori attivi.</p>}
-      </div>
-    );
+  // conflitti in tempo reale sulle fonti scritte
+  useEffect(() => {
+    const cond = aFonti.split(",").map((s) => s.trim()).filter(Boolean);
+    if (!open || cond.length === 0) { setConflitti([]); return; }
+    const t = setTimeout(async () => {
+      setConflitti(await checkConflitti(market, cond, "ultima_fonte", (autom as any)?.priority ?? 999, autom?.id));
+    }, 400);
+    return () => clearTimeout(t);
+  }, [aFonti, open, market, autom?.id]);   // eslint-disable-line react-hooks/exhaustive-deps
+
+  const sales = form.sales ?? [];
+  const toggleSales = (nome: string) =>
+    setForm((f) => {
+      const cur = f.sales ?? [];
+      return { ...f, sales: cur.includes(nome) ? cur.filter((x) => x !== nome) : [...cur, nome] };
+    });
+
+  const quotaSales = sales.length ? sales : attivi.map((a) => a.nome);
+  const totQuote = quotaSales.reduce((s, nome) => s + (aQuote[nome] ?? 0), 0);
+  const quoteValide = aAzione !== "weighted_distribution"
+    || (aModo === "percentage" ? totQuote === 100 : totQuote > 0);
+
+  const dividiEqua = () => {
+    const n = quotaSales.length;
+    if (!n) return;
+    if (aModo === "percentage") {
+      const base = Math.floor(100 / n), resto = 100 - base * n;
+      setAQuote(Object.fromEntries(quotaSales.map((nome, i) => [nome, base + (i === 0 ? resto : 0)])));
+    } else {
+      setAQuote(Object.fromEntries(quotaSales.map((nome) => [nome, aQuote[nome] ?? 50])));
+    }
+  };
+
+  const salvaAutomazione = async (): Promise<string | undefined> => {
+    const cond = aFonti.split(",").map((s) => s.trim()).filter(Boolean);
+    if (cond.length === 0) { toast.error("Indica la fonte che attiva l'assegnazione"); return; }
+    if (aAzione === "assign_to_seller" && !aTargetSeller) { toast.error("Scegli il venditore a cui assegnare"); return; }
+    if (!quoteValide) {
+      toast.error(aModo === "percentage" ? `La somma delle percentuali deve essere 100 (ora ${totQuote})` : "Imposta le quote");
+      return;
+    }
+    const dist = aAzione === "weighted_distribution"
+      ? quotaSales.map((nome) => {
+          const v = attivi.find((a) => a.nome === nome);
+          const q = aQuote[nome] ?? 0;
+          return v ? { venditore_id: v.id, weight: aModo === "percentage" ? q : null, count_target: aModo === "count" ? q : null, cap: null } : null;
+        }).filter(Boolean)
+      : [];
+    const payload: any = {
+      nome: `Assegnazione ${form.nome || value.nome}`.trim(),
+      attivo: autoOn,
+      trigger_when: aTrigger,
+      trigger_field: "ultima_fonte",
+      condition_type: "contains",
+      condition_value: cond,
+      action_type: aAzione,
+      target_seller_id: aAzione === "assign_to_seller" ? aTargetSeller : null,
+      use_previous_seller_first: aAzione === "weighted_distribution" ? aPrevFirst : false,
+      distribution_enabled: aAzione === "weighted_distribution",
+      distribution_mode: aAzione === "weighted_distribution" ? aModo : null,
+      distribution_config: dist,
+      sheets_tab_name: aSheetTab.trim() || null,
+      campagna: aCampagna.trim() || null,
+      webhook_enabled: aWebhook,
+      excluded_sellers: [],
+    };
+    try {
+      if (autom) { await updateAutomation(autom.id, payload); return autom.id; }
+      const maxP = Math.max(...automations.map((a) => a.priority ?? 0), 0);
+      const created: any = await createAutomation({ ...payload, priority: maxP + 1 });
+      return created?.id;
+    } catch { toast.error("Errore nel salvataggio della regola"); return; }
+  };
+
+  const creaWa = async (): Promise<string | undefined> => {
+    const nome = waNome.trim() || `WhatsApp ${form.nome}`;
+    const slug = slugify(nome);
+    const res = await saveTemplate({
+      slug, nome, messaggio_template: waMsg.trim() || `Ciao {{venditore_nome}}, ho confermato la partecipazione a ${form.nome}!`,
+      market, attivo: true, fallback_phone: waFallback.trim() || null, fallback_message: null,
+    });
+    if (res === "duplicate") { toast.error("Esiste già un link con questo nome"); return; }
+    if (res === "error") { toast.error("Errore nella creazione del link"); return; }
+    return slug;
   };
 
   const handleSave = async () => {
     if (!form.nome.trim()) return toast.error("Il nome del lancio è obbligatorio");
-    const id = form.id || form.nome.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "")
-      .replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "").slice(0, 40);
+    const id = form.id || slugify(form.nome).replace(/-/g, "_").slice(0, 40);
     if (!value.id && esistenti.includes(id)) return toast.error("Esiste già un lancio con questo nome");
     setSaving(true);
-    const ok = await onSave({ ...form, id, nome: form.nome.trim() });
-    setSaving(false);
-    if (ok) onOpenChange(false);
+    try {
+      let automazione_id = form.automazione_id;
+      if (aFonti.trim()) {
+        const res = await salvaAutomazione();
+        if (!res && !automazione_id) { setSaving(false); return; }
+        if (res) automazione_id = res;
+      }
+      let whatsapp_slug = form.whatsapp_slug;
+      if (waNuovo) {
+        const s = await creaWa();
+        if (s) whatsapp_slug = s;
+      }
+      const ok = await onSave({
+        ...form, id, nome: form.nome.trim(),
+        lead_sales: form.sales, call_sales: form.sales,   // i venditori del lancio valgono per entrambi
+        automazione_id, whatsapp_slug,
+      });
+      if (ok) onOpenChange(false);
+    } finally { setSaving(false); }
   };
+
+  const Sez = ({ icon: Icon, title, desc, children }: any) => (
+    <div className="space-y-2.5">
+      <div className="flex items-center gap-2 pb-1.5 border-b border-border">
+        <Icon className="h-4 w-4 text-primary" />
+        <h4 className="text-[13px] font-semibold">{title}</h4>
+        {desc && <span className="text-[11px] text-muted-foreground">· {desc}</span>}
+      </div>
+      {children}
+    </div>
+  );
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[900px] max-h-[92vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            {value.id ? "Configura lancio" : "Nuovo lancio"}
-            <Input className="h-8 w-[260px] text-[13px]" value={form.nome} placeholder="Nome del lancio (es. Workshop Set26)"
-              onChange={(e) => setForm({ ...form, nome: e.target.value })} />
-          </DialogTitle>
-        </DialogHeader>
+      <DialogContent className="sm:max-w-[720px] max-h-[92vh] overflow-y-auto">
+        <DialogHeader><DialogTitle>{value.id ? "Configura lancio" : "Nuovo lancio"}</DialogTitle></DialogHeader>
 
-        <Tabs value={tab} onValueChange={setTab}>
-          <TabsList className="grid grid-cols-4 bg-secondary/60">
-            <TabsTrigger value="lead" className="text-[12.5px]"><Users className="h-3.5 w-3.5 mr-1.5" /> Lead</TabsTrigger>
-            <TabsTrigger value="call" className="text-[12.5px]"><Phone className="h-3.5 w-3.5 mr-1.5" /> Call</TabsTrigger>
-            <TabsTrigger value="automazioni" className="text-[12.5px]"><Zap className="h-3.5 w-3.5 mr-1.5" /> Automazioni</TabsTrigger>
-            <TabsTrigger value="whatsapp" className="text-[12.5px]"><MessageCircle className="h-3.5 w-3.5 mr-1.5" /> WhatsApp</TabsTrigger>
-          </TabsList>
+        <div className="space-y-6">
+          {/* 1 — nome */}
+          <div>
+            <Label>Nome del lancio</Label>
+            <Input value={form.nome} onChange={(e) => setForm({ ...form, nome: e.target.value })}
+              placeholder="es. Workshop Set26" />
+          </div>
 
-          {/* ── LEAD ── */}
-          <TabsContent value="lead" className="mt-4 space-y-4">
+          {/* 2 — venditori */}
+          <Sez icon={Users} title="Venditori che lavorano al lancio" desc={sales.length ? `${sales.length} selezionati` : "tutti gli attivi"}>
+            <div className="flex gap-1.5 mb-1.5">
+              <Button size="sm" variant="outline" className="h-6 text-[11px]" onClick={() => setForm((f) => ({ ...f, sales: attivi.map((a) => a.nome) }))}>Tutti</Button>
+              <Button size="sm" variant="outline" className="h-6 text-[11px]" onClick={() => setForm((f) => ({ ...f, sales: [] }))}>Nessuno</Button>
+            </div>
+            <div className="flex flex-wrap gap-1.5 max-h-[150px] overflow-y-auto p-2 rounded-md border border-border bg-secondary/30">
+              {attivi.map((v) => (
+                <button key={v.id} type="button" onClick={() => toggleSales(v.nome)}
+                  className={`px-2 py-0.5 rounded-full border text-[11.5px] ${sales.includes(v.nome)
+                    ? "border-primary bg-primary/15 text-primary font-medium" : "border-border bg-card text-muted-foreground"}`}>
+                  {v.nome}
+                </button>
+              ))}
+            </div>
+          </Sez>
+
+          {/* 3 — fogli */}
+          <Sez icon={FileSpreadsheet} title="Dove leggere i dati" desc="nomi esatti dei tab nei fogli dei venditori">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <Label>Nome del tab lead nei fogli sales</Label>
+                <Label className="text-[12px]">Tab lead</Label>
                 <Input value={form.lead_tab} onChange={(e) => setForm({ ...form, lead_tab: e.target.value })}
                   placeholder="es. Lead Workshop_Giu26" />
-                <p className="text-[11px] text-muted-foreground mt-1">Nome esatto, identico nei fogli dei venditori selezionati.</p>
               </div>
               <div>
-                <Label>Campagna nel database</Label>
+                <Label className="text-[12px]">Campagna nel database</Label>
                 <Input value={form.campagna ?? ""} onChange={(e) => setForm({ ...form, campagna: e.target.value })}
                   placeholder="es. Workshop Giu26" />
-                <p className="text-[11px] text-muted-foreground mt-1">Serve per lead generati, fonti e andamento giornaliero.</p>
               </div>
-            </div>
-            <SalesPicker campo="lead_sales" />
-            <div>
-              <div className="flex items-center justify-between mb-1.5 flex-wrap gap-2">
-                <Label>Target lead per venditore <span className="text-muted-foreground font-normal">(solo riferimento, non assegna)</span></Label>
-                <div className="flex gap-1.5 items-center">
-                  {automCollegata && (
-                    <span className="text-[11px] text-muted-foreground hidden sm:inline">
-                      regola: {automCollegata.nome}
-                    </span>
-                  )}
-                  <Button size="sm" variant="outline" className="h-6 text-[11px]" onClick={targetDaAutomazione}
-                    title="Compila i target dalle quote della regola di assegnazione collegata">
-                    <Zap className="h-3 w-3 mr-1" /> Riprendi dalle quote
-                  </Button>
-                  <Button size="sm" variant="outline" className="h-6 text-[11px]" onClick={() => setForm((f) => ({ ...f, target: {} }))}>
-                    Azzera
-                  </Button>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-[170px] overflow-y-auto p-2 rounded-md border border-border bg-secondary/30">
-                {(form.lead_sales?.length ? form.lead_sales : nomi).map((nome) => (
-                  <div key={nome} className="flex items-center gap-1.5">
-                    <span className="text-[11px] text-muted-foreground truncate flex-1" title={nome}>{nome.split(" ")[0]}</span>
-                    <Input type="number" className="h-7 w-[68px] text-[12px]" value={form.target?.[nome] ?? ""}
-                      onChange={(e) => {
-                        const v = parseInt(e.target.value, 10);
-                        setForm((f) => {
-                          const t = { ...(f.target ?? {}) };
-                          if (isNaN(v)) delete t[nome]; else t[nome] = v;
-                          return { ...f, target: t };
-                        });
-                      }} />
-                  </div>
-                ))}
-              </div>
-            </div>
-          </TabsContent>
-
-          {/* ── CALL ── */}
-          <TabsContent value="call" className="mt-4 space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <Label>Tab call (uno per mese, separati da virgola)</Label>
+                <Label className="text-[12px]">Tab call (uno per mese, separati da virgola)</Label>
                 <Input value={form.call_tabs.join(", ")}
                   onChange={(e) => setForm({ ...form, call_tabs: e.target.value.split(",").map((t) => t.trim()).filter(Boolean) })}
-                  placeholder="es. Giugno26 Elenco call/esito, Luglio26 Elenco call/esito" />
-                <p className="text-[11px] text-muted-foreground mt-1">Nome esatto dei tab mensili nei fogli sales.</p>
+                  placeholder="es. Giugno26 Elenco call/esito, Luglio26…" />
               </div>
               <div>
-                <Label>Provenienza delle call</Label>
+                <Label className="text-[12px]">Provenienza delle call</Label>
                 <Input value={form.provenienza} onChange={(e) => setForm({ ...form, provenienza: e.target.value })}
                   placeholder="es. 3sfere" />
-                <p className="text-[11px] text-muted-foreground mt-1">Valore esatto nella colonna provenienza: solo queste call contano per il lancio.</p>
               </div>
             </div>
-            <SalesPicker campo="call_sales" />
-          </TabsContent>
+          </Sez>
 
-          {/* ── AUTOMAZIONI (replica della sezione Automazioni) ── */}
-          <TabsContent value="automazioni" className="mt-4 space-y-3">
-            <div className="rounded-md border border-border bg-secondary/30 p-3">
-              <Label className="flex items-center gap-1.5 text-[12.5px]"><Link2 className="h-3.5 w-3.5" /> Regola collegata a questo lancio</Label>
-              <Select value={form.automazione_id ?? "__none__"}
-                onValueChange={(v) => setForm({ ...form, automazione_id: v === "__none__" ? undefined : v })}>
-                <SelectTrigger className="h-8 mt-1.5 text-[12.5px]"><SelectValue placeholder="Nessuna" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="__none__">Nessuna</SelectItem>
-                  {automations.map((a) => (
-                    <SelectItem key={a.id} value={a.id}>{a.nome}{a.attivo ? "" : " (disattiva)"}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <p className="text-[11px] text-muted-foreground mt-1.5">
-                Crea qui sotto la regola e poi selezionala: è la stessa lista di Impostazioni → Automazioni, si lavora indifferentemente da entrambe le parti.
-              </p>
+          {/* 4 — automazione */}
+          <Sez icon={Zap} title="Assegnazione automatica" desc={autom ? `regola: ${autom.nome}` : "nuova regola"}>
+            <div className="flex items-center gap-2 mb-1">
+              <Switch checked={autoOn} onCheckedChange={setAutoOn} />
+              <span className="text-[12.5px]">{autoOn ? "Attiva" : "Disattiva — assegni a mano"}</span>
             </div>
-            <AutomationSettings />
-          </TabsContent>
 
-          {/* ── WHATSAPP (replica della sezione Link WhatsApp) ── */}
-          <TabsContent value="whatsapp" className="mt-4 space-y-3">
-            <div className="rounded-md border border-border bg-secondary/30 p-3">
-              <Label className="flex items-center gap-1.5 text-[12.5px]"><Link2 className="h-3.5 w-3.5" /> Link collegato a questo lancio</Label>
-              <div className="flex gap-2 items-center mt-1.5">
+            <div className={`space-y-3 ${autoOn ? "" : "opacity-50 pointer-events-none"}`}>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <Label className="text-[12px]">Quando</Label>
+                  <Select value={aTrigger} onValueChange={(v) => setATrigger(v as any)}>
+                    <SelectTrigger className="h-8 text-[12.5px]"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="new_lead">Nuovo lead</SelectItem>
+                      <SelectItem value="duplicate_different_source">Lead duplicato da fonte diversa</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label className="text-[12px]">Se la fonte contiene</Label>
+                  <Input className="h-8 text-[12.5px]" value={aFonti} onChange={(e) => setAFonti(e.target.value)}
+                    placeholder="es. workshop_set26" />
+                </div>
+              </div>
+
+              {conflitti.length > 0 && (
+                <div className="rounded-md border border-amber-500/40 bg-amber-500/10 p-2.5 space-y-1">
+                  <div className="flex items-center gap-1.5 text-amber-400 text-[12px] font-semibold">
+                    <AlertTriangle className="h-3.5 w-3.5" /> {conflitti.length} regola/e attive in conflitto
+                  </div>
+                  {conflitti.map((c, i) => (
+                    <p key={i} className="text-[11.5px] text-muted-foreground">
+                      <b className="text-foreground">{c.automazione}</b> {c.motivo}
+                      {c.priorityMinore ? <span className="text-amber-400"> · scatta prima di questa</span> : " · questa scatta prima"}
+                    </p>
+                  ))}
+                </div>
+              )}
+
+              <div>
+                <Label className="text-[12px]">Azione</Label>
+                <Select value={aAzione} onValueChange={(v) => setAAzione(v as Azione)}>
+                  <SelectTrigger className="h-8 text-[12.5px]"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="weighted_distribution">Distribuisci tra i venditori del lancio</SelectItem>
+                    <SelectItem value="assign_to_previous_seller">Assegna al venditore precedente</SelectItem>
+                    <SelectItem value="assign_to_seller">Assegna a un venditore specifico</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {aAzione === "assign_to_seller" && (
+                <div>
+                  <Label className="text-[12px]">Venditore</Label>
+                  <Select value={aTargetSeller} onValueChange={setATargetSeller}>
+                    <SelectTrigger className="h-8 text-[12.5px]"><SelectValue placeholder="Scegli" /></SelectTrigger>
+                    <SelectContent>
+                      {attivi.map((v) => <SelectItem key={v.id} value={v.id}>{v.nome}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              {aAzione === "weighted_distribution" && (
+                <div className="space-y-2.5 rounded-md border border-border bg-secondary/30 p-3">
+                  <div className="flex items-center gap-2">
+                    <Switch checked={aPrevFirst} onCheckedChange={setAPrevFirst} />
+                    <span className="text-[12.5px]">Se il lead è già noto, cerca prima il venditore precedente</span>
+                  </div>
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <div className="flex gap-1.5">
+                      <Button size="sm" variant={aModo === "percentage" ? "default" : "outline"} className="h-7 text-[11.5px]" onClick={() => setAModo("percentage")}>Percentuale</Button>
+                      <Button size="sm" variant={aModo === "count" ? "default" : "outline"} className="h-7 text-[11.5px]" onClick={() => setAModo("count")}>Quota assoluta</Button>
+                    </div>
+                    <div className="flex gap-1.5 items-center">
+                      <span className={`text-[11.5px] ${quoteValide ? "text-emerald-400" : "text-amber-400"}`}>
+                        {aModo === "percentage" ? `totale ${totQuote}%` : `totale ${totQuote} lead`}
+                      </span>
+                      <Button size="sm" variant="outline" className="h-6 text-[11px]" onClick={dividiEqua}>Dividi equamente</Button>
+                    </div>
+                  </div>
+                  <div className="space-y-1 max-h-[160px] overflow-y-auto">
+                    {quotaSales.map((nome) => (
+                      <div key={nome} className="flex items-center gap-2">
+                        <span className="flex-1 text-[12px] truncate">{nome}</span>
+                        <Input type="number" className="h-7 w-[80px] text-[12px]" value={aQuote[nome] ?? ""}
+                          onChange={(e) => setAQuote((q) => ({ ...q, [nome]: parseInt(e.target.value, 10) || 0 }))} />
+                        <span className="text-[11px] text-muted-foreground w-8">{aModo === "percentage" ? "%" : "lead"}</span>
+                      </div>
+                    ))}
+                    {quotaSales.length === 0 && <p className="text-[12px] text-muted-foreground">Seleziona prima i venditori del lancio.</p>}
+                  </div>
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <Label className="text-[12px]">Nome tab Google Sheets <span className="text-muted-foreground font-normal">(opzionale)</span></Label>
+                  <Input className="h-8 text-[12.5px]" value={aSheetTab} onChange={(e) => setASheetTab(e.target.value)}
+                    placeholder="dove scrivere i lead assegnati" />
+                </div>
+                <div>
+                  <Label className="text-[12px]">Campagna <span className="text-muted-foreground font-normal">(opzionale)</span></Label>
+                  <Input className="h-8 text-[12.5px]" value={aCampagna} onChange={(e) => setACampagna(e.target.value)}
+                    placeholder="campagna assegnata al lead" />
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <Switch checked={aWebhook} onCheckedChange={setAWebhook} />
+                <span className="text-[12.5px]">Invia i lead assegnati al webhook configurato</span>
+              </div>
+            </div>
+          </Sez>
+
+          {/* 5 — whatsapp */}
+          <Sez icon={MessageCircle} title="Link WhatsApp" desc="per tracciare le chat aperte dai lead">
+            {!waNuovo ? (
+              <div className="flex gap-2 items-center flex-wrap">
                 <Select value={form.whatsapp_slug ?? "__none__"}
                   onValueChange={(v) => setForm({ ...form, whatsapp_slug: v === "__none__" ? undefined : v })}>
-                  <SelectTrigger className="h-8 text-[12.5px]"><SelectValue placeholder="Nessuno" /></SelectTrigger>
+                  <SelectTrigger className="h-8 w-[260px] text-[12.5px]"><SelectValue placeholder="Nessuno" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="__none__">Nessuno</SelectItem>
                     {wa.map((t) => <SelectItem key={t.slug} value={t.slug}>{t.nome} · {t.click_count} click</SelectItem>)}
                   </SelectContent>
                 </Select>
-                <Button size="sm" variant="outline" className="h-8" onClick={loadWa}>Ricarica</Button>
+                <Button size="sm" variant="outline" className="h-8" onClick={() => { setWaNuovo(true); setWaNome(`WhatsApp ${form.nome}`); }}>
+                  <Plus className="h-3.5 w-3.5 mr-1" /> Nuovo link
+                </Button>
               </div>
-              <p className="text-[11px] text-muted-foreground mt-1.5">
-                Crea qui sotto il link e poi selezionalo: è la stessa lista di Impostazioni → Link WhatsApp.
-              </p>
-            </div>
-            <WhatsAppTemplatesSection />
-          </TabsContent>
-        </Tabs>
+            ) : (
+              <div className="space-y-2.5 rounded-md border border-border bg-secondary/30 p-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <Label className="text-[12px]">Nome</Label>
+                    <Input className="h-8 text-[12.5px]" value={waNome} onChange={(e) => setWaNome(e.target.value)} />
+                    <p className="text-[11px] text-muted-foreground mt-1">/wa/<b>{slugify(waNome) || "…"}</b></p>
+                  </div>
+                  <div>
+                    <Label className="text-[12px]">Numero di riserva <span className="text-muted-foreground font-normal">(opzionale)</span></Label>
+                    <Input className="h-8 text-[12.5px]" value={waFallback} onChange={(e) => setWaFallback(e.target.value)} placeholder="+39 340 123 4567" />
+                  </div>
+                </div>
+                <div>
+                  <Label className="text-[12px]">Messaggio precompilato</Label>
+                  <Input className="h-8 text-[12.5px]" value={waMsg} onChange={(e) => setWaMsg(e.target.value)}
+                    placeholder={`Ciao {{venditore_nome}}, ho confermato la partecipazione a ${form.nome || "…"}!`} />
+                </div>
+                <Button size="sm" variant="ghost" className="h-6 text-[11px] text-muted-foreground" onClick={() => setWaNuovo(false)}>
+                  Annulla, uso un link esistente
+                </Button>
+              </div>
+            )}
+          </Sez>
+        </div>
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Annulla</Button>
-          <Button onClick={handleSave} disabled={saving}>{value.id ? "Salva" : "Crea lancio"}</Button>
+          <Button onClick={handleSave} disabled={saving}>
+            {saving && <Loader2 className="h-4 w-4 animate-spin mr-1" />} {value.id ? "Salva lancio" : "Crea lancio"}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
