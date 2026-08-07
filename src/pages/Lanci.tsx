@@ -101,7 +101,7 @@ const Lanci = () => {
   }, [data, sum]);
 
   return (
-    <div className="max-w-[1520px] mx-auto px-3 sm:px-5 pt-16 py-5 pb-24 space-y-4">
+    <div className={`container mx-auto max-w-7xl ${isMobile ? "px-4 py-5 pt-16 pb-24" : "px-6 py-8 pt-16"} space-y-4`}>
       {/* Intestazione compatta: selettore lancio a sinistra, azioni a destra.
           Le sorgenti dati stanno nel tab Panoramica, non nel titolo. */}
       <div className="flex items-center justify-between gap-3 flex-wrap">

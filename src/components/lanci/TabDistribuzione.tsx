@@ -1,16 +1,10 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Switch } from "@/components/ui/switch";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { toast } from "sonner";
-import { Zap, AlertTriangle, Plus, Loader2, Link2, RotateCcw } from "lucide-react";
+import { Zap, AlertTriangle, Loader2 } from "lucide-react";
 import { useSalespeopleData } from "@/hooks/useSalespeopleData";
 import { useAutomationsData } from "@/hooks/useAutomationsData";
-import { AutomationForm } from "@/components/automation/AutomationForm";
-import type { NewAutomationForm } from "@/types/automation";
-import { LancioConfig, LancioRow, fetchLanci, saveLanci } from "@/lib/lanci/config";
-import { checkConflitti, Conflitto, fetchEsecuzioni, setAutomazioneAttiva } from "@/lib/lanci/integrazioni";
+import { LancioConfig, LancioRow } from "@/lib/lanci/config";
+import { checkConflitti, Conflitto, fetchEsecuzioni } from "@/lib/lanci/integrazioni";
 
 const n = (v: number) => Math.round(v).toLocaleString("it-IT");
 
@@ -23,10 +17,8 @@ interface Props { lancio: LancioConfig; rows: LancioRow[]; market: string; onCha
  */
 const TabDistribuzione = ({ lancio, rows, market, onChange }: Props) => {
   const { venditori } = useSalespeopleData();
-  const { automations, createAutomation, updateAutomation, resetDistributionState, isLoading } = useAutomationsData();
-  const [formOpen, setFormOpen] = useState(false);
+  const { automations, isLoading } = useAutomationsData();
   const [log, setLog] = useState<any[]>([]);
-  const [saving, setSaving] = useState(false);
 
   const autom = useMemo(
     () => automations.find((a) => a.id === lancio.automazione_id) ?? null,
@@ -46,38 +38,8 @@ const TabDistribuzione = ({ lancio, rows, market, onChange }: Props) => {
   }, [lancio.automazione_id]);
   useEffect(() => { loadLog(); }, [loadLog]);
 
-  const collega = async (id: string) => {
-    const all = await fetchLanci();
-    if (await saveLanci(all.map((l) => (l.id === lancio.id ? { ...l, automazione_id: id || undefined } : l)))) {
-      toast.success(id ? "Regola collegata al lancio" : "Regola scollegata");
-      onChange();
-    } else toast.error("Errore salvataggio");
-  };
 
-  const handleSubmit = async (data: NewAutomationForm) => {
-    setSaving(true);
-    try {
-      if (autom) {
-        await updateAutomation(autom.id, data as any);
-        toast.success("Regola aggiornata");
-      } else {
-        const maxP = Math.max(...automations.map((a) => a.priority ?? 0), 0);
-        const created: any = await createAutomation({
-          ...(data as any), attivo: true, priority: maxP + 1,
-          campagna: (data as any).campagna || lancio.campagna || null,
-        });
-        if (created?.id) await collega(created.id);
-      }
-      setFormOpen(false);
-      onChange();
-    } finally { setSaving(false); }
-  };
 
-  const toggleAttiva = async (v: boolean) => {
-    if (!autom) return;
-    if (await setAutomazioneAttiva(autom.id, v)) { toast.success(v ? "Regola attivata" : "Regola disattivata"); onChange(); }
-    else toast.error("Errore aggiornamento");
-  };
 
   const nomeOf = (id: string) => {
     const v = venditori.find((x) => x.id === id);
@@ -96,27 +58,13 @@ const TabDistribuzione = ({ lancio, rows, market, onChange }: Props) => {
           <CardTitle className="label-eyebrow flex items-center justify-between gap-2 flex-wrap">
             <span className="flex items-center gap-2"><Zap className="h-3.5 w-3.5 text-amber-400" /> Regola di assegnazione</span>
             <span className="flex items-center gap-2 normal-case tracking-normal">
-              {autom ? (
-                <>
-                  <Switch checked={autom.attivo} onCheckedChange={toggleAttiva} />
-                  <span className={autom.attivo ? "text-emerald-400" : "text-muted-foreground"}>{autom.attivo ? "attiva" : "disattiva"}</span>
-                  <Button size="sm" variant="outline" className="h-7" onClick={() => setFormOpen(true)}>Modifica</Button>
-                  <Button size="sm" variant="outline" className="h-7" title="Azzera i contatori di distribuzione"
-                    onClick={async () => { await resetDistributionState(autom.id); toast.success("Contatori azzerati"); onChange(); }}>
-                    <RotateCcw className="h-3.5 w-3.5" />
-                  </Button>
-                </>
-              ) : (
-                <>
-                  <Select onValueChange={collega}>
-                    <SelectTrigger className="h-7 w-[210px] text-[12px]"><SelectValue placeholder="Collega regola esistente" /></SelectTrigger>
-                    <SelectContent>
-                      {automations.map((a) => <SelectItem key={a.id} value={a.id}>{a.nome}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                  <Button size="sm" className="h-7" onClick={() => setFormOpen(true)}><Plus className="h-3.5 w-3.5 mr-1" /> Crea regola</Button>
-                </>
+              {autom && (
+                <span className={`px-2 py-0.5 rounded-full text-[11px] font-medium ${autom.attivo
+                  ? "bg-emerald-500/15 text-emerald-400" : "bg-muted text-muted-foreground"}`}>
+                  {autom.attivo ? "attiva" : "disattiva"}
+                </span>
               )}
+              <span className="text-[11px] text-muted-foreground">sola lettura · si configura in Impostazioni</span>
             </span>
           </CardTitle>
         </CardHeader>
@@ -125,7 +73,8 @@ const TabDistribuzione = ({ lancio, rows, market, onChange }: Props) => {
             <div className="py-8 flex justify-center text-muted-foreground"><Loader2 className="h-5 w-5 animate-spin" /></div>
           ) : !autom ? (
             <div className="py-8 px-4 text-center text-sm text-muted-foreground">
-              Nessuna regola collegata: i lead di questo lancio non vengono distribuiti automaticamente.
+              Nessuna regola collegata: i lead di questo lancio non vengono distribuiti automaticamente.<br />
+              <span className="text-[12px]">Collegane una da <b>Impostazioni → Lanci</b>.</span>
             </div>
           ) : (
             <>
@@ -267,14 +216,6 @@ const TabDistribuzione = ({ lancio, rows, market, onChange }: Props) => {
         </Card>
       )}
 
-      {/* Editor completo: stesso di Impostazioni → Automazioni */}
-      <AutomationForm
-        open={formOpen}
-        onOpenChange={setFormOpen}
-        onSubmit={handleSubmit}
-        automation={autom ?? undefined}
-        isLoading={saving}
-      />
     </div>
   );
 };

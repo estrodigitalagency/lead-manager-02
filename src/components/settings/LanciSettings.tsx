@@ -9,6 +9,8 @@ import { toast } from "sonner";
 import { Plus, Trash2, Edit, Rocket, Palette } from "lucide-react";
 import { useMarket } from "@/contexts/MarketContext";
 import { useSalespeopleData } from "@/hooks/useSalespeopleData";
+import { useAutomationsData } from "@/hooks/useAutomationsData";
+import { fetchTemplates } from "@/lib/whatsapp/templates";
 import {
   fetchLanci, saveLanci, fetchColorRules, saveColorRules,
   LancioConfig, ColorRule, PALETTE,
@@ -23,6 +25,9 @@ const emptyCfg = (): LancioConfig => ({ id: "", nome: "", provenienza: "3sfere",
 const LanciSettings = () => {
   const { selectedMarket } = useMarket();
   const { venditori } = useSalespeopleData();
+  const { automations } = useAutomationsData();
+  const [waTemplates, setWaTemplates] = useState<{ slug: string; nome: string; click_count: number }[]>([]);
+  useEffect(() => { fetchTemplates(selectedMarket).then((t) => setWaTemplates(t as any)); }, [selectedMarket]);
   const [lanci, setLanci] = useState<LancioConfig[]>([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
@@ -120,6 +125,10 @@ const LanciSettings = () => {
                     <p className="text-[11px] text-muted-foreground mt-0.5">
                       {(l.sales?.length ?? 0) > 0 ? `${l.sales!.length} sales inclusi` : "tutti i sales con dati"}
                       {Object.keys(l.target ?? {}).length > 0 && ` · ${Object.keys(l.target!).length} target impostati`}
+                      {" · regola "}<b className={l.automazione_id ? "text-foreground" : "text-amber-400"}>
+                        {l.automazione_id ? (automations.find((a) => a.id === l.automazione_id)?.nome ?? "collegata") : "nessuna"}</b>
+                      {" · WhatsApp "}<b className={l.whatsapp_slug ? "text-foreground" : "text-amber-400"}>
+                        {l.whatsapp_slug ?? "nessuno"}</b>
                     </p>
                   </div>
                   <div className="flex gap-1 shrink-0">
@@ -174,6 +183,41 @@ const LanciSettings = () => {
                 <Input value={form.campagna ?? ""} onChange={(e) => setForm({ ...form, campagna: e.target.value })}
                   placeholder="es. Workshop Giu26" />
                 <p className="text-[11px] text-muted-foreground mt-1">Campagna nel database, per lead generati e andamento.</p>
+              </div>
+            </div>
+
+            {/* Collegamenti: qui si decide cosa il lancio mostra in sola lettura nel frontend */}
+            <div className="rounded-md border border-border bg-secondary/30 p-3 space-y-3">
+              <div className="label-eyebrow">Collegamenti</div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <Label className="text-[12px]">Regola di assegnazione</Label>
+                  <Select value={form.automazione_id ?? "__none__"}
+                    onValueChange={(v) => setForm({ ...form, automazione_id: v === "__none__" ? undefined : v })}>
+                    <SelectTrigger className="h-8 text-[12.5px]"><SelectValue placeholder="Nessuna" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__none__">Nessuna</SelectItem>
+                      {automations.map((a) => (
+                        <SelectItem key={a.id} value={a.id}>{a.nome}{a.attivo ? "" : " (disattiva)"}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-[11px] text-muted-foreground mt-1">Si crea e modifica in <b>Automazioni</b>.</p>
+                </div>
+                <div>
+                  <Label className="text-[12px]">Link WhatsApp</Label>
+                  <Select value={form.whatsapp_slug ?? "__none__"}
+                    onValueChange={(v) => setForm({ ...form, whatsapp_slug: v === "__none__" ? undefined : v })}>
+                    <SelectTrigger className="h-8 text-[12.5px]"><SelectValue placeholder="Nessuno" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__none__">Nessuno</SelectItem>
+                      {waTemplates.map((t) => (
+                        <SelectItem key={t.slug} value={t.slug}>{t.nome} · {t.click_count} click</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-[11px] text-muted-foreground mt-1">Si crea in <b>Link WhatsApp</b>.</p>
+                </div>
               </div>
             </div>
 
