@@ -6,7 +6,7 @@
  *   tab CALL  (es. "Giugno26 Elenco call/esito", range B:L)
  *     col B(0)=provenienza | H(6)=Esito chiamata | K(9)=prezzo | L(10)=incassato
  *     - Call Totali  = righe con provenienza == <provenienza lancio> (su TUTTI i mesi configurati)
- *     - Call da Fare = di quelle, esito contiene "closing"
+ *     - Call da Fare = di quelle, esito ancora vuoto (entrate − fatte)
  *     - Call Nette   = Totali − esito ~ (da rischedulare|rischedulato|no show|cancellat) − Call da Fare
  *     - Chiusure     = esito ∈ (pagamento a rate|pagamento unico|acconto)
  *     - Fatturato    = Σ prezzo delle chiusure     | Incassato = Σ incassato delle chiusure
@@ -44,7 +44,8 @@ const QUALIFICHE = [
 
 const RE_CHIUSURA = /^(pagamento a rate|pagamento unico|acconto)$/i;
 const RE_NON_NETTA = /da rischedulare|rischedulato|no show|cancellat/i;
-const RE_DA_FARE = /closing/i;
+// Call da fare = entrate con quella provenienza ma non ancora svolte, cioè senza esito compilato.
+const daFareTest = (esito: string) => esito.trim() === "";
 
 // Voto qualità lead (col H del tab Lead). Il peso è il numero iniziale dell'etichetta.
 const VOTI = ["1 - Lontano", "2 - IB", "3 - CP", "4 - ISF", "5 - MM"];
@@ -261,7 +262,7 @@ Deno.serve(async (req) => {
               if (String(r[0] ?? "").trim().toLowerCase() !== prov) continue;
               tot++;
               const esito = String(r[6] ?? "").trim();
-              if (RE_DA_FARE.test(esito)) daFare++;
+              if (daFareTest(esito)) daFare++;
               else if (RE_NON_NETTA.test(esito)) nonNette++;
               if (RE_CHIUSURA.test(esito)) {
                 chiusure++;
