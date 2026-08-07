@@ -51,6 +51,9 @@ const LancioConfigDialog = ({ open, onOpenChange, value, onSave, esistenti, mark
   const [aSheetTab, setASheetTab] = useState("");
   const [aCampagna, setACampagna] = useState("");
   const [aWebhook, setAWebhook] = useState(true);
+  const [aLockOn, setALockOn] = useState(false);
+  const [aLockDays, setALockDays] = useState(30);   // -1 = sempre lo stesso venditore
+  const [aEsclusi, setAEsclusi] = useState<string[]>([]);
   const [conflitti, setConflitti] = useState<Conflitto[]>([]);
 
   // ── whatsapp ──
@@ -89,11 +92,16 @@ const LancioConfigDialog = ({ open, onOpenChange, value, onSave, esistenti, mark
       setASheetTab((autom as any).sheets_tab_name ?? "");
       setACampagna((autom as any).campagna ?? value.campagna ?? "");
       setAWebhook((autom as any).webhook_enabled !== false);
+      const lp = (autom as any).lock_period_days;
+      setALockOn(lp !== null && lp !== undefined);
+      setALockDays(lp ?? 30);
+      setAEsclusi((autom as any).excluded_sellers ?? []);
     } else {
       setAutoOn(true); setATrigger("new_lead"); setAAzione("weighted_distribution");
       setAFonti(value.campagna ? slugify(value.campagna).replace(/-/g, "_") : "");
       setAPrevFirst(false); setATargetSeller(""); setAModo("percentage"); setAQuote({});
       setASheetTab(""); setACampagna(value.campagna ?? ""); setAWebhook(true);
+      setALockOn(false); setALockDays(30); setAEsclusi([]);
     }
   }, [open, value, autom?.id]);   // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -161,7 +169,8 @@ const LancioConfigDialog = ({ open, onOpenChange, value, onSave, esistenti, mark
       sheets_tab_name: aSheetTab.trim() || null,
       campagna: aCampagna.trim() || null,
       webhook_enabled: aWebhook,
-      excluded_sellers: [],
+      lock_period_days: aLockOn ? aLockDays : null,
+      excluded_sellers: aEsclusi,
     };
     try {
       if (autom) { await updateAutomation(autom.id, payload); return autom.id; }
@@ -259,9 +268,12 @@ const LancioConfigDialog = ({ open, onOpenChange, value, onSave, esistenti, mark
                   placeholder="es. Lead Workshop_Giu26" />
               </div>
               <div>
-                <Label className="text-[12px]">Campagna nel database</Label>
+                <Label className="text-[12px]">Campagna dei lead</Label>
                 <Input value={form.campagna ?? ""} onChange={(e) => setForm({ ...form, campagna: e.target.value })}
                   placeholder="es. Workshop Giu26" />
+                <p className="text-[11px] text-muted-foreground mt-1">
+                  Il valore che i lead di questo lancio hanno nel campo <b>campagna</b> (lo vedi in Database → Lead Generation). Serve a contare lead generati, fonti e andamento.
+                </p>
               </div>
               <div>
                 <Label className="text-[12px]">Tab call (uno per mese, separati da virgola)</Label>
@@ -343,9 +355,50 @@ const LancioConfigDialog = ({ open, onOpenChange, value, onSave, esistenti, mark
 
               {aAzione === "weighted_distribution" && (
                 <div className="space-y-2.5 rounded-md border border-border bg-secondary/30 p-3">
-                  <div className="flex items-center gap-2">
-                    <Switch checked={aPrevFirst} onCheckedChange={setAPrevFirst} />
-                    <span className="text-[12.5px]">Se il lead è già noto, cerca prima il venditore precedente</span>
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <Switch checked={aPrevFirst} onCheckedChange={setAPrevFirst} />
+                      <span className="text-[12.5px]">Se il lead è già noto, cerca prima il venditore precedente</span>
+                    </div>
+                    {aPrevFirst && (
+                      <div className="pl-9 space-y-2">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <Switch checked={aLockOn} onCheckedChange={setALockOn} />
+                          <span className="text-[12px]">Solo se l'ultima assegnazione è recente</span>
+                          {aLockOn && (
+                            <>
+                              <Input type="number" className="h-7 w-[74px] text-[12px]" value={aLockDays < 0 ? "" : aLockDays}
+                                onChange={(e) => setALockDays(parseInt(e.target.value, 10) || 0)} disabled={aLockDays < 0} />
+                              <span className="text-[12px] text-muted-foreground">giorni</span>
+                              <Button size="sm" variant={aLockDays < 0 ? "default" : "outline"} className="h-6 text-[11px]"
+                                onClick={() => setALockDays(aLockDays < 0 ? 30 : -1)}>
+                                sempre
+                              </Button>
+                            </>
+                          )}
+                        </div>
+                        <p className="text-[11px] text-muted-foreground">
+                          {!aLockOn
+                            ? "Nessun limite di tempo: torna sempre al venditore precedente, se esiste."
+                            : aLockDays < 0
+                              ? "Il lead torna sempre allo stesso venditore, senza scadenza."
+                              : `Oltre ${aLockDays} giorni dall'ultima assegnazione il lead viene ridistribuito.`}
+                        </p>
+                        <div>
+                          <span className="text-[12px] text-muted-foreground">Venditori da non riprendere mai{aEsclusi.length ? ` (${aEsclusi.length})` : ""}</span>
+                          <div className="flex flex-wrap gap-1.5 mt-1">
+                            {attivi.map((v) => (
+                              <button key={v.id} type="button"
+                                onClick={() => setAEsclusi((p) => p.includes(v.nome) ? p.filter((x) => x !== v.nome) : [...p, v.nome])}
+                                className={`px-2 py-0.5 rounded-full border text-[11px] ${aEsclusi.includes(v.nome)
+                                  ? "border-destructive bg-destructive/15 text-destructive font-medium" : "border-border bg-card text-muted-foreground"}`}>
+                                {v.nome}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
                   <div className="flex items-center justify-between gap-2 flex-wrap">
                     <div className="flex gap-1.5">
@@ -380,9 +433,9 @@ const LancioConfigDialog = ({ open, onOpenChange, value, onSave, esistenti, mark
                     placeholder="dove scrivere i lead assegnati" />
                 </div>
                 <div>
-                  <Label className="text-[12px]">Campagna <span className="text-muted-foreground font-normal">(opzionale)</span></Label>
+                  <Label className="text-[12px]">Campagna da assegnare <span className="text-muted-foreground font-normal">(opzionale)</span></Label>
                   <Input className="h-8 text-[12.5px]" value={aCampagna} onChange={(e) => setACampagna(e.target.value)}
-                    placeholder="campagna assegnata al lead" />
+                    placeholder="scritta sul lead al momento dell'assegnazione" />
                 </div>
               </div>
               <div className="flex items-center gap-2">
