@@ -54,7 +54,7 @@ const LancioMatrix = ({ data, rows, rules, heatmap }: Props) => {
 
   const agg = (key: string) => SUM_KEYS.has(key)
     ? rows.reduce((s, r) => s + ((r as any)[key] || 0), 0)
-    : ((data.totale as any)[key] || 0);
+    : ((data.totale as any)?.[key] || 0);
 
   const Cell = ({ k, v, f, pc, range }: { k: string; v: number; f: Fmt; pc?: number; range?: [number, number] }) => {
     const style = ruleStyle(rules, k, v);
@@ -141,14 +141,14 @@ const LancioMatrix = ({ data, rows, rules, heatmap }: Props) => {
           {!closed.has("Lavorazione lead") && <MetricRows list={LEAD_METRICS} />}
           <Group
             title="Qualifica lead · n + % sul totale"
-            items={data.qualifiche_order}
+            items={data.qualifiche_order ?? []}
             get={(r, q) => r.qualifiche?.[q] ?? 0}
             getPerc={(r, q) => r.qualifiche_perc?.[q]}
             totFn={(q) => rows.reduce((s, r) => s + (r.qualifiche?.[q] ?? 0), 0)}
           />
           <Group
             title="Qualità lead (voto) · n + % sui confermati"
-            items={data.voti_order}
+            items={data.voti_order ?? []}
             get={(r, v) => r.voti?.[v] ?? 0}
             getPerc={(r, v) => r.voti_perc?.[v]}
             totFn={(v) => rows.reduce((s, r) => s + (r.voti?.[v] ?? 0), 0)}

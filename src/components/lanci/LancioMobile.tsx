@@ -98,12 +98,12 @@ const LancioMobile = ({ data, rows, rules }: Props) => {
       <Section title="Lavorazione lead" />
       {metricRows(LEAD_METRICS)}
       <Section title="Qualifica lead" />
-      {data.qualifiche_order.map((q) => (
+      {(data.qualifiche_order ?? []).map((q) => (
         <Row key={q} label={q} k={q} f="n" va={a.qualifiche?.[q] ?? 0}
           vb={b ? (b.qualifiche?.[q] ?? 0) : undefined} pc={b ? undefined : a.qualifiche_perc?.[q]} />
       ))}
       <Section title="Qualità lead (voto)" />
-      {data.voti_order.map((v) => (
+      {(data.voti_order ?? []).map((v) => (
         <Row key={v} label={v} k={v} f="n" va={a.voti?.[v] ?? 0}
           vb={b ? (b.voti?.[v] ?? 0) : undefined} pc={b ? undefined : a.voti_perc?.[v]} />
       ))}

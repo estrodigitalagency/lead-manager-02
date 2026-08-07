@@ -60,20 +60,20 @@ const Lanci = () => {
   const kpi = useMemo(() => {
     if (!data) return [];
     const sum = (k: string) => rows.reduce((s, r) => s + ((r as any)[k] || 0), 0);
-    const lg = data.leadgen, t = data.totale;
+    const lg = data.leadgen, t = data.totale ?? ({} as any);
     const nuovi = lg ? Object.values(lg.per_fonte).reduce((s, c) => s + c.Nuovo, 0) : 0;
     return [
       { k: "Lead generati", v: lg ? fmt.n(lg.generati) : "—", s: lg ? `${fmt.n(nuovi)} nuovi · ${fmt.n(lg.generati - nuovi)} vecchi` : "", lead: true },
       { k: "Assegnati", v: fmt.n(sum("tot_lead")), s: lg ? `${((sum("tot_lead") / lg.generati) * 100).toFixed(1).replace(".", ",")}% dei generati` : "", lead: true },
-      { k: "Voto medio", v: fmt.dec(t.media_voto), s: `${t.app_conferma}% conferma`, lead: true },
-      { k: "Call totali", v: fmt.n(sum("call_totali")), s: `${fmt.n(sum("call_nette"))} nette · ${t.nette_su_totali}%` },
-      { k: "Chiusure", v: fmt.n(sum("chiusure")), s: `CR ${t.tasso_chiusura_nette}% su nette` },
+      { k: "Voto medio", v: fmt.dec(t.media_voto ?? 0), s: `${t.app_conferma ?? 0}% conferma`, lead: true },
+      { k: "Call totali", v: fmt.n(sum("call_totali")), s: `${fmt.n(sum("call_nette"))} nette · ${t.nette_su_totali ?? 0}%` },
+      { k: "Chiusure", v: fmt.n(sum("chiusure")), s: `CR ${t.tasso_chiusura_nette ?? 0}% su nette` },
       { k: "Fatturato", v: fmt.eur(sum("fatturato")), s: `incassato ${fmt.eur(sum("incassato"))}` },
     ];
   }, [data, rows]);
 
   return (
-    <div className="max-w-[1520px] mx-auto px-3 sm:px-5 py-5 space-y-4">
+    <div className="max-w-[1520px] mx-auto px-3 sm:px-5 pt-16 py-5 pb-24 space-y-4">
       <div className="flex items-end justify-between gap-3 flex-wrap">
         <div>
           <h1 className="text-xl font-bold flex items-center gap-2"><Rocket className="h-5 w-5 text-primary" /> Analytics Lancio</h1>
