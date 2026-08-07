@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -57,22 +58,26 @@ const LancioConfigDialog = ({ open, onOpenChange, value, onSave, esistenti, mark
   const [conflitti, setConflitti] = useState<Conflitto[]>([]);
 
   // ── whatsapp ──
-  const [wa, setWa] = useState<{ slug: string; nome: string; click_count: number }[]>([]);
+  const [wa, setWa] = useState<{ slug: string; nome: string; click_count: number; messaggio_template: string; fallback_phone: string | null }[]>([]);
   const [waNuovo, setWaNuovo] = useState(false);
   const [waNome, setWaNome] = useState("");
   const [waMsg, setWaMsg] = useState("");
   const [waFallback, setWaFallback] = useState("");
+  const [waOn, setWaOn] = useState(true);
+  const origin = typeof window !== "undefined" ? window.location.origin : "";
 
   const attivi = useMemo(
     () => venditori.filter((v) => v.stato === "attivo").map((v) => ({ id: v.id, nome: `${v.nome} ${v.cognome || ""}`.trim() })),
     [venditori],
   );
   const autom = automations.find((a) => a.id === form.automazione_id) ?? null;
+  const waSel = wa.find((t) => t.slug === form.whatsapp_slug) ?? null;
 
   useEffect(() => {
     if (!open) return;
     setForm(value);
     setWaNuovo(false);
+    setWaOn(!!value.whatsapp_slug || !value.id);
     fetchTemplates().then((t) => setWa(t as any));
     // precompila l'automazione da quella collegata, altrimenti dai dati del lancio
     if (autom) {
@@ -204,10 +209,11 @@ const LancioConfigDialog = ({ open, onOpenChange, value, onSave, esistenti, mark
         if (!res && !automazione_id) { setSaving(false); return; }
         if (res) automazione_id = res;
       }
-      let whatsapp_slug = form.whatsapp_slug;
-      if (waNuovo) {
+      let whatsapp_slug = waOn ? form.whatsapp_slug : undefined;
+      if (waOn && waNuovo) {
         const s = await creaWa();
-        if (s) whatsapp_slug = s;
+        if (!s) { setSaving(false); return; }
+        whatsapp_slug = s;
       }
       const ok = await onSave({
         ...form, id, nome: form.nome.trim(),
@@ -446,42 +452,84 @@ const LancioConfigDialog = ({ open, onOpenChange, value, onSave, esistenti, mark
           </Sez>
 
           {/* 5 — whatsapp */}
-          <Sez icon={MessageCircle} title="Link WhatsApp" desc="per tracciare le chat aperte dai lead">
-            {!waNuovo ? (
-              <div className="flex gap-2 items-center flex-wrap">
-                <Select value={form.whatsapp_slug ?? "__none__"}
-                  onValueChange={(v) => setForm({ ...form, whatsapp_slug: v === "__none__" ? undefined : v })}>
-                  <SelectTrigger className="h-8 w-[260px] text-[12.5px]"><SelectValue placeholder="Nessuno" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="__none__">Nessuno</SelectItem>
-                    {wa.map((t) => <SelectItem key={t.slug} value={t.slug}>{t.nome} · {t.click_count} click</SelectItem>)}
-                  </SelectContent>
-                </Select>
-                <Button size="sm" variant="outline" className="h-8" onClick={() => { setWaNuovo(true); setWaNome(`WhatsApp ${form.nome}`); }}>
-                  <Plus className="h-3.5 w-3.5 mr-1" /> Nuovo link
-                </Button>
-              </div>
-            ) : (
-              <div className="space-y-2.5 rounded-md border border-border bg-secondary/30 p-3">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <Label className="text-[12px]">Nome</Label>
-                    <Input className="h-8 text-[12.5px]" value={waNome} onChange={(e) => setWaNome(e.target.value)} />
-                    <p className="text-[11px] text-muted-foreground mt-1">/wa/<b>{slugify(waNome) || "…"}</b></p>
-                  </div>
-                  <div>
-                    <Label className="text-[12px]">Numero di riserva <span className="text-muted-foreground font-normal">(opzionale)</span></Label>
-                    <Input className="h-8 text-[12.5px]" value={waFallback} onChange={(e) => setWaFallback(e.target.value)} placeholder="+39 340 123 4567" />
-                  </div>
+          <Sez icon={MessageCircle} title="Link WhatsApp del lancio" desc="porta il lead sulla chat del venditore assegnato">
+            <div className="flex items-center gap-2 mb-1">
+              <Switch checked={waOn} onCheckedChange={setWaOn} />
+              <span className="text-[12.5px]">{waOn ? "Attivo" : "Non usato in questo lancio"}</span>
+            </div>
+
+            {waOn && (
+              <div className="space-y-3">
+                {/* scelta: link esistente o nuovo */}
+                <div className="flex gap-1.5">
+                  <Button size="sm" variant={!waNuovo ? "default" : "outline"} className="h-7 text-[11.5px]" onClick={() => setWaNuovo(false)}>
+                    Usa un link esistente
+                  </Button>
+                  <Button size="sm" variant={waNuovo ? "default" : "outline"} className="h-7 text-[11.5px]"
+                    onClick={() => { setWaNuovo(true); if (!waNome) setWaNome(`WhatsApp ${form.nome}`); }}>
+                    <Plus className="h-3.5 w-3.5 mr-1" /> Creane uno nuovo
+                  </Button>
                 </div>
-                <div>
-                  <Label className="text-[12px]">Messaggio precompilato</Label>
-                  <Input className="h-8 text-[12.5px]" value={waMsg} onChange={(e) => setWaMsg(e.target.value)}
-                    placeholder={`Ciao {{venditore_nome}}, ho confermato la partecipazione a ${form.nome || "…"}!`} />
-                </div>
-                <Button size="sm" variant="ghost" className="h-6 text-[11px] text-muted-foreground" onClick={() => setWaNuovo(false)}>
-                  Annulla, uso un link esistente
-                </Button>
+
+                {!waNuovo ? (
+                  <div>
+                    <Label className="text-[12px]">Link collegato</Label>
+                    <Select value={form.whatsapp_slug ?? "__none__"}
+                      onValueChange={(v) => setForm({ ...form, whatsapp_slug: v === "__none__" ? undefined : v })}>
+                      <SelectTrigger className="h-8 text-[12.5px]"><SelectValue placeholder="Nessuno" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__none__">Nessuno</SelectItem>
+                        {wa.map((t) => <SelectItem key={t.slug} value={t.slug}>{t.nome} · {t.click_count} click</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                    {waSel && (
+                      <div className="mt-2 rounded-md border border-border bg-secondary/30 p-2.5 space-y-1 text-[11.5px]">
+                        <p className="text-muted-foreground">Indirizzo da mettere nel bottone della thank-you page:</p>
+                        <code className="block px-2 py-1 rounded bg-primary/15 text-primary text-[11px] break-all">
+                          {origin}/wa/{waSel.slug}?email=&#123;&#123;email&#125;&#125;&amp;nome=&#123;&#123;nome&#125;&#125;&amp;telefono=&#123;&#123;telefono&#125;&#125;
+                        </code>
+                        <p className="italic text-muted-foreground">"{waSel.messaggio_template}"</p>
+                        <p className={waSel.fallback_phone ? "text-emerald-400" : "text-amber-400"}>
+                          {waSel.fallback_phone
+                            ? `Numero di riserva: ${waSel.fallback_phone}`
+                            : "Nessun numero di riserva: se il lead non ha venditore vedrà un errore"}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="space-y-3 rounded-md border border-border bg-secondary/30 p-3">
+                    <div>
+                      <Label className="text-[12px]">Nome del link</Label>
+                      <Input className="h-8 text-[12.5px]" value={waNome} onChange={(e) => setWaNome(e.target.value)}
+                        placeholder={`WhatsApp ${form.nome || "lancio"}`} />
+                      <p className="text-[11px] text-muted-foreground mt-1">
+                        Indirizzo: <code className="px-1.5 py-0.5 rounded bg-primary/15 text-primary text-[11px]">{origin}/wa/{slugify(waNome) || "…"}</code>
+                      </p>
+                    </div>
+                    <div>
+                      <Label className="text-[12px]">Messaggio che il lead si trova già scritto</Label>
+                      <Textarea rows={2} className="text-[12.5px]" value={waMsg} onChange={(e) => setWaMsg(e.target.value)}
+                        placeholder={`Ciao {{venditore_nome}}, ho confermato la partecipazione a ${form.nome || "…"}!`} />
+                      <div className="flex flex-wrap gap-1 mt-1.5">
+                        {["{{nome}}", "{{venditore_nome}}", "{{venditore}}", "{{fonte}}", "{{campagna}}"].map((ph) => (
+                          <button key={ph} type="button" onClick={() => setWaMsg((m) => `${m}${m && !m.endsWith(" ") ? " " : ""}${ph}`)}
+                            className="px-1.5 py-0.5 rounded border border-border bg-card text-[10.5px] text-muted-foreground hover:border-primary">
+                            {ph}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <div>
+                      <Label className="text-[12px]">Numero di riserva <span className="text-muted-foreground font-normal">(consigliato)</span></Label>
+                      <Input className="h-8 text-[12.5px]" value={waFallback} onChange={(e) => setWaFallback(e.target.value)}
+                        placeholder="+39 340 123 4567" />
+                      <p className="text-[11px] text-muted-foreground mt-1">
+                        Usato quando il lead non ha ancora un venditore o il venditore non ha il numero: senza, il lead vedrebbe una pagina di errore.
+                      </p>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </Sez>
