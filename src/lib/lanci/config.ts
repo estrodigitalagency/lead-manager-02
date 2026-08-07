@@ -83,6 +83,8 @@ export interface LancioData {
   errors: string[];
   generated_at: string;
   cached?: boolean;
+  stale?: boolean;
+  age_ms?: number;
 }
 
 export async function fetchLancioData(lancioId: string, market: string, force = false): Promise<LancioData> {

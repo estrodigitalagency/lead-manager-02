@@ -24,25 +24,37 @@ const Lanci = () => {
   const [err, setErr] = useState<string | null>(null);
   const [heatmap, setHeatmap] = useState(true);
   const [tab, setTab] = useState("panoramica");
+  const [lastSync, setLastSync] = useState<Date | null>(null);
+  const [bg, setBg] = useState(false);   // aggiornamento silenzioso in corso
 
   useEffect(() => {
     fetchLanci().then((l) => { setLanci(l); setLancioId((cur) => cur || l[0]?.id || ""); });
   }, []);
 
-  const load = useCallback(async (force = false) => {
+  const load = useCallback(async (force = false, silent = false) => {
     if (!lancioId) return;
-    setLoading(true); setErr(null);
+    silent ? setBg(true) : setLoading(true);
+    if (!silent) setErr(null);
     try {
       const [d, r] = await Promise.all([
         fetchLancioData(lancioId, selectedMarket, force),
         fetchColorRules(lancioId),
       ]);
-      setData(d); setRules(r);
+      setData(d); setRules(r); setLastSync(new Date());
     } catch (e: any) {
-      setErr(e.message || "Errore nel caricamento"); setData(null);
-    } finally { setLoading(false); }
+      if (!silent) { setErr(e.message || "Errore nel caricamento"); setData(null); }
+    } finally { silent ? setBg(false) : setLoading(false); }
   }, [lancioId, selectedMarket]);
   useEffect(() => { load(); }, [load]);
+
+  // Aggiornamento automatico ogni 5 min, solo a scheda visibile: la risposta arriva dalla
+  // cache dell'edge (~1s) e i fogli Google vengono riletti al massimo ogni 15 min.
+  useEffect(() => {
+    const tick = () => { if (document.visibilityState === "visible") load(false, true); };
+    const id = setInterval(tick, 5 * 60 * 1000);
+    document.addEventListener("visibilitychange", tick);
+    return () => { clearInterval(id); document.removeEventListener("visibilitychange", tick); };
+  }, [load]);
 
   const cfg = useMemo(() => lanci.find((l) => l.id === lancioId) ?? null, [lanci, lancioId]);
   const reload = useCallback(() => { fetchLanci().then(setLanci); load(true); }, [load]);
@@ -103,7 +115,12 @@ const Lanci = () => {
               {lanci.map((l) => <SelectItem key={l.id} value={l.id}>{l.nome}</SelectItem>)}
             </SelectContent>
           </Select>
-          {data?.cached && <span className="text-[10.5px] text-muted-foreground hidden sm:inline">dati in cache</span>}
+          {lastSync && (
+            <span className="text-[10.5px] text-muted-foreground hidden sm:inline">
+              {bg ? "aggiorno…" : `aggiornato ${lastSync.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" })}`}
+              {data?.stale && !bg && <span className="text-amber-400"> · in aggiornamento</span>}
+            </span>
+          )}
         </div>
         <div className="flex gap-2 items-center">
           {!isMobile && tab === "performance" && (

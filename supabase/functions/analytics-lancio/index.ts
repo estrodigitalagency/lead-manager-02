@@ -26,7 +26,8 @@ const cors = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const CACHE_TTL_MS = 5 * 60 * 1000;
+const CACHE_FRESH_MS = 15 * 60 * 1000;   // entro 15 min: cache servita così com'è
+const CACHE_STALE_MS = 12 * 60 * 60 * 1000; // fino a 12h: cache servita subito + ricalcolo in background
 
 // Etichette qualifica lead, nell'ordine del master (Non lavorato è calcolata, non contata).
 const QUALIFICHE = [
@@ -158,16 +159,36 @@ Deno.serve(async (req) => {
     const cfg = lanci.find((l) => l.id === lancioId);
     if (!cfg) throw new Error(`Lancio "${lancioId}" non configurato`);
 
-    // Cache
+    // Cache stale-while-revalidate: la lettura dei fogli costa ~25s, quindi si serve
+    // sempre l'ultimo payload disponibile e si ricalcola in background quando è vecchio.
     const CACHE_KEY = `lancio_cache_${market}_${lancioId}`;
+    let staleAge = -1;
     if (!noCache) {
       const { data: c } = await supabase
         .from("ranking_settings").select("value").eq("key", CACHE_KEY).maybeSingle();
       if (c?.value) {
         try {
           const parsed = JSON.parse(c.value);
-          if (Date.now() - parsed.ts < CACHE_TTL_MS) {
-            return new Response(JSON.stringify({ ...parsed.payload, cached: true }), {
+          const age = Date.now() - parsed.ts;
+          if (age < CACHE_FRESH_MS) {
+            return new Response(JSON.stringify({ ...parsed.payload, cached: true, age_ms: age }), {
+              headers: { ...cors, "Content-Type": "application/json" },
+            });
+          }
+          if (age < CACHE_STALE_MS && parsed.payload) {
+            // Risposta immediata con dati leggermente vecchi; il ricalcolo parte ora e
+            // aggiorna la cache per la prossima richiesta (nessuna attesa per l'utente).
+            staleAge = age;
+            const bg = (async () => {
+              try {
+                await fetch(new URL(req.url).toString().replace(/([?&])nocache=[^&]*/, "$1") + "&nocache=1", {
+                  headers: { Authorization: req.headers.get("Authorization") ?? "" },
+                });
+              } catch { /* best effort */ }
+            })();
+            // @ts-ignore EdgeRuntime è disponibile su Supabase Edge Functions
+            if (typeof EdgeRuntime !== "undefined" && EdgeRuntime.waitUntil) EdgeRuntime.waitUntil(bg);
+            return new Response(JSON.stringify({ ...parsed.payload, cached: true, stale: true, age_ms: age }), {
               headers: { ...cors, "Content-Type": "application/json" },
             });
           }
