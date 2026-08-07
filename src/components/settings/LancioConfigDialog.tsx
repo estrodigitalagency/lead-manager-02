@@ -237,7 +237,7 @@ const LancioConfigDialog = ({ open, onOpenChange, value, onSave, esistenti, mark
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[720px] max-h-[92vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[720px] max-h-[90vh] overflow-y-auto top-[5vh] translate-y-0 data-[state=open]:slide-in-from-top-2 data-[state=closed]:slide-out-to-top-2">
         <DialogHeader><DialogTitle>{value.id ? "Configura lancio" : "Nuovo lancio"}</DialogTitle></DialogHeader>
 
         <div className="space-y-6">
