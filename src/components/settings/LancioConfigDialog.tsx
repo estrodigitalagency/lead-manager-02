@@ -7,7 +7,7 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Users, FileSpreadsheet, Zap, MessageCircle, AlertTriangle, Loader2, Plus } from "lucide-react";
+import { Users, FileSpreadsheet, Zap, MessageCircle, AlertTriangle, Loader2, Plus, Rocket } from "lucide-react";
 import { useSalespeopleData } from "@/hooks/useSalespeopleData";
 import { useAutomationsData } from "@/hooks/useAutomationsData";
 import { fetchTemplates, saveTemplate } from "@/lib/whatsapp/templates";
@@ -39,6 +39,7 @@ const LancioConfigDialog = ({ open, onOpenChange, value, onSave, esistenti, mark
   const { automations, createAutomation, updateAutomation, toggleAutomation } = useAutomationsData();
   const [form, setForm] = useState<LancioConfig>(value);
   const [saving, setSaving] = useState(false);
+  const [step, setStep] = useState(0);
 
   // ── automazione ──
   const [autoOn, setAutoOn] = useState(true);
@@ -77,6 +78,7 @@ const LancioConfigDialog = ({ open, onOpenChange, value, onSave, esistenti, mark
   useEffect(() => {
     if (!open) return;
     setForm(value);
+    setStep(0);
     setWaNuovo(false);
     setWaOn(!!value.whatsapp_slug || !value.id);
     fetchTemplates().then((t) => setWa(t as any));
@@ -228,32 +230,77 @@ const LancioConfigDialog = ({ open, onOpenChange, value, onSave, esistenti, mark
     } finally { setSaving(false); }
   };
 
-  const Sez = ({ icon: Icon, title, desc, children }: any) => (
-    <div className="space-y-2.5">
-      <div className="flex items-center gap-2 pb-1.5 border-b border-border">
-        <Icon className="h-4 w-4 text-primary" />
-        <h4 className="text-[13px] font-semibold">{title}</h4>
-        {desc && <span className="text-[11px] text-muted-foreground">· {desc}</span>}
-      </div>
+  const Sez = ({ desc, children }: any) => (
+    <div className="space-y-3">
+      {desc && <p className="text-[12px] text-muted-foreground">{desc}</p>}
       {children}
     </div>
   );
 
+  // ── passi del wizard ──
+  const STEPS = [
+    { k: "base", label: "Lancio", icon: Rocket },
+    { k: "sales", label: "Venditori", icon: Users },
+    { k: "dati", label: "Dati", icon: FileSpreadsheet },
+    { k: "auto", label: "Assegnazione", icon: Zap },
+    { k: "wa", label: "WhatsApp", icon: MessageCircle },
+  ];
+  const ultimo = step === STEPS.length - 1;
+  const puoAvanzare = () => {
+    if (step === 0) return !!form.nome.trim();
+    if (step === 3 && autoOn && aFonti.trim()) return quoteValide;
+    return true;
+  };
+  const avanti = () => {
+    if (!puoAvanzare()) {
+      if (step === 0) toast.error("Dai un nome al lancio");
+      else toast.error(aModo === "percentage" ? `Le percentuali devono sommare a 100 (ora ${totQuote})` : "Imposta le quote");
+      return;
+    }
+    setStep((n) => Math.min(STEPS.length - 1, n + 1));
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[720px] max-h-[90vh] overflow-y-auto top-[5vh] translate-y-0 data-[state=open]:slide-in-from-top-2 data-[state=closed]:slide-out-to-top-2">
-        <DialogHeader><DialogTitle>{value.id ? "Configura lancio" : "Nuovo lancio"}</DialogTitle></DialogHeader>
+        <DialogHeader className="space-y-3">
+          <DialogTitle className="flex items-center gap-2">
+            {value.id ? "Configura lancio" : "Nuovo lancio"}
+            {form.nome && <span className="text-muted-foreground font-normal text-[14px]">· {form.nome}</span>}
+          </DialogTitle>
+          {/* passi: cliccabili all'indietro, così si torna dove serve senza perdere nulla */}
+          <div className="flex items-center gap-1">
+            {STEPS.map((st, i) => {
+              const Icon = st.icon;
+              const done = i < step, cur = i === step;
+              return (
+                <button key={st.k} type="button" onClick={() => i <= step && setStep(i)}
+                  className={`flex-1 flex items-center gap-1.5 px-2 py-1.5 rounded-md text-[11.5px] transition-colors ${
+                    cur ? "bg-primary/15 text-primary font-semibold"
+                        : done ? "text-foreground/70 hover:bg-secondary" : "text-muted-foreground/50 cursor-default"}`}>
+                  <Icon className="h-3.5 w-3.5 shrink-0" />
+                  <span className="truncate">{st.label}</span>
+                </button>
+              );
+            })}
+          </div>
+        </DialogHeader>
 
-        <div className="space-y-6">
+        <div className="min-h-[330px]">
           {/* 1 — nome */}
+          {step === 0 && (
+          <Sez desc="Il nome identifica il lancio nella pagina Lanci e nei report.">
           <div>
             <Label>Nome del lancio</Label>
             <Input value={form.nome} onChange={(e) => setForm({ ...form, nome: e.target.value })}
               placeholder="es. Workshop Set26" />
           </div>
+          </Sez>
+          )}
 
           {/* 2 — venditori */}
-          <Sez icon={Users} title="Venditori che lavorano al lancio" desc={sales.length ? `${sales.length} selezionati` : "tutti gli attivi"}>
+          {step === 1 && (
+          <Sez desc={`Chi lavora ai lead di questo lancio. ${sales.length ? `${sales.length} selezionati` : "Nessuna selezione = tutti gli attivi."}`}>
             <div className="flex gap-1.5 mb-1.5">
               <Button size="sm" variant="outline" className="h-6 text-[11px]" onClick={() => setForm((f) => ({ ...f, sales: attivi.map((a) => a.nome) }))}>Tutti</Button>
               <Button size="sm" variant="outline" className="h-6 text-[11px]" onClick={() => setForm((f) => ({ ...f, sales: [] }))}>Nessuno</Button>
@@ -268,9 +315,11 @@ const LancioConfigDialog = ({ open, onOpenChange, value, onSave, esistenti, mark
               ))}
             </div>
           </Sez>
+          )}
 
           {/* 3 — fogli */}
-          <Sez icon={FileSpreadsheet} title="Dove leggere i dati" desc="nomi esatti dei tab nei fogli dei venditori">
+          {step === 2 && (
+          <Sez desc="Nomi esatti dei tab nei fogli dei venditori: se non combaciano, per quel venditore i dati non vengono letti.">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <Label className="text-[12px]">Tab lead</Label>
@@ -298,9 +347,11 @@ const LancioConfigDialog = ({ open, onOpenChange, value, onSave, esistenti, mark
               </div>
             </div>
           </Sez>
+          )}
 
           {/* 4 — automazione */}
-          <Sez icon={Zap} title="Assegnazione automatica" desc={autom ? `regola: ${autom.nome}` : "nuova regola"}>
+          {step === 3 && (
+          <Sez desc={autom ? `Regola collegata: ${autom.nome}` : "Verrà creata una nuova regola, visibile anche in Impostazioni → Automazioni."}>
             <div className="flex items-center gap-2 mb-1">
               <Switch checked={autoOn} onCheckedChange={setAutoOn} />
               <span className="text-[12.5px]">{autoOn ? "Attiva" : "Disattiva — assegni a mano"}</span>
@@ -468,9 +519,11 @@ const LancioConfigDialog = ({ open, onOpenChange, value, onSave, esistenti, mark
               </div>
             </div>
           </Sez>
+          )}
 
           {/* 5 — whatsapp */}
-          <Sez icon={MessageCircle} title="Link WhatsApp del lancio" desc="porta il lead sulla chat del venditore assegnato">
+          {step === 4 && (
+          <Sez desc="Il link porta il lead sulla chat del venditore assegnato e traccia le chat aperte.">
             <div className="flex items-center gap-2 mb-1">
               <Switch checked={waOn} onCheckedChange={setWaOn} />
               <span className="text-[12.5px]">{waOn ? "Attivo" : "Non usato in questo lancio"}</span>
@@ -551,13 +604,21 @@ const LancioConfigDialog = ({ open, onOpenChange, value, onSave, esistenti, mark
               </div>
             )}
           </Sez>
+          )}
         </div>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Annulla</Button>
-          <Button onClick={handleSave} disabled={saving}>
-            {saving && <Loader2 className="h-4 w-4 animate-spin mr-1" />} {value.id ? "Salva lancio" : "Crea lancio"}
+        <DialogFooter className="flex-row justify-between sm:justify-between gap-2">
+          <Button variant="ghost" onClick={() => step === 0 ? onOpenChange(false) : setStep((n) => n - 1)}>
+            {step === 0 ? "Annulla" : "Indietro"}
           </Button>
+          <div className="flex gap-2 items-center">
+            <span className="text-[11px] text-muted-foreground hidden sm:inline">Passo {step + 1} di {STEPS.length}</span>
+            {!ultimo
+              ? <Button onClick={avanti}>Avanti</Button>
+              : <Button onClick={handleSave} disabled={saving}>
+                  {saving && <Loader2 className="h-4 w-4 animate-spin mr-1" />} {value.id ? "Salva lancio" : "Crea lancio"}
+                </Button>}
+          </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>

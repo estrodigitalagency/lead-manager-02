@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel } from "@/components/ui/select";
@@ -70,7 +70,12 @@ const allItems = sections.flatMap((s) => s.items);
 
 const Settings = () => {
   const isMobile = useIsMobile();
-  const [activeTab, setActiveTab] = useState("automations");
+  // Ricorda l'ultima sezione aperta invece di partire sempre da una fissa
+  const [activeTab, setActiveTab] = useState(() => {
+    const saved = typeof window !== "undefined" ? localStorage.getItem("settings_tab") : null;
+    return saved && allItems.some((i) => i.value === saved) ? saved : allItems[0].value;
+  });
+  useEffect(() => { localStorage.setItem("settings_tab", activeTab); }, [activeTab]);
 
   const activeItem = allItems.find((item) => item.value === activeTab);
   const ActiveIcon = activeItem?.icon;
