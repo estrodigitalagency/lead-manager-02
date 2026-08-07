@@ -34,6 +34,19 @@ const SUM_KEYS = new Set(["fatturato", "incassato", "chiusure", "call_totali", "
 const HEAT_KEYS = new Set([
   "fatturato", "incassato", "chiusure", "call_totali", "call_nette", "tot_lead", "valore_lead_fatt", "valore_lead_inc",
 ]);
+// Metriche in cui un valore alto è negativo: la scala colore va invertita.
+const LOWER_IS_BETTER = new Set(["call_da_fare", "Non lavorato", "Numero inesistente", "Non partecipa", "Duplicato"]);
+
+/** Colore della cella: rosso per i valori bassi della riga, verde per gli alti,
+ *  neutro a metà. Su metriche dove "meno è meglio" la scala si inverte. */
+const heatColor = (t: number, invert: boolean): string => {
+  const v = invert ? 1 - t : t;
+  const d = Math.abs(v - 0.5) * 2;              // 0 al centro, 1 agli estremi
+  const alpha = (0.05 + d * 0.22).toFixed(3);   // niente colore sui valori medi
+  return v >= 0.5
+    ? `hsl(142 71% 45% / ${alpha})`             // verde: sopra la media della riga
+    : `hsl(0 72% 51% / ${alpha})`;              // rosso: sotto
+};
 
 export const fmt = {
   eur: (v: number) => `€${Math.round(v).toLocaleString("it-IT")}`,
@@ -68,7 +81,7 @@ const LancioMatrix = ({ data, rows, rules, heatmap }: Props) => {
     const deltaCls = f === "delta" && v !== 0 && !style.color ? (v > 0 ? "text-emerald-400" : "text-red-400") : "";
     return (
       <td className={`table-body-cell text-right num relative align-middle ${v === 0 ? "text-muted-foreground/40" : ""} ${deltaCls}`} style={style}>
-        {hm > 0.02 && <b className="absolute inset-0 z-0" style={{ background: `hsl(232 100% 74% / ${(hm * 0.24).toFixed(3)})` }} />}
+        {heatOk && <b className="absolute inset-0 z-0" style={{ background: heatColor(hm, LOWER_IS_BETTER.has(k)) }} />}
         <span className="relative z-10 flex flex-col items-end leading-tight">
           <span>{fmt[f](v)}</span>
           {pc != null && <span className="text-[10px] text-muted-foreground/70 font-normal">{fmt.pct(pc)}</span>}
