@@ -40,7 +40,31 @@ const LancioConfigDialog = ({ open, onOpenChange, value, onSave, esistenti }: Pr
   const loadWa = () => fetchTemplates().then((t) => setWa(t as any));
   useEffect(() => { if (open) loadWa(); }, [open]);
 
-  const nomi = venditori.map((v) => `${v.nome} ${v.cognome || ""}`.trim());
+  // solo venditori attivi: gli inattivi non devono comparire nella configurazione del lancio
+  const nomi = venditori.filter((v) => v.stato === "attivo").map((v) => `${v.nome} ${v.cognome || ""}`.trim());
+  const automCollegata = automations.find((a) => a.id === form.automazione_id) ?? null;
+
+  /** Riprende i target dalle quote della regola collegata: quota assoluta = target,
+   *  percentuale = quota % del cap totale (se impostato). */
+  const targetDaAutomazione = () => {
+    if (!automCollegata) return toast.error("Nessuna regola collegata: selezionala nella scheda Automazioni");
+    const cfgDist: any[] = (automCollegata as any).distribution_config ?? [];
+    if (cfgDist.length === 0) return toast.error("La regola collegata non ha una distribuzione tra venditori");
+    const isCount = (automCollegata as any).distribution_mode === "count";
+    const capTot = (automCollegata as any).distribution_cap_total ?? 0;
+    if (!isCount && !capTot) return toast.error("La regola è in percentuale senza cap totale: non si può derivare un target");
+    const next: Record<string, number> = {};
+    for (const slot of cfgDist) {
+      const v = venditori.find((x) => x.id === slot.venditore_id);
+      if (!v) continue;
+      const nome = `${v.nome} ${v.cognome || ""}`.trim();
+      const t = isCount ? (slot.count_target ?? 0) : Math.round(((slot.weight ?? 0) / 100) * capTot);
+      if (t > 0) next[nome] = t;
+    }
+    if (Object.keys(next).length === 0) return toast.error("Nessuna quota utilizzabile nella regola");
+    setForm((f) => ({ ...f, target: next }));
+    toast.success(`Target ripresi dalla regola (${Object.keys(next).length} venditori)`);
+  };
   const toggle = (campo: "lead_sales" | "call_sales", nome: string) =>
     setForm((f) => {
       const cur = f[campo] ?? [];
@@ -122,8 +146,24 @@ const LancioConfigDialog = ({ open, onOpenChange, value, onSave, esistenti }: Pr
             </div>
             <SalesPicker campo="lead_sales" />
             <div>
-              <Label>Target lead per venditore</Label>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-1.5 max-h-[170px] overflow-y-auto p-2 rounded-md border border-border bg-secondary/30">
+              <div className="flex items-center justify-between mb-1.5 flex-wrap gap-2">
+                <Label>Target lead per venditore <span className="text-muted-foreground font-normal">(solo riferimento, non assegna)</span></Label>
+                <div className="flex gap-1.5 items-center">
+                  {automCollegata && (
+                    <span className="text-[11px] text-muted-foreground hidden sm:inline">
+                      regola: {automCollegata.nome}
+                    </span>
+                  )}
+                  <Button size="sm" variant="outline" className="h-6 text-[11px]" onClick={targetDaAutomazione}
+                    title="Compila i target dalle quote della regola di assegnazione collegata">
+                    <Zap className="h-3 w-3 mr-1" /> Riprendi dalle quote
+                  </Button>
+                  <Button size="sm" variant="outline" className="h-6 text-[11px]" onClick={() => setForm((f) => ({ ...f, target: {} }))}>
+                    Azzera
+                  </Button>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-[170px] overflow-y-auto p-2 rounded-md border border-border bg-secondary/30">
                 {(form.lead_sales?.length ? form.lead_sales : nomi).map((nome) => (
                   <div key={nome} className="flex items-center gap-1.5">
                     <span className="text-[11px] text-muted-foreground truncate flex-1" title={nome}>{nome.split(" ")[0]}</span>
