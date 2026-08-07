@@ -39,24 +39,49 @@ const overlap = (a: string[], b: string[]) =>
     return !!nx && !!ny && (nx === ny || nx.includes(ny) || ny.includes(nx));
   }));
 
-/** Automazioni attive che potrebbero intercettare gli stessi lead del lancio. */
-export async function checkConflitti(
-  market: string, condition: string[], trigger_field: string, priority: number, escludiId?: string,
-): Promise<Conflitto[]> {
+export interface ContestoConflitto {
+  market: string;
+  condition: string[];
+  esclusioni?: string[];          // fonti escluse dalla nostra regola
+  trigger_field: string;
+  trigger_when: string;           // due regole con trigger diverso non si contendono lo stesso lead
+  priority: number;
+  escludiId?: string;
+}
+
+/**
+ * Regole attive che si contendono davvero gli stessi lead: stesso campo E stesso momento di
+ * attivazione, condizioni che si sovrappongono e nessuna esclusione che le separi.
+ */
+export async function checkConflitti(ctx: ContestoConflitto): Promise<Conflitto[]> {
   const { data } = await supabase
     .from("lead_assignment_automations")
-    .select("id, nome, attivo, priority, trigger_field, condition_value, action_type")
-    .eq("market", market).eq("attivo", true);
+    .select("id, nome, attivo, priority, trigger_field, trigger_when, condition_value, condition_type, trigger_sources, action_type")
+    .eq("market", ctx.market).eq("attivo", true);
   const out: Conflitto[] = [];
+  const mieEscl = (ctx.esclusioni ?? []).map(norm).filter(Boolean);
+
   for (const a of (data ?? []) as any[]) {
-    if (escludiId && a.id === escludiId) continue;
-    if (a.trigger_field !== trigger_field) continue;
-    if (!overlap(condition, a.condition_value ?? [])) continue;
-    const prima = (a.priority ?? 999) < priority;
+    if (ctx.escludiId && a.id === ctx.escludiId) continue;
+    if (a.trigger_field !== ctx.trigger_field) continue;
+    // trigger diversi (nuovo lead vs duplicato) non intercettano lo stesso evento
+    if ((a.trigger_when ?? "new_lead") !== ctx.trigger_when) continue;
+    // "non contiene" non compete con "contiene" sulle stesse stringhe
+    if (a.condition_type === "not_contains") continue;
+
+    const sue = (a.condition_value ?? []) as string[];
+    if (!overlap(ctx.condition, sue)) continue;
+
+    // se una delle due esclude esplicitamente le fonti dell'altra, non c'è contesa
+    const sueEscl = ((a.trigger_sources ?? []) as string[]).map(norm).filter(Boolean);
+    const separateDaLoro = sueEscl.some((e) => ctx.condition.some((c) => norm(c).includes(e)));
+    const separateDaNoi = mieEscl.some((e) => sue.some((c) => norm(c).includes(e)));
+    if (separateDaLoro || separateDaNoi) continue;
+
     out.push({
       automazione: a.nome,
-      motivo: `intercetta le stesse fonti (${(a.condition_value ?? []).join(", ")})`,
-      priorityMinore: prima,
+      motivo: `intercetta le stesse fonti (${sue.join(", ")})`,
+      priorityMinore: (a.priority ?? 999) < ctx.priority,
     });
   }
   return out;

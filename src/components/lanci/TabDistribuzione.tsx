@@ -29,8 +29,12 @@ const TabDistribuzione = ({ lancio, rows, market, onChange }: Props) => {
   const [conflitti, setConflitti] = useState<Conflitto[]>([]);
   useEffect(() => {
     if (!autom) { setConflitti([]); return; }
-    checkConflitti(market, autom.condition_value ?? [], autom.trigger_field, autom.priority ?? 999, autom.id)
-      .then(setConflitti);
+    checkConflitti({
+      market, condition: autom.condition_value ?? [],
+      esclusioni: (autom as any).trigger_sources ?? [],
+      trigger_field: autom.trigger_field, trigger_when: autom.trigger_when ?? "new_lead",
+      priority: autom.priority ?? 999, escludiId: autom.id,
+    }).then(setConflitti);
   }, [autom, market]);
 
   const loadLog = useCallback(async () => {

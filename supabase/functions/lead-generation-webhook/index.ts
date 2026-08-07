@@ -225,6 +225,26 @@ async function checkAndApplyAutomations(lead: any, supabase: any) {
         continue;
       }
       
+      // Esclusioni: se il campo contiene una di queste stringhe la regola non si applica,
+      // anche se la condizione principale è soddisfatta (es. "contiene workshop ma non giu26").
+      const esclusioni: string[] = automation.trigger_sources || [];
+      if (esclusioni.length > 0) {
+        const campo = String(
+          automation.trigger_field === 'fonte' ? (lead.fonte || '') :
+          automation.trigger_field === 'campagna' ? (lead.campagna || '') :
+          automation.trigger_field === 'nome' ? (lead.nome || '') :
+          automation.trigger_field === 'email' ? (lead.email || '') :
+          automation.trigger_field === 'telefono' ? (lead.telefono || '') :
+          automation.trigger_field === 'lead_score' ? (lead.lead_score || '') :
+          (lead.ultima_fonte || '')
+        ).toLowerCase();
+        const escluso = esclusioni.some((e: string) => e.trim() && campo.includes(e.trim().toLowerCase()));
+        if (escluso) {
+          console.log(`Automation ${automation.nome} skipped - esclusione: ${campo}`);
+          continue;
+        }
+      }
+
       if (checkCondition(lead, automation.trigger_field, automation.condition_type, automation.condition_value)) {
         console.log(`Automation condition matched: ${automation.nome}`);
         

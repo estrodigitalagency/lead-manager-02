@@ -176,7 +176,8 @@ const WhatsAppTemplatesSection = () => {
                 <Label>Slug (usato nell'URL)</Label>
                 <Input
                   value={form.slug}
-                  onChange={(e) => setForm({ ...form, slug: slugify(e.target.value) })}
+                  onChange={(e) => setForm({ ...form, slug: e.target.value })}
+                  onBlur={(e) => setForm((f) => ({ ...f, slug: slugify(e.target.value) }))}
                   placeholder={form.nome ? slugify(form.nome) : "es. workshop-maggio"}
                 />
                 <p className="text-[11px] text-muted-foreground mt-1">

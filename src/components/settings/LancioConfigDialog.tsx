@@ -54,6 +54,8 @@ const LancioConfigDialog = ({ open, onOpenChange, value, onSave, esistenti, mark
   const [autoOn, setAutoOn] = useState(true);
   const [aTrigger, setATrigger] = useState<"new_lead" | "duplicate_different_source">("new_lead");
   const [aFonti, setAFonti] = useState("");
+  const [aCondTipo, setACondTipo] = useState<"contains" | "not_contains">("contains");
+  const [aEscl, setAEscl] = useState("");   // fonti da escludere anche se la condizione è vera
   const [aAzione, setAAzione] = useState<Azione>("weighted_distribution");
   const [aPrevFirst, setAPrevFirst] = useState(false);
   const [aTargetSeller, setATargetSeller] = useState("");
@@ -96,6 +98,8 @@ const LancioConfigDialog = ({ open, onOpenChange, value, onSave, esistenti, mark
       setAutoOn(autom.attivo);
       setATrigger((autom.trigger_when as any) ?? "new_lead");
       setAFonti((autom.condition_value ?? []).join(", "));
+      setACondTipo(((autom as any).condition_type === "not_contains" ? "not_contains" : "contains"));
+      setAEscl(((autom as any).trigger_sources ?? []).join(", "));
       setAAzione((autom.action_type as Azione) ?? "weighted_distribution");
       setAPrevFirst(!!(autom as any).use_previous_seller_first);
       setATargetSeller((autom as any).target_seller_id ?? "");
@@ -122,6 +126,7 @@ const LancioConfigDialog = ({ open, onOpenChange, value, onSave, esistenti, mark
       setAPrevFirst(false); setATargetSeller(""); setAModo("percentage"); setAQuote({}); setACap({});
       setASheetTab(""); setACampagna(value.campagna ?? ""); setAWebhook(true);
       setALockOn(false); setALockDays(30); setAEsclusi([]);
+      setACondTipo("contains"); setAEscl("");
     }
   }, [open, value, autom?.id]);   // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -130,10 +135,15 @@ const LancioConfigDialog = ({ open, onOpenChange, value, onSave, esistenti, mark
     const cond = aFonti.split(",").map((s) => s.trim()).filter(Boolean);
     if (!open || cond.length === 0) { setConflitti([]); return; }
     const t = setTimeout(async () => {
-      setConflitti(await checkConflitti(market, cond, "ultima_fonte", (autom as any)?.priority ?? 999, autom?.id));
+      setConflitti(await checkConflitti({
+        market, condition: cond,
+        esclusioni: aEscl.split(",").map((x) => x.trim()).filter(Boolean),
+        trigger_field: "ultima_fonte", trigger_when: aTrigger,
+        priority: (autom as any)?.priority ?? 999, escludiId: autom?.id,
+      }));
     }, 400);
     return () => clearTimeout(t);
-  }, [aFonti, open, market, autom?.id]);   // eslint-disable-line react-hooks/exhaustive-deps
+  }, [aFonti, aEscl, aTrigger, open, market, autom?.id]);   // eslint-disable-line react-hooks/exhaustive-deps
 
   const sales = form.sales ?? [];
   const toggleSales = (nome: string) =>
@@ -178,8 +188,9 @@ const LancioConfigDialog = ({ open, onOpenChange, value, onSave, esistenti, mark
       attivo: autoOn,
       trigger_when: aTrigger,
       trigger_field: "ultima_fonte",
-      condition_type: "contains",
+      condition_type: aCondTipo,
       condition_value: cond,
+      trigger_sources: aEscl.split(",").map((x) => x.trim()).filter(Boolean),
       action_type: aAzione,
       target_seller_id: aAzione === "assign_to_seller" ? aTargetSeller : null,
       use_previous_seller_first: aAzione === "weighted_distribution" ? aPrevFirst : false,
@@ -372,10 +383,29 @@ const LancioConfigDialog = ({ open, onOpenChange, value, onSave, esistenti, mark
                   </Select>
                 </div>
                 <div>
-                  <Label className="text-[12px]">Se la fonte contiene</Label>
-                  <Input className="h-8 text-[12.5px]" value={aFonti} onChange={(e) => setAFonti(e.target.value)}
-                    placeholder="es. workshop_set26" />
+                  <Label className="text-[12px]">Se la fonte…</Label>
+                  <div className="flex gap-1.5">
+                    <Select value={aCondTipo} onValueChange={(v) => setACondTipo(v as any)}>
+                      <SelectTrigger className="h-8 w-[130px] text-[12.5px]"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="contains">contiene</SelectItem>
+                        <SelectItem value="not_contains">non contiene</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Input className="h-8 text-[12.5px] flex-1" value={aFonti} onChange={(e) => setAFonti(e.target.value)}
+                      placeholder="es. workshop_set26" />
+                  </div>
+                  <p className="text-[11px] text-muted-foreground mt-1">Più valori separati da virgola: basta che ne corrisponda uno.</p>
                 </div>
+              </div>
+
+              <div>
+                <Label className="text-[12px]">…ma non se contiene <span className="text-muted-foreground font-normal">(esclusioni, opzionale)</span></Label>
+                <Input className="h-8 text-[12.5px]" value={aEscl} onChange={(e) => setAEscl(e.target.value)}
+                  placeholder="es. rischedulate, test" />
+                <p className="text-[11px] text-muted-foreground mt-1">
+                  Se la fonte contiene una di queste parole la regola non si applica, anche quando la condizione sopra è soddisfatta.
+                </p>
               </div>
 
               {conflitti.length > 0 && (
