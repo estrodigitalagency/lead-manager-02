@@ -2,17 +2,16 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Loader2, RefreshCw, Rocket, AlertTriangle } from "lucide-react";
 import { useMarket } from "@/contexts/MarketContext";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { toast } from "sonner";
-import {
-  fetchLanci, fetchLancioData, fetchColorRules,
-  LancioConfig, LancioData, ColorRule,
-} from "@/lib/lanci/config";
+import { fetchLanci, fetchLancioData, fetchColorRules, LancioConfig, LancioData, ColorRule } from "@/lib/lanci/config";
 import AcquisizioneWidget from "@/components/lanci/AcquisizioneWidget";
 import LancioMatrix, { fmt } from "@/components/lanci/LancioMatrix";
 import LancioMobile from "@/components/lanci/LancioMobile";
+import TabDistribuzione from "@/components/lanci/TabDistribuzione";
+import TabWhatsapp from "@/components/lanci/TabWhatsapp";
 
 const Lanci = () => {
   const { selectedMarket } = useMarket();
@@ -24,12 +23,10 @@ const Lanci = () => {
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [heatmap, setHeatmap] = useState(true);
+  const [tab, setTab] = useState("panoramica");
 
   useEffect(() => {
-    fetchLanci().then((l) => {
-      setLanci(l);
-      setLancioId((cur) => cur || l[0]?.id || "");
-    });
+    fetchLanci().then((l) => { setLanci(l); setLancioId((cur) => cur || l[0]?.id || ""); });
   }, []);
 
   const load = useCallback(async (force = false) => {
@@ -42,24 +39,43 @@ const Lanci = () => {
       ]);
       setData(d); setRules(r);
     } catch (e: any) {
-      setErr(e.message || "Errore nel caricamento");
-      setData(null);
+      setErr(e.message || "Errore nel caricamento"); setData(null);
     } finally { setLoading(false); }
   }, [lancioId, selectedMarket]);
-
   useEffect(() => { load(); }, [load]);
+
+  const cfg = useMemo(() => lanci.find((l) => l.id === lancioId) ?? null, [lanci, lancioId]);
+  const reload = useCallback(() => { fetchLanci().then(setLanci); load(true); }, [load]);
 
   // sales inclusi: da config; se vuota, tutti quelli con dati
   const rows = useMemo(() => {
     if (!data) return [];
-    const sel = data.lancio.sales ?? [];
+    const sel = data.lancio?.sales ?? [];
     const withData = data.rows.filter((r) => r.tot_lead > 0 || r.call_totali > 0);
     return sel.length ? withData.filter((r) => sel.includes(r.venditore)) : withData;
   }, [data]);
 
+  const sum = useCallback((k: string) => rows.reduce((s, r) => s + ((r as any)[k] || 0), 0), [rows]);
+
+  // Funnel: dai lead generati alle chiusure, con conversione tra gli stadi
+  const funnel = useMemo(() => {
+    if (!data) return [];
+    const gen = data.leadgen?.generati ?? sum("tot_lead");
+    const ass = sum("tot_lead"), conf = data.totale?.qualifiche?.["Confermato"] ?? 0;
+    const call = sum("call_totali"), nette = sum("call_nette"), chius = sum("chiusure");
+    const p = (a: number, b: number) => (b > 0 ? (a / b) * 100 : 0);
+    return [
+      { l: "Lead generati", v: gen, c: "hsl(174 62% 50%)", p: 100, s: "" },
+      { l: "Assegnati", v: ass, c: "hsl(174 62% 50%)", p: p(ass, gen), s: "dei generati" },
+      { l: "Confermati", v: conf, c: "hsl(38 92% 55%)", p: p(conf, gen), s: "dei generati" },
+      { l: "Call schedulate", v: call, c: "hsl(232 100% 74%)", p: p(call, gen), s: "dei generati" },
+      { l: "Call nette", v: nette, c: "hsl(232 100% 74%)", p: p(nette, call), s: "delle call" },
+      { l: "Chiusure", v: chius, c: "hsl(142 71% 60%)", p: p(chius, nette), s: "delle nette" },
+    ];
+  }, [data, sum]);
+
   const kpi = useMemo(() => {
     if (!data) return [];
-    const sum = (k: string) => rows.reduce((s, r) => s + ((r as any)[k] || 0), 0);
     const lg = data.leadgen, t = data.totale ?? ({} as any);
     const nuovi = lg ? Object.values(lg.per_fonte).reduce((s, c) => s + c.Nuovo, 0) : 0;
     return [
@@ -70,34 +86,32 @@ const Lanci = () => {
       { k: "Chiusure", v: fmt.n(sum("chiusure")), s: `CR ${t.tasso_chiusura_nette ?? 0}% su nette` },
       { k: "Fatturato", v: fmt.eur(sum("fatturato")), s: `incassato ${fmt.eur(sum("incassato"))}` },
     ];
-  }, [data, rows]);
+  }, [data, sum]);
 
   return (
     <div className="max-w-[1520px] mx-auto px-3 sm:px-5 pt-16 py-5 pb-24 space-y-4">
-      <div className="flex items-end justify-between gap-3 flex-wrap">
-        <div>
-          <h1 className="text-xl font-bold flex items-center gap-2"><Rocket className="h-5 w-5 text-primary" /> Analytics Lancio</h1>
-          {data && (
-            <p className="text-[12px] text-muted-foreground mt-1 hidden sm:block">
-              call <code className="px-1.5 py-0.5 rounded bg-primary/15 text-primary text-[11px]">{data.lancio.provenienza}</code>
-              {" · "}{data.lancio.call_tabs.map((t) => <code key={t} className="px-1.5 py-0.5 rounded bg-primary/15 text-primary text-[11px] mr-1">{t}</code>)}
-              {" · lead "}<code className="px-1.5 py-0.5 rounded bg-primary/15 text-primary text-[11px]">{data.lancio.lead_tab}</code>
-            </p>
-          )}
-        </div>
-        <div className="flex gap-2 items-center flex-wrap">
+      {/* Intestazione compatta: selettore lancio a sinistra, azioni a destra.
+          Le sorgenti dati stanno nel tab Panoramica, non nel titolo. */}
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <Rocket className="h-4 w-4 text-primary shrink-0" />
           <Select value={lancioId} onValueChange={setLancioId}>
-            <SelectTrigger className="h-8 w-[200px] text-[12.5px]"><SelectValue placeholder="Seleziona lancio" /></SelectTrigger>
+            <SelectTrigger className="h-9 w-[230px] text-[14px] font-semibold border-0 bg-transparent px-0 focus:ring-0 hover:text-primary">
+              <SelectValue placeholder="Seleziona lancio" />
+            </SelectTrigger>
             <SelectContent>
               {lanci.map((l) => <SelectItem key={l.id} value={l.id}>{l.nome}</SelectItem>)}
             </SelectContent>
           </Select>
-          {!isMobile && (
+          {data?.cached && <span className="text-[10.5px] text-muted-foreground hidden sm:inline">dati in cache</span>}
+        </div>
+        <div className="flex gap-2 items-center">
+          {!isMobile && tab === "performance" && (
             <Button size="sm" variant={heatmap ? "default" : "outline"} className="h-8" onClick={() => setHeatmap((v) => !v)}>
               Heatmap {heatmap ? "ON" : "OFF"}
             </Button>
           )}
-          <Button size="sm" variant="outline" className="h-8" onClick={() => load(true)} disabled={loading}>
+          <Button size="sm" variant="outline" className="h-8" onClick={() => load(true)} disabled={loading} title="Ricarica dai fogli">
             <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
           </Button>
         </div>
@@ -119,7 +133,7 @@ const Lanci = () => {
         <div className="flex items-center justify-center py-16 text-muted-foreground"><Loader2 className="h-6 w-6 animate-spin" /></div>
       )}
 
-      {data && (
+      {data && cfg && (
         <>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2.5">
             {kpi.map((c) => (
@@ -131,33 +145,78 @@ const Lanci = () => {
             ))}
           </div>
 
-          <Card className="overflow-hidden">
-            <CardHeader className="py-2.5 px-3.5 border-b border-border">
-              <CardTitle className="label-eyebrow flex items-center justify-between gap-2">
-                <span>{isMobile ? "Dettaglio per sales" : "Matrice — clicca ▾ per chiudere una sezione"}</span>
-                <span className="text-primary">{rows.length} sales</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-0">
-              {isMobile
-                ? <LancioMobile data={data} rows={rows} rules={rules} />
-                : <LancioMatrix data={data} rows={rows} rules={rules} heatmap={heatmap} />}
-            </CardContent>
-          </Card>
+          <Tabs value={tab} onValueChange={setTab}>
+            <TabsList className="bg-secondary/60">
+              <TabsTrigger value="panoramica" className="text-[12.5px]">Panoramica</TabsTrigger>
+              <TabsTrigger value="distribuzione" className="text-[12.5px]">Distribuzione</TabsTrigger>
+              <TabsTrigger value="whatsapp" className="text-[12.5px]">WhatsApp</TabsTrigger>
+              <TabsTrigger value="performance" className="text-[12.5px]">Call &amp; fatturato</TabsTrigger>
+            </TabsList>
 
-          <Card className="overflow-hidden">
-            <CardHeader className="py-2.5 px-3.5 border-b border-border">
-              <CardTitle className="label-eyebrow">Acquisizione lead — andamento e mix per fonte</CardTitle>
-            </CardHeader>
-            <CardContent className="p-0"><AcquisizioneWidget leadgen={data.leadgen} /></CardContent>
-          </Card>
+            <TabsContent value="panoramica" className="mt-3 space-y-3">
+              <p className="text-[11px] text-muted-foreground">
+                Call: provenienza <b className="text-foreground/80">{data.lancio.provenienza}</b> da {data.lancio.call_tabs.join(" + ")} ·
+                Lead: {data.lancio.lead_tab}{data.lancio.campagna ? ` · campagna ${data.lancio.campagna}` : ""}
+              </p>
+              <Card className="overflow-hidden">
+                <CardHeader className="py-2.5 px-3.5 border-b border-border">
+                  <CardTitle className="label-eyebrow">Funnel del lancio</CardTitle>
+                </CardHeader>
+                <CardContent className="p-0 flex flex-wrap">
+                  {funnel.map((st, i) => (
+                    <div key={st.l} className={`flex-1 min-w-[46%] sm:min-w-[150px] p-3.5 border-b sm:border-b-0 border-border ${i < funnel.length - 1 ? "sm:border-r" : ""}`}>
+                      <div className="label-eyebrow">{st.l}</div>
+                      <div className="text-xl font-bold num tracking-tight">{fmt.n(st.v)}</div>
+                      <div className="text-[10.5px] text-muted-foreground">
+                        <b style={{ color: st.c }}>{st.p.toFixed(1).replace(".", ",")}%</b> {st.s}
+                      </div>
+                      <div className="h-1 rounded-full bg-border mt-2 overflow-hidden">
+                        <i className="block h-full rounded-full" style={{ width: `${Math.min(100, st.p)}%`, background: st.c }} />
+                      </div>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
 
-          {data.errors?.length > 0 && (
-            <details className="text-[11.5px] text-muted-foreground">
-              <summary className="cursor-pointer">{data.errors.length} avvisi di lettura fogli</summary>
-              <ul className="mt-1.5 space-y-0.5 pl-4 list-disc">{data.errors.map((e, i) => <li key={i}>{e}</li>)}</ul>
-            </details>
-          )}
+              <Card className="overflow-hidden">
+                <CardHeader className="py-2.5 px-3.5 border-b border-border">
+                  <CardTitle className="label-eyebrow">Acquisizione lead — andamento e mix per fonte</CardTitle>
+                </CardHeader>
+                <CardContent className="p-0"><AcquisizioneWidget leadgen={data.leadgen} /></CardContent>
+              </Card>
+
+              {data.errors?.length > 0 && (
+                <details className="text-[11.5px] text-muted-foreground">
+                  <summary className="cursor-pointer">{data.errors.length} avvisi di lettura fogli</summary>
+                  <ul className="mt-1.5 space-y-0.5 pl-4 list-disc">{data.errors.map((e, i) => <li key={i}>{e}</li>)}</ul>
+                </details>
+              )}
+            </TabsContent>
+
+            <TabsContent value="distribuzione" className="mt-3">
+              <TabDistribuzione lancio={cfg} rows={rows} market={selectedMarket} onChange={reload} />
+            </TabsContent>
+
+            <TabsContent value="whatsapp" className="mt-3">
+              <TabWhatsapp lancio={cfg} rows={rows} market={selectedMarket} onChange={reload} />
+            </TabsContent>
+
+            <TabsContent value="performance" className="mt-3">
+              <Card className="overflow-hidden">
+                <CardHeader className="py-2.5 px-3.5 border-b border-border">
+                  <CardTitle className="label-eyebrow flex items-center justify-between gap-2">
+                    <span>{isMobile ? "Dettaglio per sales" : "Matrice — clicca ▾ per chiudere una sezione"}</span>
+                    <span className="text-primary">{rows.length} sales</span>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-0">
+                  {isMobile
+                    ? <LancioMobile data={data} rows={rows} rules={rules} />
+                    : <LancioMatrix data={data} rows={rows} rules={rules} heatmap={heatmap} />}
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
         </>
       )}
     </div>

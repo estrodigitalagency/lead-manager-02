@@ -6,11 +6,11 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Plus, Trash2, Edit, Rocket, Loader2, Palette } from "lucide-react";
+import { Plus, Trash2, Edit, Rocket, Palette } from "lucide-react";
 import { useMarket } from "@/contexts/MarketContext";
 import { useSalespeopleData } from "@/hooks/useSalespeopleData";
 import {
-  fetchLanci, saveLanci, fetchColorRules, saveColorRules, fetchSheetTabs,
+  fetchLanci, saveLanci, fetchColorRules, saveColorRules,
   LancioConfig, ColorRule, PALETTE,
 } from "@/lib/lanci/config";
 import { CALL_METRICS, LEAD_METRICS } from "@/components/lanci/LancioMatrix";
@@ -28,9 +28,6 @@ const LanciSettings = () => {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<LancioConfig | null>(null);
   const [form, setForm] = useState<LancioConfig>(emptyCfg());
-  const [tabs, setTabs] = useState<{ tab: string; n: number }[]>([]);
-  const [nSales, setNSales] = useState(0);
-  const [loadingTabs, setLoadingTabs] = useState(false);
   const [rulesOpen, setRulesOpen] = useState<string | null>(null);
   const [rules, setRules] = useState<ColorRule[]>([]);
   const [nr, setNr] = useState<{ key: string; op: ColorRule["op"]; val: string; color: string }>(
@@ -43,21 +40,8 @@ const LanciSettings = () => {
   }, []);
   useEffect(() => { load(); }, [load]);
 
-  // elenco tab disponibili nei fogli dei sales (unione, ordinati per frequenza)
-  const loadTabs = async () => {
-    setLoadingTabs(true);
-    try {
-      const sellers = await fetchSheetTabs(selectedMarket);
-      const count: Record<string, number> = {};
-      for (const s of sellers) for (const t of s.tabs) count[t] = (count[t] || 0) + 1;
-      setNSales(sellers.length);
-      setTabs(Object.entries(count).sort((a, b) => b[1] - a[1]).map(([tab, n]) => ({ tab, n })));
-    } catch { toast.error("Impossibile leggere i tab dei fogli"); }
-    finally { setLoadingTabs(false); }
-  };
-
-  const openNew = () => { setEditing(null); setForm(emptyCfg()); setOpen(true); if (!tabs.length) loadTabs(); };
-  const openEdit = (l: LancioConfig) => { setEditing(l); setForm({ ...emptyCfg(), ...l }); setOpen(true); if (!tabs.length) loadTabs(); };
+  const openNew = () => { setEditing(null); setForm(emptyCfg()); setOpen(true); };
+  const openEdit = (l: LancioConfig) => { setEditing(l); setForm({ ...emptyCfg(), ...l }); setOpen(true); };
 
   const persist = async (next: LancioConfig[]) => {
     if (!(await saveLanci(next))) { toast.error("Errore salvataggio"); return false; }
@@ -170,53 +154,25 @@ const LanciSettings = () => {
             </div>
 
             <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <Label>Tab call (uno o più mesi)</Label>
-                <Button size="sm" variant="outline" className="h-6 text-[11px]" onClick={loadTabs} disabled={loadingTabs}>
-                  {loadingTabs ? <Loader2 className="h-3 w-3 animate-spin" /> : "Ricarica tab"}
-                </Button>
-              </div>
-              <div className="flex flex-wrap gap-1.5 max-h-[130px] overflow-y-auto p-2 rounded-md border border-border bg-secondary/30">
-                {tabs.filter((t) => /elenco call/i.test(t.tab)).map(({ tab, n }) => {
-                  const on = form.call_tabs.includes(tab);
-                  const parziale = nSales > 0 && n < nSales;
-                  return (
-                    <button key={tab} type="button" onClick={() => toggleTab(tab)} title={`Presente in ${n} fogli su ${nSales}`}
-                      className={`px-2 py-0.5 rounded border text-[11.5px] inline-flex items-center gap-1.5 ${on
-                        ? "border-primary bg-primary/15 text-primary font-medium" : "border-border bg-card text-muted-foreground"}`}>
-                      {tab}
-                      <span className={parziale ? "text-amber-400" : "text-muted-foreground/70"}>{n}/{nSales}</span>
-                    </button>
-                  );
-                })}
-                {tabs.length === 0 && <span className="text-[11.5px] text-muted-foreground">Clicca "Ricarica tab" per leggere i fogli.</span>}
-              </div>
-              {form.call_tabs.length > 0 && (
-                <p className="text-[11px] text-muted-foreground mt-1">
-                  Selezionati: {form.call_tabs.join(" + ")}. Il numero indica in quanti fogli sales esiste quel tab:
-                  <b className="text-amber-400"> se non è su tutti</b>, per i mancanti le call non verranno lette.
-                </p>
-              )}
+              <Label>Tab call nei fogli sales (uno per mese, separati da virgola)</Label>
+              <Input value={form.call_tabs.join(", ")}
+                onChange={(e) => setForm({ ...form, call_tabs: e.target.value.split(",").map((t) => t.trim()).filter(Boolean) })}
+                placeholder="es. Giugno26 Elenco call/esito, Luglio26 Elenco call/esito" />
+              <p className="text-[11px] text-muted-foreground mt-1">
+                Nome <b>esatto</b> del tab, identico in tutti i fogli sales. Se in un foglio manca, per quel sales le call non vengono lette (compare tra gli avvisi).
+              </p>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <Label>Tab lead del lancio</Label>
-                <Select value={form.lead_tab} onValueChange={(v) => setForm({ ...form, lead_tab: v })}>
-                  <SelectTrigger><SelectValue placeholder="Seleziona tab" /></SelectTrigger>
-                  <SelectContent>
-                    {tabs.filter((t) => /^lead /i.test(t.tab)).map(({ tab, n }) => (
-                      <SelectItem key={tab} value={tab}>{tab} · {n}/{nSales} fogli</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Input className="mt-1.5 h-8 text-[12px]" value={form.lead_tab}
-                  onChange={(e) => setForm({ ...form, lead_tab: e.target.value })}
-                  placeholder="…oppure scrivi il nome esatto del tab" />
+                <Input value={form.lead_tab} onChange={(e) => setForm({ ...form, lead_tab: e.target.value })}
+                  placeholder="es. Lead Workshop_Giu26" />
               </div>
               <div>
                 <Label>Campagna (lead generati)</Label>
-                <Input value={form.campagna ?? ""} onChange={(e) => setForm({ ...form, campagna: e.target.value })} placeholder="es. Workshop Giu26" />
+                <Input value={form.campagna ?? ""} onChange={(e) => setForm({ ...form, campagna: e.target.value })}
+                  placeholder="es. Workshop Giu26" />
                 <p className="text-[11px] text-muted-foreground mt-1">Campagna nel database, per lead generati e andamento.</p>
               </div>
             </div>

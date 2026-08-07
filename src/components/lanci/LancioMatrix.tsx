@@ -29,6 +29,11 @@ export const LEAD_METRICS: Metric[] = [
 ];
 // metriche sommabili: il totale è la somma dei sales visibili, non il valore aggregato
 const SUM_KEYS = new Set(["fatturato", "incassato", "chiusure", "call_totali", "call_da_fare", "call_nette", "tot_lead", "target", "distanza_target"]);
+// La heatmap confronta i sales sulla stessa riga: ha senso solo su volumi e valori assoluti.
+// Su percentuali, medie e target il colore ingannerebbe (scale non confrontabili).
+const HEAT_KEYS = new Set([
+  "fatturato", "incassato", "chiusure", "call_totali", "call_nette", "tot_lead", "valore_lead_fatt", "valore_lead_inc",
+]);
 
 export const fmt = {
   eur: (v: number) => `€${Math.round(v).toLocaleString("it-IT")}`,
@@ -56,17 +61,17 @@ const LancioMatrix = ({ data, rows, rules, heatmap }: Props) => {
     ? rows.reduce((s, r) => s + ((r as any)[key] || 0), 0)
     : ((data.totale as any)?.[key] || 0);
 
-  const Cell = ({ k, v, f, pc, range }: { k: string; v: number; f: Fmt; pc?: number; range?: [number, number] }) => {
+  const Cell = ({ k, v, f, pc, range, heat }: { k: string; v: number; f: Fmt; pc?: number; range?: [number, number]; heat?: boolean }) => {
     const style = ruleStyle(rules, k, v);
-    const hm = heatmap && range && range[1] > range[0] && v != null
-      ? Math.max(0, Math.min(1, (v - range[0]) / (range[1] - range[0]))) : 0;
+    const heatOk = heatmap && (heat || HEAT_KEYS.has(k)) && range && range[1] > range[0] && v != null;
+    const hm = heatOk ? Math.max(0, Math.min(1, (v - range![0]) / (range![1] - range![0]))) : 0;
     const deltaCls = f === "delta" && v !== 0 && !style.color ? (v > 0 ? "text-emerald-400" : "text-red-400") : "";
     return (
-      <td className={`table-body-cell text-right num relative ${v === 0 ? "text-muted-foreground/40" : ""} ${deltaCls}`} style={style}>
-        {hm > 0.02 && <b className="absolute inset-0 z-0" style={{ background: `hsl(232 100% 74% / ${(hm * 0.26).toFixed(3)})` }} />}
-        <span className="relative z-10">
-          {fmt[f](v)}
-          {pc != null && <span className="text-[11px] text-muted-foreground ml-1.5 font-medium">{fmt.pct(pc)}</span>}
+      <td className={`table-body-cell text-right num relative align-middle ${v === 0 ? "text-muted-foreground/40" : ""} ${deltaCls}`} style={style}>
+        {hm > 0.02 && <b className="absolute inset-0 z-0" style={{ background: `hsl(232 100% 74% / ${(hm * 0.24).toFixed(3)})` }} />}
+        <span className="relative z-10 flex flex-col items-end leading-tight">
+          <span>{fmt[f](v)}</span>
+          {pc != null && <span className="text-[10px] text-muted-foreground/70 font-normal">{fmt.pct(pc)}</span>}
         </span>
       </td>
     );
@@ -113,10 +118,12 @@ const LancioMatrix = ({ data, rows, rules, heatmap }: Props) => {
           <tr key={it} className="group">
             <th className="table-body-cell sticky left-0 bg-card z-10 text-left font-normal border-r border-border group-hover:text-primary">{it}</th>
             <td className="table-body-cell text-right num font-bold bg-secondary/40 border-r border-border">
-              {fmt.n(totFn(it))}
-              {getPerc && <span className="text-[11px] text-muted-foreground ml-1.5 font-medium">{fmt.pct(getPerc(data.totale, it) ?? 0)}</span>}
+              <span className="flex flex-col items-end leading-tight">
+                <span>{fmt.n(totFn(it))}</span>
+                {getPerc && <span className="text-[10px] text-muted-foreground/70 font-normal">{fmt.pct(getPerc(data.totale, it) ?? 0)}</span>}
+              </span>
             </td>
-            {rows.map((r) => <Cell key={r.venditore} k={it} v={get(r, it)} f="n" pc={getPerc?.(r, it)} range={range} />)}
+            {rows.map((r) => <Cell key={r.venditore} k={it} v={get(r, it)} f="n" pc={getPerc?.(r, it)} range={range} heat />)}
           </tr>
         );
       })}
