@@ -14,7 +14,7 @@ const BUCKET_COLORS: Record<string, string> = {
 };
 const FONTI = ["3sfere", "setter_ig", "setter_new", "vsl"];
 
-interface MonthData { mese: string; fatturato: number; incassato: number; cr: number; valore_call: number }
+interface MonthData { mese: string; fatturato: number; incassato: number; cr: number; valore_call: number; n_call: number }
 interface BucketData {
   bucket: string; label?: string; has_call: boolean;
   valore_call: number; fatturato: number; incassato: number; cr: number;
@@ -125,7 +125,9 @@ const FontePodium = ({ metric, memberCode, myName: myNameProp, market = "IT", da
           const isSum = metric === "fatturato" || metric === "incassato";
           const tot = Number(b[field]) || 0;
           const mRif = meseRif ? mesi.find((m) => m.mese === meseRif) : null;
-          const val = mRif ? (Number(mRif[mfield]) || 0) : 0;
+          // Nel mese di riferimento questa fonte non ha portato call a questo sales → fuori.
+          if (!mRif || (Number(mRif.n_call) || 0) === 0) return null;
+          const val = Number(mRif[mfield]) || 0;
           const sub: RankedMember["sub"] | undefined = mesi.length
             ? { avg: isSum ? Math.round(tot / mesi.length) : tot, mese: meseRif || mesi[mesi.length - 1].mese }
             : undefined;
