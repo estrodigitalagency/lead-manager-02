@@ -7,6 +7,11 @@ import { CALL_METRICS, LEAD_METRICS, fmt, ruleStyle, Metric } from "./LancioMatr
 // per queste metriche "meglio" significa più basso
 const LOWER_BETTER = new Set(["call_da_fare", "distanza_target"]);
 
+/** Intestazione di sezione. Fuori dal componente per non ricreare il tipo a ogni render. */
+const Section = ({ title }: { title: string }) => (
+  <div className="px-3.5 py-2 bg-secondary/40 border-b border-border label-eyebrow">{title}</div>
+);
+
 interface Props { data: LancioData; rows: LancioRow[]; rules: ColorRule[] }
 
 /** Vista mobile: un sales alla volta con confronto alla media team, oppure due sales a confronto. */
@@ -54,9 +59,6 @@ const LancioMobile = ({ data, rows, rules }: Props) => {
     );
   };
 
-  const Section = ({ title }: { title: string }) => (
-    <div className="px-3.5 py-2 bg-secondary/40 border-b border-border label-eyebrow">{title}</div>
-  );
   const metricRows = (list: Metric[]) => list.map((m) => (
     <Row key={String(m.key)} label={m.label} k={String(m.key)} f={m.fmt}
       va={(a as any)[m.key]} vb={b ? (b as any)[m.key] : undefined} />

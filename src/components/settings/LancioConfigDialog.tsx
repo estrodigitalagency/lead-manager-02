@@ -25,6 +25,15 @@ interface Props {
 
 type Azione = "weighted_distribution" | "assign_to_previous_seller" | "assign_to_seller";
 
+/** Contenitore di uno step. Definito fuori dal componente: se stesse dentro, React lo
+ *  tratterebbe come un tipo nuovo a ogni render e gli input perderebbero il focus. */
+const Sez = ({ desc, children }: { desc?: string; children: React.ReactNode }) => (
+  <div className="space-y-3">
+    {desc && <p className="text-[12px] text-muted-foreground">{desc}</p>}
+    {children}
+  </div>
+);
+
 const slugify = (s: string) => s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "")
   .replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 48);
 
@@ -229,13 +238,6 @@ const LancioConfigDialog = ({ open, onOpenChange, value, onSave, esistenti, mark
       if (ok) onOpenChange(false);
     } finally { setSaving(false); }
   };
-
-  const Sez = ({ desc, children }: any) => (
-    <div className="space-y-3">
-      {desc && <p className="text-[12px] text-muted-foreground">{desc}</p>}
-      {children}
-    </div>
-  );
 
   // ── passi del wizard ──
   const STEPS = [
