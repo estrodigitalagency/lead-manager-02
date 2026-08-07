@@ -49,6 +49,7 @@ const LancioConfigDialog = ({ open, onOpenChange, value, onSave, esistenti, mark
   const [aTargetSeller, setATargetSeller] = useState("");
   const [aModo, setAModo] = useState<"percentage" | "count">("percentage");
   const [aQuote, setAQuote] = useState<Record<string, number>>({});   // nome venditore → peso/quota
+  const [aCap, setACap] = useState<Record<string, number>>({});      // nome venditore → tetto massimo lead
   const [aSheetTab, setASheetTab] = useState("");
   const [aCampagna, setACampagna] = useState("");
   const [aWebhook, setAWebhook] = useState(true);
@@ -88,12 +89,15 @@ const LancioConfigDialog = ({ open, onOpenChange, value, onSave, esistenti, mark
       setAPrevFirst(!!(autom as any).use_previous_seller_first);
       setATargetSeller((autom as any).target_seller_id ?? "");
       setAModo(((autom as any).distribution_mode as any) ?? "percentage");
-      const q: Record<string, number> = {};
+      const q: Record<string, number> = {}, cp: Record<string, number> = {};
       for (const s of ((autom as any).distribution_config ?? []) as any[]) {
         const v = venditori.find((x) => x.id === s.venditore_id);
-        if (v) q[`${v.nome} ${v.cognome || ""}`.trim()] = (s.count_target ?? s.weight ?? 0);
+        if (!v) continue;
+        const nome = `${v.nome} ${v.cognome || ""}`.trim();
+        q[nome] = (s.count_target ?? s.weight ?? 0);
+        if (s.cap != null) cp[nome] = s.cap;
       }
-      setAQuote(q);
+      setAQuote(q); setACap(cp);
       setASheetTab((autom as any).sheets_tab_name ?? "");
       setACampagna((autom as any).campagna ?? value.campagna ?? "");
       setAWebhook((autom as any).webhook_enabled !== false);
@@ -104,7 +108,7 @@ const LancioConfigDialog = ({ open, onOpenChange, value, onSave, esistenti, mark
     } else {
       setAutoOn(true); setATrigger("new_lead"); setAAzione("weighted_distribution");
       setAFonti(value.campagna ? slugify(value.campagna).replace(/-/g, "_") : "");
-      setAPrevFirst(false); setATargetSeller(""); setAModo("percentage"); setAQuote({});
+      setAPrevFirst(false); setATargetSeller(""); setAModo("percentage"); setAQuote({}); setACap({});
       setASheetTab(""); setACampagna(value.campagna ?? ""); setAWebhook(true);
       setALockOn(false); setALockDays(30); setAEsclusi([]);
     }
@@ -155,7 +159,7 @@ const LancioConfigDialog = ({ open, onOpenChange, value, onSave, esistenti, mark
       ? quotaSales.map((nome) => {
           const v = attivi.find((a) => a.nome === nome);
           const q = aQuote[nome] ?? 0;
-          return v ? { venditore_id: v.id, weight: aModo === "percentage" ? q : null, count_target: aModo === "count" ? q : null, cap: null } : null;
+          return v ? { venditore_id: v.id, weight: aModo === "percentage" ? q : null, count_target: aModo === "count" ? q : null, cap: aCap[nome] ?? null } : null;
         }).filter(Boolean)
       : [];
     const payload: any = {
@@ -419,14 +423,28 @@ const LancioConfigDialog = ({ open, onOpenChange, value, onSave, esistenti, mark
                     </div>
                   </div>
                   <div className="space-y-1 max-h-[160px] overflow-y-auto">
+                    <div className="flex items-center gap-2 pb-1 text-[10.5px] uppercase tracking-wide text-muted-foreground">
+                      <span className="flex-1">Venditore</span>
+                      <span className="w-[80px] text-right">{aModo === "percentage" ? "Quota %" : "Quota lead"}</span>
+                      <span className="w-[86px] text-right">Tetto max</span>
+                    </div>
                     {quotaSales.map((nome) => (
                       <div key={nome} className="flex items-center gap-2">
                         <span className="flex-1 text-[12px] truncate">{nome}</span>
                         <Input type="number" className="h-7 w-[80px] text-[12px]" value={aQuote[nome] ?? ""}
                           onChange={(e) => setAQuote((q) => ({ ...q, [nome]: parseInt(e.target.value, 10) || 0 }))} />
-                        <span className="text-[11px] text-muted-foreground w-8">{aModo === "percentage" ? "%" : "lead"}</span>
+                        <Input type="number" className="h-7 w-[86px] text-[12px]" placeholder="nessuno" value={aCap[nome] ?? ""}
+                          onChange={(e) => setACap((c) => {
+                            const v = parseInt(e.target.value, 10);
+                            const next = { ...c };
+                            if (isNaN(v) || v <= 0) delete next[nome]; else next[nome] = v;
+                            return next;
+                          })} />
                       </div>
                     ))}
+                    <p className="text-[11px] text-muted-foreground pt-1">
+                      Tetto max: oltre quel numero di lead il venditore viene saltato e i lead vanno agli altri. Lascia vuoto per nessun limite.
+                    </p>
                     {quotaSales.length === 0 && <p className="text-[12px] text-muted-foreground">Seleziona prima i venditori del lancio.</p>}
                   </div>
                 </div>
