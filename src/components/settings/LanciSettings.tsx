@@ -6,33 +6,27 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Plus, Trash2, Edit, Rocket, Palette } from "lucide-react";
+import { Plus, Trash2, Settings2, Rocket, Palette } from "lucide-react";
 import { useMarket } from "@/contexts/MarketContext";
-import { useSalespeopleData } from "@/hooks/useSalespeopleData";
 import { useAutomationsData } from "@/hooks/useAutomationsData";
-import { fetchTemplates } from "@/lib/whatsapp/templates";
 import {
   fetchLanci, saveLanci, fetchColorRules, saveColorRules,
   LancioConfig, ColorRule, PALETTE,
 } from "@/lib/lanci/config";
 import { CALL_METRICS, LEAD_METRICS } from "@/components/lanci/LancioMatrix";
+import LancioConfigDialog from "@/components/settings/LancioConfigDialog";
 
-const slug = (s: string) => s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "")
-  .replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "").slice(0, 40);
-
-const emptyCfg = (): LancioConfig => ({ id: "", nome: "", provenienza: "3sfere", call_tabs: [], lead_tab: "", campagna: "", target: {}, sales: [] });
+const emptyCfg = (): LancioConfig => ({
+  id: "", nome: "", provenienza: "", call_tabs: [], lead_tab: "",
+  campagna: "", target: {}, lead_sales: [], call_sales: [],
+});
 
 const LanciSettings = () => {
   const { selectedMarket } = useMarket();
-  const { venditori } = useSalespeopleData();
   const { automations } = useAutomationsData();
-  const [waTemplates, setWaTemplates] = useState<{ slug: string; nome: string; click_count: number }[]>([]);
-  useEffect(() => { fetchTemplates(selectedMarket).then((t) => setWaTemplates(t as any)); }, [selectedMarket]);
   const [lanci, setLanci] = useState<LancioConfig[]>([]);
   const [loading, setLoading] = useState(true);
-  const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<LancioConfig | null>(null);
-  const [form, setForm] = useState<LancioConfig>(emptyCfg());
   const [rulesOpen, setRulesOpen] = useState<string | null>(null);
   const [rules, setRules] = useState<ColorRule[]>([]);
   const [nr, setNr] = useState<{ key: string; op: ColorRule["op"]; val: string; color: string }>(
@@ -45,24 +39,17 @@ const LanciSettings = () => {
   }, []);
   useEffect(() => { load(); }, [load]);
 
-  const openNew = () => { setEditing(null); setForm(emptyCfg()); setOpen(true); };
-  const openEdit = (l: LancioConfig) => { setEditing(l); setForm({ ...emptyCfg(), ...l }); setOpen(true); };
-
   const persist = async (next: LancioConfig[]) => {
     if (!(await saveLanci(next))) { toast.error("Errore salvataggio"); return false; }
     setLanci(next); return true;
   };
 
-  const handleSave = async () => {
-    if (!form.nome.trim()) { toast.error("Il nome è obbligatorio"); return; }
-    if (!form.provenienza.trim()) { toast.error("Indica la provenienza delle call"); return; }
-    if (form.call_tabs.length === 0) { toast.error("Seleziona almeno un tab call"); return; }
-    if (!form.lead_tab.trim()) { toast.error("Seleziona il tab dei lead"); return; }
-    const id = form.id || slug(form.nome);
-    const cfg: LancioConfig = { ...form, id, nome: form.nome.trim() };
-    const next = editing ? lanci.map((l) => (l.id === editing.id ? cfg : l)) : [...lanci, cfg];
-    if (editing ? false : lanci.some((l) => l.id === id)) { toast.error("Esiste già un lancio con questo nome"); return; }
-    if (await persist(next)) { toast.success(editing ? "Lancio aggiornato" : "Lancio creato"); setOpen(false); }
+  const handleSave = async (cfg: LancioConfig) => {
+    const esiste = lanci.some((l) => l.id === cfg.id);
+    const next = esiste ? lanci.map((l) => (l.id === cfg.id ? cfg : l)) : [...lanci, cfg];
+    const ok = await persist(next);
+    if (ok) toast.success(esiste ? "Lancio aggiornato" : "Lancio creato");
+    return ok;
   };
 
   const handleDelete = async (l: LancioConfig) => {
@@ -70,15 +57,10 @@ const LanciSettings = () => {
     if (await persist(lanci.filter((x) => x.id !== l.id))) toast.success("Lancio eliminato");
   };
 
-  const toggleTab = (t: string) =>
-    setForm((f) => ({ ...f, call_tabs: f.call_tabs.includes(t) ? f.call_tabs.filter((x) => x !== t) : [...f.call_tabs, t] }));
-  const toggleSales = (n: string) =>
-    setForm((f) => ({ ...f, sales: (f.sales ?? []).includes(n) ? (f.sales ?? []).filter((x) => x !== n) : [...(f.sales ?? []), n] }));
-
   const openRules = async (id: string) => { setRules(await fetchColorRules(id)); setRulesOpen(id); };
   const addRule = async () => {
     const v = parseFloat(nr.val);
-    if (isNaN(v) || !rulesOpen) { toast.error("Inserisci un valore"); return; }
+    if (isNaN(v) || !rulesOpen) return toast.error("Inserisci un valore");
     const next = [...rules.filter((r) => r.key !== nr.key), { key: nr.key, op: nr.op, val: v, color: nr.color }];
     if (await saveColorRules(rulesOpen, next)) { setRules(next); setNr({ ...nr, val: "" }); }
     else toast.error("Errore salvataggio regola");
@@ -90,7 +72,8 @@ const LanciSettings = () => {
   };
 
   const ALL_METRICS = [...CALL_METRICS, ...LEAD_METRICS];
-  const sellerNames = venditori.map((s) => `${s.nome} ${s.cognome || ""}`.trim());
+  const nSales = (l: LancioConfig, campo: "lead_sales" | "call_sales") =>
+    (l[campo]?.length ?? 0) > 0 ? `${l[campo]!.length} venditori` : "tutti";
 
   return (
     <Card>
@@ -98,10 +81,10 @@ const LanciSettings = () => {
         <div>
           <CardTitle className="flex items-center gap-2"><Rocket className="h-5 w-5 text-primary" /> Lanci ({selectedMarket})</CardTitle>
           <CardDescription>
-            Configura i lanci mostrati in Analytics Lancio: da quali tab leggere call e lead, i target e i sales inclusi.
+            Ogni lancio si configura in quattro schede: Lead, Call, Automazioni e WhatsApp.
           </CardDescription>
         </div>
-        <Button size="sm" onClick={openNew}><Plus className="h-4 w-4 mr-1" /> Nuovo lancio</Button>
+        <Button size="sm" onClick={() => setEditing(emptyCfg())}><Plus className="h-4 w-4 mr-1" /> Nuovo lancio</Button>
       </CardHeader>
       <CardContent>
         {loading ? (
@@ -113,153 +96,48 @@ const LanciSettings = () => {
           </div>
         ) : (
           <div className="space-y-2">
-            {lanci.map((l) => (
-              <div key={l.id} className="p-3 rounded-lg border border-border bg-card/60">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <h4 className="font-semibold text-sm">{l.nome}</h4>
-                    <p className="text-[11.5px] text-muted-foreground mt-1">
-                      call <b>{l.provenienza}</b> · {l.call_tabs.join(" + ") || "—"} · lead <b>{l.lead_tab || "—"}</b>
-                      {l.campagna && <> · campagna <b>{l.campagna}</b></>}
-                    </p>
-                    <p className="text-[11px] text-muted-foreground mt-0.5">
-                      {(l.sales?.length ?? 0) > 0 ? `${l.sales!.length} sales inclusi` : "tutti i sales con dati"}
-                      {Object.keys(l.target ?? {}).length > 0 && ` · ${Object.keys(l.target!).length} target impostati`}
-                      {" · regola "}<b className={l.automazione_id ? "text-foreground" : "text-amber-400"}>
-                        {l.automazione_id ? (automations.find((a) => a.id === l.automazione_id)?.nome ?? "collegata") : "nessuna"}</b>
-                      {" · WhatsApp "}<b className={l.whatsapp_slug ? "text-foreground" : "text-amber-400"}>
-                        {l.whatsapp_slug ?? "nessuno"}</b>
-                    </p>
-                  </div>
-                  <div className="flex gap-1 shrink-0">
-                    <Button size="sm" variant="outline" onClick={() => openRules(l.id)} title="Formattazione condizionale">
-                      <Palette className="h-3.5 w-3.5" />
-                    </Button>
-                    <Button size="sm" variant="outline" onClick={() => openEdit(l)}><Edit className="h-3.5 w-3.5" /></Button>
-                    <Button size="sm" variant="outline" onClick={() => handleDelete(l)}><Trash2 className="h-3.5 w-3.5 text-destructive" /></Button>
+            {lanci.map((l) => {
+              const aut = automations.find((a) => a.id === l.automazione_id);
+              return (
+                <div key={l.id} className="p-3 rounded-lg border border-border bg-card/60">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <h4 className="font-semibold text-sm">{l.nome}</h4>
+                      <div className="grid sm:grid-cols-2 gap-x-6 gap-y-0.5 mt-1 text-[11.5px] text-muted-foreground">
+                        <p>Lead: <b className={l.lead_tab ? "text-foreground/80" : "text-amber-400"}>{l.lead_tab || "tab mancante"}</b> · {nSales(l, "lead_sales")}</p>
+                        <p>Call: <b className={l.provenienza ? "text-foreground/80" : "text-amber-400"}>{l.provenienza || "provenienza mancante"}</b> · {l.call_tabs.length || 0} tab · {nSales(l, "call_sales")}</p>
+                        <p>Automazione: <b className={aut ? "text-foreground/80" : "text-amber-400"}>{aut?.nome ?? "nessuna"}</b>{aut && !aut.attivo && <span className="text-amber-400"> (disattiva)</span>}</p>
+                        <p>WhatsApp: <b className={l.whatsapp_slug ? "text-foreground/80" : "text-amber-400"}>{l.whatsapp_slug ?? "nessuno"}</b></p>
+                      </div>
+                    </div>
+                    <div className="flex gap-1 shrink-0">
+                      <Button size="sm" variant="outline" onClick={() => openRules(l.id)} title="Formattazione condizionale">
+                        <Palette className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button size="sm" variant="outline" onClick={() => setEditing(l)}>
+                        <Settings2 className="h-3.5 w-3.5 mr-1" /> Configura
+                      </Button>
+                      <Button size="sm" variant="outline" onClick={() => handleDelete(l)}>
+                        <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                      </Button>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </CardContent>
 
-      {/* Configurazione lancio */}
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="sm:max-w-[620px] max-h-[90vh] overflow-y-auto">
-          <DialogHeader><DialogTitle>{editing ? "Modifica lancio" : "Nuovo lancio"}</DialogTitle></DialogHeader>
-          <div className="space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <Label>Nome</Label>
-                <Input value={form.nome} onChange={(e) => setForm({ ...form, nome: e.target.value })} placeholder="es. Workshop Set26" />
-              </div>
-              <div>
-                <Label>Provenienza call</Label>
-                <Input value={form.provenienza} onChange={(e) => setForm({ ...form, provenienza: e.target.value })} placeholder="es. 3sfere" />
-                <p className="text-[11px] text-muted-foreground mt-1">Valore esatto nella colonna provenienza del tab call.</p>
-              </div>
-            </div>
-
-            <div>
-              <Label>Tab call nei fogli sales (uno per mese, separati da virgola)</Label>
-              <Input value={form.call_tabs.join(", ")}
-                onChange={(e) => setForm({ ...form, call_tabs: e.target.value.split(",").map((t) => t.trim()).filter(Boolean) })}
-                placeholder="es. Giugno26 Elenco call/esito, Luglio26 Elenco call/esito" />
-              <p className="text-[11px] text-muted-foreground mt-1">
-                Nome <b>esatto</b> del tab, identico in tutti i fogli sales. Se in un foglio manca, per quel sales le call non vengono lette (compare tra gli avvisi).
-              </p>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <Label>Tab lead del lancio</Label>
-                <Input value={form.lead_tab} onChange={(e) => setForm({ ...form, lead_tab: e.target.value })}
-                  placeholder="es. Lead Workshop_Giu26" />
-              </div>
-              <div>
-                <Label>Campagna (lead generati)</Label>
-                <Input value={form.campagna ?? ""} onChange={(e) => setForm({ ...form, campagna: e.target.value })}
-                  placeholder="es. Workshop Giu26" />
-                <p className="text-[11px] text-muted-foreground mt-1">Campagna nel database, per lead generati e andamento.</p>
-              </div>
-            </div>
-
-            {/* Collegamenti: qui si decide cosa il lancio mostra in sola lettura nel frontend */}
-            <div className="rounded-md border border-border bg-secondary/30 p-3 space-y-3">
-              <div className="label-eyebrow">Collegamenti</div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <Label className="text-[12px]">Regola di assegnazione</Label>
-                  <Select value={form.automazione_id ?? "__none__"}
-                    onValueChange={(v) => setForm({ ...form, automazione_id: v === "__none__" ? undefined : v })}>
-                    <SelectTrigger className="h-8 text-[12.5px]"><SelectValue placeholder="Nessuna" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="__none__">Nessuna</SelectItem>
-                      {automations.map((a) => (
-                        <SelectItem key={a.id} value={a.id}>{a.nome}{a.attivo ? "" : " (disattiva)"}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <p className="text-[11px] text-muted-foreground mt-1">Si crea e modifica in <b>Automazioni</b>.</p>
-                </div>
-                <div>
-                  <Label className="text-[12px]">Link WhatsApp</Label>
-                  <Select value={form.whatsapp_slug ?? "__none__"}
-                    onValueChange={(v) => setForm({ ...form, whatsapp_slug: v === "__none__" ? undefined : v })}>
-                    <SelectTrigger className="h-8 text-[12.5px]"><SelectValue placeholder="Nessuno" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="__none__">Nessuno</SelectItem>
-                      {waTemplates.map((t) => (
-                        <SelectItem key={t.slug} value={t.slug}>{t.nome} · {t.click_count} click</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <p className="text-[11px] text-muted-foreground mt-1">Si crea in <b>Link WhatsApp</b>.</p>
-                </div>
-              </div>
-            </div>
-
-            <div>
-              <Label>Sales inclusi <span className="text-muted-foreground font-normal">(nessuno = tutti quelli con dati)</span></Label>
-              <div className="flex flex-wrap gap-1.5 mt-1.5 max-h-[110px] overflow-y-auto p-2 rounded-md border border-border bg-secondary/30">
-                {sellerNames.map((n) => (
-                  <button key={n} type="button" onClick={() => toggleSales(n)}
-                    className={`px-2 py-0.5 rounded-full border text-[11.5px] ${(form.sales ?? []).includes(n)
-                      ? "border-primary bg-primary/15 text-primary font-medium" : "border-border bg-card text-muted-foreground"}`}>
-                    {n}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div>
-              <Label>Target lead per sales</Label>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-1.5 max-h-[160px] overflow-y-auto p-2 rounded-md border border-border bg-secondary/30">
-                {sellerNames.map((n) => (
-                  <div key={n} className="flex items-center gap-1.5">
-                    <span className="text-[11px] text-muted-foreground truncate flex-1" title={n}>{n.split(" ")[0]}</span>
-                    <Input type="number" className="h-7 w-[68px] text-[12px]" value={form.target?.[n] ?? ""}
-                      onChange={(e) => {
-                        const v = parseInt(e.target.value, 10);
-                        setForm((f) => {
-                          const t = { ...(f.target ?? {}) };
-                          if (isNaN(v)) delete t[n]; else t[n] = v;
-                          return { ...f, target: t };
-                        });
-                      }} />
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setOpen(false)}>Annulla</Button>
-            <Button onClick={handleSave}>{editing ? "Salva" : "Crea"}</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {editing && (
+        <LancioConfigDialog
+          open={!!editing}
+          onOpenChange={(o) => !o && setEditing(null)}
+          value={editing}
+          onSave={handleSave}
+          esistenti={lanci.map((l) => l.id)}
+        />
+      )}
 
       {/* Formattazione condizionale */}
       <Dialog open={!!rulesOpen} onOpenChange={(o) => !o && setRulesOpen(null)}>

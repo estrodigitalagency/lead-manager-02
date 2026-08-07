@@ -57,7 +57,9 @@ interface LancioConfig {
   lead_tab: string;         // es. "Lead Workshop_Giu26"
   campagna?: string;        // campagna in lead_generation per i lead generati (es. "Workshop Giu26")
   target?: Record<string, number>;
-  sales?: string[];         // sales inclusi nella vista (vuoto = tutti)
+  sales?: string[];         // legacy
+  lead_sales?: string[];    // venditori da cui leggere il tab lead (vuoto = tutti)
+  call_sales?: string[];    // venditori da cui leggere i tab call (vuoto = tutti)
 }
 
 /** Lead generati dal DB per la campagna del lancio: totali, per fonte (nuovi/vecchi) e per giorno. */
@@ -216,10 +218,16 @@ Deno.serve(async (req) => {
         const nome = `${v.nome} ${v.cognome || ""}`.trim();
         if (!sid) return;
         try {
+          // Un venditore può essere incluso solo nei lead, solo nelle call, o in entrambi.
+          const inLead = !cfg.lead_sales?.length || cfg.lead_sales.includes(nome);
+          const inCall = !cfg.call_sales?.length || cfg.call_sales.includes(nome);
+          if (!inLead && !inCall) return;
           const wanted = [
-            ...cfg.call_tabs.map((t) => ({ tab: t, rng: "B2:L1000" })),
-            { tab: cfg.lead_tab, rng: "B2:H1000" },
+            ...(inCall ? cfg.call_tabs.map((t) => ({ tab: t, rng: "B2:L1000" })) : []),
+            ...(inLead && cfg.lead_tab ? [{ tab: cfg.lead_tab, rng: "B2:H1000" }] : []),
           ];
+          if (wanted.length === 0) return;
+          const nCallTabs = inCall ? cfg.call_tabs.length : 0;
           // Caso normale: una sola batchGet. Se un tab non esiste l'API risponde 400 →
           // fallback su letture singole, saltando i tab mancanti (senza chiamata meta extra).
           const qs = wanted.map((w) => `ranges=${encodeURIComponent(`${w.tab}!${w.rng}`)}`).join("&");
@@ -248,7 +256,7 @@ Deno.serve(async (req) => {
 
           // ── CALL ──
           let tot = 0, daFare = 0, nonNette = 0, chiusure = 0, fatturato = 0, incassato = 0;
-          for (let k = 0; k < cfg.call_tabs.length; k++) {
+          for (let k = 0; k < nCallTabs; k++) {
             for (const r of (vr[k]?.values ?? []) as any[][]) {
               if (String(r[0] ?? "").trim().toLowerCase() !== prov) continue;
               tot++;
@@ -265,7 +273,7 @@ Deno.serve(async (req) => {
           const nette = tot - nonNette - daFare;
 
           // ── LEAD ──
-          const leadVals = (vr[cfg.call_tabs.length]?.values ?? []) as any[][];
+          const leadVals = (inLead && cfg.lead_tab ? (vr[nCallTabs]?.values ?? []) : []) as any[][];
           const qual: Record<string, number> = {};
           for (const q of QUALIFICHE) qual[q] = 0;
           const voti: Record<string, number> = {};
@@ -381,7 +389,7 @@ Deno.serve(async (req) => {
       lancio: {
         id: cfg.id, nome: cfg.nome, provenienza: cfg.provenienza,
         call_tabs: cfg.call_tabs, lead_tab: cfg.lead_tab, campagna: cfg.campagna ?? null,
-        sales: cfg.sales ?? [],
+        sales: cfg.sales ?? [], lead_sales: cfg.lead_sales ?? [], call_sales: cfg.call_sales ?? [],
       },
       qualifiche_order: ["Non lavorato", ...QUALIFICHE],
       voti_order: VOTI,

@@ -12,7 +12,9 @@ export interface LancioConfig {
   lead_tab: string;             // tab lead del lancio (es. "Lead Workshop_Giu26")
   campagna?: string;            // campagna in lead_generation (per i lead generati)
   target?: Record<string, number>;
-  sales?: string[];             // vuoto = tutti i sales con dati
+  sales?: string[];             // legacy: sales della vista (vuoto = tutti quelli con dati)
+  lead_sales?: string[];        // venditori da cui leggere il tab lead
+  call_sales?: string[];        // venditori da cui leggere i tab call
   automazione_id?: string;      // automazione di assegnazione collegata (lead_assignment_automations)
   whatsapp_slug?: string;       // template link WhatsApp collegato
 }
