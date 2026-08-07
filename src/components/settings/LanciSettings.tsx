@@ -28,7 +28,8 @@ const LanciSettings = () => {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<LancioConfig | null>(null);
   const [form, setForm] = useState<LancioConfig>(emptyCfg());
-  const [tabs, setTabs] = useState<string[]>([]);
+  const [tabs, setTabs] = useState<{ tab: string; n: number }[]>([]);
+  const [nSales, setNSales] = useState(0);
   const [loadingTabs, setLoadingTabs] = useState(false);
   const [rulesOpen, setRulesOpen] = useState<string | null>(null);
   const [rules, setRules] = useState<ColorRule[]>([]);
@@ -49,7 +50,8 @@ const LanciSettings = () => {
       const sellers = await fetchSheetTabs(selectedMarket);
       const count: Record<string, number> = {};
       for (const s of sellers) for (const t of s.tabs) count[t] = (count[t] || 0) + 1;
-      setTabs(Object.entries(count).sort((a, b) => b[1] - a[1]).map(([t]) => t));
+      setNSales(sellers.length);
+      setTabs(Object.entries(count).sort((a, b) => b[1] - a[1]).map(([tab, n]) => ({ tab, n })));
     } catch { toast.error("Impossibile leggere i tab dei fogli"); }
     finally { setLoadingTabs(false); }
   };
@@ -174,16 +176,27 @@ const LanciSettings = () => {
                   {loadingTabs ? <Loader2 className="h-3 w-3 animate-spin" /> : "Ricarica tab"}
                 </Button>
               </div>
-              <div className="flex flex-wrap gap-1.5 max-h-[120px] overflow-y-auto p-2 rounded-md border border-border bg-secondary/30">
-                {tabs.filter((t) => /elenco call/i.test(t)).map((t) => (
-                  <button key={t} type="button" onClick={() => toggleTab(t)}
-                    className={`px-2 py-0.5 rounded border text-[11.5px] ${form.call_tabs.includes(t)
-                      ? "border-primary bg-primary/15 text-primary font-medium" : "border-border bg-card text-muted-foreground"}`}>
-                    {t}
-                  </button>
-                ))}
+              <div className="flex flex-wrap gap-1.5 max-h-[130px] overflow-y-auto p-2 rounded-md border border-border bg-secondary/30">
+                {tabs.filter((t) => /elenco call/i.test(t.tab)).map(({ tab, n }) => {
+                  const on = form.call_tabs.includes(tab);
+                  const parziale = nSales > 0 && n < nSales;
+                  return (
+                    <button key={tab} type="button" onClick={() => toggleTab(tab)} title={`Presente in ${n} fogli su ${nSales}`}
+                      className={`px-2 py-0.5 rounded border text-[11.5px] inline-flex items-center gap-1.5 ${on
+                        ? "border-primary bg-primary/15 text-primary font-medium" : "border-border bg-card text-muted-foreground"}`}>
+                      {tab}
+                      <span className={parziale ? "text-amber-400" : "text-muted-foreground/70"}>{n}/{nSales}</span>
+                    </button>
+                  );
+                })}
                 {tabs.length === 0 && <span className="text-[11.5px] text-muted-foreground">Clicca "Ricarica tab" per leggere i fogli.</span>}
               </div>
+              {form.call_tabs.length > 0 && (
+                <p className="text-[11px] text-muted-foreground mt-1">
+                  Selezionati: {form.call_tabs.join(" + ")}. Il numero indica in quanti fogli sales esiste quel tab:
+                  <b className="text-amber-400"> se non è su tutti</b>, per i mancanti le call non verranno lette.
+                </p>
+              )}
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -192,9 +205,14 @@ const LanciSettings = () => {
                 <Select value={form.lead_tab} onValueChange={(v) => setForm({ ...form, lead_tab: v })}>
                   <SelectTrigger><SelectValue placeholder="Seleziona tab" /></SelectTrigger>
                   <SelectContent>
-                    {tabs.filter((t) => /^lead /i.test(t)).map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                    {tabs.filter((t) => /^lead /i.test(t.tab)).map(({ tab, n }) => (
+                      <SelectItem key={tab} value={tab}>{tab} · {n}/{nSales} fogli</SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
+                <Input className="mt-1.5 h-8 text-[12px]" value={form.lead_tab}
+                  onChange={(e) => setForm({ ...form, lead_tab: e.target.value })}
+                  placeholder="…oppure scrivi il nome esatto del tab" />
               </div>
               <div>
                 <Label>Campagna (lead generati)</Label>
