@@ -70,15 +70,31 @@ export interface LancioRow {
   voti: Record<string, number>;
   voti_perc: Record<string, number>;
 }
+/** Tempi fra l'ingresso del lead e l'assegnazione, per coorte di giorno d'ingresso. */
+export interface SpeedToLead {
+  days: string[];
+  entrati: number[];
+  assegnati: number[];
+  prenotati: number[];
+  attesa_mediana_sec: number[];
+  mediana_sec: number;
+  media_sec: number;
+  entro_5min_perc: number;
+  misurati: number;
+  non_assegnati: number;
+  scaglioni: { label: string; n: number }[];
+}
+
 export interface LancioData {
   market: string;
   lancio: { id: string; nome: string; provenienza: string; call_tabs: string[]; lead_tab: string; campagna: string | null; sales: string[] };
   qualifiche_order: string[];
   voti_order: string[];
   leadgen: {
-    generati: number; assegnati: number;
+    generati: number; assegnati: number; prenotati?: number;
     per_fonte: Record<string, { Nuovo: number; Vecchio: number }>;
     trend: { days: string[]; series: Record<string, number[]> };
+    speed?: SpeedToLead;
   } | null;
   totale: LancioRow;
   rows: LancioRow[];

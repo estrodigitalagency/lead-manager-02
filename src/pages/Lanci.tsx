@@ -8,6 +8,7 @@ import { useMarket } from "@/contexts/MarketContext";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { fetchLanci, fetchLancioData, fetchColorRules, LancioConfig, LancioData, ColorRule } from "@/lib/lanci/config";
 import AcquisizioneWidget from "@/components/lanci/AcquisizioneWidget";
+import SpeedToLeadWidget from "@/components/lanci/SpeedToLeadWidget";
 import LancioMatrix, { fmt } from "@/components/lanci/LancioMatrix";
 import LancioMobile from "@/components/lanci/LancioMobile";
 import TabDistribuzione from "@/components/lanci/TabDistribuzione";
@@ -163,12 +164,15 @@ const Lanci = () => {
           </div>
 
           <Tabs value={tab} onValueChange={setTab}>
-            <TabsList className="bg-secondary/60">
-              <TabsTrigger value="panoramica" className="text-[12.5px]">Panoramica</TabsTrigger>
-              <TabsTrigger value="distribuzione" className="text-[12.5px]">Distribuzione</TabsTrigger>
-              <TabsTrigger value="whatsapp" className="text-[12.5px]">WhatsApp</TabsTrigger>
-              <TabsTrigger value="performance" className="text-[12.5px]">Call &amp; fatturato</TabsTrigger>
-            </TabsList>
+            {/* su schermi stretti i quattro tab non ci stanno: scorrono invece di allargare la pagina */}
+            <div className="-mx-1 px-1 overflow-x-auto no-scrollbar">
+              <TabsList className="bg-secondary/60 w-max">
+                <TabsTrigger value="panoramica" className="text-[12.5px]">Panoramica</TabsTrigger>
+                <TabsTrigger value="distribuzione" className="text-[12.5px]">Distribuzione</TabsTrigger>
+                <TabsTrigger value="whatsapp" className="text-[12.5px]">WhatsApp</TabsTrigger>
+                <TabsTrigger value="performance" className="text-[12.5px]">Call &amp; fatturato</TabsTrigger>
+              </TabsList>
+            </div>
 
             <TabsContent value="panoramica" className="mt-3 space-y-3">
               <p className="text-[11px] text-muted-foreground">
@@ -200,6 +204,17 @@ const Lanci = () => {
                   <CardTitle className="label-eyebrow">Acquisizione lead — andamento e mix per fonte</CardTitle>
                 </CardHeader>
                 <CardContent className="p-0"><AcquisizioneWidget leadgen={data.leadgen} /></CardContent>
+              </Card>
+
+              <Card className="overflow-hidden">
+                <CardHeader className="py-2.5 px-3.5 border-b border-border">
+                  <CardTitle className="label-eyebrow">Speed to lead — da lead entrato ad assegnato</CardTitle>
+                </CardHeader>
+                <CardContent className="p-0">
+                  <SpeedToLeadWidget speed={data.leadgen?.speed}
+                    totLead={sum("tot_lead")}
+                    lavorati={sum("tot_lead") - (data.totale?.qualifiche?.["Non lavorato"] ?? 0)} />
+                </CardContent>
               </Card>
 
               {data.errors?.length > 0 && (

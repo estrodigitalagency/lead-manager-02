@@ -15,8 +15,8 @@ const PersistentNavigation = () => {
   const navigationItems = [
     { to: "/", icon: Users, label: "Home", isActive: location.pathname === "/" },
     { to: "/database", icon: Database, label: "Database", isActive: location.pathname === "/database" },
-    { to: "/reports", icon: BarChart3, label: "Report", isActive: location.pathname === "/reports" },
     { to: "/lanci", icon: Rocket, label: "Lanci", isActive: location.pathname === "/lanci" },
+    { to: "/reports", icon: BarChart3, label: "Report", isActive: location.pathname === "/reports" },
     { to: "/history", icon: History, label: "Cronologia", isActive: location.pathname === "/history" },
     { to: "/settings", icon: Settings, label: "Impostazioni", isActive: location.pathname === "/settings" }
   ];

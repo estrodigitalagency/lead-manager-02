@@ -39,21 +39,21 @@ const LancioMobile = ({ data, rows, rules }: Props) => {
       const aWin = va !== vb && (LOWER_BETTER.has(k) ? va < vb : va > vb);
       return (
         <div className="flex items-center gap-2.5 px-3.5 py-2 border-b border-border">
-          <span className="flex-1 text-[12.5px] text-muted-foreground truncate">{label}</span>
-          <span className={`w-[86px] text-right text-sm font-bold num ${aWin ? "text-emerald-400" : ""}`} style={style}>{fmt[f](va)}</span>
-          <span className={`w-[86px] text-right text-sm font-bold num ${!aWin && va !== vb ? "text-emerald-400" : ""}`}>{fmt[f](vb)}</span>
+          <span className="flex-1 min-w-0 text-[12.5px] text-muted-foreground truncate">{label}</span>
+          <span className={`w-[74px] shrink-0 text-right text-[13px] font-bold num whitespace-nowrap ${aWin ? "text-emerald-400" : ""}`} style={style}>{fmt[f](va)}</span>
+          <span className={`w-[74px] shrink-0 text-right text-[13px] font-bold num whitespace-nowrap ${!aWin && va !== vb ? "text-emerald-400" : ""}`}>{fmt[f](vb)}</span>
         </div>
       );
     }
     const m = avg(k);
     const d = m > 0 ? Math.round((va / m - 1) * 100) : null;
     return (
-      <div className="flex items-center gap-2.5 px-3.5 py-2 border-b border-border">
-        <span className="flex-1 text-[12.5px] text-muted-foreground truncate">{label}</span>
-        <span className="text-sm font-bold num" style={style}>{fmt[f](va)}</span>
-        <span className="w-[74px] text-right text-[10.5px] num"
+      <div className="flex items-center gap-2 px-3.5 py-2 border-b border-border">
+        <span className="flex-1 min-w-0 text-[12.5px] text-muted-foreground truncate">{label}</span>
+        <span className="text-sm font-bold num shrink-0" style={style}>{fmt[f](va)}</span>
+        <span className="w-[52px] shrink-0 text-right text-[10.5px] num whitespace-nowrap"
           style={{ color: pc != null ? undefined : d && d > 0 ? "hsl(142 71% 60%)" : d && d < 0 ? "hsl(0 84% 71%)" : undefined }}>
-          {pc != null ? fmt.pct(pc) : d != null && isFinite(d) ? `${d > 0 ? "+" : ""}${d}% vs media` : ""}
+          {pc != null ? fmt.pct(pc) : d != null && isFinite(d) ? `${d > 0 ? "+" : ""}${d}%` : ""}
         </span>
       </div>
     );
@@ -71,10 +71,10 @@ const LancioMobile = ({ data, rows, rules }: Props) => {
           <ArrowLeftRight className="h-3 w-3 mr-1" /> Confronta 2
         </Button>
         <span className="text-[11.5px] text-muted-foreground">
-          {cmp ? "tocca i nomi per scegliere i due sales" : "tocca un sales per il dettaglio"}
+          {cmp ? "tocca i nomi per scegliere i due sales" : "tocca un sales · % = scarto dalla media team"}
         </span>
       </div>
-      <div className="flex gap-1.5 overflow-x-auto px-3 py-2.5 bg-secondary/30 border-b border-border">
+      <div className="flex gap-1.5 overflow-x-auto no-scrollbar px-3 py-2.5 bg-secondary/30 border-b border-border">
         {rows.map((r) => {
           const on = r.venditore === a.venditore || (cmp && r.venditore === b?.venditore);
           const tag = cmp ? (r.venditore === a.venditore ? "A · " : r.venditore === b?.venditore ? "B · " : "") : "";
@@ -91,8 +91,8 @@ const LancioMobile = ({ data, rows, rules }: Props) => {
       {b && (
         <div className="flex gap-2.5 px-3.5 py-2 bg-secondary/40 border-b border-border label-eyebrow sticky top-0 z-10">
           <span className="flex-1">Metrica</span>
-          <span className="w-[86px] text-right">{a.venditore.split(" ")[0]}</span>
-          <span className="w-[86px] text-right">{b.venditore.split(" ")[0]}</span>
+          <span className="w-[74px] shrink-0 text-right truncate">{a.venditore.split(" ")[0]}</span>
+          <span className="w-[74px] shrink-0 text-right truncate">{b.venditore.split(" ")[0]}</span>
         </div>
       )}
 

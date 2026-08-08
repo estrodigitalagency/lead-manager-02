@@ -359,3 +359,7 @@
 .animate-glow { }
 .animate-pulse-slow { animation: fade-in 0.3s ease-out; }
 .floating-card { @apply glass-card; }
+
+/* Strisce che scorrono in orizzontale (tab, chip sales) senza barra visibile */
+.no-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; }

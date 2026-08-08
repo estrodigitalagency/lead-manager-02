@@ -65,39 +65,93 @@ interface LancioConfig {
   call_sales?: string[];    // venditori da cui leggere i tab call (vuoto = tutti)
 }
 
+// Scaglioni di attesa fra l'ingresso del lead e l'assegnazione al venditore.
+const SCAGLIONI: { l: string; max: number }[] = [
+  { l: "< 1 min", max: 60 },
+  { l: "1–5 min", max: 300 },
+  { l: "5–60 min", max: 3600 },
+  { l: "1–24 h", max: 86400 },
+  { l: "> 24 h", max: Infinity },
+];
+
+const mediana = (v: number[]) => {
+  if (v.length === 0) return 0;
+  const s = [...v].sort((a, b) => a - b), m = s.length >> 1;
+  return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
+};
+
 /** Lead generati dal DB per la campagna del lancio: totali, per fonte (nuovi/vecchi) e per giorno. */
 async function leadGenerati(supabase: any, campagna: string, market: string) {
   const perFonte: Record<string, { Nuovo: number; Vecchio: number }> = {};
   const perGiorno: Record<string, Record<string, number>> = {};
-  let generati = 0, assegnati = 0;
+  // coorte per giorno d'ingresso: quanti entrati, quanti poi assegnati, quanti hanno prenotato,
+  // e i tempi di attesa (in secondi) per la mediana giornaliera
+  const coorte: Record<string, { entrati: number; assegnati: number; prenotati: number; attese: number[] }> = {};
+  const attese: number[] = [];
+  const scaglioni = SCAGLIONI.map((s) => ({ label: s.l, n: 0 }));
+  let generati = 0, assegnati = 0, prenotati = 0, mai = 0;
+
   for (let off = 0; off < 40000; off += 1000) {
     const { data } = await supabase
       .from("lead_generation")
-      .select("created_at, ultima_fonte, stato_del_lead, venditore")
+      .select("created_at, ultima_fonte, stato_del_lead, venditore, data_assegnazione, booked_call")
       .eq("campagna", campagna).eq("market", market)
       .order("created_at").range(off, off + 999);
     if (!data || data.length === 0) break;
     for (const r of data) {
       generati++;
-      if (r.venditore) assegnati++;
       const fonte = r.ultima_fonte || "—";
       const stato = r.stato_del_lead === "Vecchio" ? "Vecchio" : "Nuovo";
       if (!perFonte[fonte]) perFonte[fonte] = { Nuovo: 0, Vecchio: 0 };
       perFonte[fonte][stato]++;
+
       const day = String(r.created_at ?? "").slice(0, 10);
       if (day) {
         if (!perGiorno[day]) perGiorno[day] = {};
         perGiorno[day][fonte] = (perGiorno[day][fonte] || 0) + 1;
+        if (!coorte[day]) coorte[day] = { entrati: 0, assegnati: 0, prenotati: 0, attese: [] };
+        coorte[day].entrati++;
       }
+
+      const booked = String(r.booked_call ?? "").trim().toUpperCase() === "SI";
+      if (booked) { prenotati++; if (day) coorte[day].prenotati++; }
+
+      if (r.venditore) {
+        assegnati++;
+        if (day) coorte[day].assegnati++;
+        const t0 = Date.parse(r.created_at ?? ""), t1 = Date.parse(r.data_assegnazione ?? "");
+        if (isFinite(t0) && isFinite(t1) && t1 >= t0) {
+          const sec = (t1 - t0) / 1000;
+          attese.push(sec);
+          if (day) coorte[day].attese.push(sec);
+          scaglioni[SCAGLIONI.findIndex((s) => sec < s.max)].n++;
+        }
+      } else mai++;
     }
     if (data.length < 1000) break;
   }
+
   const days = Object.keys(perGiorno).sort();
   const fonti = Object.keys(perFonte).sort((a, b) =>
     (perFonte[b].Nuovo + perFonte[b].Vecchio) - (perFonte[a].Nuovo + perFonte[a].Vecchio));
   const series: Record<string, number[]> = {};
   for (const f of fonti) series[f] = days.map((d) => perGiorno[d][f] || 0);
-  return { generati, assegnati, per_fonte: perFonte, trend: { days, series } };
+
+  const entro5 = scaglioni[0].n + scaglioni[1].n;
+  const speed = {
+    days,
+    entrati: days.map((d) => coorte[d]?.entrati ?? 0),
+    assegnati: days.map((d) => coorte[d]?.assegnati ?? 0),
+    prenotati: days.map((d) => coorte[d]?.prenotati ?? 0),
+    attesa_mediana_sec: days.map((d) => Math.round(mediana(coorte[d]?.attese ?? []))),
+    mediana_sec: Math.round(mediana(attese)),
+    media_sec: attese.length ? Math.round(attese.reduce((s, x) => s + x, 0) / attese.length) : 0,
+    entro_5min_perc: attese.length ? +((entro5 / attese.length) * 100).toFixed(1) : 0,
+    misurati: attese.length,
+    non_assegnati: mai,
+    scaglioni,
+  };
+  return { generati, assegnati, prenotati, per_fonte: perFonte, trend: { days, series }, speed };
 }
 
 function euro(x: unknown): number {
