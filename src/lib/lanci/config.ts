@@ -69,6 +69,9 @@ export interface LancioRow {
   qualifiche_perc: Record<string, number>;
   voti: Record<string, number>;
   voti_perc: Record<string, number>;
+  contatto?: Contatto;
+  per_voto?: Record<string, { call: number; nette: number; chiusure: number; fatturato: number }>;
+  call_abbinate?: number;
 }
 /** Tempi fra l'ingresso del lead e l'assegnazione, per coorte di giorno d'ingresso. */
 export interface SpeedToLead {
@@ -85,6 +88,24 @@ export interface SpeedToLead {
   scaglioni: { label: string; n: number }[];
 }
 
+/** Presa in carico: dal lead in CRM al primo messaggio del venditore (col. "TS Invio" dei fogli). */
+export interface Contatto {
+  contattati: number;
+  senza_ts: number;
+  mediana_sec: number;
+  media_sec?: number;
+  entro_1h: number;
+  entro_24h: number;
+  scaglioni: { label: string; n: number }[];
+}
+
+/** Esito delle call incrociato col voto 1-5 dato al lead. */
+export interface QualitaLead {
+  call_abbinate: number;
+  call_totali: number;
+  voti: { voto: string; call: number; nette: number; chiusure: number; fatturato: number; tasso_nette: number; ticket: number }[];
+}
+
 export interface LancioData {
   market: string;
   lancio: { id: string; nome: string; provenienza: string; call_tabs: string[]; lead_tab: string; campagna: string | null; sales: string[] };
@@ -96,6 +117,8 @@ export interface LancioData {
     trend: { days: string[]; series: Record<string, number[]> };
     speed?: SpeedToLead;
   } | null;
+  contatto_team?: Contatto;
+  qualita?: QualitaLead;
   totale: LancioRow;
   rows: LancioRow[];
   errors: string[];

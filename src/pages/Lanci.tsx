@@ -9,6 +9,8 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { fetchLanci, fetchLancioData, fetchColorRules, LancioConfig, LancioData, ColorRule } from "@/lib/lanci/config";
 import AcquisizioneWidget from "@/components/lanci/AcquisizioneWidget";
 import SpeedToLeadWidget from "@/components/lanci/SpeedToLeadWidget";
+import ContattoWidget from "@/components/lanci/ContattoWidget";
+import QualitaLeadWidget from "@/components/lanci/QualitaLeadWidget";
 import LancioMatrix, { fmt } from "@/components/lanci/LancioMatrix";
 import LancioMobile from "@/components/lanci/LancioMobile";
 import TabDistribuzione from "@/components/lanci/TabDistribuzione";
@@ -214,6 +216,24 @@ const Lanci = () => {
                   <SpeedToLeadWidget speed={data.leadgen?.speed}
                     totLead={sum("tot_lead")}
                     lavorati={sum("tot_lead") - (data.totale?.qualifiche?.["Non lavorato"] ?? 0)} />
+                </CardContent>
+              </Card>
+
+              <Card className="overflow-hidden">
+                <CardHeader className="py-2.5 px-3.5 border-b border-border">
+                  <CardTitle className="label-eyebrow">Presa in carico — dal lead al primo messaggio del venditore</CardTitle>
+                </CardHeader>
+                <CardContent className="p-0">
+                  <ContattoWidget contatto={data.contatto_team} rows={rows} />
+                </CardContent>
+              </Card>
+
+              <Card className="overflow-hidden">
+                <CardHeader className="py-2.5 px-3.5 border-b border-border">
+                  <CardTitle className="label-eyebrow">Qualità del lead contro il risultato — voto 1-5 ed esito della call</CardTitle>
+                </CardHeader>
+                <CardContent className="p-0">
+                  <QualitaLeadWidget qualita={data.qualita} rows={rows} votiOrder={data.voti_order ?? []} />
                 </CardContent>
               </Card>
 

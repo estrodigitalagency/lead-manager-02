@@ -154,6 +154,43 @@ async function leadGenerati(supabase: any, campagna: string, market: string) {
   return { generati, assegnati, prenotati, per_fonte: perFonte, trend: { days, series }, speed };
 }
 
+// I fogli scrivono "TS Invio" nell'ora locale italiana; il confronto con le date del CRM
+// (in UTC) richiede di riportarlo indietro dell'offset di Roma valido in quel momento.
+const ROME_FMT = new Intl.DateTimeFormat("en-GB", {
+  timeZone: "Europe/Rome", hour12: false,
+  year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit",
+});
+function romeOffsetMs(utcMs: number): number {
+  const p = ROME_FMT.formatToParts(new Date(utcMs));
+  const g = (t: string) => Number(p.find((x) => x.type === t)?.value ?? 0);
+  return Date.UTC(g("year"), g("month") - 1, g("day"), g("hour"), g("minute"), g("second")) - utcMs;
+}
+/** "11/06/2026 11:52:52" (ora italiana) -> millisecondi UTC. Null se la cella non è una data. */
+function parseTsInvio(raw: string): number | null {
+  const m = String(raw ?? "").trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})[ ,]+(\d{1,2}):(\d{2})(?::(\d{2}))?$/);
+  if (!m) return null;
+  const naive = Date.UTC(+m[3], +m[2] - 1, +m[1], +m[4], +m[5], +(m[6] ?? 0));
+  return naive - romeOffsetMs(naive);
+}
+
+/** Nome confrontabile fra tab Lead e tab Call: minuscolo, senza accenti, come insieme di parole. */
+function nameTokens(s: string): string[] {
+  return String(s ?? "")
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase()
+    .replace(/[.\-_]/g, " ").split(/\s+/).filter((w) => w.length > 1).sort();
+}
+const tokKey = (t: string[]) => t.join(" ");
+const isSubset = (a: string[], b: string[]) => a.every((x) => b.includes(x));
+
+// Scaglioni di presa in carico: dal lead in CRM al primo messaggio del venditore.
+const SCAGLIONI_CONTATTO: { l: string; max: number }[] = [
+  { l: "< 1 h", max: 3600 },
+  { l: "1–6 h", max: 21600 },
+  { l: "6–24 h", max: 86400 },
+  { l: "1–3 gg", max: 259200 },
+  { l: "> 3 gg", max: Infinity },
+];
+
 function euro(x: unknown): number {
   let s = String(x ?? "").replace(/[€%\s]/g, "").trim();
   if (!s || s === "-") return 0;
@@ -281,7 +318,7 @@ Deno.serve(async (req) => {
           if (!inLead && !inCall) return;
           const wanted = [
             ...(inCall ? cfg.call_tabs.map((t) => ({ tab: t, rng: "B2:L1000" })) : []),
-            ...(inLead && cfg.lead_tab ? [{ tab: cfg.lead_tab, rng: "B2:H1000" }] : []),
+            ...(inLead && cfg.lead_tab ? [{ tab: cfg.lead_tab, rng: "A2:J1000" }] : []),
           ];
           if (wanted.length === 0) return;
           const nCallTabs = inCall ? cfg.call_tabs.length : 0;
@@ -313,18 +350,23 @@ Deno.serve(async (req) => {
 
           // ── CALL ──
           let tot = 0, daFare = 0, nonNette = 0, chiusure = 0, fatturato = 0, incassato = 0;
+          const callRows: { tok: string[]; netta: boolean; chiusa: boolean; fatt: number }[] = [];
           for (let k = 0; k < nCallTabs; k++) {
             for (const r of (vr[k]?.values ?? []) as any[][]) {
               if (String(r[0] ?? "").trim().toLowerCase() !== prov) continue;
               tot++;
               const esito = String(r[6] ?? "").trim();
-              if (daFareTest(esito)) daFare++;
-              else if (RE_NON_NETTA.test(esito)) nonNette++;
-              if (RE_CHIUSURA.test(esito)) {
+              const fare = daFareTest(esito), nonNetta = !fare && RE_NON_NETTA.test(esito);
+              if (fare) daFare++;
+              else if (nonNetta) nonNette++;
+              const chiusa = RE_CHIUSURA.test(esito);
+              if (chiusa) {
                 chiusure++;
                 fatturato += euro(r[9]);
                 incassato += euro(r[10]);
               }
+              // col C = Nome del lead: aggancia la call al voto assegnato nel tab Lead
+              callRows.push({ tok: nameTokens(r[1]), netta: !fare && !nonNetta, chiusa, fatt: chiusa ? euro(r[9]) : 0 });
             }
           }
           const nette = tot - nonNette - daFare;
@@ -336,13 +378,62 @@ Deno.serve(async (req) => {
           const voti: Record<string, number> = {};
           for (const v of VOTI) voti[v] = 0;
           let conNome = 0;
+          // A=data lead, B=nome, C=cognome, G=qualifica, H=voto, J=TS Invio (primo messaggio del venditore)
+          const votoByName: { tok: string[]; voto: string }[] = [];
+          const attesaContatto: number[] = [];
+          let senzaTs = 0;
           for (const r of leadVals) {
-            if (String(r[0] ?? "").trim()) conNome++;
-            const q = String(r[5] ?? "").trim();
+            if (String(r[1] ?? "").trim()) conNome++;
+            const q = String(r[6] ?? "").trim();
             if (q && q in qual) qual[q]++;
-            const vt = String(r[6] ?? "").trim();   // col H = Voto 1-5
+            const vt = String(r[7] ?? "").trim();
             if (vt && vt in voti) voti[vt]++;
+
+            const tok = nameTokens(`${r[1] ?? ""} ${r[2] ?? ""}`);
+            if (tok.length && vt) votoByName.push({ tok, voto: vt });
+
+            const tIn = Date.parse(String(r[0] ?? ""));
+            const tMsg = parseTsInvio(String(r[9] ?? ""));
+            if (tMsg !== null && isFinite(tIn)) {
+              const sec = (tMsg - tIn) / 1000;
+              // scarti negativi oltre l'ora: riga incoerente, fuori dalla statistica
+              if (sec > -3600) attesaContatto.push(Math.max(0, sec));
+            } else if (isFinite(tIn)) senzaTs++;
           }
+          // voto della call: match esatto sui nomi, poi sottoinsieme (secondi nomi, cognomi doppi)
+          const votoIdx = new Map<string, string>();
+          for (const v of votoByName) votoIdx.set(tokKey(v.tok), v.voto);
+          const votoDiCall = (tok: string[]): string | null => {
+            if (!tok.length) return null;
+            const hit = votoIdx.get(tokKey(tok));
+            if (hit) return hit;
+            const sub = votoByName.find((v) => isSubset(tok, v.tok) || isSubset(v.tok, tok));
+            return sub?.voto ?? null;
+          };
+          const perVoto: Record<string, { call: number; nette: number; chiusure: number; fatturato: number }> = {};
+          for (const v of VOTI) perVoto[v] = { call: 0, nette: 0, chiusure: 0, fatturato: 0 };
+          let callAbbinate = 0;
+          for (const c of callRows) {
+            const v = votoDiCall(c.tok);
+            if (!v || !(v in perVoto)) continue;
+            callAbbinate++;
+            perVoto[v].call++;
+            if (c.netta) perVoto[v].nette++;
+            if (c.chiusa) { perVoto[v].chiusure++; perVoto[v].fatturato += c.fatt; }
+          }
+          const contatto = {
+            contattati: attesaContatto.length,
+            senza_ts: senzaTs,
+            mediana_sec: Math.round(mediana(attesaContatto)),
+            media_sec: attesaContatto.length
+              ? Math.round(attesaContatto.reduce((s2, x) => s2 + x, 0) / attesaContatto.length) : 0,
+            entro_1h: attesaContatto.filter((x) => x < 3600).length,
+            entro_24h: attesaContatto.filter((x) => x < 86400).length,
+            scaglioni: SCAGLIONI_CONTATTO.map((sc, si) => ({
+              label: sc.l,
+              n: attesaContatto.filter((x) => x < sc.max && x >= (SCAGLIONI_CONTATTO[si - 1]?.max ?? 0)).length,
+            })),
+          };
           const sommaQual = QUALIFICHE.reduce((s, q) => s + qual[q], 0);
           const nonLavorato = Math.max(0, conNome - sommaQual);
           const totLead = sommaQual + nonLavorato;
@@ -381,6 +472,7 @@ Deno.serve(async (req) => {
             app_conferma_lavorati: lavorati > 0 ? Math.round(((confermato + fixApp) / lavorati) * 1000) / 10 : 0,
             app_conferma: totLead > 0 ? Math.round(((confermato + fixApp) / totLead) * 1000) / 10 : 0,
             voti, voti_perc: votiPerc, media_voto: mediaVoto,
+            contatto, per_voto: perVoto, call_abbinate: callAbbinate,
           });
         } catch (e) {
           errors.push(`${nome}: ${(e as Error).message}`);
@@ -434,6 +526,41 @@ Deno.serve(async (req) => {
         : 0;
     }
 
+    // ── Presa in carico (TS Invio) e qualità lead (voto x esito): aggregati di team ──
+    const contattoTeam = {
+      contattati: sum((r) => r.contatto?.contattati ?? 0),
+      senza_ts: sum((r) => r.contatto?.senza_ts ?? 0),
+      entro_1h: sum((r) => r.contatto?.entro_1h ?? 0),
+      entro_24h: sum((r) => r.contatto?.entro_24h ?? 0),
+      // mediana di team approssimata dalla mediana pesata delle mediane: i secondi grezzi
+      // non escono dai fogli per non gonfiare il payload
+      mediana_sec: (() => {
+        const v = rows.filter((r) => (r.contatto?.contattati ?? 0) > 0)
+          .flatMap((r) => Array(Math.min(r.contatto.contattati, 400)).fill(r.contatto.mediana_sec));
+        return Math.round(mediana(v));
+      })(),
+      scaglioni: SCAGLIONI_CONTATTO.map((sc, si) => ({
+        label: sc.l,
+        n: rows.reduce((s2, r) => s2 + (r.contatto?.scaglioni?.[si]?.n ?? 0), 0),
+      })),
+    };
+    const qualitaTeam = {
+      call_abbinate: sum((r) => r.call_abbinate ?? 0),
+      call_totali: totCall,
+      voti: VOTI.map((v) => {
+        const g = { voto: v, call: 0, nette: 0, chiusure: 0, fatturato: 0 };
+        for (const r of rows) {
+          const p = r.per_voto?.[v]; if (!p) continue;
+          g.call += p.call; g.nette += p.nette; g.chiusure += p.chiusure; g.fatturato += p.fatturato;
+        }
+        return {
+          ...g,
+          tasso_nette: g.nette > 0 ? Math.round((g.chiusure / g.nette) * 1000) / 10 : 0,
+          ticket: g.chiusure > 0 ? Math.round(g.fatturato / g.chiusure) : 0,
+        };
+      }),
+    };
+
     // Lead generati dal DB (campagna del lancio): per fonte, nuovi/vecchi, andamento giornaliero
     let leadgen: any = null;
     if (cfg.campagna) {
@@ -451,6 +578,7 @@ Deno.serve(async (req) => {
       qualifiche_order: ["Non lavorato", ...QUALIFICHE],
       voti_order: VOTI,
       leadgen,
+      contatto_team: contattoTeam, qualita: qualitaTeam,
       totale, rows, errors: errors.slice(0, 20),
       generated_at: new Date().toISOString(),
     };
