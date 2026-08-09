@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -10,6 +10,8 @@ import { useAutomationsData } from "@/hooks/useAutomationsData";
 import { useSalespeopleData } from "@/hooks/useSalespeopleData";
 import { LeadAssignmentAutomation, NewAutomationForm } from "@/types/automation";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { fetchCodaIds, setCoda } from "@/lib/automazioni/coda";
+import { toast } from "sonner";
 
 export function AutomationSettings() {
   const {
@@ -23,6 +25,17 @@ export function AutomationSettings() {
     resetDistributionState
   } = useAutomationsData();
   const { venditori } = useSalespeopleData();
+
+  const [codaIds, setCodaIds] = useState<string[]>([]);
+  useEffect(() => { fetchCodaIds().then(setCodaIds); }, []);
+
+  // Assegnazione Round Robin: mette in coda i lead nuovi della regola, lasciando passare
+  // solo chi è già stato lavorato di recente.
+  const handleCoda = useCallback(async (id: string, attiva: boolean) => {
+    if (!(await setCoda(id, attiva))) { toast.error("Errore salvataggio"); return; }
+    setCodaIds(await fetchCodaIds());
+    toast.success(attiva ? "Lead nuovi messi in coda Round Robin" : "Assegnazione tornata normale");
+  }, []);
 
   const [showForm, setShowForm] = useState(false);
   const [editingAutomation, setEditingAutomation] = useState<LeadAssignmentAutomation | undefined>();
@@ -130,6 +143,8 @@ export function AutomationSettings() {
                 onDelete={handleDeleteAutomation}
                 onReorder={handleReorder}
                 onResetDistribution={resetDistributionState}
+                codaIds={codaIds}
+                onToggleCoda={handleCoda}
                 venditori={venditori}
               />
             </CardContent>

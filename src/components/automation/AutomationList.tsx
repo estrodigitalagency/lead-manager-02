@@ -4,7 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
-import { MoreHorizontal, Edit, Trash2, GripVertical, RotateCcw, Users } from "lucide-react";
+import { MoreHorizontal, Edit, Trash2, GripVertical, RotateCcw, Users, PauseCircle } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { LeadAssignmentAutomation } from "@/types/automation";
 import { Progress } from "@/components/ui/progress";
@@ -19,6 +19,8 @@ interface VenditoreLite {
 interface AutomationListProps {
   automations: LeadAssignmentAutomation[];
   onToggle: (id: string, attivo: boolean) => void;
+  codaIds?: string[];
+  onToggleCoda?: (id: string, attiva: boolean) => void;
   onEdit: (automation: LeadAssignmentAutomation) => void;
   onDelete: (id: string) => void;
   onReorder: (result: any) => void;
@@ -51,7 +53,7 @@ const actionTypeLabels = {
   weighted_distribution: "Distribuzione tra più venditori (%/quota)"
 };
 
-export function AutomationList({ automations, onToggle, onEdit, onDelete, onReorder, onResetDistribution, venditori = [] }: AutomationListProps) {
+export function AutomationList({ automations, onToggle, onEdit, onDelete, onReorder, onResetDistribution, venditori = [], codaIds = [], onToggleCoda }: AutomationListProps) {
   const [isDragging, setIsDragging] = useState(false);
 
   const nameOf = (id: string) => {
@@ -129,6 +131,11 @@ export function AutomationList({ automations, onToggle, onEdit, onDelete, onReor
                                  <Badge variant={automation.attivo ? "default" : "secondary"} className="self-start">
                                    {automation.attivo ? "Attiva" : "Inattiva"}
                                  </Badge>
+                                 {codaIds.includes(automation.id) && (
+                                   <Badge variant="outline" className="self-start border-amber-500/50 text-amber-500">
+                                     In coda Round Robin
+                                   </Badge>
+                                 )}
                                </div>
                              </div>
                            </div>
@@ -151,6 +158,17 @@ export function AutomationList({ automations, onToggle, onEdit, onDelete, onReor
                                    <Edit className="h-4 w-4 mr-2" />
                                    Modifica
                                  </DropdownMenuItem>
+                                 {onToggleCoda && (
+                                   <DropdownMenuItem
+                                     onClick={() => onToggleCoda(automation.id, !codaIds.includes(automation.id))}
+                                     title="I lead nuovi restano in attesa come Round Robin; chi è già stato lavorato nel lock period torna al suo venditore"
+                                   >
+                                     <PauseCircle className="h-4 w-4 mr-2" />
+                                     {codaIds.includes(automation.id)
+                                       ? "Riprendi assegnazione normale"
+                                       : "Metti i lead nuovi in coda"}
+                                   </DropdownMenuItem>
+                                 )}
                                  {automation.action_type === 'weighted_distribution' && onResetDistribution && (
                                    <DropdownMenuItem onClick={() => handleReset(automation)}>
                                      <RotateCcw className="h-4 w-4 mr-2" />

@@ -11,6 +11,7 @@ import { Users, FileSpreadsheet, Zap, MessageCircle, AlertTriangle, Loader2, Plu
 import { useSalespeopleData } from "@/hooks/useSalespeopleData";
 import { useAutomationsData } from "@/hooks/useAutomationsData";
 import { fetchTemplates, saveTemplate } from "@/lib/whatsapp/templates";
+import { fetchCodaIds, setCoda } from "@/lib/automazioni/coda";
 import { checkConflitti, Conflitto } from "@/lib/lanci/integrazioni";
 import { LancioConfig } from "@/lib/lanci/config";
 
@@ -65,6 +66,7 @@ const LancioConfigDialog = ({ open, onOpenChange, value, onSave, esistenti, mark
   const [aSheetTab, setASheetTab] = useState("");
   const [aCampagna, setACampagna] = useState("");
   const [aWebhook, setAWebhook] = useState(true);
+  const [aCoda, setACoda] = useState(false);   // assegnazione in coda: i lead nuovi aspettano
   const [aLockOn, setALockOn] = useState(false);
   const [aLockDays, setALockDays] = useState(30);   // -1 = sempre lo stesso venditore
   const [aEsclusi, setAEsclusi] = useState<string[]>([]);
@@ -99,6 +101,7 @@ const LancioConfigDialog = ({ open, onOpenChange, value, onSave, esistenti, mark
       setATrigger((autom.trigger_when as any) ?? "new_lead");
       setAFonti((autom.condition_value ?? []).join(", "));
       setACondTipo(((autom as any).condition_type === "not_contains" ? "not_contains" : "contains"));
+      fetchCodaIds().then((ids) => setACoda(ids.includes(autom.id)));
       setAEscl(((autom as any).trigger_sources ?? []).join(", "));
       setAAzione((autom.action_type as Azione) ?? "weighted_distribution");
       setAPrevFirst(!!(autom as any).use_previous_seller_first);
@@ -126,7 +129,7 @@ const LancioConfigDialog = ({ open, onOpenChange, value, onSave, esistenti, mark
       setAPrevFirst(false); setATargetSeller(""); setAModo("percentage"); setAQuote({}); setACap({});
       setASheetTab(""); setACampagna(value.campagna ?? ""); setAWebhook(true);
       setALockOn(false); setALockDays(30); setAEsclusi([]);
-      setACondTipo("contains"); setAEscl("");
+      setACondTipo("contains"); setAEscl(""); setACoda(false);
     }
   }, [open, value, autom?.id]);   // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -204,9 +207,10 @@ const LancioConfigDialog = ({ open, onOpenChange, value, onSave, esistenti, mark
       excluded_sellers: aEsclusi,
     };
     try {
-      if (autom) { await updateAutomation(autom.id, payload); return autom.id; }
+      if (autom) { await updateAutomation(autom.id, payload); await setCoda(autom.id, aCoda); return autom.id; }
       const maxP = Math.max(...automations.map((a) => a.priority ?? 0), 0);
       const created: any = await createAutomation({ ...payload, priority: maxP + 1 });
+      if (created?.id) await setCoda(created.id, aCoda);
       return created?.id;
     } catch { toast.error("Errore nel salvataggio della regola"); return; }
   };
@@ -445,6 +449,18 @@ const LancioConfigDialog = ({ open, onOpenChange, value, onSave, esistenti, mark
                   </Select>
                 </div>
               )}
+
+              <div className={`rounded-md border p-3 ${aCoda ? "border-amber-500/50 bg-amber-500/5" : "border-border bg-secondary/30"}`}>
+                <div className="flex items-center gap-2">
+                  <Switch checked={aCoda} onCheckedChange={setACoda} />
+                  <span className="text-[12.5px]">Assegnazione Round Robin (metti i lead nuovi in coda)</span>
+                </div>
+                <p className="text-[11px] text-muted-foreground mt-1.5 pl-9">
+                  {aCoda
+                    ? "I lead nuovi non vengono distribuiti: restano in attesa con venditore \u201cRound Robin\u201d. Passa solo chi era già stato assegnato entro il periodo qui sotto, che torna al suo venditore. Percentuali e tetti restano come sono."
+                    : "Da attivare quando i venditori sono indietro con la lavorazione e non vuoi continuare a caricarli, anche se il tetto non è ancora pieno."}
+                </p>
+              </div>
 
               {aAzione === "weighted_distribution" && (
                 <div className="space-y-2.5 rounded-md border border-border bg-secondary/30 p-3">

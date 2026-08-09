@@ -213,9 +213,22 @@ async function checkAndApplyAutomations(lead: any, supabase: any) {
 
     console.log(`Found ${automations.length} active automations`);
 
+    // "Assegnazione Round Robin": interruttore manuale per mettere in coda i lead nuovi quando
+    // i venditori sono in ritardo con la lavorazione, senza toccare tetti e percentuali.
+    // L'elenco sta in system_settings (stesso schema del soft-delete) perché l'app scrive con
+    // la anon key e non può aggiungere colonne alla tabella delle automazioni.
+    let inCoda: string[] = [];
+    try {
+      const { data: rr } = await supabase
+        .from('system_settings').select('value').eq('key', 'automations_round_robin').maybeSingle();
+      const parsed = JSON.parse(rr?.value || '[]');
+      if (Array.isArray(parsed)) inCoda = parsed as string[];
+    } catch { /* nessuna coda attiva */ }
+
     // Se una regola matcha ma ha le quote esaurite il lead non va perso: a fine giro
     // finisce in Round Robin, la coda già usata nel database per i lead in attesa.
     let quotePiene: string | null = null;
+    let codaAttiva: string | null = null;
 
     // Controlla ogni automazione nell'ordine di priorità
     for (const automation of automations) {
@@ -228,6 +241,24 @@ async function checkAndApplyAutomations(lead: any, supabase: any) {
         
         let targetSeller = null;
         let sheetsTabName = null;
+
+        if (inCoda.includes(automation.id)) {
+          // In coda: passa solo chi è già stato lavorato di recente, il resto aspetta.
+          const prev = await findPreviousSeller(lead, supabase, automation.excluded_sellers || []);
+          if (prev && entroLockPeriod(automation, prev.dataAssegnazione)) {
+            console.log(`[coda] ${automation.nome}: lead già lavorato da ${prev.seller.nome} ${prev.seller.cognome}, torna a lui`);
+            await assignLeadAutomatically(
+              lead,
+              { ...prev.seller, originalDataAssegnazione: prev.dataAssegnazione },
+              automation.sheets_tab_name || prev.seller.sheets_tab_name,
+              automation, supabase,
+            );
+            return;
+          }
+          console.log(`[coda] ${automation.nome}: nessun venditore recente, lead in Round Robin`);
+          codaAttiva = automation.nome;
+          continue;
+        }
 
         if (automation.action_type === 'assign_to_seller' && automation.target_seller_id) {
           // Assegna al venditore specificato
@@ -347,10 +378,13 @@ async function checkAndApplyAutomations(lead: any, supabase: any) {
       }
     }
 
-    if (quotePiene) {
-      // Tutti i venditori della regola hanno raggiunto il tetto: il lead resta in coda,
-      // visibile come "Round Robin" invece di restare senza venditore e sparire dai conti.
-      console.log(`Quote piene su "${quotePiene}": lead ${lead.id} messo in Round Robin`);
+    const motivoCoda = codaAttiva
+      ? `Assegnazione Round Robin attiva su "${codaAttiva}"`
+      : quotePiene ? `Quote piene su "${quotePiene}"` : null;
+    if (motivoCoda) {
+      // Il lead non va perso né lasciato senza venditore: entra nella coda "Round Robin",
+      // la stessa già usata nel database per i lead in attesa di smistamento.
+      console.log(`${motivoCoda}: lead ${lead.id} messo in Round Robin`);
       await supabase
         .from('lead_generation')
         .update({
@@ -406,6 +440,20 @@ async function scalaTettoPreassegnato(lead: any, supabase: any) {
   } catch (e) {
     console.error('[preassegnato] errore nello scalare il tetto:', e);
   }
+}
+
+/**
+ * Il lead è stato assegnato di recente abbastanza da restare al suo venditore?
+ * lock_period_days: -1 = sempre, 0/assente = nessun limite, N = entro N giorni.
+ */
+function entroLockPeriod(automation: any, dataAssegnazione: string | null): boolean {
+  const lock = automation.lock_period_days;
+  if (lock === null || lock === undefined || lock === 0) return true;
+  if (lock === -1) return true;
+  if (!dataAssegnazione) return false;
+  const giorni = calculateDaysSince(dataAssegnazione);
+  console.log(`Lock period check: ${giorni} giorni dall'ultima assegnazione (limite: ${lock})`);
+  return giorni < lock;
 }
 
 /** Valore del campo su cui la regola ragiona (stesso campo per condizione ed esclusioni). */
