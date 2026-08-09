@@ -88,6 +88,7 @@ serve(async (req) => {
       await checkAndApplyAutomations(newLead, supabase);
     } else {
       console.log('Skipping automations: lead already has assigned seller and assignable=false');
+      await scalaTettoPreassegnato(newLead, supabase);
     }
     
     return new Response(JSON.stringify({
@@ -220,36 +221,9 @@ async function checkAndApplyAutomations(lead: any, supabase: any) {
     for (const automation of automations) {
       console.log(`Checking automation: ${automation.nome}`);
       
-      // Controlla se questa automazione dovrebbe scattare per questo tipo di lead
-      const shouldTrigger = automation.trigger_when === 'new_lead' || 
-        (automation.trigger_when === 'duplicate_different_source' && lead.ultima_fonte && lead.ultima_fonte.trim() !== '');
-      
-      if (!shouldTrigger) {
-        console.log(`Automation ${automation.nome} skipped - trigger condition not met`);
-        continue;
-      }
-      
-      // Esclusioni: se il campo contiene una di queste stringhe la regola non si applica,
-      // anche se la condizione principale è soddisfatta (es. "contiene workshop ma non giu26").
-      const esclusioni: string[] = automation.trigger_sources || [];
-      if (esclusioni.length > 0) {
-        const campo = String(
-          automation.trigger_field === 'fonte' ? (lead.fonte || '') :
-          automation.trigger_field === 'campagna' ? (lead.campagna || '') :
-          automation.trigger_field === 'nome' ? (lead.nome || '') :
-          automation.trigger_field === 'email' ? (lead.email || '') :
-          automation.trigger_field === 'telefono' ? (lead.telefono || '') :
-          automation.trigger_field === 'lead_score' ? (lead.lead_score || '') :
-          (lead.ultima_fonte || '')
-        ).toLowerCase();
-        const escluso = esclusioni.some((e: string) => e.trim() && campo.includes(e.trim().toLowerCase()));
-        if (escluso) {
-          console.log(`Automation ${automation.nome} skipped - esclusione: ${campo}`);
-          continue;
-        }
-      }
+      if (!regolaSiApplica(lead, automation)) continue;
 
-      if (checkCondition(lead, automation.trigger_field, automation.condition_type, automation.condition_value)) {
+      {
         console.log(`Automation condition matched: ${automation.nome}`);
         
         let targetSeller = null;
@@ -393,6 +367,85 @@ async function checkAndApplyAutomations(lead: any, supabase: any) {
   } catch (error) {
     console.error('Error in checkAndApplyAutomations:', error);
   }
+}
+
+/**
+ * Lead che arriva già assegnato (es. n8n con link UTM): le automazioni non girano, ma il lead
+ * occupa comunque capacità del venditore, quindi scala dal suo tetto. Si sceglie la regola che
+ * avrebbe gestito questo lead, cioè quella la cui condizione corrisponde alla sua fonte e che
+ * distribuisce a quel venditore. Senza corrispondenza non si scala niente: un lead di un'altra
+ * campagna non deve consumare il tetto di questo lancio.
+ */
+async function scalaTettoPreassegnato(lead: any, supabase: any) {
+  try {
+    const seller = await fetchSellerDetails(lead.venditore, lead.market, supabase);
+    if (!seller) return;   // nome non riconducibile a un venditore attivo: niente da scalare
+
+    const { data: automations } = await supabase
+      .from('lead_assignment_automations')
+      .select('*')
+      .eq('attivo', true).eq('market', lead.market)
+      .order('priority', { ascending: true });
+
+    const conIlVenditore = (automations || []).filter((a: any) =>
+      a.action_type === 'weighted_distribution' &&
+      (a.distribution_config || []).some((slot: any) => slot.venditore_id === seller.id));
+    if (conIlVenditore.length === 0) return;
+
+    const regola = conIlVenditore.find((a: any) => regolaSiApplica(lead, a));
+    if (!regola) {
+      console.log(`[preassegnato] ${lead.venditore}: nessuna regola con condizione corrispondente a "${lead.ultima_fonte}", tetto non scalato`);
+      return;
+    }
+
+    const state: any = regola.distribution_state || {};
+    await incrementDistributionState(regola.id, seller.id, state.count_assigned || {}, state.total_assigned || 0, supabase);
+    await logAutomationExecution(lead, regola, seller, 'counted_preassigned',
+      'Lead già assegnato da fuori: scalato dal tetto senza riassegnare', 'webhook', supabase);
+    console.log(`[preassegnato] ${lead.venditore} scalato dal tetto di "${regola.nome}"`);
+  } catch (e) {
+    console.error('[preassegnato] errore nello scalare il tetto:', e);
+  }
+}
+
+/** Valore del campo su cui la regola ragiona (stesso campo per condizione ed esclusioni). */
+function valoreCampo(lead: any, triggerField: string): string {
+  switch (triggerField) {
+    case 'fonte': return lead.fonte || '';
+    case 'campagna': return lead.campagna || '';
+    case 'nome': return lead.nome || '';
+    case 'email': return lead.email || '';
+    case 'telefono': return lead.telefono || '';
+    case 'lead_score': return lead.lead_score || '';
+    case 'created_at': return lead.created_at || '';
+    default: return lead.ultima_fonte || '';
+  }
+}
+
+/**
+ * La regola vale per questo lead? Momento di attivazione, esclusioni e condizione insieme.
+ * Usata sia quando si assegna sia quando si conta un lead già assegnato da fuori.
+ */
+function regolaSiApplica(lead: any, automation: any): boolean {
+  const shouldTrigger = automation.trigger_when === 'new_lead' ||
+    (automation.trigger_when === 'duplicate_different_source' && lead.ultima_fonte && lead.ultima_fonte.trim() !== '');
+  if (!shouldTrigger) {
+    console.log(`Automation ${automation.nome} skipped - trigger condition not met`);
+    return false;
+  }
+
+  // Esclusioni: se il campo contiene una di queste stringhe la regola non si applica,
+  // anche se la condizione principale è soddisfatta (es. "contiene workshop ma non giu26").
+  const esclusioni: string[] = automation.trigger_sources || [];
+  if (esclusioni.length > 0) {
+    const campo = valoreCampo(lead, automation.trigger_field).toLowerCase();
+    if (esclusioni.some((e: string) => e.trim() && campo.includes(e.trim().toLowerCase()))) {
+      console.log(`Automation ${automation.nome} skipped - esclusione: ${campo}`);
+      return false;
+    }
+  }
+
+  return checkCondition(lead, automation.trigger_field, automation.condition_type, automation.condition_value);
 }
 
 // Funzione per controllare se una condizione è soddisfatta
