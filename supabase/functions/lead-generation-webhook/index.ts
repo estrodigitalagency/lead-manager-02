@@ -212,6 +212,10 @@ async function checkAndApplyAutomations(lead: any, supabase: any) {
 
     console.log(`Found ${automations.length} active automations`);
 
+    // Se una regola matcha ma ha le quote esaurite il lead non va perso: a fine giro
+    // finisce in Round Robin, la coda già usata nel database per i lead in attesa.
+    let quotePiene: string | null = null;
+
     // Controlla ogni automazione nell'ordine di priorità
     for (const automation of automations) {
       console.log(`Checking automation: ${automation.nome}`);
@@ -285,6 +289,7 @@ async function checkAndApplyAutomations(lead: any, supabase: any) {
             if (!pickedSeller) {
               await logAutomationExecution(lead, automation, null, 'no_seller_found',
                 'Distribution quota full or no eligible sellers', 'webhook', supabase);
+              quotePiene = automation.nome;
               continue;
             }
             targetSeller = pickedSeller;
@@ -368,7 +373,22 @@ async function checkAndApplyAutomations(lead: any, supabase: any) {
       }
     }
 
-    console.log('No automation conditions matched');
+    if (quotePiene) {
+      // Tutti i venditori della regola hanno raggiunto il tetto: il lead resta in coda,
+      // visibile come "Round Robin" invece di restare senza venditore e sparire dai conti.
+      console.log(`Quote piene su "${quotePiene}": lead ${lead.id} messo in Round Robin`);
+      await supabase
+        .from('lead_generation')
+        .update({
+          venditore: 'Round Robin',
+          stato: 'nuovo',
+          assignable: false,
+          data_assegnazione: new Date().toISOString(),
+        })
+        .eq('id', lead.id);
+    } else {
+      console.log('No automation conditions matched');
+    }
     
   } catch (error) {
     console.error('Error in checkAndApplyAutomations:', error);
