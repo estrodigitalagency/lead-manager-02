@@ -473,6 +473,7 @@ async function findPreviousSellerWithSourceCheck(lead: any, automationSources: s
       .select('venditore, data_assegnazione, created_at, fonte, email, telefono')
       .eq('market', lead.market)
       .not('venditore', 'is', null)
+      .neq('venditore', 'Round Robin')   // coda d'attesa, non un venditore
       .not('data_assegnazione', 'is', null)
       .order('created_at', { ascending: false })
       .limit(100);
@@ -563,11 +564,12 @@ async function findPreviousSeller(lead: any, supabase: any, excludedSellers: str
         .ilike(column, value)
         .not('venditore', 'is', null)
         .not('data_assegnazione', 'is', null);
-      // Esclusione diretta in query: il match più recente non escluso
-      if (excludedSellers.length > 0) {
-        const escaped = excludedSellers.map(s => `"${String(s).replace(/"/g, '\\"')}"`).join(',');
-        q = q.not('venditore', 'in', `(${escaped})`);
-      }
+      // Esclusione diretta in query: il match più recente non escluso.
+      // "Round Robin" non è un venditore ma la coda d'attesa: se restasse in gioco sarebbe
+      // il match più recente e il lead perderebbe il collegamento al venditore vero.
+      const daEscludere = [...excludedSellers, 'Round Robin'];
+      const escaped = daEscludere.map(s => `"${String(s).replace(/"/g, '\\"')}"`).join(',');
+      q = q.not('venditore', 'in', `(${escaped})`);
       return q.order('created_at', { ascending: false }).limit(1);
     };
 
