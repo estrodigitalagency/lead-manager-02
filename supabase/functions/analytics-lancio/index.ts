@@ -91,13 +91,24 @@ async function leadGenerati(supabase: any, campagna: string, market: string) {
   const scaglioni = SCAGLIONI.map((s) => ({ label: s.l, n: 0 }));
   let generati = 0, assegnati = 0, prenotati = 0, mai = 0;
 
-  for (let off = 0; off < 40000; off += 1000) {
-    const { data } = await supabase
-      .from("lead_generation")
-      .select("created_at, ultima_fonte, stato_del_lead, venditore, data_assegnazione, booked_call")
-      .eq("campagna", campagna).eq("market", market)
-      .order("created_at").range(off, off + 999);
-    if (!data || data.length === 0) break;
+  const PAGINA = 1000;
+  const query = (from: number, to: number) => supabase
+    .from("lead_generation")
+    .select("created_at, ultima_fonte, stato_del_lead, venditore, data_assegnazione, booked_call", { count: "exact" })
+    .eq("campagna", campagna).eq("market", market)
+    .order("created_at").range(from, to);
+
+  // La prima pagina dice anche quante sono in tutto: le restanti si leggono tutte insieme.
+  const prima = await query(0, PAGINA - 1);
+  const totale = prima.count ?? (prima.data?.length ?? 0);
+  const altre = await Promise.all(
+    Array.from({ length: Math.max(0, Math.ceil(totale / PAGINA) - 1) },
+      (_, i) => query((i + 1) * PAGINA, (i + 2) * PAGINA - 1)),
+  );
+
+  for (const pagina of [prima, ...altre]) {
+    const data = pagina.data;
+    if (!data || data.length === 0) continue;
     for (const r of data) {
       generati++;
       const fonte = r.ultima_fonte || "—";
@@ -128,7 +139,6 @@ async function leadGenerati(supabase: any, campagna: string, market: string) {
         }
       } else mai++;
     }
-    if (data.length < 1000) break;
   }
 
   const days = Object.keys(perGiorno).sort();
@@ -275,9 +285,22 @@ Deno.serve(async (req) => {
     const prov = cfg.provenienza.trim().toLowerCase();
     const errors: string[] = [];
 
+    // I lead generati arrivano dal database e non dipendono dai fogli: parte subito e si
+    // aspetta solo alla fine, invece di aggiungere il suo tempo in coda a quello dei fogli.
+    const leadgenPromise: Promise<any> = cfg.campagna
+      ? leadGenerati(supabase, cfg.campagna, market).catch((e) => {
+          errors.push(`lead generati: ${(e as Error).message}`);
+          return null;
+        })
+      : Promise.resolve(null);
+
     const rows: any[] = [];
     const list = vend ?? [];
-    const CONC = 2;
+    // Ogni venditore costa una sola chiamata batchGet: a due alla volta servivano dieci giri.
+    // A otto in parallelo Google ha risposto 429 su due ricalcoli ravvicinati e un venditore
+    // è stato saltato, quindi si sta a cinque: circa quattro volte più veloce di prima e
+    // dentro il limite anche quando due ricalcoli si accavallano.
+    const CONC = 5;
     for (let i = 0; i < list.length; i += CONC) {
       await Promise.all(list.slice(i, i + CONC).map(async (v) => {
         const sid = String(v.sheets_file_id || "").replace(/[^a-zA-Z0-9_-]/g, "");
@@ -316,7 +339,9 @@ Deno.serve(async (req) => {
             if (missing.length) errors.push(`${nome}: tab mancanti (${missing.join(", ")})`);
             if (vr.every((x) => !x)) return;
           } else {
-            errors.push(`${nome}: sheets ${res.status}`);
+            // Non è un tab mancante ma una lettura fallita: i numeri di questo venditore
+            // mancano dai totali, e chi guarda deve saperlo.
+            errors.push(`LETTURA FALLITA — ${nome}: sheets ${res.status}${res.status === 429 ? " (limite Google, riprova fra un minuto)" : ""}`);
             return;
           }
 
@@ -493,12 +518,8 @@ Deno.serve(async (req) => {
       }),
     };
 
-    // Lead generati dal DB (campagna del lancio): per fonte, nuovi/vecchi, andamento giornaliero
-    let leadgen: any = null;
-    if (cfg.campagna) {
-      try { leadgen = await leadGenerati(supabase, cfg.campagna, market); }
-      catch (e) { errors.push(`lead generati: ${(e as Error).message}`); }
-    }
+
+    const leadgen = await leadgenPromise;
 
     const payload = {
       market,

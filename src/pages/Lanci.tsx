@@ -75,6 +75,12 @@ const Lanci = () => {
     return isFinite(t) ? Math.max(0, Math.floor((adesso - t) / 60_000)) : null;
   }, [dataDelLancio, adesso]);
 
+  // Un tab che manca è una configurazione da sistemare; una lettura fallita è un totale sbagliato.
+  const letturefallite = useMemo(
+    () => (dataDelLancio?.errors ?? []).filter((e) => e.startsWith("LETTURA FALLITA")),
+    [dataDelLancio],
+  );
+
   const etaTesto = useMemo(() => {
     if (etaMin === null) return "";
     if (etaMin < 1) return "meno di un minuto fa";
@@ -160,6 +166,22 @@ const Lanci = () => {
           </Button>
         </div>
       </div>
+
+      {letturefallite.length > 0 && (
+        <div className="flex items-center gap-2.5 flex-wrap rounded-lg border border-destructive/50 bg-destructive/10 px-3 py-2.5">
+          <AlertTriangle className="h-4 w-4 text-destructive shrink-0" />
+          <span className="text-[12.5px] flex-1 min-w-[200px]">
+            <b>Numeri incompleti.</b>{" "}
+            <span className="text-muted-foreground">
+              {letturefallite.length === 1 ? "Un foglio non è stato letto" : `${letturefallite.length} fogli non sono stati letti`}
+              , quindi quei venditori mancano dai totali: {letturefallite.map((e) => e.replace("LETTURA FALLITA — ", "")).join(" · ")}
+            </span>
+          </span>
+          <Button size="sm" variant="outline" className="h-7 text-[11.5px] shrink-0" onClick={() => load(true)} disabled={loading || bg}>
+            <RefreshCw className={`h-3.5 w-3.5 mr-1 ${bg ? "animate-spin" : ""}`} /> Riprova
+          </Button>
+        </div>
+      )}
 
       {etaMin !== null && etaMin >= 20 && !loading && (
         <div className="flex items-center gap-2.5 flex-wrap rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2.5">
@@ -272,7 +294,9 @@ const Lanci = () => {
 
               {dataDelLancio.errors?.length > 0 && (
                 <details className="text-[11.5px] text-muted-foreground">
-                  <summary className="cursor-pointer">{dataDelLancio.errors.length} avvisi di lettura fogli</summary>
+                  <summary className="cursor-pointer">
+                    {dataDelLancio.errors.length} avvisi di lettura fogli
+                  </summary>
                   <ul className="mt-1.5 space-y-0.5 pl-4 list-disc">{dataDelLancio.errors.map((e, i) => <li key={i}>{e}</li>)}</ul>
                 </details>
               )}
