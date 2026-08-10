@@ -28,6 +28,7 @@ const Lanci = () => {
   const [tab, setTab] = useState("panoramica");
   const [lastSync, setLastSync] = useState<Date | null>(null);
   const [bg, setBg] = useState(false);   // aggiornamento silenzioso in corso
+  const [adesso, setAdesso] = useState(() => Date.now());   // fa invecchiare l'etichetta da sola
 
   useEffect(() => {
     fetchLanci().then((l) => { setLanci(l); setLancioId((cur) => cur || l[0]?.id || ""); });
@@ -58,9 +59,32 @@ const Lanci = () => {
     return () => { clearInterval(id); document.removeEventListener("visibilitychange", tick); };
   }, [load]);
 
+  useEffect(() => {
+    const id = setInterval(() => setAdesso(Date.now()), 30_000);
+    return () => clearInterval(id);
+  }, []);
+
   const cfg = useMemo(() => lanci.find((l) => l.id === lancioId) ?? null, [lanci, lancioId]);
   // I dati arrivano dopo il cambio di lancio: finché sono di un altro lancio non vanno mostrati.
   const dataDelLancio = data && data.lancio?.id === lancioId ? data : null;
+
+  // Età dei dati: conta il momento in cui l'edge li ha calcolati, non quando il browser li ha
+  // ricevuti. La risposta può arrivare dalla cache e sembrare fresca senza esserlo.
+  const etaMin = useMemo(() => {
+    const t = dataDelLancio?.generated_at ? Date.parse(dataDelLancio.generated_at) : NaN;
+    return isFinite(t) ? Math.max(0, Math.floor((adesso - t) / 60_000)) : null;
+  }, [dataDelLancio, adesso]);
+
+  const etaTesto = useMemo(() => {
+    if (etaMin === null) return "";
+    if (etaMin < 1) return "meno di un minuto fa";
+    if (etaMin === 1) return "un minuto fa";
+    if (etaMin < 60) return `${etaMin} minuti fa`;
+    const h = Math.floor(etaMin / 60), m = etaMin % 60;
+    if (h < 24) return m ? `${h}h ${m}m fa` : `${h} ore fa`;
+    const g = Math.floor(h / 24);
+    return g === 1 ? "ieri" : `${g} giorni fa`;
+  }, [etaMin]);
   const reload = useCallback(() => { fetchLanci().then(setLanci); load(true); }, [load]);
 
   // sales inclusi: da config; se vuota, tutti quelli con dati
@@ -119,10 +143,9 @@ const Lanci = () => {
               {lanci.map((l) => <SelectItem key={l.id} value={l.id}>{l.nome}</SelectItem>)}
             </SelectContent>
           </Select>
-          {lastSync && (
-            <span className="text-[10.5px] text-muted-foreground hidden sm:inline">
-              {bg ? "aggiorno…" : `aggiornato ${lastSync.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" })}`}
-              {data?.stale && !bg && <span className="text-amber-400"> · in aggiornamento</span>}
+          {etaMin !== null && (
+            <span className={`text-[10.5px] whitespace-nowrap ${etaMin >= 20 ? "text-amber-400" : "text-muted-foreground"}`}>
+              {bg ? "aggiorno…" : `dati di ${etaTesto}`}
             </span>
           )}
         </div>
@@ -137,6 +160,21 @@ const Lanci = () => {
           </Button>
         </div>
       </div>
+
+      {etaMin !== null && etaMin >= 20 && !loading && (
+        <div className="flex items-center gap-2.5 flex-wrap rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2.5">
+          <AlertTriangle className="h-4 w-4 text-amber-400 shrink-0" />
+          <span className="text-[12.5px] flex-1 min-w-[200px]">
+            <b>Dati calcolati {etaTesto}.</b>{" "}
+            <span className="text-muted-foreground">
+              Fogli e assegnazioni possono essere cambiati da allora: aggiorna prima di prendere decisioni.
+            </span>
+          </span>
+          <Button size="sm" className="h-7 text-[11.5px] shrink-0" onClick={() => load(true)} disabled={loading || bg}>
+            <RefreshCw className={`h-3.5 w-3.5 mr-1 ${bg ? "animate-spin" : ""}`} /> Aggiorna ora
+          </Button>
+        </div>
+      )}
 
       {lanci.length === 0 && !loading && (
         <Card><CardContent className="py-10 text-center text-muted-foreground text-sm">
