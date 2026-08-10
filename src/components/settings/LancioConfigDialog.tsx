@@ -405,80 +405,99 @@ const LancioConfigDialog = ({ open, onOpenChange, value, onSave, esistenti, mark
 
           {/* 4 — automazione */}
           {step === 3 && (
-          <Sez desc={autom ? `Regola collegata: ${autom.nome}` : "Verrà creata una nuova regola, visibile anche in Impostazioni → Automazioni."}>
-            <div className="flex items-center gap-2 mb-1">
-              <Switch checked={autoOn} onCheckedChange={setAutoOn} />
-              <span className="text-[12.5px]">{autoOn ? "Attiva" : "Disattiva — assegni a mano"}</span>
+          <Sez>
+            {/* Testata della regola: nome e interruttore insieme, invece di una riga di testo
+                sopra e uno switch sciolto sotto. */}
+            <div className={`rounded-lg border p-3 mb-3 ${autoOn ? "border-primary/40 bg-primary/5" : "border-border bg-secondary/30"}`}>
+              <div className="flex items-center gap-2.5 flex-wrap">
+                <Switch checked={autoOn} onCheckedChange={setAutoOn} />
+                <div className="min-w-0 flex-1">
+                  <div className="text-[13px] font-semibold truncate">
+                    {autom ? autom.nome : `Assegnazione ${form.nome || "del lancio"}`}
+                  </div>
+                  <div className="text-[11px] text-muted-foreground">
+                    {!autoOn
+                      ? "Regola spenta: i lead di questo lancio li assegni a mano"
+                      : autom
+                        ? "Regola esistente · la stessa che vedi in Impostazioni → Automazioni"
+                        : "Verrà creata al salvataggio · comparirà anche in Impostazioni → Automazioni"}
+                  </div>
+                </div>
+              </div>
             </div>
 
-            <div className={`space-y-3 ${autoOn ? "" : "opacity-50 pointer-events-none"}`}>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <Label className="text-[12px]">Quando</Label>
-                  <Select value={aTrigger} onValueChange={(v) => setATrigger(v as any)}>
-                    <SelectTrigger className="h-8 text-[12.5px]"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="new_lead">Nuovo lead</SelectItem>
-                      <SelectItem value="duplicate_different_source">Lead duplicato da fonte diversa</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label className="text-[12px]">Se la fonte…</Label>
-                  <div className="flex gap-1.5">
+            <div className={`space-y-4 ${autoOn ? "" : "opacity-50 pointer-events-none"}`}>
+              {/* ── Quando scatta ── */}
+              <div>
+                <div className="label-eyebrow pb-1.5">Quando scatta</div>
+                <div className="rounded-lg border border-border bg-secondary/20 p-3 space-y-2.5">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-[12px] text-muted-foreground w-[92px] shrink-0">Al momento di</span>
+                    <Select value={aTrigger} onValueChange={(v) => setATrigger(v as any)}>
+                      <SelectTrigger className="h-8 text-[12.5px] flex-1 min-w-[180px]"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="new_lead">Nuovo lead</SelectItem>
+                        <SelectItem value="duplicate_different_source">Lead duplicato da fonte diversa</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-[12px] text-muted-foreground w-[92px] shrink-0">Se la fonte</span>
                     <Select value={aCondTipo} onValueChange={(v) => setACondTipo(v as any)}>
-                      <SelectTrigger className="h-8 w-[130px] text-[12.5px]"><SelectValue /></SelectTrigger>
+                      <SelectTrigger className="h-8 w-[128px] text-[12.5px] shrink-0"><SelectValue /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="contains">contiene</SelectItem>
                         <SelectItem value="not_contains">non contiene</SelectItem>
                       </SelectContent>
                     </Select>
-                    <Input className="h-8 text-[12.5px] flex-1" value={aFonti} onChange={(e) => setAFonti(e.target.value)}
-                      placeholder="es. workshop_set26" />
+                    <Input className="h-8 text-[12.5px] flex-1 min-w-[150px]" value={aFonti}
+                      onChange={(e) => setAFonti(e.target.value)} placeholder="es. workshop_set26" />
                   </div>
-                  <p className="text-[11px] text-muted-foreground mt-1">Più valori separati da virgola: basta che ne corrisponda uno.</p>
+
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-[12px] text-muted-foreground w-[92px] shrink-0">…ma non se</span>
+                    <span className="text-[12px] text-muted-foreground/70 w-[128px] shrink-0 pl-1">contiene</span>
+                    <Input className="h-8 text-[12.5px] flex-1 min-w-[150px]" value={aEscl}
+                      onChange={(e) => setAEscl(e.target.value)} placeholder="niente escluso" />
+                  </div>
+
+                  <p className="text-[11px] text-muted-foreground">
+                    Più valori separati da virgola: basta che ne corrisponda uno. Le esclusioni vincono sulla condizione.
+                  </p>
+
+                  {(conflitti.length > 0) && (
+                    <div className="border-t border-border pt-2 space-y-1">
+                      {conflitti.some((c) => !c.innocuo) ? (
+                        <>
+                          <div className="flex items-center gap-1.5 text-amber-400 text-[12px] font-semibold">
+                            <AlertTriangle className="h-3.5 w-3.5" />
+                            {conflitti.filter((c) => !c.innocuo).length} regola/e attive si contendono questi lead
+                          </div>
+                          {conflitti.filter((c) => !c.innocuo).map((c, i) => (
+                            <p key={i} className="text-[11.5px] text-muted-foreground pl-5">
+                              <b className="text-foreground">{c.automazione}</b> {c.motivo}
+                              {c.priorityMinore ? <span className="text-amber-400"> · scatta prima di questa</span> : " · questa scatta prima"}
+                            </p>
+                          ))}
+                        </>
+                      ) : (
+                        <div className="flex items-start gap-1.5 text-[11.5px] text-muted-foreground">
+                          <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0 mt-px" />
+                          <span>
+                            Nessuna contesa.{" "}
+                            {conflitti.filter((c) => c.innocuo).map((c) => `${c.automazione} ${c.motivo}`).join(" · ")}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
 
+              {/* ── A chi va ── */}
+              <div className="label-eyebrow pb-1.5">A chi va</div>
               <div>
-                <Label className="text-[12px]">…ma non se contiene <span className="text-muted-foreground font-normal">(esclusioni, opzionale)</span></Label>
-                <Input className="h-8 text-[12.5px]" value={aEscl} onChange={(e) => setAEscl(e.target.value)}
-                  placeholder="es. rischedulate, test" />
-                <p className="text-[11px] text-muted-foreground mt-1">
-                  Se la fonte contiene una di queste parole la regola non si applica, anche quando la condizione sopra è soddisfatta.
-                </p>
-              </div>
-
-              {conflitti.some((c) => !c.innocuo) && (
-                <div className="rounded-md border border-amber-500/40 bg-amber-500/10 p-2.5 space-y-1">
-                  <div className="flex items-center gap-1.5 text-amber-400 text-[12px] font-semibold">
-                    <AlertTriangle className="h-3.5 w-3.5" /> {conflitti.filter((c) => !c.innocuo).length} regola/e attive in conflitto
-                  </div>
-                  {conflitti.filter((c) => !c.innocuo).map((c, i) => (
-                    <p key={i} className="text-[11.5px] text-muted-foreground">
-                      <b className="text-foreground">{c.automazione}</b> {c.motivo}
-                      {c.priorityMinore ? <span className="text-amber-400"> · scatta prima di questa</span> : " · questa scatta prima"}
-                    </p>
-                  ))}
-                </div>
-              )}
-
-              {/* Regole che nominano le stesse fonti ma per escluderle: spiegate, non segnalate */}
-              {conflitti.some((c) => c.innocuo) && (
-                <div className="rounded-md border border-border bg-secondary/30 p-2.5 space-y-1">
-                  <div className="flex items-center gap-1.5 text-[12px] text-muted-foreground">
-                    <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" /> Nessuna contesa con le altre regole
-                  </div>
-                  {conflitti.filter((c) => c.innocuo).map((c, i) => (
-                    <p key={i} className="text-[11.5px] text-muted-foreground">
-                      <b className="text-foreground/80">{c.automazione}</b> {c.motivo}
-                    </p>
-                  ))}
-                </div>
-              )}
-
-              <div>
-                <Label className="text-[12px]">Azione</Label>
                 <Select value={aAzione} onValueChange={(v) => setAAzione(v as Azione)}>
                   <SelectTrigger className="h-8 text-[12.5px]"><SelectValue /></SelectTrigger>
                   <SelectContent>
@@ -607,6 +626,7 @@ const LancioConfigDialog = ({ open, onOpenChange, value, onSave, esistenti, mark
 
               {/* Tab e campagna sono già stati indicati nel passo Dati: qui si mostrano soltanto,
                   così non possono divergere da quelli che la matrice legge davvero. */}
+              <div className="label-eyebrow pt-1 pb-1.5">Dove finisce</div>
               <div className="rounded-md border border-border bg-secondary/30 p-2.5 text-[11.5px] space-y-0.5">
                 <div>
                   <span className="text-muted-foreground">Scrive i lead assegnati nel tab </span>
