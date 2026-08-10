@@ -501,18 +501,6 @@ const LancioConfigDialog = ({ open, onOpenChange, value, onSave, esistenti, mark
                 </div>
               )}
 
-              <div className={`rounded-md border p-3 ${aCoda ? "border-amber-500/50 bg-amber-500/5" : "border-border bg-secondary/30"}`}>
-                <div className="flex items-center gap-2">
-                  <Switch checked={aCoda} onCheckedChange={setACoda} />
-                  <span className="text-[12.5px]">Assegnazione Round Robin (metti i lead nuovi in coda)</span>
-                </div>
-                <p className="text-[11px] text-muted-foreground mt-1.5 pl-9">
-                  {aCoda
-                    ? "I lead nuovi non vengono distribuiti: entrano come assegnati al venditore \u201cRound Robin\u201d. Passa solo chi era già stato assegnato entro il periodo qui sotto, che torna al suo venditore e gli scala il tetto come una normale assegnazione."
-                    : "Da attivare quando i venditori sono indietro con la lavorazione e non vuoi continuare a caricarli, anche se il tetto non è ancora pieno."}
-                </p>
-              </div>
-
               {aAzione === "weighted_distribution" && (
                 <div className="space-y-2.5 rounded-md border border-border bg-secondary/30 p-3">
                   <div className="space-y-2">
@@ -636,6 +624,24 @@ const LancioConfigDialog = ({ open, onOpenChange, value, onSave, esistenti, mark
               <div className="flex items-center gap-2">
                 <Switch checked={aWebhook} onCheckedChange={setAWebhook} />
                 <span className="text-[12.5px]">Invia i lead assegnati al webhook configurato</span>
+              </div>
+
+              {/* Sezione a sé: non è configurazione del lancio ma una leva da usare a lancio
+                  partito, quindi sta in fondo e si distingue dal resto. */}
+              <div className="pt-2 mt-1 border-t border-border">
+                <div className="label-eyebrow pb-1.5">Sospensione temporanea</div>
+                <div className={`rounded-md border p-3 ${aCoda ? "border-amber-500/50 bg-amber-500/5" : "border-border bg-secondary/30"}`}>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <Switch checked={aCoda} onCheckedChange={setACoda} />
+                    <span className="text-[12.5px] font-medium">Metti i lead nuovi in coda (Round Robin)</span>
+                    {aCoda && <span className="text-[10.5px] px-1.5 py-0.5 rounded-full bg-amber-500/20 text-amber-400">attiva</span>}
+                  </div>
+                  <p className="text-[11px] text-muted-foreground mt-1.5 pl-9">
+                    {aCoda
+                      ? "I lead nuovi non vengono distribuiti: entrano come assegnati al venditore \u201cRound Robin\u201d e restano in attesa. Passa solo chi era già stato assegnato entro il periodo impostato sopra, che torna al suo venditore e gli scala il tetto come una normale assegnazione."
+                      : "Da usare a lancio partito, quando i venditori sono indietro con la lavorazione e non vuoi continuare a caricarli anche se il tetto non è ancora pieno. Percentuali, tetti e contatori restano dove sono: spegnendola l\u2019assegnazione riprende da dov\u2019era."}
+                  </p>
+                </div>
               </div>
             </div>
           </Sez>
