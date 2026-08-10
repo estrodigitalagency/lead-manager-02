@@ -629,12 +629,22 @@ const LancioConfigDialog = ({ open, onOpenChange, value, onSave, esistenti, mark
               {/* Sezione a sé: non è configurazione del lancio ma una leva da usare a lancio
                   partito, quindi sta in fondo e si distingue dal resto. */}
               <div className="pt-2 mt-1 border-t border-border">
-                <div className="label-eyebrow pb-1.5">Sospensione temporanea</div>
-                <div className={`rounded-md border p-3 ${aCoda ? "border-amber-500/50 bg-amber-500/5" : "border-border bg-secondary/30"}`}>
+                <div className="label-eyebrow pb-1.5 text-destructive/80">Sospensione temporanea</div>
+                {/* Rosso tenue da spenta, rosso pieno da accesa: ferma il flusso dei lead,
+                    deve saltare all'occhio se e rimasta attiva. */}
+                <div className={`rounded-md border p-3 transition-colors ${
+                  aCoda ? "border-destructive bg-destructive/15" : "border-destructive/25 bg-destructive/5"}`}>
                   <div className="flex items-center gap-2 flex-wrap">
-                    <Switch checked={aCoda} onCheckedChange={setACoda} />
-                    <span className="text-[12.5px] font-medium">Metti i lead nuovi in coda (Round Robin)</span>
-                    {aCoda && <span className="text-[10.5px] px-1.5 py-0.5 rounded-full bg-amber-500/20 text-amber-400">attiva</span>}
+                    <Switch checked={aCoda} onCheckedChange={setACoda}
+                      className="data-[state=checked]:bg-destructive" />
+                    <span className={`text-[12.5px] font-medium ${aCoda ? "text-destructive" : ""}`}>
+                      Metti i lead nuovi in coda (Round Robin)
+                    </span>
+                    {aCoda && (
+                      <span className="text-[10.5px] px-1.5 py-0.5 rounded-full bg-destructive text-destructive-foreground font-semibold">
+                        ATTIVA — nessun lead nuovo viene distribuito
+                      </span>
+                    )}
                   </div>
                   <p className="text-[11px] text-muted-foreground mt-1.5 pl-9">
                     {aCoda

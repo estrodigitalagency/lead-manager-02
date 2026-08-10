@@ -132,8 +132,8 @@ export function AutomationList({ automations, onToggle, onEdit, onDelete, onReor
                                    {automation.attivo ? "Attiva" : "Inattiva"}
                                  </Badge>
                                  {codaIds.includes(automation.id) && (
-                                   <Badge variant="outline" className="self-start border-amber-500/50 text-amber-500">
-                                     In coda Round Robin
+                                   <Badge variant="outline" className="self-start border-destructive bg-destructive/15 text-destructive font-semibold">
+                                     Lead nuovi in coda
                                    </Badge>
                                  )}
                                </div>
