@@ -124,15 +124,26 @@ const Lanci = () => {
     if (!dataDelLancio) return [];
     const lg = dataDelLancio.leadgen, t = dataDelLancio.totale ?? ({} as any);
     const nuovi = lg ? Object.values(lg.per_fonte).reduce((s, c) => s + c.Nuovo, 0) : 0;
+    // Qualifiche contate sui soli venditori del lancio, come tutte le altre somme qui sopra.
+    const assegnati = sum("tot_lead");
+    const perQualifica = (q: string) => rows.reduce((acc, r) => acc + (r.qualifiche?.[q] ?? 0), 0);
+    const suAssegnati = (n: number) =>
+      assegnati > 0 ? `${((n / assegnati) * 100).toFixed(1).replace(".", ",")}% degli assegnati` : "—";
+    const nonLavorato = perQualifica("Non lavorato");
+    const confermato = perQualifica("Confermato");
+    const fixApp = perQualifica("Fix App");
     return [
       { k: "Lead generati", v: lg ? fmt.n(lg.generati) : "—", s: lg ? `${fmt.n(nuovi)} nuovi · ${fmt.n(lg.generati - nuovi)} vecchi` : "", lead: true },
-      { k: "Assegnati", v: fmt.n(sum("tot_lead")), s: lg ? `${((sum("tot_lead") / lg.generati) * 100).toFixed(1).replace(".", ",")}% dei generati` : "", lead: true },
+      { k: "Assegnati", v: fmt.n(assegnati), s: lg ? `${((assegnati / lg.generati) * 100).toFixed(1).replace(".", ",")}% dei generati` : "", lead: true },
+      { k: "Non lavorato", v: fmt.n(nonLavorato), s: suAssegnati(nonLavorato), lead: true, allarme: nonLavorato > 0 },
+      { k: "Confermato", v: fmt.n(confermato), s: suAssegnati(confermato), lead: true },
+      { k: "Fix App", v: fmt.n(fixApp), s: suAssegnati(fixApp), lead: true },
       { k: "Voto medio", v: fmt.dec(t.media_voto ?? 0), s: `${t.app_conferma ?? 0}% conferma`, lead: true },
       { k: "Call totali", v: fmt.n(sum("call_totali")), s: `${fmt.n(sum("call_nette"))} nette · ${t.nette_su_totali ?? 0}%` },
       { k: "Chiusure", v: fmt.n(sum("chiusure")), s: `CR ${t.tasso_chiusura_nette ?? 0}% su nette` },
       { k: "Fatturato", v: fmt.eur(sum("fatturato")), s: `incassato ${fmt.eur(sum("incassato"))}` },
     ];
-  }, [dataDelLancio, sum]);
+  }, [dataDelLancio, rows, sum]);
 
   return (
     <div className={`container mx-auto max-w-7xl ${isMobile ? "px-4 py-5 pt-16 pb-24" : "px-6 py-8 pt-16"} space-y-4`}>
@@ -219,11 +230,12 @@ const Lanci = () => {
 
       {dataDelLancio && cfg && (
         <>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2.5">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 xl:grid-cols-9 gap-2.5">
             {kpi.map((c) => (
-              <div key={c.k} className={`rounded-xl border border-border bg-card p-3 border-l-[3px] ${c.lead ? "border-l-teal-400" : "border-l-primary"}`}>
-                <div className="label-eyebrow">{c.k}</div>
-                <div className="text-lg font-bold num tracking-tight">{c.v}</div>
+              <div key={c.k} className={`rounded-xl border border-border bg-card p-3 border-l-[3px] ${
+                (c as any).allarme ? "border-l-amber-400" : c.lead ? "border-l-teal-400" : "border-l-primary"}`}>
+                <div className="label-eyebrow truncate">{c.k}</div>
+                <div className={`text-lg font-bold num tracking-tight ${(c as any).allarme ? "text-amber-400" : ""}`}>{c.v}</div>
                 <div className="text-[10.5px] text-muted-foreground">{c.s}</div>
               </div>
             ))}
