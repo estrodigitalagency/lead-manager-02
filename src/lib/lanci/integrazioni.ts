@@ -28,6 +28,8 @@ export interface Conflitto {
   automazione: string;
   motivo: string;
   priorityMinore: boolean;   // true = l'altra scatta prima (priority più bassa)
+  /** La regola nomina le stesse fonti ma non se le contende: va spiegato, non segnalato. */
+  innocuo?: boolean;
 }
 
 const norm = (s: string) => (s || "").trim().toLowerCase();
@@ -50,8 +52,11 @@ export interface ContestoConflitto {
 }
 
 /**
- * Regole attive che si contendono davvero gli stessi lead: stesso campo E stesso momento di
- * attivazione, condizioni che si sovrappongono e nessuna esclusione che le separi.
+ * Regole attive che nominano le stesse fonti. Quelle che se le contendono davvero tornano come
+ * conflitti; quelle che le nominano per escluderle tornano con innocuo=true, così l'interfaccia
+ * può dire perché non danno fastidio invece di tacere e lasciare il dubbio.
+ * Restano fuori del tutto le regole su un altro campo o su un altro momento di attivazione:
+ * lì non c'è niente da spiegare.
  */
 export async function checkConflitti(ctx: ContestoConflitto): Promise<Conflitto[]> {
   const { data } = await supabase
@@ -66,22 +71,42 @@ export async function checkConflitti(ctx: ContestoConflitto): Promise<Conflitto[
     if (a.trigger_field !== ctx.trigger_field) continue;
     // trigger diversi (nuovo lead vs duplicato) non intercettano lo stesso evento
     if ((a.trigger_when ?? "new_lead") !== ctx.trigger_when) continue;
-    // "non contiene" non compete con "contiene" sulle stesse stringhe
-    if (a.condition_type === "not_contains") continue;
-
     const sue = (a.condition_value ?? []) as string[];
     if (!overlap(ctx.condition, sue)) continue;
 
+    const priorityMinore = (a.priority ?? 999) < ctx.priority;
+
+    // "non contiene" nomina quelle fonti per scartarle: prende tutto tranne i nostri lead
+    if (a.condition_type === "not_contains") {
+      out.push({
+        automazione: a.nome, priorityMinore, innocuo: true,
+        motivo: `scarta le fonti che contengono ${sue.join(", ")}, quindi lascia passare i tuoi lead`,
+      });
+      continue;
+    }
+
     // se una delle due esclude esplicitamente le fonti dell'altra, non c'è contesa
     const sueEscl = ((a.trigger_sources ?? []) as string[]).map(norm).filter(Boolean);
-    const separateDaLoro = sueEscl.some((e) => ctx.condition.some((c) => norm(c).includes(e)));
-    const separateDaNoi = mieEscl.some((e) => sue.some((c) => norm(c).includes(e)));
-    if (separateDaLoro || separateDaNoi) continue;
+    const separateDaLoro = sueEscl.find((e) => ctx.condition.some((c) => norm(c).includes(e)));
+    const separateDaNoi = mieEscl.find((e) => sue.some((c) => norm(c).includes(e)));
+    if (separateDaLoro) {
+      out.push({
+        automazione: a.nome, priorityMinore, innocuo: true,
+        motivo: `esclude "${separateDaLoro}", quindi non tocca i tuoi lead`,
+      });
+      continue;
+    }
+    if (separateDaNoi) {
+      out.push({
+        automazione: a.nome, priorityMinore, innocuo: true,
+        motivo: `la tua regola esclude "${separateDaNoi}", quindi non vi sovrapponete`,
+      });
+      continue;
+    }
 
     out.push({
-      automazione: a.nome,
+      automazione: a.nome, priorityMinore,
       motivo: `intercetta le stesse fonti (${sue.join(", ")})`,
-      priorityMinore: (a.priority ?? 999) < ctx.priority,
     });
   }
   return out;

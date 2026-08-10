@@ -7,7 +7,7 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Users, FileSpreadsheet, Zap, MessageCircle, AlertTriangle, Loader2, Plus, Rocket } from "lucide-react";
+import { Users, FileSpreadsheet, Zap, MessageCircle, AlertTriangle, Loader2, Plus, Rocket, CheckCircle2 } from "lucide-react";
 import { useSalespeopleData } from "@/hooks/useSalespeopleData";
 import { useAutomationsData } from "@/hooks/useAutomationsData";
 import { fetchTemplates, saveTemplate } from "@/lib/whatsapp/templates";
@@ -63,8 +63,6 @@ const LancioConfigDialog = ({ open, onOpenChange, value, onSave, esistenti, mark
   const [aModo, setAModo] = useState<"percentage" | "count">("percentage");
   const [aQuote, setAQuote] = useState<Record<string, number>>({});   // nome venditore → peso/quota
   const [aCap, setACap] = useState<Record<string, number>>({});      // nome venditore → tetto massimo lead
-  const [aSheetTab, setASheetTab] = useState("");
-  const [aCampagna, setACampagna] = useState("");
   const [aWebhook, setAWebhook] = useState(true);
   const [aCoda, setACoda] = useState(false);   // assegnazione in coda: i lead nuovi aspettano
   const [aLockOn, setALockOn] = useState(false);
@@ -81,9 +79,18 @@ const LancioConfigDialog = ({ open, onOpenChange, value, onSave, esistenti, mark
   const [waOn, setWaOn] = useState(true);
   const origin = typeof window !== "undefined" ? window.location.origin : "";
 
+  // "Round Robin" è una riga della tabella venditori ma è la coda d'attesa, non una persona.
   const attivi = useMemo(
-    () => venditori.filter((v) => v.stato === "attivo").map((v) => ({ id: v.id, nome: `${v.nome} ${v.cognome || ""}`.trim() })),
+    () => venditori
+      .filter((v) => v.stato === "attivo" && `${v.nome}`.trim().toLowerCase() !== "round robin")
+      .map((v) => ({ id: v.id, nome: `${v.nome} ${v.cognome || ""}`.trim() })),
     [venditori],
+  );
+
+  /** Venditori del lancio (passo 2). Senza selezione valgono tutti gli attivi. */
+  const delLancio = useMemo(
+    () => (form.sales?.length ? attivi.filter((v) => form.sales!.includes(v.nome)) : attivi),
+    [attivi, form.sales],
   );
   const autom = automations.find((a) => a.id === form.automazione_id) ?? null;
   const waSel = wa.find((t) => t.slug === form.whatsapp_slug) ?? null;
@@ -116,8 +123,6 @@ const LancioConfigDialog = ({ open, onOpenChange, value, onSave, esistenti, mark
         if (s.cap != null) cp[nome] = s.cap;
       }
       setAQuote(q); setACap(cp);
-      setASheetTab((autom as any).sheets_tab_name ?? "");
-      setACampagna((autom as any).campagna ?? value.campagna ?? "");
       setAWebhook((autom as any).webhook_enabled !== false);
       const lp = (autom as any).lock_period_days;
       setALockOn(lp !== null && lp !== undefined);
@@ -127,7 +132,7 @@ const LancioConfigDialog = ({ open, onOpenChange, value, onSave, esistenti, mark
       setAutoOn(true); setATrigger("new_lead"); setAAzione("weighted_distribution");
       setAFonti(value.campagna ? slugify(value.campagna).replace(/-/g, "_") : "");
       setAPrevFirst(false); setATargetSeller(""); setAModo("percentage"); setAQuote({}); setACap({});
-      setASheetTab(""); setACampagna(value.campagna ?? ""); setAWebhook(true);
+      setAWebhook(true);
       setALockOn(false); setALockDays(30); setAEsclusi([]);
       setACondTipo("contains"); setAEscl(""); setACoda(false);
     }
@@ -164,8 +169,10 @@ const LancioConfigDialog = ({ open, onOpenChange, value, onSave, esistenti, mark
     const n = quotaSales.length;
     if (!n) return;
     if (aModo === "percentage") {
+      // 100 non è divisibile per ogni numero di venditori: il resto va distribuito un punto
+      // per volta, altrimenti finisce tutto sul primo (13 venditori: 16% lui, 7% gli altri).
       const base = Math.floor(100 / n), resto = 100 - base * n;
-      setAQuote(Object.fromEntries(quotaSales.map((nome, i) => [nome, base + (i === 0 ? resto : 0)])));
+      setAQuote(Object.fromEntries(quotaSales.map((nome, i) => [nome, base + (i < resto ? 1 : 0)])));
     } else {
       setAQuote(Object.fromEntries(quotaSales.map((nome) => [nome, aQuote[nome] ?? 50])));
     }
@@ -200,8 +207,8 @@ const LancioConfigDialog = ({ open, onOpenChange, value, onSave, esistenti, mark
       distribution_enabled: aAzione === "weighted_distribution",
       distribution_mode: aAzione === "weighted_distribution" ? aModo : null,
       distribution_config: dist,
-      sheets_tab_name: aSheetTab.trim() || null,
-      campagna: aCampagna.trim() || null,
+      sheets_tab_name: form.lead_tab.trim() || null,
+      campagna: (form.campagna ?? "").trim() || null,
       webhook_enabled: aWebhook,
       lock_period_days: aLockOn ? aLockDays : null,
       excluded_sellers: aEsclusi,
@@ -412,15 +419,29 @@ const LancioConfigDialog = ({ open, onOpenChange, value, onSave, esistenti, mark
                 </p>
               </div>
 
-              {conflitti.length > 0 && (
+              {conflitti.some((c) => !c.innocuo) && (
                 <div className="rounded-md border border-amber-500/40 bg-amber-500/10 p-2.5 space-y-1">
                   <div className="flex items-center gap-1.5 text-amber-400 text-[12px] font-semibold">
-                    <AlertTriangle className="h-3.5 w-3.5" /> {conflitti.length} regola/e attive in conflitto
+                    <AlertTriangle className="h-3.5 w-3.5" /> {conflitti.filter((c) => !c.innocuo).length} regola/e attive in conflitto
                   </div>
-                  {conflitti.map((c, i) => (
+                  {conflitti.filter((c) => !c.innocuo).map((c, i) => (
                     <p key={i} className="text-[11.5px] text-muted-foreground">
                       <b className="text-foreground">{c.automazione}</b> {c.motivo}
                       {c.priorityMinore ? <span className="text-amber-400"> · scatta prima di questa</span> : " · questa scatta prima"}
+                    </p>
+                  ))}
+                </div>
+              )}
+
+              {/* Regole che nominano le stesse fonti ma per escluderle: spiegate, non segnalate */}
+              {conflitti.some((c) => c.innocuo) && (
+                <div className="rounded-md border border-border bg-secondary/30 p-2.5 space-y-1">
+                  <div className="flex items-center gap-1.5 text-[12px] text-muted-foreground">
+                    <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" /> Nessuna contesa con le altre regole
+                  </div>
+                  {conflitti.filter((c) => c.innocuo).map((c, i) => (
+                    <p key={i} className="text-[11.5px] text-muted-foreground">
+                      <b className="text-foreground/80">{c.automazione}</b> {c.motivo}
                     </p>
                   ))}
                 </div>
@@ -444,7 +465,7 @@ const LancioConfigDialog = ({ open, onOpenChange, value, onSave, esistenti, mark
                   <Select value={aTargetSeller} onValueChange={setATargetSeller}>
                     <SelectTrigger className="h-8 text-[12.5px]"><SelectValue placeholder="Scegli" /></SelectTrigger>
                     <SelectContent>
-                      {attivi.map((v) => <SelectItem key={v.id} value={v.id}>{v.nome}</SelectItem>)}
+                      {delLancio.map((v) => <SelectItem key={v.id} value={v.id}>{v.nome}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>
@@ -494,9 +515,12 @@ const LancioConfigDialog = ({ open, onOpenChange, value, onSave, esistenti, mark
                               : `Oltre ${aLockDays} giorni dall'ultima assegnazione il lead viene ridistribuito.`}
                         </p>
                         <div>
-                          <span className="text-[12px] text-muted-foreground">Venditori da non riprendere mai{aEsclusi.length ? ` (${aEsclusi.length})` : ""}</span>
+                          <span className="text-[12px] text-muted-foreground">
+                            Venditori da non riprendere mai{aEsclusi.length ? ` (${aEsclusi.length})` : ""}
+                            {!form.sales?.length && <span className="text-amber-400"> — nessun venditore scelto nel passo Venditori, qui ci sono tutti gli attivi</span>}
+                          </span>
                           <div className="flex flex-wrap gap-1.5 mt-1">
-                            {attivi.map((v) => (
+                            {delLancio.map((v) => (
                               <button key={v.id} type="button"
                                 onClick={() => setAEsclusi((p) => p.includes(v.nome) ? p.filter((x) => x !== v.nome) : [...p, v.nome])}
                                 className={`px-2 py-0.5 rounded-full border text-[11px] ${aEsclusi.includes(v.nome)
@@ -549,16 +573,20 @@ const LancioConfigDialog = ({ open, onOpenChange, value, onSave, esistenti, mark
                 </div>
               )}
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {/* Tab e campagna sono già stati indicati nel passo Dati: qui si mostrano soltanto,
+                  così non possono divergere da quelli che la matrice legge davvero. */}
+              <div className="rounded-md border border-border bg-secondary/30 p-2.5 text-[11.5px] space-y-0.5">
                 <div>
-                  <Label className="text-[12px]">Nome tab Google Sheets <span className="text-muted-foreground font-normal">(opzionale)</span></Label>
-                  <Input className="h-8 text-[12.5px]" value={aSheetTab} onChange={(e) => setASheetTab(e.target.value)}
-                    placeholder="dove scrivere i lead assegnati" />
+                  <span className="text-muted-foreground">Scrive i lead assegnati nel tab </span>
+                  {form.lead_tab
+                    ? <b className="text-foreground/85">{form.lead_tab}</b>
+                    : <span className="text-amber-400">non impostato — vai al passo Dati</span>}
                 </div>
                 <div>
-                  <Label className="text-[12px]">Campagna da assegnare <span className="text-muted-foreground font-normal">(opzionale)</span></Label>
-                  <Input className="h-8 text-[12.5px]" value={aCampagna} onChange={(e) => setACampagna(e.target.value)}
-                    placeholder="scritta sul lead al momento dell'assegnazione" />
+                  <span className="text-muted-foreground">Campagna scritta sul lead: </span>
+                  {form.campagna
+                    ? <b className="text-foreground/85">{form.campagna}</b>
+                    : <span className="text-muted-foreground">nessuna</span>}
                 </div>
               </div>
               <div className="flex items-center gap-2">
