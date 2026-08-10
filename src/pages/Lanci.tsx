@@ -59,23 +59,25 @@ const Lanci = () => {
   }, [load]);
 
   const cfg = useMemo(() => lanci.find((l) => l.id === lancioId) ?? null, [lanci, lancioId]);
+  // I dati arrivano dopo il cambio di lancio: finché sono di un altro lancio non vanno mostrati.
+  const dataDelLancio = data && data.lancio?.id === lancioId ? data : null;
   const reload = useCallback(() => { fetchLanci().then(setLanci); load(true); }, [load]);
 
   // sales inclusi: da config; se vuota, tutti quelli con dati
   const rows = useMemo(() => {
-    if (!data) return [];
-    const sel = data.lancio?.sales ?? [];
-    const withData = data.rows.filter((r) => r.tot_lead > 0 || r.call_totali > 0);
+    if (!dataDelLancio) return [];
+    const sel = dataDelLancio.lancio?.sales ?? [];
+    const withData = dataDelLancio.rows.filter((r) => r.tot_lead > 0 || r.call_totali > 0);
     return sel.length ? withData.filter((r) => sel.includes(r.venditore)) : withData;
-  }, [data]);
+  }, [dataDelLancio]);
 
   const sum = useCallback((k: string) => rows.reduce((s, r) => s + ((r as any)[k] || 0), 0), [rows]);
 
   // Funnel: dai lead generati alle chiusure, con conversione tra gli stadi
   const funnel = useMemo(() => {
-    if (!data) return [];
-    const gen = data.leadgen?.generati ?? sum("tot_lead");
-    const ass = sum("tot_lead"), conf = data.totale?.qualifiche?.["Confermato"] ?? 0;
+    if (!dataDelLancio) return [];
+    const gen = dataDelLancio.leadgen?.generati ?? sum("tot_lead");
+    const ass = sum("tot_lead"), conf = dataDelLancio.totale?.qualifiche?.["Confermato"] ?? 0;
     const call = sum("call_totali"), nette = sum("call_nette"), chius = sum("chiusure");
     const p = (a: number, b: number) => (b > 0 ? (a / b) * 100 : 0);
     return [
@@ -86,11 +88,11 @@ const Lanci = () => {
       { l: "Call nette", v: nette, c: "hsl(232 100% 74%)", p: p(nette, call), s: "delle call" },
       { l: "Chiusure", v: chius, c: "hsl(142 71% 60%)", p: p(chius, nette), s: "delle nette" },
     ];
-  }, [data, sum]);
+  }, [dataDelLancio, sum]);
 
   const kpi = useMemo(() => {
-    if (!data) return [];
-    const lg = data.leadgen, t = data.totale ?? ({} as any);
+    if (!dataDelLancio) return [];
+    const lg = dataDelLancio.leadgen, t = dataDelLancio.totale ?? ({} as any);
     const nuovi = lg ? Object.values(lg.per_fonte).reduce((s, c) => s + c.Nuovo, 0) : 0;
     return [
       { k: "Lead generati", v: lg ? fmt.n(lg.generati) : "—", s: lg ? `${fmt.n(nuovi)} nuovi · ${fmt.n(lg.generati - nuovi)} vecchi` : "", lead: true },
@@ -100,7 +102,7 @@ const Lanci = () => {
       { k: "Chiusure", v: fmt.n(sum("chiusure")), s: `CR ${t.tasso_chiusura_nette ?? 0}% su nette` },
       { k: "Fatturato", v: fmt.eur(sum("fatturato")), s: `incassato ${fmt.eur(sum("incassato"))}` },
     ];
-  }, [data, sum]);
+  }, [dataDelLancio, sum]);
 
   return (
     <div className={`container mx-auto max-w-7xl ${isMobile ? "px-4 py-5 pt-16 pb-24" : "px-6 py-8 pt-16"} space-y-4`}>
@@ -148,11 +150,14 @@ const Lanci = () => {
         </CardContent></Card>
       )}
 
-      {loading && !data && (
-        <div className="flex items-center justify-center py-16 text-muted-foreground"><Loader2 className="h-6 w-6 animate-spin" /></div>
+      {loading && !dataDelLancio && (
+        <div className="flex flex-col items-center justify-center py-16 gap-2 text-muted-foreground">
+          <Loader2 className="h-6 w-6 animate-spin" />
+          <p className="text-[12px]">Lettura dei fogli in corso. La prima apertura di un lancio richiede qualche decina di secondi, poi resta in cache.</p>
+        </div>
       )}
 
-      {data && cfg && (
+      {dataDelLancio && cfg && (
         <>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2.5">
             {kpi.map((c) => (
@@ -177,8 +182,8 @@ const Lanci = () => {
 
             <TabsContent value="panoramica" className="mt-3 space-y-3">
               <p className="text-[11px] text-muted-foreground">
-                Call: provenienza <b className="text-foreground/80">{data.lancio.provenienza}</b> da {data.lancio.call_tabs.join(" + ")} ·
-                Lead: {data.lancio.lead_tab}{data.lancio.campagna ? ` · campagna ${data.lancio.campagna}` : ""}
+                Call: provenienza <b className="text-foreground/80">{dataDelLancio.lancio.provenienza}</b> da {dataDelLancio.lancio.call_tabs.join(" + ")} ·
+                Lead: {dataDelLancio.lancio.lead_tab}{dataDelLancio.lancio.campagna ? ` · campagna ${dataDelLancio.lancio.campagna}` : ""}
               </p>
               <Card className="overflow-hidden">
                 <CardHeader className="py-2.5 px-3.5 border-b border-border">
@@ -204,7 +209,7 @@ const Lanci = () => {
                 <CardHeader className="py-2.5 px-3.5 border-b border-border">
                   <CardTitle className="label-eyebrow">Acquisizione lead — andamento e mix per fonte</CardTitle>
                 </CardHeader>
-                <CardContent className="p-0"><AcquisizioneWidget leadgen={data.leadgen} /></CardContent>
+                <CardContent className="p-0"><AcquisizioneWidget leadgen={dataDelLancio.leadgen} /></CardContent>
               </Card>
 
               <Card className="overflow-hidden">
@@ -212,9 +217,9 @@ const Lanci = () => {
                   <CardTitle className="label-eyebrow">Speed to lead — da lead entrato ad assegnato</CardTitle>
                 </CardHeader>
                 <CardContent className="p-0">
-                  <SpeedToLeadWidget speed={data.leadgen?.speed}
+                  <SpeedToLeadWidget speed={dataDelLancio.leadgen?.speed}
                     totLead={sum("tot_lead")}
-                    lavorati={sum("tot_lead") - (data.totale?.qualifiche?.["Non lavorato"] ?? 0)} />
+                    lavorati={sum("tot_lead") - (dataDelLancio.totale?.qualifiche?.["Non lavorato"] ?? 0)} />
                 </CardContent>
               </Card>
 
@@ -223,14 +228,14 @@ const Lanci = () => {
                   <CardTitle className="label-eyebrow">Qualità del lead contro il risultato</CardTitle>
                 </CardHeader>
                 <CardContent className="p-0">
-                  <QualitaLeadWidget qualita={data.qualita} rows={rows} />
+                  <QualitaLeadWidget qualita={dataDelLancio.qualita} rows={rows} />
                 </CardContent>
               </Card>
 
-              {data.errors?.length > 0 && (
+              {dataDelLancio.errors?.length > 0 && (
                 <details className="text-[11.5px] text-muted-foreground">
-                  <summary className="cursor-pointer">{data.errors.length} avvisi di lettura fogli</summary>
-                  <ul className="mt-1.5 space-y-0.5 pl-4 list-disc">{data.errors.map((e, i) => <li key={i}>{e}</li>)}</ul>
+                  <summary className="cursor-pointer">{dataDelLancio.errors.length} avvisi di lettura fogli</summary>
+                  <ul className="mt-1.5 space-y-0.5 pl-4 list-disc">{dataDelLancio.errors.map((e, i) => <li key={i}>{e}</li>)}</ul>
                 </details>
               )}
             </TabsContent>
