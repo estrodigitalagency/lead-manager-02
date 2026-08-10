@@ -136,6 +136,19 @@ Deno.serve(async (req) => {
         }));
         }
 
+        // Un tab call che manca a tutti è quasi sempre il mese non ancora iniziato: va detto,
+        // ma non è un errore di configurazione da correggere adesso.
+        const futuri = (cfg.call_tabs ?? []).filter((t: string) =>
+          controllati > 0 && scelti.every((n) => (mancanti[n] ?? []).includes(t)));
+        if (futuri.length) {
+          add("Fogli", "Tab call futuri", "avviso",
+            `${futuri.join(", ")}: non esiste ancora in nessun foglio. Finché non viene creato la matrice call resta a zero.`);
+          for (const n of Object.keys(mancanti)) {
+            mancanti[n] = mancanti[n].filter((t) => !futuri.includes(t));
+            if (mancanti[n].length === 0) delete mancanti[n];
+          }
+        }
+
         const conMancanti = Object.keys(mancanti);
         if (conMancanti.length) {
           // Senza una selezione esplicita si controllano tutti i venditori del market: che a
@@ -147,7 +160,7 @@ Deno.serve(async (req) => {
           add("Fogli", "Tab presenti", "ok", `Tutti i tab trovati su ${controllati} fogli`);
         }
 
-        if (prov && cfg.call_tabs?.length) {
+        if (prov && cfg.call_tabs?.length && futuri.length < (cfg.call_tabs?.length ?? 0)) {
           if (righeProv === 0) {
             add("Fogli", "Provenienza call", "errore",
               `"${cfg.provenienza}" non compare in nessuna call: la matrice resterà a zero. Controlla come è scritta nei fogli.`);
