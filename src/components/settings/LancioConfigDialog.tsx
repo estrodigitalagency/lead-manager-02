@@ -257,7 +257,11 @@ const LancioConfigDialog = ({ open, onOpenChange, value, onSave, esistenti, mark
   };
 
   const handleSave = async () => {
-    if (!form.nome.trim()) return toast.error("Il nome del lancio è obbligatorio");
+    const ko = primoProblema();
+    if (ko >= 0) {
+      setStep(ko);
+      return toast.error(daSistemare(ko) ?? "Configurazione incompleta");
+    }
     const id = form.id || slugify(form.nome).replace(/-/g, "_").slice(0, 40);
     if (!value.id && esistenti.includes(id)) return toast.error("Esiste già un lancio con questo nome");
     setSaving(true);
@@ -292,19 +296,21 @@ const LancioConfigDialog = ({ open, onOpenChange, value, onSave, esistenti, mark
     { k: "wa", label: "WhatsApp", icon: MessageCircle },
   ];
   const ultimo = step === STEPS.length - 1;
-  const puoAvanzare = () => {
-    if (step === 0) return !!form.nome.trim();
-    if (step === 3 && autoOn && aFonti.trim()) return quoteValide;
-    return true;
-  };
-  const avanti = () => {
-    if (!puoAvanzare()) {
-      if (step === 0) toast.error("Dai un nome al lancio");
-      else toast.error(aModo === "percentage" ? `Le percentuali devono sommare a 100 (ora ${totQuote})` : "Imposta le quote");
-      return;
+
+  /** Cosa manca su un passo, in una frase. Null se è a posto. */
+  const daSistemare = (i: number): string | null => {
+    if (i === 0 && !form.nome.trim()) return "Manca il nome del lancio";
+    if (i === 2 && !form.lead_tab.trim()) return "Manca il tab dei lead";
+    if (i === 3 && autoOn && aFonti.trim() && !quoteValide) {
+      return aModo === "percentage"
+        ? `Le percentuali sommano a ${totQuote} invece di 100`
+        : "Mancano le quote dei venditori";
     }
-    setStep((n) => Math.min(STEPS.length - 1, n + 1));
+    return null;
   };
+  const primoProblema = () => STEPS.findIndex((_, i) => daSistemare(i) !== null);
+
+  const avanti = () => setStep((n) => Math.min(STEPS.length - 1, n + 1));
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -314,18 +320,20 @@ const LancioConfigDialog = ({ open, onOpenChange, value, onSave, esistenti, mark
             {value.id ? "Configura lancio" : "Nuovo lancio"}
             {form.nome && <span className="text-muted-foreground font-normal text-[14px]">· {form.nome}</span>}
           </DialogTitle>
-          {/* passi: cliccabili all'indietro, così si torna dove serve senza perdere nulla */}
+          {/* passi liberi: si salta dove serve senza rifare tutto il giro. Le cose incomplete
+              restano segnalate sul passo, e vengono ricontrollate al salvataggio. */}
           <div className="flex items-center gap-1">
             {STEPS.map((st, i) => {
               const Icon = st.icon;
-              const done = i < step, cur = i === step;
+              const cur = i === step;
+              const problema = daSistemare(i);
               return (
-                <button key={st.k} type="button" onClick={() => i <= step && setStep(i)}
+                <button key={st.k} type="button" onClick={() => setStep(i)} title={problema || st.label}
                   className={`flex-1 flex items-center gap-1.5 px-2 py-1.5 rounded-md text-[11.5px] transition-colors ${
-                    cur ? "bg-primary/15 text-primary font-semibold"
-                        : done ? "text-foreground/70 hover:bg-secondary" : "text-muted-foreground/50 cursor-default"}`}>
-                  <Icon className="h-3.5 w-3.5 shrink-0" />
+                    cur ? "bg-primary/15 text-primary font-semibold" : "text-foreground/70 hover:bg-secondary"}`}>
+                  <Icon className={`h-3.5 w-3.5 shrink-0 ${problema ? "text-amber-400" : ""}`} />
                   <span className="truncate">{st.label}</span>
+                  {problema && <span className="h-1.5 w-1.5 rounded-full bg-amber-400 shrink-0" />}
                 </button>
               );
             })}
@@ -725,11 +733,10 @@ const LancioConfigDialog = ({ open, onOpenChange, value, onSave, esistenti, mark
           </Button>
           <div className="flex gap-2 items-center">
             <span className="text-[11px] text-muted-foreground hidden sm:inline">Passo {step + 1} di {STEPS.length}</span>
-            {!ultimo
-              ? <Button onClick={avanti}>Avanti</Button>
-              : <Button onClick={handleSave} disabled={saving}>
-                  {saving && <Loader2 className="h-4 w-4 animate-spin mr-1" />} {value.id ? "Salva lancio" : "Crea lancio"}
-                </Button>}
+            {!ultimo && <Button variant="outline" onClick={avanti}>Avanti</Button>}
+            <Button onClick={handleSave} disabled={saving}>
+              {saving && <Loader2 className="h-4 w-4 animate-spin mr-1" />} {value.id ? "Salva lancio" : "Crea lancio"}
+            </Button>
           </div>
         </DialogFooter>
       </DialogContent>
