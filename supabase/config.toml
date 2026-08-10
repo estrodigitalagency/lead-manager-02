@@ -63,3 +63,6 @@ verify_jwt = false
 
 [functions.lancio-test]
 verify_jwt = false
+
+[functions.contatori-distribuzione]
+verify_jwt = false

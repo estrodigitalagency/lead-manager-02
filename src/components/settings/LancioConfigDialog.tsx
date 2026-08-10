@@ -12,6 +12,7 @@ import { useSalespeopleData } from "@/hooks/useSalespeopleData";
 import { useAutomationsData } from "@/hooks/useAutomationsData";
 import { fetchTemplates, saveTemplate } from "@/lib/whatsapp/templates";
 import { fetchCodaIds, setCoda } from "@/lib/automazioni/coda";
+import { azzeraContatori } from "@/lib/automazioni/contatori";
 import { checkConflitti, Conflitto } from "@/lib/lanci/integrazioni";
 import { LancioConfig } from "@/lib/lanci/config";
 
@@ -63,6 +64,7 @@ const LancioConfigDialog = ({ open, onOpenChange, value, onSave, esistenti, mark
   const [aModo, setAModo] = useState<"percentage" | "count">("percentage");
   const [aQuote, setAQuote] = useState<Record<string, number>>({});   // nome venditore → peso/quota
   const [aCap, setACap] = useState<Record<string, number>>({});      // nome venditore → tetto massimo lead
+  const [conta, setConta] = useState<Record<string, number>>({});    // id venditore → lead già assegnati
   const [aWebhook, setAWebhook] = useState(true);
   const [aCoda, setACoda] = useState(false);   // assegnazione in coda: i lead nuovi aspettano
   const [aLockOn, setALockOn] = useState(false);
@@ -109,6 +111,7 @@ const LancioConfigDialog = ({ open, onOpenChange, value, onSave, esistenti, mark
       setAFonti((autom.condition_value ?? []).join(", "));
       setACondTipo(((autom as any).condition_type === "not_contains" ? "not_contains" : "contains"));
       fetchCodaIds().then((ids) => setACoda(ids.includes(autom.id)));
+      setConta(((autom as any).distribution_state?.count_assigned) ?? {});
       setAEscl(((autom as any).trigger_sources ?? []).join(", "));
       setAAzione((autom.action_type as Azione) ?? "weighted_distribution");
       setAPrevFirst(!!(autom as any).use_previous_seller_first);
@@ -134,7 +137,7 @@ const LancioConfigDialog = ({ open, onOpenChange, value, onSave, esistenti, mark
       setAPrevFirst(false); setATargetSeller(""); setAModo("percentage"); setAQuote({}); setACap({});
       setAWebhook(true);
       setALockOn(false); setALockDays(30); setAEsclusi([]);
-      setACondTipo("contains"); setAEscl(""); setACoda(false);
+      setACondTipo("contains"); setAEscl(""); setACoda(false); setConta({});
     }
   }, [open, value, autom?.id]);   // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -164,6 +167,25 @@ const LancioConfigDialog = ({ open, onOpenChange, value, onSave, esistenti, mark
   const totQuote = quotaSales.reduce((s, nome) => s + (aQuote[nome] ?? 0), 0);
   const quoteValide = aAzione !== "weighted_distribution"
     || (aModo === "percentage" ? totQuote === 100 : totQuote > 0);
+
+  const assegnatiDi = (nome: string) => {
+    const v = attivi.find((a) => a.nome === nome);
+    return v ? (conta[v.id] ?? 0) : 0;
+  };
+  const totAssegnati = quotaSales.reduce((s2, n) => s2 + assegnatiDi(n), 0);
+
+  /** Azzera i contatori: senza nomi li azzera tutti. Serve a far ripartire un lancio da zero. */
+  const azzera = async (nomi?: string[]) => {
+    if (!autom?.id) return;
+    const ids = (nomi ?? []).map((n) => attivi.find((a) => a.nome === n)?.id).filter(Boolean) as string[];
+    if (nomi && ids.length === 0) return;
+    const testo = nomi ? `Azzerare il contatore di ${nomi.join(", ")}?` : "Azzerare i contatori di tutti i venditori?";
+    if (!confirm(testo)) return;
+    const res = await azzeraContatori(autom.id, ids);
+    if (res?.error) { toast.error(res.error); return; }
+    setConta(res.counts ?? {});
+    toast.success(nomi ? "Contatore azzerato" : "Contatori azzerati");
+  };
 
   const dividiEqua = () => {
     const n = quotaSales.length;
@@ -543,6 +565,11 @@ const LancioConfigDialog = ({ open, onOpenChange, value, onSave, esistenti, mark
                         {aModo === "percentage" ? `totale ${totQuote}%` : `totale ${totQuote} lead`}
                       </span>
                       <Button size="sm" variant="outline" className="h-6 text-[11px]" onClick={dividiEqua}>Dividi equamente</Button>
+                      {autom?.id && totAssegnati > 0 && (
+                        <Button size="sm" variant="outline" className="h-6 text-[11px] text-destructive" onClick={() => azzera()}>
+                          Azzera contatori ({totAssegnati})
+                        </Button>
+                      )}
                     </div>
                   </div>
                   <div className="space-y-1 max-h-[160px] overflow-y-auto">
@@ -554,6 +581,14 @@ const LancioConfigDialog = ({ open, onOpenChange, value, onSave, esistenti, mark
                     {quotaSales.map((nome) => (
                       <div key={nome} className="flex items-center gap-2">
                         <span className="flex-1 text-[12px] truncate">{nome}</span>
+                        {autom?.id && (
+                          <button type="button" title="Lead già assegnati — clicca per azzerare"
+                            onClick={() => azzera([nome])}
+                            className={`w-[52px] shrink-0 text-right text-[11.5px] num tabular-nums ${
+                              assegnatiDi(nome) > 0 ? "text-foreground/80 hover:text-destructive" : "text-muted-foreground/40"}`}>
+                            {assegnatiDi(nome)}
+                          </button>
+                        )}
                         <Input type="number" className="h-7 w-[80px] text-[12px]" value={aQuote[nome] ?? ""}
                           onChange={(e) => setAQuote((q) => ({ ...q, [nome]: parseInt(e.target.value, 10) || 0 }))} />
                         <Input type="number" className="h-7 w-[86px] text-[12px]" placeholder="nessuno" value={aCap[nome] ?? ""}
@@ -567,6 +602,7 @@ const LancioConfigDialog = ({ open, onOpenChange, value, onSave, esistenti, mark
                     ))}
                     <p className="text-[11px] text-muted-foreground pt-1">
                       Tetto max: oltre quel numero di lead il venditore viene saltato e i lead vanno agli altri. Lascia vuoto per nessun limite.
+                      {autom?.id && " La colonna in mezzo sono i lead già assegnati: cliccala per azzerare quel venditore."}
                     </p>
                     {quotaSales.length === 0 && <p className="text-[12px] text-muted-foreground">Seleziona prima i venditori del lancio.</p>}
                   </div>

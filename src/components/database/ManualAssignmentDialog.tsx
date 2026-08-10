@@ -21,6 +21,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { spostaContatori } from "@/lib/automazioni/contatori";
 import { useMarket } from "@/contexts/MarketContext";
 
 interface Campaign {
@@ -181,6 +182,19 @@ const ManualAssignmentDialog = ({
 
       if (actionLogError) {
         console.error('Errore nella registrazione action log:', actionLogError);
+      }
+
+      // I tetti della distribuzione devono seguire lo spostamento: chi cede il lead scende,
+      // chi lo prende sale. Senza questo passaggio i contatori continuerebbero a saturare
+      // il venditore sbagliato e a lasciare spazio a chi in realtà il lead non ce l'ha più.
+      try {
+        const esito = await spostaContatori(selectedLeadIds, venditoreName, selectedMarket);
+        if (esito?.attribuiti > 0) {
+          toast.success(`Contatori aggiornati su ${esito.attribuiti} lead`);
+        }
+      } catch (e) {
+        console.error('Contatori distribuzione non aggiornati:', e);
+        toast.warning('Lead riassegnati, ma i contatori della distribuzione non sono stati aggiornati');
       }
 
       // Invia webhook solo se l'opzione è abilitata
