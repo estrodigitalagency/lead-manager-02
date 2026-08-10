@@ -1,6 +1,9 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import {
+  calculateDaysSince, checkCondition, regolaSiApplica, entroLockPeriod, slotEleggibili,
+} from '../_shared/regole.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -16,13 +19,6 @@ function normalizeEmail(email: string | null): string {
 function normalizePhone(phone: string | null): string {
   if (!phone) return '';
   return phone.replace(/[^0-9+]/g, '');
-}
-
-function calculateDaysSince(dateString: string): number {
-  const date = new Date(dateString);
-  const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
-  return Math.floor(diffMs / (1000 * 60 * 60 * 24));
 }
 
 serve(async (req) => {
@@ -461,124 +457,6 @@ async function scalaTettoPreassegnato(lead: any, supabase: any) {
   }
 }
 
-/**
- * Il lead è stato assegnato di recente abbastanza da restare al suo venditore?
- * lock_period_days: -1 = sempre, 0/assente = nessun limite, N = entro N giorni.
- */
-function entroLockPeriod(automation: any, dataAssegnazione: string | null): boolean {
-  const lock = automation.lock_period_days;
-  if (lock === null || lock === undefined || lock === 0) return true;
-  if (lock === -1) return true;
-  if (!dataAssegnazione) return false;
-  const giorni = calculateDaysSince(dataAssegnazione);
-  console.log(`Lock period check: ${giorni} giorni dall'ultima assegnazione (limite: ${lock})`);
-  return giorni < lock;
-}
-
-/** Valore del campo su cui la regola ragiona (stesso campo per condizione ed esclusioni). */
-function valoreCampo(lead: any, triggerField: string): string {
-  switch (triggerField) {
-    case 'fonte': return lead.fonte || '';
-    case 'campagna': return lead.campagna || '';
-    case 'nome': return lead.nome || '';
-    case 'email': return lead.email || '';
-    case 'telefono': return lead.telefono || '';
-    case 'lead_score': return lead.lead_score || '';
-    case 'created_at': return lead.created_at || '';
-    default: return lead.ultima_fonte || '';
-  }
-}
-
-/**
- * La regola vale per questo lead? Momento di attivazione, esclusioni e condizione insieme.
- * Usata sia quando si assegna sia quando si conta un lead già assegnato da fuori.
- */
-function regolaSiApplica(lead: any, automation: any): boolean {
-  const shouldTrigger = automation.trigger_when === 'new_lead' ||
-    (automation.trigger_when === 'duplicate_different_source' && lead.ultima_fonte && lead.ultima_fonte.trim() !== '');
-  if (!shouldTrigger) {
-    console.log(`Automation ${automation.nome} skipped - trigger condition not met`);
-    return false;
-  }
-
-  // Esclusioni: se il campo contiene una di queste stringhe la regola non si applica,
-  // anche se la condizione principale è soddisfatta (es. "contiene workshop ma non giu26").
-  const esclusioni: string[] = automation.trigger_sources || [];
-  if (esclusioni.length > 0) {
-    const campo = valoreCampo(lead, automation.trigger_field).toLowerCase();
-    if (esclusioni.some((e: string) => e.trim() && campo.includes(e.trim().toLowerCase()))) {
-      console.log(`Automation ${automation.nome} skipped - esclusione: ${campo}`);
-      return false;
-    }
-  }
-
-  return checkCondition(lead, automation.trigger_field, automation.condition_type, automation.condition_value);
-}
-
-// Funzione per controllare se una condizione è soddisfatta
-function checkCondition(
-  lead: any, 
-  triggerField: string, 
-  conditionType: string, 
-  conditionValues: string[]
-): boolean {
-  if (!conditionValues || conditionValues.length === 0) return false;
-  
-  // Estrai il valore del campo specificato dal lead
-  let fieldValue = '';
-  switch (triggerField) {
-    case 'ultima_fonte':
-      fieldValue = lead.ultima_fonte || '';
-      break;
-    case 'fonte':
-      fieldValue = lead.fonte || '';
-      break;
-    case 'nome':
-      fieldValue = lead.nome || '';
-      break;
-    case 'email':
-      fieldValue = lead.email || '';
-      break;
-    case 'telefono':
-      fieldValue = lead.telefono || '';
-      break;
-    case 'campagna':
-      fieldValue = lead.campagna || '';
-      break;
-    case 'lead_score':
-      fieldValue = lead.lead_score || '';
-      break;
-    case 'created_at':
-      fieldValue = lead.created_at || '';
-      break;
-    default:
-      return false;
-  }
-  
-  const field = fieldValue.toLowerCase();
-  
-  // Check conditions based on type
-  switch (conditionType) {
-    case 'contains':
-      // TRUE se il campo contiene ALMENO UNO dei valori
-      return conditionValues.some(val => field.includes(val.toLowerCase()));
-    case 'equals':
-      // TRUE se il campo è UGUALE ad ALMENO UNO dei valori
-      return conditionValues.some(val => field === val.toLowerCase());
-    case 'starts_with':
-      // TRUE se il campo inizia con ALMENO UNO dei valori
-      return conditionValues.some(val => field.startsWith(val.toLowerCase()));
-    case 'ends_with':
-      // TRUE se il campo finisce con ALMENO UNO dei valori
-      return conditionValues.some(val => field.endsWith(val.toLowerCase()));
-    case 'not_contains':
-      // TRUE se il campo NON contiene NESSUNO dei valori (TUTTI devono non matchare)
-      return conditionValues.every(val => !field.includes(val.toLowerCase()));
-    default:
-      return false;
-  }
-}
-
 // Funzione per trovare il venditore precedente con controllo fonte
 async function findPreviousSellerWithSourceCheck(lead: any, automationSources: string[], supabase: any) {
   try {
@@ -998,28 +876,11 @@ async function pickSellerFromDistribution(automation: any, supabase: any): Promi
       return null;
     }
 
-    // Filtra slot con venditori attivi + cap individuale non raggiunto
-    let eligible = config
-      .filter((slot: any) => activeSellers.find((s: any) => s.id === slot.venditore_id))
-      .map((slot: any) => ({ slot, seller: activeSellers.find((s: any) => s.id === slot.venditore_id) }))
-      .filter((e: any) => {
-        const cap = e.slot.cap;
-        if (!cap || cap <= 0) return true;
-        const current = counts[e.slot.venditore_id] || 0;
-        const withinCap = current < cap;
-        if (!withinCap) console.log(`[distribution] Slot ${e.seller.nome} ${e.seller.cognome} cap raggiunto: ${current}/${cap}`);
-        return withinCap;
-      });
+    // Slot ancora capienti: venditore attivo, tetto e quota non raggiunti (logica condivisa
+    // con la prova a vuoto della configurazione, così le due non possono divergere).
+    const eligible = slotEleggibili(config, counts, activeSellers, mode);
 
     if (mode === 'count') {
-      // Escludi quelli con quota raggiunta
-      eligible = eligible.filter((e: any) => {
-        const target = e.slot.count_target || 0;
-        const current = counts[e.slot.venditore_id] || 0;
-        const withinTarget = current < target;
-        if (!withinTarget) console.log(`[distribution] Slot ${e.seller.nome} ${e.seller.cognome} quota raggiunta: ${current}/${target}`);
-        return withinTarget;
-      });
       if (eligible.length === 0) {
         console.log('[distribution] All quotas/caps full');
         return null;

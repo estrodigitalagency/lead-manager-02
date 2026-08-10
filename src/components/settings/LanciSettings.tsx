@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Plus, Trash2, Settings2, Rocket, Palette } from "lucide-react";
+import { Plus, Trash2, Settings2, Rocket, Palette, FlaskConical } from "lucide-react";
 import { useMarket } from "@/contexts/MarketContext";
 import { useAutomationsData } from "@/hooks/useAutomationsData";
 import {
@@ -15,6 +15,7 @@ import {
 } from "@/lib/lanci/config";
 import { CALL_METRICS, LEAD_METRICS } from "@/components/lanci/LancioMatrix";
 import LancioConfigDialog from "@/components/settings/LancioConfigDialog";
+import LancioTestDialog from "@/components/settings/LancioTestDialog";
 
 const emptyCfg = (): LancioConfig => ({
   id: "", nome: "", provenienza: "", call_tabs: [], lead_tab: "",
@@ -28,6 +29,7 @@ const LanciSettings = () => {
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<LancioConfig | null>(null);
   const [rulesOpen, setRulesOpen] = useState<string | null>(null);
+  const [testing, setTesting] = useState<LancioConfig | null>(null);
   const [rules, setRules] = useState<ColorRule[]>([]);
   const [nr, setNr] = useState<{ key: string; op: ColorRule["op"]; val: string; color: string }>(
     { key: "tasso_chiusura_nette", op: "lt", val: "", color: PALETTE[0] });
@@ -110,6 +112,9 @@ const LanciSettings = () => {
                       </div>
                     </div>
                     <div className="flex gap-1 shrink-0">
+                      <Button size="sm" variant="outline" onClick={() => setTesting(l)} title="Prova la configurazione senza scrivere niente">
+                        <FlaskConical className="h-3.5 w-3.5" />
+                      </Button>
                       <Button size="sm" variant="outline" onClick={() => openRules(l.id)} title="Formattazione condizionale">
                         <Palette className="h-3.5 w-3.5" />
                       </Button>
@@ -127,6 +132,15 @@ const LanciSettings = () => {
           </div>
         )}
       </CardContent>
+
+      {testing && (
+        <LancioTestDialog
+          open={!!testing}
+          onOpenChange={(o) => !o && setTesting(null)}
+          lancio={testing}
+          market={selectedMarket}
+        />
+      )}
 
       {editing && (
         <LancioConfigDialog

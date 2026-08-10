@@ -60,3 +60,6 @@ verify_jwt = false
 
 [functions.valore-call]
 verify_jwt = false
+
+[functions.lancio-test]
+verify_jwt = false
