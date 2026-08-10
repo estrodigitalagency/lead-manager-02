@@ -457,7 +457,7 @@ const LancioConfigDialog = ({ open, onOpenChange, value, onSave, esistenti, mark
                 </div>
                 <p className="text-[11px] text-muted-foreground mt-1.5 pl-9">
                   {aCoda
-                    ? "I lead nuovi non vengono distribuiti: restano in attesa con venditore \u201cRound Robin\u201d. Passa solo chi era già stato assegnato entro il periodo qui sotto, che torna al suo venditore. Percentuali e tetti restano come sono."
+                    ? "I lead nuovi non vengono distribuiti: entrano come assegnati al venditore \u201cRound Robin\u201d. Passa solo chi era già stato assegnato entro il periodo qui sotto, che torna al suo venditore e gli scala il tetto come una normale assegnazione."
                     : "Da attivare quando i venditori sono indietro con la lavorazione e non vuoi continuare a caricarli, anche se il tetto non è ancora pieno."}
                 </p>
               </div>

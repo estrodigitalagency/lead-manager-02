@@ -241,12 +241,15 @@ async function checkAndApplyAutomations(lead: any, supabase: any) {
         
         let targetSeller = null;
         let sheetsTabName = null;
+        // la distribuzione scala il tetto da sé; le altre strade no e vanno contate a valle
+        let tettoGiaScalato = false;
 
         if (inCoda.includes(automation.id)) {
           // In coda: passa solo chi è già stato lavorato di recente, il resto aspetta.
           const prev = await findPreviousSeller(lead, supabase, automation.excluded_sellers || []);
           if (prev && entroLockPeriod(automation, prev.dataAssegnazione)) {
             console.log(`[coda] ${automation.nome}: lead già lavorato da ${prev.seller.nome} ${prev.seller.cognome}, torna a lui`);
+            await scalaTettoVenditore(automation, prev.seller.id, supabase);
             await assignLeadAutomatically(
               lead,
               { ...prev.seller, originalDataAssegnazione: prev.dataAssegnazione },
@@ -298,6 +301,7 @@ async function checkAndApplyAutomations(lead: any, supabase: any) {
               continue;
             }
             targetSeller = pickedSeller;
+            tettoGiaScalato = true;
             sheetsTabName = automation.sheets_tab_name || pickedSeller.sheets_tab_name;
           }
         } else if (automation.action_type === 'assign_to_previous_seller') {
@@ -369,6 +373,7 @@ async function checkAndApplyAutomations(lead: any, supabase: any) {
         }
 
         if (targetSeller) {
+          if (!tettoGiaScalato) await scalaTettoVenditore(automation, targetSeller.id, supabase);
           await assignLeadAutomatically(lead, targetSeller, sheetsTabName, automation, supabase);
           return; // Ferma alla prima automazione che matcha
         } else {
@@ -389,7 +394,7 @@ async function checkAndApplyAutomations(lead: any, supabase: any) {
         .from('lead_generation')
         .update({
           venditore: 'Round Robin',
-          stato: 'nuovo',
+          stato: 'assegnato',
           assignable: false,
           data_assegnazione: new Date().toISOString(),
         })
@@ -401,6 +406,20 @@ async function checkAndApplyAutomations(lead: any, supabase: any) {
   } catch (error) {
     console.error('Error in checkAndApplyAutomations:', error);
   }
+}
+
+/**
+ * Ogni lead che finisce a un venditore occupa capacità, quindi scala dal suo tetto: vale per
+ * la distribuzione ma anche per le riassegnazioni al venditore precedente, che saltano la
+ * distribuzione e altrimenti non verrebbero contate.
+ */
+async function scalaTettoVenditore(automation: any, sellerId: string | undefined, supabase: any) {
+  if (!sellerId || automation.action_type !== 'weighted_distribution') return;
+  const config: any[] = automation.distribution_config || [];
+  if (!config.some((slot: any) => slot.venditore_id === sellerId)) return;
+  const state: any = automation.distribution_state || {};
+  await incrementDistributionState(automation.id, sellerId, state.count_assigned || {}, state.total_assigned || 0, supabase);
+  console.log(`[tetto] +1 su ${sellerId} per "${automation.nome}"`);
 }
 
 /**
