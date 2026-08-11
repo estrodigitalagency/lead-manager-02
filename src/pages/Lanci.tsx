@@ -9,7 +9,6 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { fetchLanci, fetchLancioData, fetchColorRules, LancioConfig, LancioData, ColorRule } from "@/lib/lanci/config";
 import AcquisizioneWidget from "@/components/lanci/AcquisizioneWidget";
 import SpeedToLeadWidget from "@/components/lanci/SpeedToLeadWidget";
-import DocumentazioneDialog from "@/components/lanci/DocumentazioneDialog";
 import QualitaLeadWidget from "@/components/lanci/QualitaLeadWidget";
 import LancioMatrix, { fmt } from "@/components/lanci/LancioMatrix";
 import LancioMobile from "@/components/lanci/LancioMobile";
@@ -168,7 +167,6 @@ const Lanci = () => {
           )}
         </div>
         <div className="flex gap-2 items-center">
-          <DocumentazioneDialog />
           {!isMobile && tab === "performance" && (
             <Button size="sm" variant={heatmap ? "default" : "outline"} className="h-8" onClick={() => setHeatmap((v) => !v)}>
               Heatmap {heatmap ? "ON" : "OFF"}

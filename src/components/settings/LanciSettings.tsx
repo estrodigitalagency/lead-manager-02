@@ -16,6 +16,7 @@ import {
 import { CALL_METRICS, LEAD_METRICS } from "@/components/lanci/LancioMatrix";
 import LancioConfigDialog from "@/components/settings/LancioConfigDialog";
 import LancioTestDialog from "@/components/settings/LancioTestDialog";
+import DocumentazioneDialog from "@/components/settings/DocumentazioneDialog";
 
 const emptyCfg = (): LancioConfig => ({
   id: "", nome: "", provenienza: "", call_tabs: [], lead_tab: "",
@@ -84,7 +85,10 @@ const LanciSettings = () => {
             Un lancio definisce chi ci lavora, da quali tab leggere i dati, come vengono assegnati i lead e con quale link WhatsApp.
           </CardDescription>
         </div>
-        <Button size="sm" onClick={() => setEditing(emptyCfg())}><Plus className="h-4 w-4 mr-1" /> Nuovo lancio</Button>
+        <div className="flex gap-2 items-center shrink-0">
+          <DocumentazioneDialog />
+          <Button size="sm" onClick={() => setEditing(emptyCfg())}><Plus className="h-4 w-4 mr-1" /> Nuovo lancio</Button>
+        </div>
       </CardHeader>
       <CardContent>
         {loading ? (
