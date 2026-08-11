@@ -1,5 +1,8 @@
 import { supabase } from "@/integrations/supabase/client";
 
+const SUPA_URL = "https://btcwmuyemmkiteqlopce.supabase.co";
+const ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ0Y3dtdXllbW1raXRlcWxvcGNlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY4NzIxMTIsImV4cCI6MjA2MjQ0ODExMn0.NYTXODd9HEglk4b1RKOt1XyrGMiOOs4ltfFyeZknfBE";
+
 /**
  * "Assegnazione Round Robin": interruttore per mettere in coda i lead nuovi di una regola,
  * lasciando passare solo chi è già stato lavorato di recente. Serve quando i venditori sono
@@ -31,4 +34,26 @@ export async function setCoda(automationId: string, attiva: boolean): Promise<bo
     { onConflict: "key" },
   );
   return !error;
+}
+
+/** Quanti lead sono fermi nella coda Round Robin per questo market. */
+export async function contaInCoda(market: string): Promise<number> {
+  const { count } = await supabase
+    .from("lead_generation")
+    .select("id", { count: "exact", head: true })
+    .eq("market", market).eq("venditore", "Round Robin");
+  return count ?? 0;
+}
+
+/**
+ * Rimette in circolo i lead fermi in coda: ripassano dalle automazioni come lead nuovi,
+ * quindi rispettano venditore precedente, tetti, pause e contatori.
+ */
+export async function recuperaCoda(market: string, automazioneId?: string) {
+  const r = await fetch(`${SUPA_URL}/functions/v1/lead-generation-webhook`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${ANON}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ azione: "recupera_coda", market, automazione_id: automazioneId }),
+  });
+  return r.json();
 }

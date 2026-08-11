@@ -83,8 +83,11 @@ export function entroLockPeriod(automation: any, dataAssegnazione: string | null
 export interface SlotEleggibile { slot: any; seller: any }
 
 /**
- * Slot che possono ancora ricevere lead: venditore attivo, tetto individuale non raggiunto e,
- * in modalità quota assoluta, quota non esaurita.
+ * Slot che possono ancora ricevere lead: venditore attivo, non in pausa, tetto individuale non
+ * raggiunto e, in modalità quota assoluta, quota non esaurita.
+ *
+ * La pausa (slot.paused) serve a fermare un singolo venditore senza toccarne la percentuale:
+ * i suoi lead vanno agli altri e quando riparte ritrova la quota di prima.
  */
 export function slotEleggibili(
   config: any[], counts: Record<string, number>, attivi: any[], mode: string,
@@ -92,6 +95,7 @@ export function slotEleggibili(
   let eligible = (config || [])
     .map((slot: any) => ({ slot, seller: attivi.find((s: any) => s.id === slot.venditore_id) }))
     .filter((e: any) => !!e.seller)
+    .filter((e: any) => !e.slot.paused)
     .filter((e: any) => {
       const cap = e.slot.cap;
       if (!cap || cap <= 0) return true;

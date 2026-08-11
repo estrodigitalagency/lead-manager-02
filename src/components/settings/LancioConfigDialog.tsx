@@ -11,7 +11,7 @@ import { Users, FileSpreadsheet, Zap, MessageCircle, AlertTriangle, Loader2, Plu
 import { useSalespeopleData } from "@/hooks/useSalespeopleData";
 import { useAutomationsData } from "@/hooks/useAutomationsData";
 import { fetchTemplates, saveTemplate } from "@/lib/whatsapp/templates";
-import { fetchCodaIds, setCoda } from "@/lib/automazioni/coda";
+import { fetchCodaIds, setCoda, contaInCoda, recuperaCoda } from "@/lib/automazioni/coda";
 import { azzeraContatori } from "@/lib/automazioni/contatori";
 import { checkConflitti, Conflitto } from "@/lib/lanci/integrazioni";
 import { LancioConfig } from "@/lib/lanci/config";
@@ -65,6 +65,9 @@ const LancioConfigDialog = ({ open, onOpenChange, value, onSave, esistenti, mark
   const [aQuote, setAQuote] = useState<Record<string, number>>({});   // nome venditore → peso/quota
   const [aCap, setACap] = useState<Record<string, number>>({});      // nome venditore → tetto massimo lead
   const [conta, setConta] = useState<Record<string, number>>({});    // id venditore → lead già assegnati
+  const [aPausa, setAPausa] = useState<Record<string, boolean>>({}); // nome venditore → distribuzione sospesa
+  const [inCoda, setInCoda] = useState(0);          // lead fermi in attesa di distribuzione
+  const [recupero, setRecupero] = useState(false);
   const [aWebhook, setAWebhook] = useState(true);
   const [aCoda, setACoda] = useState(false);   // assegnazione in coda: i lead nuovi aspettano
   const [aLockOn, setALockOn] = useState(false);
@@ -101,6 +104,7 @@ const LancioConfigDialog = ({ open, onOpenChange, value, onSave, esistenti, mark
     if (!open) return;
     setForm(value);
     setStep(0);
+    contaInCoda(market).then(setInCoda);
     setWaNuovo(false);
     setWaOn(!!value.whatsapp_slug || !value.id);
     fetchTemplates().then((t) => setWa(t as any));
@@ -112,6 +116,12 @@ const LancioConfigDialog = ({ open, onOpenChange, value, onSave, esistenti, mark
       setACondTipo(((autom as any).condition_type === "not_contains" ? "not_contains" : "contains"));
       fetchCodaIds().then((ids) => setACoda(ids.includes(autom.id)));
       setConta(((autom as any).distribution_state?.count_assigned) ?? {});
+      setAPausa(Object.fromEntries(((autom as any).distribution_config ?? [])
+        .filter((sl: any) => sl.paused)
+        .map((sl: any) => {
+          const v = venditori.find((x) => x.id === sl.venditore_id);
+          return [v ? `${v.nome} ${v.cognome || ""}`.trim() : sl.venditore_id, true];
+        })));
       setAEscl(((autom as any).trigger_sources ?? []).join(", "));
       setAAzione((autom.action_type as Azione) ?? "weighted_distribution");
       setAPrevFirst(!!(autom as any).use_previous_seller_first);
@@ -137,7 +147,7 @@ const LancioConfigDialog = ({ open, onOpenChange, value, onSave, esistenti, mark
       setAPrevFirst(false); setATargetSeller(""); setAModo("percentage"); setAQuote({}); setACap({});
       setAWebhook(true);
       setALockOn(false); setALockDays(30); setAEsclusi([]);
-      setACondTipo("contains"); setAEscl(""); setACoda(false); setConta({});
+      setACondTipo("contains"); setAEscl(""); setACoda(false); setConta({}); setAPausa({});
     }
   }, [open, value, autom?.id]);   // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -212,7 +222,7 @@ const LancioConfigDialog = ({ open, onOpenChange, value, onSave, esistenti, mark
       ? quotaSales.map((nome) => {
           const v = attivi.find((a) => a.nome === nome);
           const q = aQuote[nome] ?? 0;
-          return v ? { venditore_id: v.id, weight: aModo === "percentage" ? q : null, count_target: aModo === "count" ? q : null, cap: aCap[nome] ?? null } : null;
+          return v ? { venditore_id: v.id, weight: aModo === "percentage" ? q : null, count_target: aModo === "count" ? q : null, cap: aCap[nome] ?? null, paused: !!aPausa[nome] } : null;
         }).filter(Boolean)
       : [];
     const payload: any = {
@@ -595,7 +605,13 @@ const LancioConfigDialog = ({ open, onOpenChange, value, onSave, esistenti, mark
                     </div>
                     {quotaSales.map((nome) => (
                       <div key={nome} className="flex items-center gap-2">
-                        <span className="flex-1 text-[12px] truncate">{nome}</span>
+                        <button type="button" title={aPausa[nome] ? "In pausa: non riceve lead. Clicca per riattivare" : "Sospendi la distribuzione per questo venditore"}
+                          onClick={() => setAPausa((p) => ({ ...p, [nome]: !p[nome] }))}
+                          className={`shrink-0 h-5 w-5 rounded-full border grid place-items-center text-[10px] ${
+                            aPausa[nome] ? "border-destructive bg-destructive/20 text-destructive" : "border-border text-muted-foreground/50 hover:text-foreground"}`}>
+                          {aPausa[nome] ? "❚❚" : "▶"}
+                        </button>
+                        <span className={`flex-1 text-[12px] truncate ${aPausa[nome] ? "text-destructive line-through" : ""}`}>{nome}</span>
                         {autom?.id && (
                           <button type="button" title="Lead già assegnati — clicca per azzerare"
                             onClick={() => azzera([nome])}
@@ -618,6 +634,7 @@ const LancioConfigDialog = ({ open, onOpenChange, value, onSave, esistenti, mark
                     <p className="text-[11px] text-muted-foreground pt-1">
                       Tetto max: oltre quel numero di lead il venditore viene saltato e i lead vanno agli altri. Lascia vuoto per nessun limite.
                       {autom?.id && " La colonna in mezzo sono i lead già assegnati: cliccala per azzerare quel venditore."}
+                      {" "}Il tasto a sinistra del nome sospende un singolo venditore: i suoi lead vanno agli altri e la sua percentuale resta lì per quando riparte.
                     </p>
                     {quotaSales.length === 0 && <p className="text-[12px] text-muted-foreground">Seleziona prima i venditori del lancio.</p>}
                   </div>
@@ -666,6 +683,31 @@ const LancioConfigDialog = ({ open, onOpenChange, value, onSave, esistenti, mark
                       </span>
                     )}
                   </div>
+                  {inCoda > 0 && (
+                    <div className="flex items-center gap-2 flex-wrap mt-2.5 pl-9">
+                      <span className="text-[11.5px]">
+                        <b>{inCoda}</b> lead fermi in coda
+                      </span>
+                      <Button size="sm" variant="outline" className="h-6 text-[11px]" disabled={aCoda || recupero}
+                        title={aCoda ? "Spegni prima la sospensione, altrimenti tornerebbero subito in coda" : "Rimettili nel giro delle automazioni"}
+                        onClick={async () => {
+                          if (!confirm(`Distribuire ora i ${inCoda} lead in coda?`)) return;
+                          setRecupero(true);
+                          try {
+                            const r = await recuperaCoda(market, autom?.id);
+                            if (r?.error) toast.error(r.error);
+                            else {
+                              toast.success(`${r.assegnati} lead distribuiti${r.ancora_in_coda ? `, ${r.ancora_in_coda} ancora in coda` : ""}`);
+                              setInCoda(await contaInCoda(market));
+                            }
+                          } finally { setRecupero(false); }
+                        }}>
+                        {recupero ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : null}
+                        Distribuiscili ora
+                      </Button>
+                      {aCoda && <span className="text-[10.5px] text-muted-foreground">spegni prima la sospensione</span>}
+                    </div>
+                  )}
                   <p className="text-[11px] text-muted-foreground mt-1.5 pl-9">
                     {aCoda
                       ? "I lead nuovi non vengono distribuiti: entrano come assegnati al venditore \u201cRound Robin\u201d e restano in attesa. Passa solo chi era già stato assegnato entro il periodo impostato sopra, che torna al suo venditore e gli scala il tetto come una normale assegnazione."

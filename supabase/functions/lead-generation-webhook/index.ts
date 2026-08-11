@@ -32,7 +32,60 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
 
-    const { nome, cognome, email, telefono, fonte, campagna, notes, lead_score, venditore, stato, market, ultima_fonte, assignable, stato_del_lead } = await req.json()
+    const corpo = await req.json()
+
+    // ── Recupero della coda ──────────────────────────────────────────────────────────────
+    // I lead parcheggiati su "Round Robin" (sospensione attiva, oppure tetti pieni) vengono
+    // rimessi nel giro quando si riapre la distribuzione. Passano dalle stesse automazioni di
+    // un lead nuovo, quindi rispettano venditore precedente, tetti, pause e contatori.
+    if (corpo?.azione === 'recupera_coda') {
+      const mercato = (corpo.market || 'IT').toUpperCase()
+      const limite = Math.min(Number(corpo.limit) || 500, 2000)
+
+      const { data: inCoda } = await supabase
+        .from('lead_generation')
+        .select('*')
+        .eq('market', mercato)
+        .eq('venditore', 'Round Robin')
+        .order('created_at', { ascending: true })
+        .limit(limite)
+
+      // Solo quelli che la regola indicata riconosce come suoi: gli altri restano in coda.
+      let candidati = inCoda ?? []
+      if (corpo.automazione_id) {
+        const { data: reg } = await supabase
+          .from('lead_assignment_automations').select('*').eq('id', corpo.automazione_id).maybeSingle()
+        if (!reg) return new Response(JSON.stringify({ error: 'Automazione non trovata' }), {
+          status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        })
+        candidati = candidati.filter((l: any) => regolaSiApplica(l, reg))
+      }
+
+      let assegnati = 0
+      for (const lead of candidati) {
+        // Si riparte da zero: senza venditore le automazioni lo trattano come un lead in ingresso.
+        await supabase.from('lead_generation')
+          .update({ venditore: null, data_assegnazione: null }).eq('id', lead.id)
+        await checkAndApplyAutomations({ ...lead, venditore: null, data_assegnazione: null }, supabase)
+
+        const { data: dopo } = await supabase
+          .from('lead_generation').select('venditore').eq('id', lead.id).maybeSingle()
+        if (dopo?.venditore && dopo.venditore !== 'Round Robin') assegnati++
+        else {
+          // Nessuna regola l'ha preso: torna in coda invece di restare senza venditore.
+          await supabase.from('lead_generation').update({
+            venditore: 'Round Robin', stato: 'assegnato', assignable: false,
+            data_assegnazione: new Date().toISOString(),
+          }).eq('id', lead.id)
+        }
+      }
+
+      return new Response(JSON.stringify({
+        ok: true, in_coda: candidati.length, assegnati, ancora_in_coda: candidati.length - assegnati,
+      }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+    }
+
+    const { nome, cognome, email, telefono, fonte, campagna, notes, lead_score, venditore, stato, market, ultima_fonte, assignable, stato_del_lead } = corpo
 
     // Default market to 'IT' for backward compatibility
     const finalMarket = market || 'IT'
