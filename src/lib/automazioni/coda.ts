@@ -57,3 +57,33 @@ export async function recuperaCoda(market: string, automazioneId?: string) {
   });
   return r.json();
 }
+
+export interface AnteprimaLiberi {
+  trovati: number;
+  assegnabili: number;
+  ripartizione: Record<string, number>;
+}
+
+/** Quanti lead sono rimasti liberi per questa regola e come verrebbero ripartiti. Non scrive. */
+export async function anteprimaLiberi(market: string, automazioneId: string): Promise<AnteprimaLiberi> {
+  const r = await fetch(`${SUPA_URL}/functions/v1/lead-generation-webhook`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${ANON}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      azione: "recupera_coda", sorgente: "liberi", simula: true,
+      market, automazione_id: automazioneId,
+    }),
+  });
+  const j = await r.json();
+  return { trovati: j.trovati ?? 0, assegnabili: j.assegnabili ?? 0, ripartizione: j.ripartizione ?? {} };
+}
+
+/** Assegna davvero i lead rimasti liberi, passando dalle automazioni. */
+export async function assegnaLiberi(market: string, automazioneId: string) {
+  const r = await fetch(`${SUPA_URL}/functions/v1/lead-generation-webhook`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${ANON}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ azione: "recupera_coda", sorgente: "liberi", market, automazione_id: automazioneId }),
+  });
+  return r.json();
+}

@@ -11,7 +11,7 @@ import { Users, FileSpreadsheet, Zap, MessageCircle, AlertTriangle, Loader2, Plu
 import { useSalespeopleData } from "@/hooks/useSalespeopleData";
 import { useAutomationsData } from "@/hooks/useAutomationsData";
 import { fetchTemplates, saveTemplate } from "@/lib/whatsapp/templates";
-import { fetchCodaIds, setCoda, contaInCoda, recuperaCoda } from "@/lib/automazioni/coda";
+import { fetchCodaIds, setCoda, contaInCoda, recuperaCoda, anteprimaLiberi, assegnaLiberi, AnteprimaLiberi } from "@/lib/automazioni/coda";
 import { azzeraContatori } from "@/lib/automazioni/contatori";
 import { checkConflitti, Conflitto } from "@/lib/lanci/integrazioni";
 import { LancioConfig } from "@/lib/lanci/config";
@@ -68,6 +68,7 @@ const LancioConfigDialog = ({ open, onOpenChange, value, onSave, esistenti, mark
   const [aPausa, setAPausa] = useState<Record<string, boolean>>({}); // nome venditore → distribuzione sospesa
   const [inCoda, setInCoda] = useState(0);          // lead fermi in attesa di distribuzione
   const [recupero, setRecupero] = useState(false);
+  const [liberi, setLiberi] = useState<AnteprimaLiberi | null>(null);   // proposta dopo il salvataggio
   const [aWebhook, setAWebhook] = useState(true);
   const [aCoda, setACoda] = useState(false);   // assegnazione in coda: i lead nuovi aspettano
   const [aLockOn, setALockOn] = useState(false);
@@ -293,7 +294,17 @@ const LancioConfigDialog = ({ open, onOpenChange, value, onSave, esistenti, mark
         lead_sales: form.sales, call_sales: form.sales,   // i venditori del lancio valgono per entrambi
         automazione_id, whatsapp_slug,
       });
-      if (ok) onOpenChange(false);
+      if (!ok) return;
+
+      // Alzando i tetti (o togliendo una pausa) i lead rimasti liberi possono rientrare:
+      // invece di lasciarli fermi in silenzio si propone di distribuirli subito.
+      if (automazione_id) {
+        try {
+          const a = await anteprimaLiberi(market, automazione_id);
+          if (a.assegnabili > 0) { setLiberi(a); return; }
+        } catch { /* la proposta è un extra, non blocca il salvataggio */ }
+      }
+      onOpenChange(false);
     } finally { setSaving(false); }
   };
 
@@ -818,6 +829,53 @@ const LancioConfigDialog = ({ open, onOpenChange, value, onSave, esistenti, mark
           </div>
         </DialogFooter>
       </DialogContent>
+      {liberi && (
+        <Dialog open onOpenChange={() => { setLiberi(null); onOpenChange(false); }}>
+          <DialogContent className="sm:max-w-[440px]">
+            <DialogHeader>
+              <DialogTitle className="text-[15px]">Ci sono lead liberi da assegnare</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-3">
+              <p className="text-[12.5px] text-muted-foreground">
+                <b className="text-foreground">{liberi.trovati}</b> lead con la fonte di questo lancio sono rimasti
+                senza venditore perché i tetti erano pieni. Con i limiti attuali ne rientrerebbero{" "}
+                <b className="text-foreground">{liberi.assegnabili}</b>.
+              </p>
+              <div className="rounded-md border border-border bg-secondary/30 p-2.5 space-y-1">
+                <div className="label-eyebrow pb-0.5">Come verrebbero distribuiti</div>
+                {Object.entries(liberi.ripartizione).sort((a, b) => b[1] - a[1]).map(([nome, n]) => (
+                  <div key={nome} className="flex justify-between text-[12px]">
+                    <span className="truncate">{nome}</span>
+                    <span className="num font-medium">{n}</span>
+                  </div>
+                ))}
+              </div>
+              {liberi.assegnabili < liberi.trovati && (
+                <p className="text-[11px] text-amber-400">
+                  {liberi.trovati - liberi.assegnabili} resterebbero comunque liberi: i tetti finiscono prima.
+                </p>
+              )}
+            </div>
+            <DialogFooter className="gap-2">
+              <Button variant="ghost" onClick={() => { setLiberi(null); onOpenChange(false); }}>
+                Lasciali liberi
+              </Button>
+              <Button disabled={recupero} onClick={async () => {
+                setRecupero(true);
+                try {
+                  const r = await assegnaLiberi(market, form.automazione_id ?? "");
+                  toast.success(`${r.assegnati ?? 0} lead assegnati`);
+                } finally {
+                  setRecupero(false); setLiberi(null); onOpenChange(false);
+                }
+              }}>
+                {recupero && <Loader2 className="h-4 w-4 animate-spin mr-1" />}
+                Assegnali ora
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
     </Dialog>
   );
 };

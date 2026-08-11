@@ -41,6 +41,9 @@ serve(async (req) => {
     if (corpo?.azione === 'recupera_coda') {
       const mercato = (corpo.market || 'IT').toUpperCase()
       const limite = Math.min(Number(corpo.limit) || 500, 2000)
+      // 'coda' = parcheggiati su Round Robin, 'liberi' = mai assegnati perché i tetti erano pieni
+      const sorgente = corpo.sorgente === 'liberi' ? 'liberi' : 'coda'
+      const soloAnteprima = corpo.simula === true
 
       let reg: any = null
       if (corpo.automazione_id) {
@@ -59,13 +62,14 @@ serve(async (req) => {
       const candidati: any[] = []
       let letti = 0
       for (let off = 0; off < SCANSIONE_MAX && candidati.length < limite; off += PAGINA) {
-        const { data: blocco } = await supabase
+        let q = supabase
           .from('lead_generation')
           .select('*')
           .eq('market', mercato)
-          .eq('venditore', 'Round Robin')
           .order('created_at', { ascending: true })
           .range(off, off + PAGINA - 1)
+        q = sorgente === 'liberi' ? q.is('venditore', null) : q.eq('venditore', 'Round Robin')
+        const { data: blocco } = await q
         if (!blocco || blocco.length === 0) break
         letti += blocco.length
         for (const l of blocco) {
@@ -75,6 +79,44 @@ serve(async (req) => {
         if (blocco.length < PAGINA) break
       }
       console.log(`[recupero] coda esaminata: ${letti} lead, ${candidati.length} di questa regola`)
+
+      // Anteprima: dice quanti sono e come verrebbero ripartiti, senza toccare niente.
+      if (soloAnteprima) {
+        let ripartizione: Record<string, number> = {}
+        if (reg?.action_type === 'weighted_distribution') {
+          const { data: vend } = await supabase
+            .from('venditori').select('id, nome, cognome, stato').eq('market', mercato).eq('stato', 'attivo')
+          const counts = { ...((reg.distribution_state || {}).count_assigned || {}) }
+          const mode = reg.distribution_mode || 'percentage'
+          // Si simula l'ingresso uno per uno, così tetti e quote si esauriscono come dal vivo.
+          // La scelta reale è casuale pesata: qui si prende ogni volta chi è più indietro
+          // rispetto alla sua quota, che dà la ripartizione attesa senza dipendere dal caso.
+          const dati: Record<string, number> = {}
+          for (let i = 0; i < candidati.length; i++) {
+            const el = slotEleggibili(reg.distribution_config || [], counts, vend ?? [], mode)
+            if (el.length === 0) break
+            const pesi = el.reduce((s2: number, e: any) => s2 + (e.slot.weight || 0), 0)
+            const assegnatiOra = el.reduce((s2: number, e: any) => s2 + (dati[e.slot.venditore_id] || 0), 0)
+            const scelto = (mode === 'count' || pesi <= 0)
+              ? el.reduce((min: any, e: any) =>
+                  (dati[e.slot.venditore_id] || 0) < (dati[min.slot.venditore_id] || 0) ? e : min)
+              : el.reduce((best: any, e: any) => {
+                  const scarto = (x: any) =>
+                    ((x.slot.weight || 0) / pesi) * (assegnatiOra + 1) - (dati[x.slot.venditore_id] || 0)
+                  return scarto(e) > scarto(best) ? e : best
+                })
+            const nome = `${scelto.seller.nome} ${scelto.seller.cognome || ''}`.trim()
+            ripartizione[nome] = (ripartizione[nome] || 0) + 1
+            dati[scelto.slot.venditore_id] = (dati[scelto.slot.venditore_id] || 0) + 1
+            counts[scelto.slot.venditore_id] = (counts[scelto.slot.venditore_id] || 0) + 1
+          }
+        }
+        const assegnabili = Object.values(ripartizione).reduce((s2: number, n: any) => s2 + n, 0)
+        return new Response(JSON.stringify({
+          ok: true, anteprima: true, sorgente,
+          trovati: candidati.length, assegnabili, ripartizione, coda_esaminata: letti,
+        }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+      }
 
       let assegnati = 0
       for (const lead of candidati) {
@@ -86,8 +128,8 @@ serve(async (req) => {
         const { data: dopo } = await supabase
           .from('lead_generation').select('venditore').eq('id', lead.id).maybeSingle()
         if (dopo?.venditore && dopo.venditore !== 'Round Robin') assegnati++
-        else {
-          // Nessuna regola l'ha preso: torna in coda invece di restare senza venditore.
+        else if (sorgente === 'coda') {
+          // Nessuna regola l'ha preso: torna in coda, dov'era.
           await supabase.from('lead_generation').update({
             venditore: 'Round Robin', stato: 'assegnato', assignable: false,
             data_assegnazione: new Date().toISOString(),
@@ -448,13 +490,10 @@ async function checkAndApplyAutomations(lead: any, supabase: any) {
       }
     }
 
-    const motivoCoda = codaAttiva
-      ? `Assegnazione Round Robin attiva su "${codaAttiva}"`
-      : quotePiene ? `Quote piene su "${quotePiene}"` : null;
-    if (motivoCoda) {
-      // Il lead non va perso né lasciato senza venditore: entra nella coda "Round Robin",
-      // la stessa già usata nel database per i lead in attesa di smistamento.
-      console.log(`${motivoCoda}: lead ${lead.id} messo in Round Robin`);
+    if (codaAttiva) {
+      // Sospensione decisa a mano: il lead entra nella coda "Round Robin", la stessa già usata
+      // nel database, perché è una scelta esplicita di parcheggiarlo.
+      console.log(`Sospensione attiva su "${codaAttiva}": lead ${lead.id} messo in Round Robin`);
       await supabase
         .from('lead_generation')
         .update({
@@ -463,6 +502,15 @@ async function checkAndApplyAutomations(lead: any, supabase: any) {
           assignable: false,
           data_assegnazione: new Date().toISOString(),
         })
+        .eq('id', lead.id);
+    } else if (quotePiene) {
+      // Tetti esauriti: il lead resta LIBERO, non parcheggiato. Marcarlo come assegnato a
+      // "Round Robin" lo farebbe sembrare sistemato e lo toglierebbe dai lead da lavorare,
+      // mentre invece aspetta solo che qualcuno alzi i limiti o lo assegni a mano.
+      console.log(`Quote piene su "${quotePiene}": lead ${lead.id} resta libero`);
+      await supabase
+        .from('lead_generation')
+        .update({ venditore: null, stato: 'nuovo', assignable: true, data_assegnazione: null })
         .eq('id', lead.id);
     } else {
       console.log('No automation conditions matched');
