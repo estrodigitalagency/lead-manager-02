@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Card, CardContent } from "@/components/ui/card";
-import { Trash2 } from "lucide-react";
+import { Trash2, AlertTriangle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Venditore } from "@/types/venditore";
@@ -64,6 +64,13 @@ const SalespersonCard = ({ venditore, onUpdate }: SalespersonCardProps) => {
             <Badge variant={venditore.stato === 'attivo' ? 'default' : 'secondary'}>
               {venditore.stato}
             </Badge>
+            {/* Senza numero il link WhatsApp non apre la chat; senza email non si aggancia
+                il lead per email. Vale solo per chi e attivo: sugli spenti non fa danni. */}
+            {venditore.stato === 'attivo' && !venditore.telefono && (
+              <Badge variant="outline" className="border-destructive text-destructive gap-1">
+                <AlertTriangle className="h-3 w-3" /> senza telefono
+              </Badge>
+            )}
           </div>
           
           <div className="flex items-center gap-2">
@@ -84,8 +91,10 @@ const SalespersonCard = ({ venditore, onUpdate }: SalespersonCardProps) => {
         </div>
         
         <div className="text-sm text-muted-foreground space-y-1">
-          {venditore.email && <div>Email: {venditore.email}</div>}
-          {venditore.telefono && <div>Telefono: {venditore.telefono}</div>}
+          <div>Email: {venditore.email || <span className="text-muted-foreground/60">non impostata</span>}</div>
+          <div className={venditore.telefono ? "" : "text-destructive"}>
+            Telefono: {venditore.telefono || "mancante — il link WhatsApp non puo aprire la chat"}
+          </div>
           <div>Google Sheets ID: {venditore.sheets_file_id}</div>
           <div>Tab: {venditore.sheets_tab_name}</div>
         </div>
