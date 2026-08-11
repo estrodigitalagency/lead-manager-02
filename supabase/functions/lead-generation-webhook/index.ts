@@ -42,24 +42,39 @@ serve(async (req) => {
       const mercato = (corpo.market || 'IT').toUpperCase()
       const limite = Math.min(Number(corpo.limit) || 500, 2000)
 
-      const { data: inCoda } = await supabase
-        .from('lead_generation')
-        .select('*')
-        .eq('market', mercato)
-        .eq('venditore', 'Round Robin')
-        .order('created_at', { ascending: true })
-        .limit(limite)
-
-      // Solo quelli che la regola indicata riconosce come suoi: gli altri restano in coda.
-      let candidati = inCoda ?? []
+      let reg: any = null
       if (corpo.automazione_id) {
-        const { data: reg } = await supabase
+        const { data } = await supabase
           .from('lead_assignment_automations').select('*').eq('id', corpo.automazione_id).maybeSingle()
-        if (!reg) return new Response(JSON.stringify({ error: 'Automazione non trovata' }), {
+        if (!data) return new Response(JSON.stringify({ error: 'Automazione non trovata' }), {
           status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         })
-        candidati = candidati.filter((l: any) => regolaSiApplica(l, reg))
+        reg = data
       }
+
+      // La coda storica puo contenere migliaia di lead di campagne vecchie: leggerne solo i
+      // primi mille e filtrarli dopo non farebbe mai emergere quelli di questo lancio. Si
+      // scorre a pagine finche non se ne trovano abbastanza che la regola riconosce come suoi.
+      const PAGINA = 1000, SCANSIONE_MAX = 20000
+      const candidati: any[] = []
+      let letti = 0
+      for (let off = 0; off < SCANSIONE_MAX && candidati.length < limite; off += PAGINA) {
+        const { data: blocco } = await supabase
+          .from('lead_generation')
+          .select('*')
+          .eq('market', mercato)
+          .eq('venditore', 'Round Robin')
+          .order('created_at', { ascending: true })
+          .range(off, off + PAGINA - 1)
+        if (!blocco || blocco.length === 0) break
+        letti += blocco.length
+        for (const l of blocco) {
+          if (candidati.length >= limite) break
+          if (!reg || regolaSiApplica(l, reg)) candidati.push(l)
+        }
+        if (blocco.length < PAGINA) break
+      }
+      console.log(`[recupero] coda esaminata: ${letti} lead, ${candidati.length} di questa regola`)
 
       let assegnati = 0
       for (const lead of candidati) {
@@ -81,7 +96,8 @@ serve(async (req) => {
       }
 
       return new Response(JSON.stringify({
-        ok: true, in_coda: candidati.length, assegnati, ancora_in_coda: candidati.length - assegnati,
+        ok: true, in_coda: candidati.length, assegnati,
+        ancora_in_coda: candidati.length - assegnati, coda_esaminata: letti,
       }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
     }
 
