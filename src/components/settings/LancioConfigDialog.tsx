@@ -105,7 +105,7 @@ const LancioConfigDialog = ({ open, onOpenChange, value, onSave, esistenti, mark
     if (!open) return;
     setForm(value);
     setStep(0);
-    contaInCoda(market).then(setInCoda);
+
     setWaNuovo(false);
     setWaOn(!!value.whatsapp_slug || !value.id);
     fetchTemplates().then((t) => setWa(t as any));
@@ -116,6 +116,7 @@ const LancioConfigDialog = ({ open, onOpenChange, value, onSave, esistenti, mark
       setAFonti((autom.condition_value ?? []).join(", "));
       setACondTipo(((autom as any).condition_type === "not_contains" ? "not_contains" : "contains"));
       fetchCodaIds().then((ids) => setACoda(ids.includes(autom.id)));
+      contaInCoda(market, autom.id).then(setInCoda);
       setConta(((autom as any).distribution_state?.count_assigned) ?? {});
       setAPausa(Object.fromEntries(((autom as any).distribution_config ?? [])
         .filter((sl: any) => sl.paused)
@@ -148,7 +149,7 @@ const LancioConfigDialog = ({ open, onOpenChange, value, onSave, esistenti, mark
       setAPrevFirst(false); setATargetSeller(""); setAModo("percentage"); setAQuote({}); setACap({});
       setAWebhook(true);
       setALockOn(false); setALockDays(30); setAEsclusi([]);
-      setACondTipo("contains"); setAEscl(""); setACoda(false); setConta({}); setAPausa({});
+      setACondTipo("contains"); setAEscl(""); setACoda(false); setConta({}); setAPausa({}); setInCoda(0);
     }
   }, [open, value, autom?.id]);   // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -697,7 +698,7 @@ const LancioConfigDialog = ({ open, onOpenChange, value, onSave, esistenti, mark
                   {inCoda > 0 && (
                     <div className="flex items-center gap-2 flex-wrap mt-2.5 pl-9">
                       <span className="text-[11.5px]">
-                        <b>{inCoda}</b> lead fermi in coda
+                        <b>{inCoda}</b> lead di questo lancio fermi in coda
                       </span>
                       <Button size="sm" variant="outline" className="h-6 text-[11px]" disabled={aCoda || recupero}
                         title={aCoda ? "Spegni prima la sospensione, altrimenti tornerebbero subito in coda" : "Rimettili nel giro delle automazioni"}
@@ -709,7 +710,7 @@ const LancioConfigDialog = ({ open, onOpenChange, value, onSave, esistenti, mark
                             if (r?.error) toast.error(r.error);
                             else {
                               toast.success(`${r.assegnati} lead distribuiti${r.ancora_in_coda ? `, ${r.ancora_in_coda} ancora in coda` : ""}`);
-                              setInCoda(await contaInCoda(market));
+                              setInCoda(await contaInCoda(market, autom?.id));
                             }
                           } finally { setRecupero(false); }
                         }}>

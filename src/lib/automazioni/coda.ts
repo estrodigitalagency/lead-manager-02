@@ -36,13 +36,22 @@ export async function setCoda(automationId: string, attiva: boolean): Promise<bo
   return !error;
 }
 
-/** Quanti lead sono fermi nella coda Round Robin per questo market. */
-export async function contaInCoda(market: string): Promise<number> {
-  const { count } = await supabase
-    .from("lead_generation")
-    .select("id", { count: "exact", head: true })
-    .eq("market", market).eq("venditore", "Round Robin");
-  return count ?? 0;
+/**
+ * Quanti lead fermi in coda appartengono a QUESTA regola. Il totale grezzo della coda non
+ * significa niente per un singolo lancio: contiene anni di campagne diverse.
+ */
+export async function contaInCoda(market: string, automazioneId?: string): Promise<number> {
+  if (!automazioneId) return 0;
+  const r = await fetch(`${SUPA_URL}/functions/v1/lead-generation-webhook`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${ANON}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      azione: "recupera_coda", sorgente: "coda", simula: true,
+      market, automazione_id: automazioneId,
+    }),
+  });
+  const j = await r.json();
+  return j.trovati ?? 0;
 }
 
 /**
