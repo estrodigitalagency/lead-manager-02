@@ -155,6 +155,16 @@ const DocumentazioneDialog = () => {
                   altri, che se li dividono <K>mantenendo le proporzioni fra loro</K>. Lasciarlo vuoto significa
                   nessun limite.
                 </T>
+                <H>Fasce di priorità</H>
+                <T>
+                  Ogni venditore sta in una fascia. La <K>1ª riceve tutto</K> finché ha posto: le fasce successive
+                  non vedono un lead. Si passa alla 2ª solo quando la 1ª è esaurita, cioè tetti pieni, tutti in
+                  pausa o nessuno attivo. Serve a dire «i lead vanno ai sales, e ai setter solo quello che avanza».
+                </T>
+                <T>
+                  Le percentuali si sommano a 100 <K>dentro ogni fascia</K>, perché ogni fascia è una distribuzione
+                  a sé. Se lasci tutti in 1ª, si comporta come prima.
+                </T>
                 <H>Pausa</H>
                 <T>
                   Il tasto a sinistra del nome ferma un singolo venditore. La sua percentuale <K>resta salvata</K>:

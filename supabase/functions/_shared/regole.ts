@@ -82,12 +82,22 @@ export function entroLockPeriod(automation: any, dataAssegnazione: string | null
 
 export interface SlotEleggibile { slot: any; seller: any }
 
+/** Fascia di priorità di uno slot: 1 = servita per prima. Assente vale 1. */
+export const fasciaDi = (slot: any): number => {
+  const n = Number(slot?.priorita);
+  return Number.isFinite(n) && n > 0 ? n : 1;
+};
+
 /**
  * Slot che possono ancora ricevere lead: venditore attivo, non in pausa, tetto individuale non
  * raggiunto e, in modalità quota assoluta, quota non esaurita.
  *
  * La pausa (slot.paused) serve a fermare un singolo venditore senza toccarne la percentuale:
  * i suoi lead vanno agli altri e quando riparte ritrova la quota di prima.
+ *
+ * Le fasce servono a dare la precedenza a un gruppo: finché nella prima c'è anche un solo
+ * venditore che può ricevere, le fasce successive non vedono un lead. Si passa alla seconda
+ * solo quando la prima è esaurita — tetti pieni, tutti in pausa o nessuno attivo.
  */
 export function slotEleggibili(
   config: any[], counts: Record<string, number>, attivi: any[], mode: string,
@@ -105,5 +115,8 @@ export function slotEleggibili(
   if (mode === 'count') {
     eligible = eligible.filter((e: any) => (counts[e.slot.venditore_id] || 0) < (e.slot.count_target || 0));
   }
-  return eligible;
+  if (eligible.length === 0) return eligible;
+
+  const primaFascia = Math.min(...eligible.map((e: any) => fasciaDi(e.slot)));
+  return eligible.filter((e: any) => fasciaDi(e.slot) === primaFascia);
 }

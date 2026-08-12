@@ -66,6 +66,7 @@ const LancioConfigDialog = ({ open, onOpenChange, value, onSave, esistenti, mark
   const [aCap, setACap] = useState<Record<string, number>>({});      // nome venditore → tetto massimo lead
   const [conta, setConta] = useState<Record<string, number>>({});    // id venditore → lead già assegnati
   const [aPausa, setAPausa] = useState<Record<string, boolean>>({}); // nome venditore → distribuzione sospesa
+  const [aFascia, setAFascia] = useState<Record<string, number>>({}); // nome venditore → fascia (1 = serve per prima)
   const [inCoda, setInCoda] = useState(0);          // lead fermi in attesa di distribuzione
   const [recupero, setRecupero] = useState(false);
   const [liberi, setLiberi] = useState<AnteprimaLiberi | null>(null);   // proposta dopo il salvataggio
@@ -118,6 +119,9 @@ const LancioConfigDialog = ({ open, onOpenChange, value, onSave, esistenti, mark
       fetchCodaIds().then((ids) => setACoda(ids.includes(autom.id)));
       contaInCoda(market, autom.id).then(setInCoda);
       setConta(((autom as any).distribution_state?.count_assigned) ?? {});
+      setAFascia(Object.fromEntries(((autom as any).distribution_config ?? [])
+        .map((sl: any) => [attivi.find((v) => v.id === sl.venditore_id)?.nome ?? "", Number(sl.priorita) || 1])
+        .filter(([n]: any[]) => n)));
       setAPausa(Object.fromEntries(((autom as any).distribution_config ?? [])
         .filter((sl: any) => sl.paused)
         .map((sl: any) => {
@@ -149,7 +153,7 @@ const LancioConfigDialog = ({ open, onOpenChange, value, onSave, esistenti, mark
       setAPrevFirst(false); setATargetSeller(""); setAModo("percentage"); setAQuote({}); setACap({});
       setAWebhook(true);
       setALockOn(false); setALockDays(30); setAEsclusi([]);
-      setACondTipo("contains"); setAEscl(""); setACoda(false); setConta({}); setAPausa({}); setInCoda(0);
+      setACondTipo("contains"); setAEscl(""); setACoda(false); setConta({}); setAPausa({}); setAFascia({}); setInCoda(0);
     }
   }, [open, value, autom?.id]);   // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -176,9 +180,14 @@ const LancioConfigDialog = ({ open, onOpenChange, value, onSave, esistenti, mark
     });
 
   const quotaSales = sales.length ? sales : attivi.map((a) => a.nome);
+  const fasciaDi = (nome: string) => aFascia[nome] ?? 1;
+  const fasce = Array.from(new Set(quotaSales.map(fasciaDi))).sort((a, b) => a - b);
+  const totaleFascia = (f: number) =>
+    quotaSales.filter((n) => fasciaDi(n) === f).reduce((s, n) => s + (aQuote[n] ?? 0), 0);
   const totQuote = quotaSales.reduce((s, nome) => s + (aQuote[nome] ?? 0), 0);
+  // Con più fasce ogni fascia è una distribuzione a sé: le percentuali si sommano lì dentro.
   const quoteValide = aAzione !== "weighted_distribution"
-    || (aModo === "percentage" ? totQuote === 100 : totQuote > 0);
+    || (aModo === "percentage" ? fasce.every((f) => totaleFascia(f) === 100) : totQuote > 0);
 
   const assegnatiDi = (nome: string) => {
     const v = attivi.find((a) => a.nome === nome);
@@ -205,8 +214,13 @@ const LancioConfigDialog = ({ open, onOpenChange, value, onSave, esistenti, mark
     if (aModo === "percentage") {
       // 100 non è divisibile per ogni numero di venditori: il resto va distribuito un punto
       // per volta, altrimenti finisce tutto sul primo (13 venditori: 16% lui, 7% gli altri).
-      const base = Math.floor(100 / n), resto = 100 - base * n;
-      setAQuote(Object.fromEntries(quotaSales.map((nome, i) => [nome, base + (i < resto ? 1 : 0)])));
+      const q: Record<string, number> = {};
+      for (const f of fasce) {
+        const dentro = quotaSales.filter((x) => fasciaDi(x) === f);
+        const b = Math.floor(100 / dentro.length), r = 100 - b * dentro.length;
+        dentro.forEach((x, i) => { q[x] = b + (i < r ? 1 : 0); });
+      }
+      setAQuote(q);
     } else {
       setAQuote(Object.fromEntries(quotaSales.map((nome) => [nome, aQuote[nome] ?? 50])));
     }
@@ -224,7 +238,7 @@ const LancioConfigDialog = ({ open, onOpenChange, value, onSave, esistenti, mark
       ? quotaSales.map((nome) => {
           const v = attivi.find((a) => a.nome === nome);
           const q = aQuote[nome] ?? 0;
-          return v ? { venditore_id: v.id, weight: aModo === "percentage" ? q : null, count_target: aModo === "count" ? q : null, cap: aCap[nome] ?? null, paused: !!aPausa[nome] } : null;
+          return v ? { venditore_id: v.id, weight: aModo === "percentage" ? q : null, count_target: aModo === "count" ? q : null, cap: aCap[nome] ?? null, paused: !!aPausa[nome], priorita: aFascia[nome] ?? 1 } : null;
         }).filter(Boolean)
       : [];
     const payload: any = {
@@ -599,7 +613,10 @@ const LancioConfigDialog = ({ open, onOpenChange, value, onSave, esistenti, mark
                     </div>
                     <div className="flex gap-1.5 items-center">
                       <span className={`text-[11.5px] ${quoteValide ? "text-emerald-400" : "text-amber-400"}`}>
-                        {aModo === "percentage" ? `totale ${totQuote}%` : `totale ${totQuote} lead`}
+                        {aModo !== "percentage" ? `totale ${totQuote} lead`
+                          : fasce.length > 1
+                            ? fasce.map((f) => `${f}ª ${totaleFascia(f)}%`).join(" · ")
+                            : `totale ${totQuote}%`}
                       </span>
                       <Button size="sm" variant="outline" className="h-6 text-[11px]" onClick={dividiEqua}>Dividi equamente</Button>
                       {autom?.id && totAssegnati > 0 && (
@@ -612,6 +629,7 @@ const LancioConfigDialog = ({ open, onOpenChange, value, onSave, esistenti, mark
                   <div className="space-y-1 max-h-[160px] overflow-y-auto">
                     <div className="flex items-center gap-2 pb-1 text-[10.5px] uppercase tracking-wide text-muted-foreground">
                       <span className="flex-1">Venditore</span>
+                      <span className="w-[58px] text-center">Fascia</span>
                       <span className="w-[80px] text-right">{aModo === "percentage" ? "Quota %" : "Quota lead"}</span>
                       <span className="w-[86px] text-right">Tetto max</span>
                     </div>
@@ -632,6 +650,15 @@ const LancioConfigDialog = ({ open, onOpenChange, value, onSave, esistenti, mark
                             {assegnatiDi(nome)}
                           </button>
                         )}
+                        <Select value={String(fasciaDi(nome))}
+                          onValueChange={(v) => setAFascia((p) => ({ ...p, [nome]: Number(v) }))}>
+                          <SelectTrigger className="h-7 w-[58px] text-[11.5px] px-2 shrink-0"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="1">1ª</SelectItem>
+                            <SelectItem value="2">2ª</SelectItem>
+                            <SelectItem value="3">3ª</SelectItem>
+                          </SelectContent>
+                        </Select>
                         <Input type="number" className="h-7 w-[80px] text-[12px]" value={aQuote[nome] ?? ""}
                           onChange={(e) => setAQuote((q) => ({ ...q, [nome]: parseInt(e.target.value, 10) || 0 }))} />
                         <Input type="number" className="h-7 w-[86px] text-[12px]" placeholder="nessuno" value={aCap[nome] ?? ""}
@@ -647,6 +674,7 @@ const LancioConfigDialog = ({ open, onOpenChange, value, onSave, esistenti, mark
                       Tetto max: oltre quel numero di lead il venditore viene saltato e i lead vanno agli altri. Lascia vuoto per nessun limite.
                       {autom?.id && " La colonna in mezzo sono i lead già assegnati: cliccala per azzerare quel venditore."}
                       {" "}Il tasto a sinistra del nome sospende un singolo venditore: i suoi lead vanno agli altri e la sua percentuale resta lì per quando riparte.
+                      {" "}Fascia: la 1ª riceve tutto finché ha posto; le altre entrano in gioco solo quando la fascia sopra è piena, in pausa o senza venditori attivi. Le percentuali si sommano a 100 dentro ogni fascia.
                     </p>
                     {quotaSales.length === 0 && <p className="text-[12px] text-muted-foreground">Seleziona prima i venditori del lancio.</p>}
                   </div>
