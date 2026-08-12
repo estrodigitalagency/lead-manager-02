@@ -1,6 +1,9 @@
 import { useEffect, useState } from "react";
 import { useSearchParams, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+
+const SUPA_URL = "https://btcwmuyemmkiteqlopce.supabase.co";
+const ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ0Y3dtdXllbW1raXRlcWxvcGNlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY4NzIxMTIsImV4cCI6MjA2MjQ0ODExMn0.NYTXODd9HEglk4b1RKOt1XyrGMiOOs4ltfFyeZknfBE";
 import { fetchTemplateBySlug, incrementTemplateClick } from "@/lib/whatsapp/templates";
 import { Loader2, AlertCircle, MessageCircle } from "lucide-react";
 
@@ -48,15 +51,31 @@ const WhatsAppRedirect = () => {
   const [venditore, setVenditore] = useState<{ nome: string; cognome: string } | null>(null);
 
   useEffect(() => {
+    /**
+     * Il click passa da un edge con la service role: scrivendo qui con la anon key la RLS
+     * rifiutava la riga e il log restava vuoto senza che si vedesse.
+     *
+     * keepalive tiene viva la richiesta anche mentre il browser sta già lasciando la pagina
+     * per andare su WhatsApp, e il timeout evita che un edge lento trattenga il lead.
+     */
     const logClick = async (payload: Record<string, any>) => {
+      const corpo = JSON.stringify({
+        ...payload,
+        referrer: document.referrer || null,
+        user_agent: navigator.userAgent || null,
+      });
       try {
-        await supabase.from("whatsapp_click_logs").insert({
-          ...payload,
-          referrer: document.referrer || null,
-          user_agent: navigator.userAgent || null,
+        const stop = new AbortController();
+        const t = setTimeout(() => stop.abort(), 2500);
+        await fetch(`${SUPA_URL}/functions/v1/wa-click`, {
+          method: "POST", keepalive: true, signal: stop.signal,
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${ANON}` },
+          body: corpo,
         });
-      } catch (e) {
-        console.warn("Click log fallito:", e);
+        clearTimeout(t);
+      } catch {
+        // Ultima spiaggia: sopravvive alla navigazione anche senza attesa.
+        try { navigator.sendBeacon?.(`${SUPA_URL}/functions/v1/wa-click`, new Blob([corpo], { type: "application/json" })); } catch { /* niente da fare */ }
       }
     };
 

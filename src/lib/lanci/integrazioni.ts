@@ -1,5 +1,8 @@
 import { supabase } from "@/integrations/supabase/client";
 
+const SUPA_URL = "https://btcwmuyemmkiteqlopce.supabase.co";
+const ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ0Y3dtdXllbW1raXRlcWxvcGNlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY4NzIxMTIsImV4cCI6MjA2MjQ0ODExMn0.NYTXODd9HEglk4b1RKOt1XyrGMiOOs4ltfFyeZknfBE";
+
 /**
  * Collegamenti del lancio: automazione di assegnazione e link WhatsApp.
  * L'automazione vive in `lead_assignment_automations` (stessa tabella dell'editor Automazioni),
@@ -183,36 +186,30 @@ export interface TemplateWa {
 
 export interface ClickStat { venditore: string; click: number; ok: number; fallback: number; errore: number }
 
-/** Click del template: totali, per sales e per giorno (da whatsapp_click_logs). */
+/**
+ * Click del template: totali, per sales e per giorno.
+ *
+ * La lettura passa da un edge con la service role perché la RLS non lascia leggere
+ * whatsapp_click_logs con la anon key: interrogandola da qui tornavano zero righe senza errore,
+ * e le statistiche di contatto risultavano vuote anche quando i click c'erano.
+ */
 export async function fetchClickStats(slug: string): Promise<{
   totale: number; ok: number; errori: number;
   perSales: ClickStat[]; perGiorno: { day: string; n: number }[];
   ultimi: { clicked_at: string; lead_nome: string | null; lead_email: string | null; venditore_nome: string | null; status: string | null; error_reason: string | null }[];
 }> {
-  const { data } = await supabase
-    .from("whatsapp_click_logs")
-    .select("clicked_at, lead_nome, lead_email, venditore_nome, status, error_reason")
-    .eq("template_slug", slug).order("clicked_at", { ascending: false }).limit(5000);
-  const rows = (data ?? []) as any[];
-  const bySales: Record<string, ClickStat> = {};
-  const byDay: Record<string, number> = {};
-  let ok = 0, errori = 0;
-  for (const r of rows) {
-    const v = r.venditore_nome || "—";
-    if (!bySales[v]) bySales[v] = { venditore: v, click: 0, ok: 0, fallback: 0, errore: 0 };
-    bySales[v].click++;
-    if (r.status === "ok") { ok++; bySales[v].ok++; }
-    else if (r.status === "fallback") bySales[v].fallback++;
-    else { errori++; bySales[v].errore++; }
-    const d = String(r.clicked_at ?? "").slice(0, 10);
-    if (d) byDay[d] = (byDay[d] || 0) + 1;
+  const vuoto = { totale: 0, ok: 0, errori: 0, perSales: [], perGiorno: [], ultimi: [] };
+  try {
+    const r = await fetch(`${SUPA_URL}/functions/v1/wa-click`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${ANON}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ azione: "stats", slug }),
+    });
+    const j = await r.json();
+    return j?.totale === undefined ? vuoto : j;
+  } catch {
+    return vuoto;
   }
-  return {
-    totale: rows.length, ok, errori,
-    perSales: Object.values(bySales).sort((a, b) => b.click - a.click),
-    perGiorno: Object.keys(byDay).sort().map((day) => ({ day, n: byDay[day] })),
-    ultimi: rows.slice(0, 30),
-  };
 }
 
 export async function fetchTemplate(slug: string): Promise<TemplateWa | null> {
