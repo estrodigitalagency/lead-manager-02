@@ -82,11 +82,52 @@ export function entroLockPeriod(automation: any, dataAssegnazione: string | null
 
 export interface SlotEleggibile { slot: any; seller: any }
 
-/** Fascia di priorità di uno slot: 1 = servita per prima. Assente vale 1. */
-export const fasciaDi = (slot: any): number => {
-  const n = Number(slot?.priorita);
-  return Number.isFinite(n) && n > 0 ? n : 1;
+/** Gruppo di uno slot (es. "Closer", "Setter"). Vuoto = fuori da ogni gruppo. */
+export const gruppoDi = (slot: any): string => String(slot?.gruppo ?? "").trim();
+/** Quota del gruppo sul totale dei lead. Zero/assente = il gruppo non ha una quota propria. */
+export const pesoGruppo = (slot: any): number => {
+  const n = Number(slot?.gruppo_weight);
+  return Number.isFinite(n) && n > 0 ? n : 0;
 };
+
+/**
+ * Sceglie uno slot fra quelli disponibili, a due livelli.
+ *
+ * Se i venditori sono divisi in gruppi con una quota (closer 60, setter 40), prima si sorteggia
+ * il gruppo con quelle quote e poi la persona dentro il gruppo con la sua percentuale: su dieci
+ * lead sei vanno ai closer e quattro ai setter, indipendentemente da quante persone ci sono
+ * dentro. Se un gruppo non ha nessuno disponibile la sua quota si ridistribuisce sugli altri.
+ *
+ * Senza gruppi si torna al sorteggio pesato normale sulle percentuali individuali.
+ */
+export function scegliSlot(eligible: SlotEleggibile[], sorteggio: number): SlotEleggibile | null {
+  if (eligible.length === 0) return null;
+
+  const conGruppo = eligible.filter((e) => gruppoDi(e.slot) && pesoGruppo(e.slot) > 0);
+  if (conGruppo.length > 0 && conGruppo.length === eligible.length) {
+    const quote = new Map<string, number>();
+    for (const e of conGruppo) quote.set(gruppoDi(e.slot), pesoGruppo(e.slot));
+    const totale = [...quote.values()].reduce((s, n) => s + n, 0);
+    if (totale > 0) {
+      let r = sorteggio * totale;
+      let scelto = [...quote.keys()][0];
+      for (const [nome, q] of quote) { r -= q; if (r <= 0) { scelto = nome; break; } }
+      const dentro = conGruppo.filter((e) => gruppoDi(e.slot) === scelto);
+      return pesato(dentro, (sorteggio * 1000) % 1);
+    }
+  }
+  return pesato(eligible, sorteggio);
+}
+
+/** Sorteggio pesato sulle percentuali individuali. `sorteggio` è un numero in [0,1). */
+function pesato(slots: SlotEleggibile[], sorteggio: number): SlotEleggibile | null {
+  if (slots.length === 0) return null;
+  const totale = slots.reduce((s, e) => s + (e.slot.weight || 0), 0);
+  if (totale <= 0) return slots[Math.floor(sorteggio * slots.length) % slots.length];
+  let r = sorteggio * totale;
+  for (const e of slots) { r -= (e.slot.weight || 0); if (r <= 0) return e; }
+  return slots[slots.length - 1];
+}
 
 /**
  * Slot che possono ancora ricevere lead: venditore attivo, non in pausa, tetto individuale non
@@ -94,10 +135,6 @@ export const fasciaDi = (slot: any): number => {
  *
  * La pausa (slot.paused) serve a fermare un singolo venditore senza toccarne la percentuale:
  * i suoi lead vanno agli altri e quando riparte ritrova la quota di prima.
- *
- * Le fasce servono a dare la precedenza a un gruppo: finché nella prima c'è anche un solo
- * venditore che può ricevere, le fasce successive non vedono un lead. Si passa alla seconda
- * solo quando la prima è esaurita — tetti pieni, tutti in pausa o nessuno attivo.
  */
 export function slotEleggibili(
   config: any[], counts: Record<string, number>, attivi: any[], mode: string,
@@ -115,8 +152,5 @@ export function slotEleggibili(
   if (mode === 'count') {
     eligible = eligible.filter((e: any) => (counts[e.slot.venditore_id] || 0) < (e.slot.count_target || 0));
   }
-  if (eligible.length === 0) return eligible;
-
-  const primaFascia = Math.min(...eligible.map((e: any) => fasciaDi(e.slot)));
-  return eligible.filter((e: any) => fasciaDi(e.slot) === primaFascia);
+  return eligible;
 }

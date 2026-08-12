@@ -66,7 +66,8 @@ const LancioConfigDialog = ({ open, onOpenChange, value, onSave, esistenti, mark
   const [aCap, setACap] = useState<Record<string, number>>({});      // nome venditore → tetto massimo lead
   const [conta, setConta] = useState<Record<string, number>>({});    // id venditore → lead già assegnati
   const [aPausa, setAPausa] = useState<Record<string, boolean>>({}); // nome venditore → distribuzione sospesa
-  const [aFascia, setAFascia] = useState<Record<string, number>>({}); // nome venditore → fascia (1 = serve per prima)
+  const [aGruppo, setAGruppo] = useState<Record<string, string>>({});   // nome venditore → gruppo (es. Closer)
+  const [aQuotaGruppo, setAQuotaGruppo] = useState<Record<string, number>>({}); // gruppo → quota sul totale
   const [inCoda, setInCoda] = useState(0);          // lead fermi in attesa di distribuzione
   const [recupero, setRecupero] = useState(false);
   const [liberi, setLiberi] = useState<AnteprimaLiberi | null>(null);   // proposta dopo il salvataggio
@@ -119,9 +120,18 @@ const LancioConfigDialog = ({ open, onOpenChange, value, onSave, esistenti, mark
       fetchCodaIds().then((ids) => setACoda(ids.includes(autom.id)));
       contaInCoda(market, autom.id).then(setInCoda);
       setConta(((autom as any).distribution_state?.count_assigned) ?? {});
-      setAFascia(Object.fromEntries(((autom as any).distribution_config ?? [])
-        .map((sl: any) => [attivi.find((v) => v.id === sl.venditore_id)?.nome ?? "", Number(sl.priorita) || 1])
-        .filter(([n]: any[]) => n)));
+      {
+        const cfgSlot = ((autom as any).distribution_config ?? []) as any[];
+        setAGruppo(Object.fromEntries(cfgSlot
+          .map((sl) => [attivi.find((v) => v.id === sl.venditore_id)?.nome ?? "", String(sl.gruppo ?? "")])
+          .filter(([n]: any[]) => n)));
+        const qg: Record<string, number> = {};
+        for (const sl of cfgSlot) {
+          const g = String(sl.gruppo ?? "").trim();
+          if (g && Number(sl.gruppo_weight) > 0) qg[g] = Number(sl.gruppo_weight);
+        }
+        setAQuotaGruppo(qg);
+      }
       setAPausa(Object.fromEntries(((autom as any).distribution_config ?? [])
         .filter((sl: any) => sl.paused)
         .map((sl: any) => {
@@ -153,7 +163,7 @@ const LancioConfigDialog = ({ open, onOpenChange, value, onSave, esistenti, mark
       setAPrevFirst(false); setATargetSeller(""); setAModo("percentage"); setAQuote({}); setACap({});
       setAWebhook(true);
       setALockOn(false); setALockDays(30); setAEsclusi([]);
-      setACondTipo("contains"); setAEscl(""); setACoda(false); setConta({}); setAPausa({}); setAFascia({}); setInCoda(0);
+      setACondTipo("contains"); setAEscl(""); setACoda(false); setConta({}); setAPausa({}); setAGruppo({}); setAQuotaGruppo({}); setInCoda(0);
     }
   }, [open, value, autom?.id]);   // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -180,14 +190,20 @@ const LancioConfigDialog = ({ open, onOpenChange, value, onSave, esistenti, mark
     });
 
   const quotaSales = sales.length ? sales : attivi.map((a) => a.nome);
-  const fasciaDi = (nome: string) => aFascia[nome] ?? 1;
-  const fasce = Array.from(new Set(quotaSales.map(fasciaDi))).sort((a, b) => a - b);
-  const totaleFascia = (f: number) =>
-    quotaSales.filter((n) => fasciaDi(n) === f).reduce((s, n) => s + (aQuote[n] ?? 0), 0);
+  const gruppoDi = (nome: string) => (aGruppo[nome] ?? "").trim();
+  const gruppi = Array.from(new Set(quotaSales.map(gruppoDi).filter(Boolean))).sort();
+  const conGruppi = gruppi.length > 0 && quotaSales.every((n) => gruppoDi(n));
+  const totaleGruppo = (g: string) =>
+    quotaSales.filter((n) => gruppoDi(n) === g).reduce((s, n) => s + (aQuote[n] ?? 0), 0);
+  const totQuoteGruppi = gruppi.reduce((s, g) => s + (aQuotaGruppo[g] ?? 0), 0);
   const totQuote = quotaSales.reduce((s, nome) => s + (aQuote[nome] ?? 0), 0);
-  // Con più fasce ogni fascia è una distribuzione a sé: le percentuali si sommano lì dentro.
+  // Con i gruppi ognuno è una distribuzione a sé: le percentuali individuali si sommano a 100
+  // dentro il gruppo, e le quote dei gruppi si sommano a 100 fra loro.
   const quoteValide = aAzione !== "weighted_distribution"
-    || (aModo === "percentage" ? fasce.every((f) => totaleFascia(f) === 100) : totQuote > 0);
+    || (aModo !== "percentage" ? totQuote > 0
+        : conGruppi
+          ? gruppi.every((g) => totaleGruppo(g) === 100) && totQuoteGruppi === 100
+          : totQuote === 100);
 
   const assegnatiDi = (nome: string) => {
     const v = attivi.find((a) => a.nome === nome);
@@ -215,8 +231,8 @@ const LancioConfigDialog = ({ open, onOpenChange, value, onSave, esistenti, mark
       // 100 non è divisibile per ogni numero di venditori: il resto va distribuito un punto
       // per volta, altrimenti finisce tutto sul primo (13 venditori: 16% lui, 7% gli altri).
       const q: Record<string, number> = {};
-      for (const f of fasce) {
-        const dentro = quotaSales.filter((x) => fasciaDi(x) === f);
+      const insiemi = conGruppi ? gruppi.map((g) => quotaSales.filter((x) => gruppoDi(x) === g)) : [quotaSales];
+      for (const dentro of insiemi) {
         const b = Math.floor(100 / dentro.length), r = 100 - b * dentro.length;
         dentro.forEach((x, i) => { q[x] = b + (i < r ? 1 : 0); });
       }
@@ -238,7 +254,7 @@ const LancioConfigDialog = ({ open, onOpenChange, value, onSave, esistenti, mark
       ? quotaSales.map((nome) => {
           const v = attivi.find((a) => a.nome === nome);
           const q = aQuote[nome] ?? 0;
-          return v ? { venditore_id: v.id, weight: aModo === "percentage" ? q : null, count_target: aModo === "count" ? q : null, cap: aCap[nome] ?? null, paused: !!aPausa[nome], priorita: aFascia[nome] ?? 1 } : null;
+          return v ? { venditore_id: v.id, weight: aModo === "percentage" ? q : null, count_target: aModo === "count" ? q : null, cap: aCap[nome] ?? null, paused: !!aPausa[nome], gruppo: aGruppo[nome] ?? "", gruppo_weight: aQuotaGruppo[aGruppo[nome] ?? ""] ?? 0 } : null;
         }).filter(Boolean)
       : [];
     const payload: any = {
@@ -614,8 +630,8 @@ const LancioConfigDialog = ({ open, onOpenChange, value, onSave, esistenti, mark
                     <div className="flex gap-1.5 items-center">
                       <span className={`text-[11.5px] ${quoteValide ? "text-emerald-400" : "text-amber-400"}`}>
                         {aModo !== "percentage" ? `totale ${totQuote} lead`
-                          : fasce.length > 1
-                            ? fasce.map((f) => `${f}ª ${totaleFascia(f)}%`).join(" · ")
+                          : conGruppi
+                            ? `gruppi ${totQuoteGruppi}% · ${gruppi.map((g) => `${g} ${totaleGruppo(g)}%`).join(" · ")}`
                             : `totale ${totQuote}%`}
                       </span>
                       <Button size="sm" variant="outline" className="h-6 text-[11px]" onClick={dividiEqua}>Dividi equamente</Button>
@@ -626,10 +642,38 @@ const LancioConfigDialog = ({ open, onOpenChange, value, onSave, esistenti, mark
                       )}
                     </div>
                   </div>
+                  {gruppi.length > 0 && (
+                    <div className="rounded-md border border-border bg-secondary/20 p-2.5 space-y-1.5">
+                      <div className="label-eyebrow">Quota di ogni gruppo sul totale dei lead</div>
+                      <div className="flex flex-wrap gap-x-4 gap-y-1.5">
+                        {gruppi.map((g) => (
+                          <div key={g} className="flex items-center gap-1.5">
+                            <span className="text-[12px]">{g}</span>
+                            <Input type="number" className="h-7 w-[64px] text-[12px]"
+                              value={aQuotaGruppo[g] ?? ""}
+                              onChange={(e) => setAQuotaGruppo((p) => ({ ...p, [g]: parseInt(e.target.value, 10) || 0 }))} />
+                            <span className="text-[11.5px] text-muted-foreground">%</span>
+                          </div>
+                        ))}
+                        <Button size="sm" variant="outline" className="h-7 text-[11px]"
+                          onClick={() => {
+                            const n = gruppi.length;
+                            const b = Math.floor(100 / n), r = 100 - b * n;
+                            setAQuotaGruppo(Object.fromEntries(gruppi.map((g, i) => [g, b + (i < r ? 1 : 0)])));
+                          }}>Dividi fra i gruppi</Button>
+                      </div>
+                      <p className="text-[11px] text-muted-foreground">
+                        Su 10 lead, {gruppi.map((g) => `${Math.round((aQuotaGruppo[g] ?? 0) / 10)} a ${g}`).join(" e ")}.
+                        Dentro il gruppo si dividono secondo le percentuali della tabella qui sotto.
+                        {!conGruppi && <span className="text-amber-400"> Alcuni venditori non hanno un gruppo: finché è così i gruppi vengono ignorati.</span>}
+                      </p>
+                    </div>
+                  )}
+
                   <div className="space-y-1 max-h-[160px] overflow-y-auto">
                     <div className="flex items-center gap-2 pb-1 text-[10.5px] uppercase tracking-wide text-muted-foreground">
                       <span className="flex-1">Venditore</span>
-                      <span className="w-[58px] text-center">Fascia</span>
+                      <span className="w-[104px] text-center">Gruppo</span>
                       <span className="w-[80px] text-right">{aModo === "percentage" ? "Quota %" : "Quota lead"}</span>
                       <span className="w-[86px] text-right">Tetto max</span>
                     </div>
@@ -650,13 +694,20 @@ const LancioConfigDialog = ({ open, onOpenChange, value, onSave, esistenti, mark
                             {assegnatiDi(nome)}
                           </button>
                         )}
-                        <Select value={String(fasciaDi(nome))}
-                          onValueChange={(v) => setAFascia((p) => ({ ...p, [nome]: Number(v) }))}>
-                          <SelectTrigger className="h-7 w-[58px] text-[11.5px] px-2 shrink-0"><SelectValue /></SelectTrigger>
+                        <Select value={gruppoDi(nome) || "__no__"}
+                          onValueChange={(v) => {
+                            if (v === "__new__") {
+                              const g = window.prompt("Nome del gruppo (es. Closer, Setter)")?.trim();
+                              if (g) { setAGruppo((p) => ({ ...p, [nome]: g })); setAQuotaGruppo((p) => ({ ...p, [g]: p[g] ?? 0 })); }
+                              return;
+                            }
+                            setAGruppo((p) => ({ ...p, [nome]: v === "__no__" ? "" : v }));
+                          }}>
+                          <SelectTrigger className="h-7 w-[104px] text-[11.5px] px-2 shrink-0"><SelectValue /></SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="1">1ª</SelectItem>
-                            <SelectItem value="2">2ª</SelectItem>
-                            <SelectItem value="3">3ª</SelectItem>
+                            <SelectItem value="__no__">nessuno</SelectItem>
+                            {gruppi.map((g) => <SelectItem key={g} value={g}>{g}</SelectItem>)}
+                            <SelectItem value="__new__">+ nuovo gruppo…</SelectItem>
                           </SelectContent>
                         </Select>
                         <Input type="number" className="h-7 w-[80px] text-[12px]" value={aQuote[nome] ?? ""}
@@ -674,7 +725,7 @@ const LancioConfigDialog = ({ open, onOpenChange, value, onSave, esistenti, mark
                       Tetto max: oltre quel numero di lead il venditore viene saltato e i lead vanno agli altri. Lascia vuoto per nessun limite.
                       {autom?.id && " La colonna in mezzo sono i lead già assegnati: cliccala per azzerare quel venditore."}
                       {" "}Il tasto a sinistra del nome sospende un singolo venditore: i suoi lead vanno agli altri e la sua percentuale resta lì per quando riparte.
-                      {" "}Fascia: la 1ª riceve tutto finché ha posto; le altre entrano in gioco solo quando la fascia sopra è piena, in pausa o senza venditori attivi. Le percentuali si sommano a 100 dentro ogni fascia.
+                      {" "}Gruppo: serve a dare a closer e setter una quota diversa dei lead. La quota del gruppo decide quanti lead gli arrivano, la percentuale nella tabella come se li dividono fra loro.
                     </p>
                     {quotaSales.length === 0 && <p className="text-[12px] text-muted-foreground">Seleziona prima i venditori del lancio.</p>}
                   </div>

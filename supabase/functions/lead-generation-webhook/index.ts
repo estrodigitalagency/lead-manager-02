@@ -3,6 +3,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import {
   calculateDaysSince, checkCondition, regolaSiApplica, entroLockPeriod, slotEleggibili,
+  scegliSlot, gruppoDi, pesoGruppo,
 } from '../_shared/regole.ts'
 
 const corsHeaders = {
@@ -100,11 +101,28 @@ serve(async (req) => {
             const scelto = (mode === 'count' || pesi <= 0)
               ? el.reduce((min: any, e: any) =>
                   (dati[e.slot.venditore_id] || 0) < (dati[min.slot.venditore_id] || 0) ? e : min)
-              : el.reduce((best: any, e: any) => {
-                  const scarto = (x: any) =>
-                    ((x.slot.weight || 0) / pesi) * (assegnatiOra + 1) - (dati[x.slot.venditore_id] || 0)
-                  return scarto(e) > scarto(best) ? e : best
-                })
+              : (() => {
+                  // Peso effettivo = quota del gruppo x percentuale dentro il gruppo, così
+                  // l'anteprima riflette la stessa ripartizione dell'assegnazione vera.
+                  const gruppiVivi = new Map<string, number>()
+                  for (const e of el) {
+                    const g = gruppoDi(e.slot)
+                    if (g && pesoGruppo(e.slot) > 0) gruppiVivi.set(g, pesoGruppo(e.slot))
+                  }
+                  const totGruppi = [...gruppiVivi.values()].reduce((a, b) => a + b, 0)
+                  const usaGruppi = gruppiVivi.size > 0 && totGruppi > 0 &&
+                    el.every((e: any) => gruppoDi(e.slot) && pesoGruppo(e.slot) > 0)
+                  const effettivo = (x: any) => {
+                    if (!usaGruppi) return (x.slot.weight || 0) / pesi
+                    const g = gruppoDi(x.slot)
+                    const dentro = el.filter((y: any) => gruppoDi(y.slot) === g)
+                    const somma = dentro.reduce((s2: number, y: any) => s2 + (y.slot.weight || 0), 0)
+                    const quotaInterna = somma > 0 ? (x.slot.weight || 0) / somma : 1 / dentro.length
+                    return ((gruppiVivi.get(g) || 0) / totGruppi) * quotaInterna
+                  }
+                  const scarto = (x: any) => effettivo(x) * (assegnatiOra + 1) - (dati[x.slot.venditore_id] || 0)
+                  return el.reduce((best: any, e: any) => (scarto(e) > scarto(best) ? e : best))
+                })()
             const nome = `${scelto.seller.nome} ${scelto.seller.cognome || ''}`.trim()
             ripartizione[nome] = (ripartizione[nome] || 0) + 1
             dati[scelto.slot.venditore_id] = (dati[scelto.slot.venditore_id] || 0) + 1
@@ -1009,30 +1027,20 @@ async function pickSellerFromDistribution(automation: any, supabase: any): Promi
       return pick.seller;
     }
 
-    // Percentage: weighted random tra eligible (cap-filtered)
+    // Percentuale: sorteggio a due livelli se ci sono gruppi (closer/setter), altrimenti
+    // sorteggio pesato normale. La logica sta nel modulo condiviso con l'anteprima e la prova.
     if (eligible.length === 0) {
       console.log('[distribution] No eligible sellers left (all caps reached)');
       return null;
     }
-    const totalWeight = eligible.reduce((sum: number, e: any) => sum + (e.slot.weight || 0), 0);
-    if (totalWeight <= 0) {
+    const scelto = scegliSlot(eligible, Math.random());
+    if (!scelto) {
       console.log('[distribution] Total weight 0, cannot pick');
       return null;
     }
-    let r = Math.random() * totalWeight;
-    for (const e of eligible) {
-      r -= (e.slot.weight || 0);
-      if (r <= 0) {
-        await incrementDistributionState(automation.id, e.slot.venditore_id, counts, total, supabase);
-        console.log(`[distribution] mode=percentage pick=${e.seller.nome} ${e.seller.cognome} weight=${e.slot.weight}%`);
-        return e.seller;
-      }
-    }
-    // Fallback
-    const last = eligible[eligible.length - 1];
-    await incrementDistributionState(automation.id, last.slot.venditore_id, counts, total, supabase);
-    console.log(`[distribution] mode=percentage fallback pick=${last.seller.nome} ${last.seller.cognome}`);
-    return last.seller;
+    await incrementDistributionState(automation.id, scelto.slot.venditore_id, counts, total, supabase);
+    console.log(`[distribution] pick=${scelto.seller.nome} ${scelto.seller.cognome} gruppo=${gruppoDi(scelto.slot) || '-'} weight=${scelto.slot.weight}%`);
+    return scelto.seller;
   } catch (error) {
     console.error('[distribution] Error in pickSellerFromDistribution:', error);
     return null;

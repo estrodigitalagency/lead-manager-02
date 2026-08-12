@@ -155,16 +155,27 @@ const DocumentazioneDialog = () => {
                   altri, che se li dividono <K>mantenendo le proporzioni fra loro</K>. Lasciarlo vuoto significa
                   nessun limite.
                 </T>
-                <H>Fasce di priorità</H>
+                <H>Gruppi: dare più lead ai closer che ai setter</H>
                 <T>
-                  Ogni venditore sta in una fascia. La <K>1ª riceve tutto</K> finché ha posto: le fasce successive
-                  non vedono un lead. Si passa alla 2ª solo quando la 1ª è esaurita, cioè tetti pieni, tutti in
-                  pausa o nessuno attivo. Serve a dire «i lead vanno ai sales, e ai setter solo quello che avanza».
+                  Ogni venditore può stare in un gruppo, e ogni gruppo ha una <K>quota sul totale dei lead</K>.
+                  Closer 60 e setter 40 significa che <K>ogni dieci lead sei vanno ai closer e quattro ai setter</K>,
+                  indipendentemente da quante persone ci sono nei due gruppi.
                 </T>
                 <T>
-                  Le percentuali si sommano a 100 <K>dentro ogni fascia</K>, perché ogni fascia è una distribuzione
-                  a sé. Se lasci tutti in 1ª, si comporta come prima.
+                  La scelta avviene a due livelli: prima si sorteggia il gruppo con la sua quota, poi la persona
+                  dentro il gruppo con la percentuale della tabella. Quindi le percentuali individuali si sommano a
+                  100 <K>dentro il gruppo</K>, e le quote dei gruppi si sommano a 100 fra loro.
                 </T>
+                <T>
+                  Se un gruppo non ha nessuno disponibile — tetti pieni o tutti in pausa — la sua quota si
+                  ridistribuisce sugli altri invece di bloccare i lead. Senza gruppi tutto funziona come prima, con
+                  le sole percentuali individuali.
+                </T>
+                <Nota>
+                  Le percentuali si vedono sui numeri grandi. Su venti o trenta lead lo scarto dal 60/40 è normale,
+                  esattamente come lanciando una moneta poche volte: il meccanismo è stato verificato su centomila
+                  estrazioni e dà 60,0% e 40,0%.
+                </Nota>
                 <H>Pausa</H>
                 <T>
                   Il tasto a sinistra del nome ferma un singolo venditore. La sua percentuale <K>resta salvata</K>:
