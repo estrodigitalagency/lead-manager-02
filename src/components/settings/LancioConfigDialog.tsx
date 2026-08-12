@@ -247,7 +247,7 @@ const LancioConfigDialog = ({ open, onOpenChange, value, onSave, esistenti, mark
     if (cond.length === 0) { toast.error("Indica la fonte che attiva l'assegnazione"); return; }
     if (aAzione === "assign_to_seller" && !aTargetSeller) { toast.error("Scegli il venditore a cui assegnare"); return; }
     if (!quoteValide) {
-      toast.error(aModo === "percentage" ? `La somma delle percentuali deve essere 100 (ora ${totQuote})` : "Imposta le quote");
+      toast.error(daSistemare(3) ?? "Quote non valide");
       return;
     }
     const dist = aAzione === "weighted_distribution"
@@ -354,9 +354,13 @@ const LancioConfigDialog = ({ open, onOpenChange, value, onSave, esistenti, mark
     if (i === 0 && !form.nome.trim()) return "Manca il nome del lancio";
     if (i === 2 && !form.lead_tab.trim()) return "Manca il tab dei lead";
     if (i === 3 && autoOn && aFonti.trim() && !quoteValide) {
-      return aModo === "percentage"
-        ? `Le percentuali sommano a ${totQuote} invece di 100`
-        : "Mancano le quote dei venditori";
+      if (aModo !== "percentage") return "Mancano le quote dei venditori";
+      if (conGruppi) {
+        if (totQuoteGruppi !== 100) return `Le quote dei gruppi sommano a ${totQuoteGruppi}% invece di 100`;
+        const rotto = gruppi.find((g) => totaleGruppo(g) !== 100);
+        return `Nel gruppo ${rotto} le percentuali sommano a ${totaleGruppo(rotto!)}% invece di 100`;
+      }
+      return `Le percentuali sommano a ${totQuote}% invece di 100`;
     }
     return null;
   };
@@ -664,7 +668,9 @@ const LancioConfigDialog = ({ open, onOpenChange, value, onSave, esistenti, mark
                       </div>
                       <p className="text-[11px] text-muted-foreground">
                         Su 10 lead, {gruppi.map((g) => `${Math.round((aQuotaGruppo[g] ?? 0) / 10)} a ${g}`).join(" e ")}.
-                        Dentro il gruppo si dividono secondo le percentuali della tabella qui sotto.
+                        {aModo === "percentage"
+                          ? " Dentro il gruppo si dividono secondo le percentuali della tabella qui sotto."
+                          : " Dentro il gruppo si alternano finché ognuno non ha raggiunto la sua quota: le quote decidono i totali, questa ripartizione il ritmo."}
                         {!conGruppi && <span className="text-amber-400"> Alcuni venditori non hanno un gruppo: finché è così i gruppi vengono ignorati.</span>}
                       </p>
                     </div>
@@ -675,7 +681,7 @@ const LancioConfigDialog = ({ open, onOpenChange, value, onSave, esistenti, mark
                       <span className="flex-1">Venditore</span>
                       <span className="w-[104px] text-center">Gruppo</span>
                       <span className="w-[80px] text-right">{aModo === "percentage" ? "Quota %" : "Quota lead"}</span>
-                      <span className="w-[86px] text-right">Tetto max</span>
+                      {aModo === "percentage" && <span className="w-[86px] text-right">Tetto max</span>}
                     </div>
                     {quotaSales.map((nome) => (
                       <div key={nome} className="flex items-center gap-2">
@@ -712,17 +718,21 @@ const LancioConfigDialog = ({ open, onOpenChange, value, onSave, esistenti, mark
                         </Select>
                         <Input type="number" className="h-7 w-[80px] text-[12px]" value={aQuote[nome] ?? ""}
                           onChange={(e) => setAQuote((q) => ({ ...q, [nome]: parseInt(e.target.value, 10) || 0 }))} />
-                        <Input type="number" className="h-7 w-[86px] text-[12px]" placeholder="nessuno" value={aCap[nome] ?? ""}
-                          onChange={(e) => setACap((c) => {
-                            const v = parseInt(e.target.value, 10);
-                            const next = { ...c };
-                            if (isNaN(v) || v <= 0) delete next[nome]; else next[nome] = v;
-                            return next;
-                          })} />
+                        {aModo === "percentage" && (
+                          <Input type="number" className="h-7 w-[86px] text-[12px]" placeholder="nessuno" value={aCap[nome] ?? ""}
+                            onChange={(e) => setACap((c) => {
+                              const v = parseInt(e.target.value, 10);
+                              const next = { ...c };
+                              if (isNaN(v) || v <= 0) delete next[nome]; else next[nome] = v;
+                              return next;
+                            })} />
+                        )}
                       </div>
                     ))}
                     <p className="text-[11px] text-muted-foreground pt-1">
-                      Tetto max: oltre quel numero di lead il venditore viene saltato e i lead vanno agli altri. Lascia vuoto per nessun limite.
+                      {aModo === "percentage"
+                        ? "Tetto max: oltre quel numero di lead il venditore viene saltato e i lead vanno agli altri. Lascia vuoto per nessun limite."
+                        : "In quota assoluta il numero è già il limite: raggiunta la quota il venditore esce dalla distribuzione, quindi non serve un tetto separato."}
                       {autom?.id && " La colonna in mezzo sono i lead già assegnati: cliccala per azzerare quel venditore."}
                       {" "}Il tasto a sinistra del nome sospende un singolo venditore: i suoi lead vanno agli altri e la sua percentuale resta lì per quando riparte.
                       {" "}Gruppo: serve a dare a closer e setter una quota diversa dei lead. La quota del gruppo decide quanti lead gli arrivano, la percentuale nella tabella come se li dividono fra loro.

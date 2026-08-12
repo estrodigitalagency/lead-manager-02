@@ -100,7 +100,9 @@ export const pesoGruppo = (slot: any): number => {
  *
  * Senza gruppi si torna al sorteggio pesato normale sulle percentuali individuali.
  */
-export function scegliSlot(eligible: SlotEleggibile[], sorteggio: number): SlotEleggibile | null {
+export function scegliSlot(
+  eligible: SlotEleggibile[], sorteggio: number, uniformeDentroIlGruppo = false,
+): SlotEleggibile | null {
   if (eligible.length === 0) return null;
 
   const conGruppo = eligible.filter((e) => gruppoDi(e.slot) && pesoGruppo(e.slot) > 0);
@@ -113,7 +115,10 @@ export function scegliSlot(eligible: SlotEleggibile[], sorteggio: number): SlotE
       let scelto = [...quote.keys()][0];
       for (const [nome, q] of quote) { r -= q; if (r <= 0) { scelto = nome; break; } }
       const dentro = conGruppo.filter((e) => gruppoDi(e.slot) === scelto);
-      return pesato(dentro, (sorteggio * 1000) % 1);
+      const secondoSorteggio = (sorteggio * 1000) % 1;
+      return uniformeDentroIlGruppo
+        ? dentro[Math.floor(secondoSorteggio * dentro.length) % dentro.length]
+        : pesato(dentro, secondoSorteggio);
     }
   }
   return pesato(eligible, sorteggio);

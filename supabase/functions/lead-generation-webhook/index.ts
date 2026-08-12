@@ -1020,10 +1020,12 @@ async function pickSellerFromDistribution(automation: any, supabase: any): Promi
         console.log('[distribution] All quotas/caps full');
         return null;
       }
-      // Random uniforme tra quelli non-piena
-      const pick = eligible[Math.floor(Math.random() * eligible.length)];
+      // Anche a quota assoluta i gruppi contano: le quote decidono i totali, la quota di
+      // gruppo il ritmo con cui ci si arriva. Dentro il gruppo si alterna in modo uniforme,
+      // perché il peso individuale in questa modalità è la quota, non una percentuale.
+      const pick = scegliSlot(eligible, Math.random(), true) ?? eligible[0]
       await incrementDistributionState(automation.id, pick.slot.venditore_id, counts, total, supabase);
-      console.log(`[distribution] mode=count pick=${pick.seller.nome} ${pick.seller.cognome}`);
+      console.log(`[distribution] mode=count pick=${pick.seller.nome} ${pick.seller.cognome} gruppo=${gruppoDi(pick.slot) || '-'}`);
       return pick.seller;
     }
 
