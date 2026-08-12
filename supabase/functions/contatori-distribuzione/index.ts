@@ -23,29 +23,48 @@ const json = (body: unknown, status = 200) =>
 
 type Conteggi = Record<string, number>;
 
-/** Applica un delta ai contatori di una regola, senza mai scendere sotto zero. */
+/**
+ * Applica un delta ai contatori, senza mai scendere sotto zero.
+ *
+ * Come nell'assegnazione, la scrittura e protetta da un numero di revisione: se qualcun altro
+ * ha toccato lo stato nel frattempo si rilegge e si riprova, invece di sovrascrivere il suo
+ * lavoro. Qui la concorrenza e bassa, ma due riassegnazioni fatte insieme basterebbero.
+ */
 async function applicaDelta(supabase: any, automation: any, delta: Record<string, number>) {
-  const state = automation.distribution_state || {};
-  const counts: Conteggi = { ...(state.count_assigned || {}) };
-  let totale = state.total_assigned || 0;
+  for (let tentativo = 0; tentativo < 10; tentativo++) {
+    const { data: attuale } = await supabase
+      .from("lead_assignment_automations").select("distribution_state").eq("id", automation.id).maybeSingle();
+    const stato: any = attuale?.distribution_state || {};
+    const revisione: number | null = Number.isFinite(Number(stato.rev)) ? Number(stato.rev) : null;
+    const counts: Conteggi = { ...(stato.count_assigned || {}) };
+    let totale = stato.total_assigned || 0;
 
-  for (const [venditoreId, d] of Object.entries(delta)) {
-    const prima = counts[venditoreId] || 0;
-    // Un contatore negativo non significa niente: al massimo si torna a zero.
-    const dopo = Math.max(0, prima + d);
-    counts[venditoreId] = dopo;
-    totale += dopo - prima;
+    for (const [venditoreId, d] of Object.entries(delta)) {
+      const prima = counts[venditoreId] || 0;
+      // Un contatore negativo non significa niente: al massimo si torna a zero.
+      const dopo = Math.max(0, prima + d);
+      counts[venditoreId] = dopo;
+      totale += dopo - prima;
+    }
+
+    let q = supabase.from("lead_assignment_automations").update({
+      distribution_state: {
+        count_assigned: counts,
+        total_assigned: Math.max(0, totale),
+        last_updated: new Date().toISOString(),
+        rev: (revisione ?? 0) + 1,
+      },
+    }).eq("id", automation.id);
+    q = revisione === null
+      ? q.is("distribution_state->>rev", null)
+      : q.eq("distribution_state->>rev", String(revisione));
+
+    const { data: righe } = await q.select("id");
+    if (righe && righe.length > 0) return counts;
+    await new Promise((r) => setTimeout(r, 15 * (tentativo + 1) + Math.random() * 40));
   }
-
-  await supabase.from("lead_assignment_automations").update({
-    distribution_state: {
-      count_assigned: counts,
-      total_assigned: Math.max(0, totale),
-      last_updated: new Date().toISOString(),
-    },
-  }).eq("id", automation.id);
-
-  return counts;
+  console.error(`[contatori] delta non applicato dopo 10 tentativi su ${automation.id}`);
+  return automation.distribution_state?.count_assigned ?? {};
 }
 
 Deno.serve(async (req) => {

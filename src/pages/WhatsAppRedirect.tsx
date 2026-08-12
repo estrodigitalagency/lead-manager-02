@@ -205,9 +205,13 @@ const WhatsAppRedirect = () => {
         };
 
         // Race lead-in vs assegnazione: se il lead clicca subito, l'assegnazione può non essere
-        // ancora completata. Riprovo per qualche secondo (loading) prima di cadere sul fallback.
+        // ancora completata. Riprovo per qualche secondo prima di cadere sul numero di riserva.
+        //
+        // Sotto carico l'assegnazione ha impiegato fino a 8 secondi (misurato con 12 optin in
+        // parallelo), quindi 9 secondi di attesa lasciavano scoperto proprio il caso peggiore:
+        // la finestra tiene ora il doppio del tempo osservato.
         const POLL_MS = 600;
-        const MAX_WAIT_MS = 9000;
+        const MAX_WAIT_MS = 16000;
         let lead: any = await findAssignedLead();
         const deadline = Date.now() + MAX_WAIT_MS;
         while (!lead && Date.now() < deadline) {

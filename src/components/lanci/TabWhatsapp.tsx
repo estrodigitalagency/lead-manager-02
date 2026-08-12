@@ -106,6 +106,42 @@ const TabWhatsapp = ({ lancio, rows }: Props) => {
         </div>
       )}
 
+      {/* Da dove arrivano i click */}
+      {stats && stats.totale > 0 && (
+        <Card className="overflow-hidden">
+          <CardHeader className="py-2.5 px-3.5 border-b border-border">
+            <CardTitle className="label-eyebrow flex items-center justify-between gap-2 flex-wrap">
+              <span>Da dove cliccano</span>
+              {stats.senza_origine > 0 && (
+                <span className="text-[10.5px] text-muted-foreground normal-case tracking-normal">
+                  {n(stats.senza_origine)} senza provenienza
+                </span>
+              )}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-3.5 space-y-1.5">
+            {stats.perOrigine.length === 0 ? (
+              <p className="text-[12px] text-muted-foreground">
+                Nessuna provenienza registrata: il browser la manda solo se il link ha
+                <code className="px-1 mx-1 rounded bg-secondary text-[11px]">referrerpolicy="unsafe-url"</code>,
+                altrimenti fra domini diversi resta nascosta.
+              </p>
+            ) : stats.perOrigine.slice(0, 8).map((o) => (
+              <div key={o.origine} className="flex items-center gap-2">
+                <span className="flex-1 min-w-0 text-[12px] truncate" title={o.origine}>{o.origine}</span>
+                <div className="w-[38%] h-2 rounded bg-secondary/50 overflow-hidden shrink-0">
+                  <i className="block h-full rounded bg-emerald-500/70"
+                    style={{ width: `${(o.n / stats.perOrigine[0].n) * 100}%` }} />
+                </div>
+                <span className="w-[70px] text-right text-[11.5px] num shrink-0">
+                  {n(o.n)} <span className="text-muted-foreground">{pct(o.n, stats.totale)}</span>
+                </span>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
+
       {/* Funnel per sales */}
       <Card className="overflow-hidden">
         <CardHeader className="py-2.5 px-3.5 border-b border-border">

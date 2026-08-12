@@ -1083,18 +1083,49 @@ async function pickSellerFromDistribution(automation: any, supabase: any): Promi
 async function incrementDistributionState(
   automationId: string,
   venditoreId: string,
-  counts: Record<string, number>,
-  total: number,
+  _counts: Record<string, number>,
+  _total: number,
   supabase: any
 ) {
-  const newCounts = { ...counts, [venditoreId]: (counts[venditoreId] || 0) + 1 };
-  const newState = {
-    count_assigned: newCounts,
-    total_assigned: total + 1,
-    last_updated: new Date().toISOString(),
-  };
-  await supabase
-    .from('lead_assignment_automations')
-    .update({ distribution_state: newState })
-    .eq('id', automationId);
+  // Leggere lo stato, sommare uno e riscriverlo funziona con un lead alla volta, ma con piu
+  // lead in arrivo insieme due esecuzioni leggono lo stesso numero e la seconda sovrascrive la
+  // prima: sotto carico i contatori restavano indietro e i tetti non scattavano mai.
+  //
+  // Ogni scrittura porta un numero di revisione e l'aggiornamento vale solo se la revisione a
+  // database e ancora quella letta. Se nel frattempo ha scritto qualcun altro non passa nessuna
+  // riga, si rilegge e si riprova: nessun incremento va perso.
+  for (let tentativo = 0; tentativo < 10; tentativo++) {
+    const { data: attuale } = await supabase
+      .from('lead_assignment_automations')
+      .select('distribution_state')
+      .eq('id', automationId)
+      .maybeSingle()
+
+    const stato: any = attuale?.distribution_state || {}
+    const revisione: number | null = Number.isFinite(Number(stato.rev)) ? Number(stato.rev) : null
+    const counts: Record<string, number> = { ...(stato.count_assigned || {}) }
+    counts[venditoreId] = (counts[venditoreId] || 0) + 1
+
+    const nuovoStato = {
+      count_assigned: counts,
+      total_assigned: (stato.total_assigned || 0) + 1,
+      last_updated: new Date().toISOString(),
+      rev: (revisione ?? 0) + 1,
+    }
+
+    let q = supabase
+      .from('lead_assignment_automations')
+      .update({ distribution_state: nuovoStato })
+      .eq('id', automationId)
+    q = revisione === null
+      ? q.is('distribution_state->>rev', null)
+      : q.eq('distribution_state->>rev', String(revisione))
+
+    const { data: righe } = await q.select('id')
+    if (righe && righe.length > 0) return
+
+    // Collisione: attesa breve e crescente, con un po' di casualita per non ripartire insieme.
+    await new Promise((r) => setTimeout(r, 15 * (tentativo + 1) + Math.random() * 40))
+  }
+  console.error(`[distribution] contatore non aggiornato dopo 10 tentativi: ${automationId} / ${venditoreId}`)
 }

@@ -196,9 +196,10 @@ export interface ClickStat { venditore: string; click: number; ok: number; fallb
 export async function fetchClickStats(slug: string): Promise<{
   totale: number; ok: number; errori: number;
   perSales: ClickStat[]; perGiorno: { day: string; n: number }[];
+  perOrigine: { origine: string; n: number }[]; senza_origine: number;
   ultimi: { clicked_at: string; lead_nome: string | null; lead_email: string | null; venditore_nome: string | null; status: string | null; error_reason: string | null }[];
 }> {
-  const vuoto = { totale: 0, ok: 0, errori: 0, perSales: [], perGiorno: [], ultimi: [] };
+  const vuoto = { totale: 0, ok: 0, errori: 0, perSales: [], perGiorno: [], perOrigine: [], senza_origine: 0, ultimi: [] };
   try {
     const r = await fetch(`${SUPA_URL}/functions/v1/wa-click`, {
       method: "POST",

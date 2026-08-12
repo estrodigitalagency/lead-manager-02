@@ -42,13 +42,29 @@ Deno.serve(async (req) => {
     if (corpo.azione === "stats") {
       const { data } = await supabaseSR()
         .from("whatsapp_click_logs")
-        .select("clicked_at, lead_nome, lead_email, venditore_nome, status, error_reason")
+        .select("clicked_at, lead_nome, lead_email, venditore_nome, status, error_reason, referrer")
         .eq("template_slug", corpo.slug ?? "")
         .order("clicked_at", { ascending: false }).limit(5000);
       const righe = data ?? [];
       const perSales: Record<string, any> = {};
       const perGiorno: Record<string, number> = {};
-      let ok = 0, errori = 0;
+      const perOrigine: Record<string, number> = {};
+      let ok = 0, errori = 0, senzaOrigine = 0;
+
+      // Da dove è stato cliccato. Fra domini diversi il browser manda solo l'origine, non il
+      // percorso, a meno che il link non abbia referrerpolicy="unsafe-url": quando c'è si vede
+      // la pagina esatta, altrimenti solo il sito.
+      const origineDi = (raw: string | null): string | null => {
+        const v = (raw || "").trim();
+        if (!v) return null;
+        try {
+          const u = new URL(v);
+          const percorso = u.pathname.replace(/\/$/, "");
+          return u.host + percorso;
+        } catch {
+          return v.slice(0, 120);
+        }
+      };
       for (const r of righe) {
         const v = r.venditore_nome || "—";
         perSales[v] ??= { venditore: v, click: 0, ok: 0, fallback: 0, errore: 0 };
@@ -58,11 +74,15 @@ Deno.serve(async (req) => {
         else { errori++; perSales[v].errore++; }
         const g = String(r.clicked_at ?? "").slice(0, 10);
         if (g) perGiorno[g] = (perGiorno[g] || 0) + 1;
+        const o = origineDi((r as any).referrer);
+        if (o) perOrigine[o] = (perOrigine[o] || 0) + 1; else senzaOrigine++;
       }
       return json({
         totale: righe.length, ok, errori,
         perSales: Object.values(perSales).sort((a: any, b: any) => b.click - a.click),
         perGiorno: Object.keys(perGiorno).sort().map((day) => ({ day, n: perGiorno[day] })),
+        perOrigine: Object.entries(perOrigine).map(([origine, n]) => ({ origine, n })).sort((a, b) => b.n - a.n),
+        senza_origine: senzaOrigine,
         ultimi: righe.slice(0, 30),
       });
     }
