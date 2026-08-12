@@ -350,6 +350,23 @@ async function checkAndApplyAutomations(lead: any, supabase: any) {
       if (Array.isArray(parsed)) inCoda = parsed as string[];
     } catch { /* nessuna coda attiva */ }
 
+    // Regole per cui il venditore precedente vale solo se fa parte della distribuzione: senza
+    // questo un lead gia lavorato torna a chi l'aveva anche se quella persona non lavora al
+    // lancio, e i suoi numeri non compaiono da nessuna parte.
+    let soloInterni: string[] = [];
+    try {
+      const { data: si } = await supabase
+        .from('system_settings').select('value').eq('key', 'automations_prev_solo_interni').maybeSingle();
+      const parsed = JSON.parse(si?.value || '[]');
+      if (Array.isArray(parsed)) soloInterni = parsed as string[];
+    } catch { /* nessun vincolo */ }
+
+    /** Il venditore trovato puo prendere questo lead per questa regola? */
+    const ammesso = (automation: any, sellerId?: string) => {
+      if (!soloInterni.includes(automation.id)) return true;
+      return (automation.distribution_config || []).some((sl: any) => sl.venditore_id === sellerId);
+    };
+
     // Se una regola matcha ma ha le quote esaurite il lead non va perso: a fine giro
     // finisce in Round Robin, la coda già usata nel database per i lead in attesa.
     let quotePiene: string | null = null;
@@ -398,7 +415,7 @@ async function checkAndApplyAutomations(lead: any, supabase: any) {
           if (automation.use_previous_seller_first) {
             const excludedList = automation.excluded_sellers || [];
             const prev = await findPreviousSeller(lead, supabase, excludedList);
-            if (prev) {
+            if (prev && ammesso(automation, prev.seller?.id)) {
               const prevSeller = prev.seller;
               const dataAssegnazione = prev.dataAssegnazione;
               // check lock period se presente
@@ -914,6 +931,13 @@ async function assignLeadAutomatically(lead: any, seller: any, sheetsTabName: st
           // Format payload as expected by lead-assign-webhook - INCLUDE ALL FIELDS
           const assignedAt = new Date().toISOString();
           const finalCampagna = automation.campagna || sheetsTabName || lead.campagna || '';
+
+          // Lead storico: torna a un venditore che l'aveva gia in carico entro l'intervallo
+          // impostato sulla regola. Serve a chi riceve il webhook per trattarlo diversamente
+          // da un contatto nuovo, senza doversi ricostruire lo storico per conto suo.
+          const primaAssegnazione: string | null = seller.originalDataAssegnazione || null;
+          const leadStorico = !!primaAssegnazione;
+          const giorniDaUltima = primaAssegnazione ? calculateDaysSince(primaAssegnazione) : null;
           
           const assignmentData = {
             venditore: seller.nome,
@@ -926,6 +950,8 @@ async function assignLeadAutomatically(lead: any, seller: any, sheetsTabName: st
             market: lead.market,
             leads_count: 1,
             timestamp: assignedAt,
+            lead_storico: leadStorico,
+            intervallo_giorni: automation.lock_period_days ?? null,
             leads: [{
               id: lead.id,
               nome: lead.nome,
@@ -947,7 +973,12 @@ async function assignLeadAutomatically(lead: any, seller: any, sheetsTabName: st
               created_at: lead.created_at,
               updated_at: assignedAt,
               data_assegnazione: updateData.data_assegnazione,
-              assigned_at: assignedAt
+              assigned_at: assignedAt,
+              lead_storico: leadStorico,
+              venditore_precedente: leadStorico ? `${seller.nome} ${seller.cognome}`.trim() : null,
+              prima_assegnazione: primaAssegnazione,
+              giorni_da_ultima_assegnazione: giorniDaUltima,
+              intervallo_giorni: automation.lock_period_days ?? null
             }]
           };
 

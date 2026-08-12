@@ -96,3 +96,30 @@ export async function assegnaLiberi(market: string, automazioneId: string) {
   });
   return r.json();
 }
+
+const KEY_INTERNI = "automations_prev_solo_interni";
+
+/**
+ * Regole in cui il venditore precedente vale solo se fa parte della distribuzione.
+ * Senza questo vincolo un lead già lavorato torna a chi l'aveva anche quando quella persona
+ * non lavora al lancio, e i suoi numeri non compaiono nella matrice.
+ */
+export async function fetchSoloInterniIds(): Promise<string[]> {
+  const { data } = await supabase.from("system_settings").select("value").eq("key", KEY_INTERNI).maybeSingle();
+  try {
+    const p = JSON.parse(data?.value || "[]");
+    return Array.isArray(p) ? (p as string[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+export async function setSoloInterni(automationId: string, solo: boolean): Promise<boolean> {
+  const ids = await fetchSoloInterniIds();
+  const next = solo ? Array.from(new Set([...ids, automationId])) : ids.filter((x) => x !== automationId);
+  const { error } = await supabase.from("system_settings").upsert(
+    { key: KEY_INTERNI, value: JSON.stringify(next), descrizione: "Regole in cui il venditore precedente deve far parte della distribuzione" },
+    { onConflict: "key" },
+  );
+  return !error;
+}

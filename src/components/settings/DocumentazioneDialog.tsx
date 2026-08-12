@@ -116,6 +116,12 @@ const DocumentazioneDialog = () => {
                   Il periodo si misura sulla <K>data di assegnazione</K> del lead precedente. Con 60 giorni: a 59
                   torna al venditore, a 60 viene ridistribuito. «Sempre» toglie la scadenza.
                 </T>
+                <T>
+                  Di suo la ricerca guarda <K>tutti</K> i venditori attivi del market, non solo quelli del lancio:
+                  un lead già lavorato da un setter che a questo lancio non partecipa tornerebbe comunque a lui, e i
+                  suoi numeri non comparirebbero nella matrice perché non ha i tab del lancio. L'opzione
+                  <K> «solo se il venditore precedente è in questo lancio»</K> lo impedisce e lo fa ridistribuire.
+                </T>
                 <H>2. Altrimenti, la distribuzione</H>
                 <T>
                   Il lead va a uno dei venditori del lancio, scelto a caso con probabilità proporzionale alla sua
@@ -281,6 +287,13 @@ const DocumentazioneDialog = () => {
                 <T>
                   Fra l'ingresso del lead e l'assegnazione passa qualche istante. La pagina lo sa e riprova per nove
                   secondi prima di arrendersi al numero di riserva.
+                </T>
+                <H>Lead storico nel webhook</H>
+                <T>
+                  Quando un lead torna al suo venditore perché rientra nell'intervallo, il webhook lo dichiara:
+                  <K> lead_storico</K>, <K>venditore_precedente</K>, <K>prima_assegnazione</K>,
+                  <K> giorni_da_ultima_assegnazione</K> e <K>intervallo_giorni</K>. Chi riceve il webhook può così
+                  trattarlo diversamente da un contatto nuovo senza doversi ricostruire lo storico.
                 </T>
                 <H>Il nome che legge il lead</H>
                 <T>

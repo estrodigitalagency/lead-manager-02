@@ -11,7 +11,7 @@ import { Users, FileSpreadsheet, Zap, MessageCircle, AlertTriangle, Loader2, Plu
 import { useSalespeopleData } from "@/hooks/useSalespeopleData";
 import { useAutomationsData } from "@/hooks/useAutomationsData";
 import { fetchTemplates, saveTemplate } from "@/lib/whatsapp/templates";
-import { fetchCodaIds, setCoda, contaInCoda, recuperaCoda, anteprimaLiberi, assegnaLiberi, AnteprimaLiberi } from "@/lib/automazioni/coda";
+import { fetchCodaIds, setCoda, contaInCoda, recuperaCoda, anteprimaLiberi, assegnaLiberi, AnteprimaLiberi, fetchSoloInterniIds, setSoloInterni } from "@/lib/automazioni/coda";
 import { azzeraContatori } from "@/lib/automazioni/contatori";
 import { checkConflitti, Conflitto } from "@/lib/lanci/integrazioni";
 import { LancioConfig } from "@/lib/lanci/config";
@@ -73,6 +73,7 @@ const LancioConfigDialog = ({ open, onOpenChange, value, onSave, esistenti, mark
   const [liberi, setLiberi] = useState<AnteprimaLiberi | null>(null);   // proposta dopo il salvataggio
   const [aWebhook, setAWebhook] = useState(true);
   const [aCoda, setACoda] = useState(false);   // assegnazione in coda: i lead nuovi aspettano
+  const [aSoloInterni, setASoloInterni] = useState(false); // il venditore precedente deve essere del lancio
   const [aLockOn, setALockOn] = useState(false);
   const [aLockDays, setALockDays] = useState(30);   // -1 = sempre lo stesso venditore
   const [aEsclusi, setAEsclusi] = useState<string[]>([]);
@@ -119,6 +120,7 @@ const LancioConfigDialog = ({ open, onOpenChange, value, onSave, esistenti, mark
       setACondTipo(((autom as any).condition_type === "not_contains" ? "not_contains" : "contains"));
       fetchCodaIds().then((ids) => setACoda(ids.includes(autom.id)));
       contaInCoda(market, autom.id).then(setInCoda);
+      fetchSoloInterniIds().then((ids) => setASoloInterni(ids.includes(autom.id)));
       setConta(((autom as any).distribution_state?.count_assigned) ?? {});
       {
         const cfgSlot = ((autom as any).distribution_config ?? []) as any[];
@@ -163,7 +165,7 @@ const LancioConfigDialog = ({ open, onOpenChange, value, onSave, esistenti, mark
       setAPrevFirst(false); setATargetSeller(""); setAModo("percentage"); setAQuote({}); setACap({});
       setAWebhook(true);
       setALockOn(false); setALockDays(30); setAEsclusi([]);
-      setACondTipo("contains"); setAEscl(""); setACoda(false); setConta({}); setAPausa({}); setAGruppo({}); setAQuotaGruppo({}); setInCoda(0);
+      setACondTipo("contains"); setAEscl(""); setACoda(false); setASoloInterni(false); setConta({}); setAPausa({}); setAGruppo({}); setAQuotaGruppo({}); setInCoda(0);
     }
   }, [open, value, autom?.id]);   // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -278,10 +280,10 @@ const LancioConfigDialog = ({ open, onOpenChange, value, onSave, esistenti, mark
       excluded_sellers: aEsclusi,
     };
     try {
-      if (autom) { await updateAutomation(autom.id, payload); await setCoda(autom.id, aCoda); return autom.id; }
+      if (autom) { await updateAutomation(autom.id, payload); await setCoda(autom.id, aCoda); await setSoloInterni(autom.id, aSoloInterni); return autom.id; }
       const maxP = Math.max(...automations.map((a) => a.priority ?? 0), 0);
       const created: any = await createAutomation({ ...payload, priority: maxP + 1 });
-      if (created?.id) await setCoda(created.id, aCoda);
+      if (created?.id) { await setCoda(created.id, aCoda); await setSoloInterni(created.id, aSoloInterni); }
       return created?.id;
     } catch { toast.error("Errore nel salvataggio della regola"); return; }
   };
@@ -607,6 +609,18 @@ const LancioConfigDialog = ({ open, onOpenChange, value, onSave, esistenti, mark
                               ? "Il lead torna sempre allo stesso venditore, senza scadenza."
                               : `Oltre ${aLockDays} giorni dall'ultima assegnazione il lead viene ridistribuito.`}
                         </p>
+                        <div className="flex items-start gap-2">
+                          <Switch checked={aSoloInterni} onCheckedChange={setASoloInterni} className="mt-0.5" />
+                          <div>
+                            <span className="text-[12px]">Solo se il venditore precedente è in questo lancio</span>
+                            <p className="text-[11px] text-muted-foreground">
+                              {aSoloInterni
+                                ? "Un lead già lavorato da qualcuno che non è nella tabella qui sotto viene ridistribuito, invece di tornare a lui."
+                                : "Il lead torna al venditore precedente anche se non lavora a questo lancio: riceve lead che poi non compaiono nella matrice, perché non ha i tab del lancio."}
+                            </p>
+                          </div>
+                        </div>
+
                         <div>
                           <span className="text-[12px] text-muted-foreground">
                             Venditori da non riprendere mai{aEsclusi.length ? ` (${aEsclusi.length})` : ""}
