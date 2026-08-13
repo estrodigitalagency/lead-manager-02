@@ -32,6 +32,24 @@ const normalizePhone = (phone: string, defaultCountryCode = "39"): string => {
   return d;
 };
 
+/**
+ * Varianti plausibili della stessa email, per non perdere il lead quando l'indirizzo nel link
+ * non è scritto identico a quello in database: alias con +tag, e i punti nella parte locale
+ * che Gmail ignora ma il database no.
+ */
+const varianti = (email: string): string[] => {
+  const e = email.trim().toLowerCase();
+  if (!e.includes("@")) return e ? [e] : [];
+  const [locale, dominio] = e.split("@");
+  const out = new Set<string>([e]);
+  const senzaTag = locale.split("+")[0];
+  out.add(`${senzaTag}@${dominio}`);
+  if (/^(gmail|googlemail)\./.test(`${dominio}.`)) {
+    out.add(`${senzaTag.replace(/\./g, "")}@${dominio}`);
+  }
+  return [...out];
+};
+
 const substitutePlaceholders = (tpl: string, ctx: Record<string, string>) => {
   return tpl.replace(/\{\{\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*\}\}/g, (_, key) => ctx[key] ?? "");
 };
@@ -184,44 +202,49 @@ const WhatsAppRedirect = () => {
         const effectiveMarket = (templateMarket || market) as "IT" | "ES";
 
         // Cerca il lead più recente CON venditore assegnato (per email o telefono).
-        const findAssignedLead = async (): Promise<any | null> => {
-          const cols = "id, venditore, market, created_at, telefono, email, nome, cognome, ultima_fonte, campagna";
-          if (email) {
-            const { data } = await supabase
-              .from("lead_generation").select(cols)
-              .eq("market", effectiveMarket).ilike("email", email).not("venditore", "is", null)
-              .order("created_at", { ascending: false }).limit(1);
-            if (data?.[0]) return data[0];
-          }
-          if (phoneNorm) {
-            const suffix = phoneNorm.slice(-9);
-            const { data } = await supabase
-              .from("lead_generation").select(cols)
-              .eq("market", effectiveMarket).ilike("telefono", `%${suffix}%`).not("venditore", "is", null)
-              .order("created_at", { ascending: false }).limit(1);
-            if (data?.[0]) return data[0];
+        const COLS = "id, venditore, market, created_at, telefono, email, nome, cognome, ultima_fonte, campagna";
+
+        /**
+         * Cerca il lead. Prima nel market atteso, poi — se non lo trova — in tutti, perché un
+         * lead spagnolo raggiunto da un link italiano esiste comunque e mandarlo al numero di
+         * riserva sarebbe sbagliato. Sull'email si provano le varianti con e senza +tag.
+         */
+        const cerca = async (soloAssegnati: boolean): Promise<any | null> => {
+          const base = () => {
+            let q = supabase.from("lead_generation").select(COLS);
+            if (soloAssegnati) q = q.not("venditore", "is", null);
+            return q.order("created_at", { ascending: false }).limit(1);
+          };
+          const suffix = phoneNorm ? phoneNorm.slice(-9) : "";
+
+          for (const conMarket of [true, false]) {
+            const tentativi: any[] = [];
+            for (const e of varianti(email)) {
+              let q = base().ilike("email", e);
+              if (conMarket) q = q.eq("market", effectiveMarket);
+              tentativi.push(q);
+            }
+            if (suffix) {
+              let q = base().ilike("telefono", `%${suffix}%`);
+              if (conMarket) q = q.eq("market", effectiveMarket);
+              tentativi.push(q);
+            }
+            if (tentativi.length === 0) return null;
+            const esiti = await Promise.all(tentativi);
+            const trovato = esiti.map((r: any) => r.data?.[0]).find(Boolean);
+            if (trovato) {
+              if (!conMarket) console.log("[wa] lead trovato fuori dal market del link");
+              return trovato;
+            }
           }
           return null;
         };
 
+        const findAssignedLead = () => cerca(true);
+
         // Il lead esiste già in database ma non ha ancora un venditore? Allora l'assegnazione
         // è in corso e il numero di riserva sarebbe un errore: quel lead un venditore ce l'avrà.
-        const leadInLavorazione = async (): Promise<boolean> => {
-          const cols = "id, venditore";
-          if (email) {
-            const { data } = await supabase.from("lead_generation").select(cols)
-              .eq("market", effectiveMarket).ilike("email", email)
-              .order("created_at", { ascending: false }).limit(1);
-            if (data?.[0]) return true;
-          }
-          if (phoneNorm) {
-            const { data } = await supabase.from("lead_generation").select(cols)
-              .eq("market", effectiveMarket).ilike("telefono", `%${phoneNorm.slice(-9)}%`)
-              .order("created_at", { ascending: false }).limit(1);
-            if (data?.[0]) return true;
-          }
-          return false;
-        };
+        const leadInLavorazione = async (): Promise<boolean> => !!(await cerca(false));
 
         // Due attese diverse, perché i due casi non sono lo stesso problema.
         //
