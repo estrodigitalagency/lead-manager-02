@@ -7,6 +7,18 @@
  * produzione succede altro.
  */
 
+/**
+ * Nome di un venditore ridotto alla forma confrontabile: minuscolo, senza accenti, spazi
+ * normalizzati. Serve perché lo stesso venditore è scritto in posti diversi da persone diverse
+ * — anagrafica, fogli, workflow esterni — e "Desiree" contro "Desirée" bastava a non trovarlo,
+ * lasciando il lead assegnato ma fuori da tetti e contatori.
+ */
+export function nomeConfrontabile(nome: string | null | undefined): string {
+  return String(nome ?? "")
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase().replace(/\s+/g, " ").trim();
+}
+
 export function calculateDaysSince(dateString: string): number {
   const date = new Date(dateString);
   return Math.floor((Date.now() - date.getTime()) / (1000 * 60 * 60 * 24));

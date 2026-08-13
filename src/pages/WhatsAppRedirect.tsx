@@ -32,6 +32,23 @@ const normalizePhone = (phone: string, defaultCountryCode = "39"): string => {
   return d;
 };
 
+/**
+ * Nome ridotto alla forma confrontabile: minuscolo, senza accenti, spazi normalizzati.
+ * Il venditore scritto sul lead può arrivare da fuori — workflow esterni, fogli — e differire
+ * dall'anagrafica per un accento: senza questo il suo numero non si troverebbe e il lead
+ * vedrebbe un errore pur avendo un venditore assegnato.
+ */
+const nomeConfrontabile = (nome: string): string =>
+  (nome || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/\s+/g, " ").trim();
+
+/**
+ * Nome del venditore come lo deve leggere il lead. In anagrafica alcuni profili hanno il ruolo
+ * attaccato al nome per distinguerli ("Nicola Feliciolli Setter"), ma al lead il ruolo non
+ * interessa e suona sbagliato dentro un messaggio.
+ */
+const nomeVisibile = (nome: string, cognome?: string): string =>
+  `${nome || ""} ${cognome || ""}`.trim().replace(/\s+(setter|closer|sales)$/i, "").trim();
+
 const substitutePlaceholders = (tpl: string, ctx: Record<string, string>) => {
   return tpl.replace(/\{\{\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*\}\}/g, (_, key) => ctx[key] ?? "");
 };
@@ -252,7 +269,7 @@ const WhatsAppRedirect = () => {
           .eq("market", lead.market)
           .eq("stato", "attivo");
         const match = (vendList || []).find(
-          (v: any) => (`${v.nome} ${v.cognome}`.trim().toLowerCase()) === lead.venditore.trim().toLowerCase()
+          (v: any) => nomeConfrontabile(`${v.nome} ${v.cognome}`) === nomeConfrontabile(lead.venditore)
         );
 
         if (!match || !match.telefono) {
@@ -278,8 +295,8 @@ const WhatsAppRedirect = () => {
           nome: nomeForCtx.split(/\s+/)[0] || "",
           nome_completo: nomeForCtx,
           cognome: lead.cognome || "",
-          venditore: `${match.nome} ${match.cognome}`.trim(),
-          venditore_nome: match.nome || "",
+          venditore: nomeVisibile(match.nome, match.cognome),
+          venditore_nome: nomeVisibile(match.nome).split(/\s+/)[0] || "",
           fonte: lead.ultima_fonte || "",
           campagna: lead.campagna || "",
           market: lead.market || "",
@@ -339,7 +356,7 @@ const WhatsAppRedirect = () => {
             <MessageCircle className="h-10 w-10 mx-auto text-emerald-500" />
             <h1 className="text-lg font-semibold">Apertura WhatsApp...</h1>
             <p className="text-sm text-muted-foreground">
-              Ti stiamo mettendo in contatto con {venditore?.nome} {venditore?.cognome}.
+              Ti stiamo mettendo in contatto con {nomeVisibile(venditore?.nome ?? "", venditore?.cognome)}.
             </p>
             <p className="text-[11px] text-muted-foreground">Se non si apre automaticamente ricarica la pagina.</p>
           </>

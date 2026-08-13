@@ -1,5 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
-import { regolaSiApplica } from "../_shared/regole.ts";
+import { regolaSiApplica, nomeConfrontabile } from "../_shared/regole.ts";
 
 /**
  * Contatori della distribuzione: lettura, azzeramento e spostamento fra venditori.
@@ -119,7 +119,7 @@ Deno.serve(async (req) => {
       const { data: venditori } = await supabase
         .from("venditori").select("id, nome, cognome").eq("market", market);
       const idDi = (nome: string) => (venditori ?? []).find(
-        (v: any) => `${v.nome} ${v.cognome || ""}`.trim().toLowerCase() === nome.trim().toLowerCase())?.id;
+        (v: any) => nomeConfrontabile(`${v.nome} ${v.cognome || ""}`) === nomeConfrontabile(nome))?.id;
 
       const idDestinatario = idDi(nomeDestinatario);
       if (!idDestinatario) return json({ error: `Venditore "${nomeDestinatario}" non riconosciuto` }, 400);

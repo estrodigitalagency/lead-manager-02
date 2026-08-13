@@ -3,7 +3,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import {
   calculateDaysSince, checkCondition, regolaSiApplica, entroLockPeriod, slotEleggibili,
-  scegliSlot, gruppoDi, pesoGruppo,
+  scegliSlot, gruppoDi, pesoGruppo, nomeConfrontabile,
 } from '../_shared/regole.ts'
 
 const corsHeaders = {
@@ -636,10 +636,10 @@ async function fetchSellerDetails(sellerName: string, market: string, supabase: 
       return null;
     }
     
-    const targetSeller = sellers.find((seller: any) => {
-      const fullName = `${seller.nome} ${seller.cognome}`.trim().toLowerCase();
-      return fullName === sellerName.toLowerCase().trim();
-    });
+    const cercato = nomeConfrontabile(sellerName);
+    const targetSeller = sellers.find(
+      (seller: any) => nomeConfrontabile(`${seller.nome} ${seller.cognome}`) === cercato,
+    );
     
     if (targetSeller) {
       console.log(`✅ Matched seller details:`, targetSeller);
