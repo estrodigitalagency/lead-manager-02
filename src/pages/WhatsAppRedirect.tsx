@@ -32,24 +32,6 @@ const normalizePhone = (phone: string, defaultCountryCode = "39"): string => {
   return d;
 };
 
-/**
- * Varianti plausibili della stessa email, per non perdere il lead quando l'indirizzo nel link
- * non è scritto identico a quello in database: alias con +tag, e i punti nella parte locale
- * che Gmail ignora ma il database no.
- */
-const varianti = (email: string): string[] => {
-  const e = email.trim().toLowerCase();
-  if (!e.includes("@")) return e ? [e] : [];
-  const [locale, dominio] = e.split("@");
-  const out = new Set<string>([e]);
-  const senzaTag = locale.split("+")[0];
-  out.add(`${senzaTag}@${dominio}`);
-  if (/^(gmail|googlemail)\./.test(`${dominio}.`)) {
-    out.add(`${senzaTag.replace(/\./g, "")}@${dominio}`);
-  }
-  return [...out];
-};
-
 const substitutePlaceholders = (tpl: string, ctx: Record<string, string>) => {
   return tpl.replace(/\{\{\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*\}\}/g, (_, key) => ctx[key] ?? "");
 };
@@ -205,39 +187,25 @@ const WhatsAppRedirect = () => {
         const COLS = "id, venditore, market, created_at, telefono, email, nome, cognome, ultima_fonte, campagna";
 
         /**
-         * Cerca il lead. Prima nel market atteso, poi — se non lo trova — in tutti, perché un
-         * lead spagnolo raggiunto da un link italiano esiste comunque e mandarlo al numero di
-         * riserva sarebbe sbagliato. Sull'email si provano le varianti con e senza +tag.
+         * Cerca il lead per email o telefono, nel market del link. Le due interrogazioni sono
+         * indipendenti e partono insieme: in fila i tempi si sommavano. L'email resta
+         * prioritaria nella scelta del risultato.
+         *
+         * Nessuna variante dell'indirizzo e nessuna ricerca fuori dal market: due email simili
+         * possono essere due persone diverse, e i link sono vincolati a un market solo.
          */
         const cerca = async (soloAssegnati: boolean): Promise<any | null> => {
           const base = () => {
-            let q = supabase.from("lead_generation").select(COLS);
+            let q = supabase.from("lead_generation").select(COLS).eq("market", effectiveMarket);
             if (soloAssegnati) q = q.not("venditore", "is", null);
             return q.order("created_at", { ascending: false }).limit(1);
           };
-          const suffix = phoneNorm ? phoneNorm.slice(-9) : "";
-
-          for (const conMarket of [true, false]) {
-            const tentativi: any[] = [];
-            for (const e of varianti(email)) {
-              let q = base().ilike("email", e);
-              if (conMarket) q = q.eq("market", effectiveMarket);
-              tentativi.push(q);
-            }
-            if (suffix) {
-              let q = base().ilike("telefono", `%${suffix}%`);
-              if (conMarket) q = q.eq("market", effectiveMarket);
-              tentativi.push(q);
-            }
-            if (tentativi.length === 0) return null;
-            const esiti = await Promise.all(tentativi);
-            const trovato = esiti.map((r: any) => r.data?.[0]).find(Boolean);
-            if (trovato) {
-              if (!conMarket) console.log("[wa] lead trovato fuori dal market del link");
-              return trovato;
-            }
-          }
-          return null;
+          const tentativi: any[] = [];
+          if (email) tentativi.push(base().ilike("email", email));
+          if (phoneNorm) tentativi.push(base().ilike("telefono", `%${phoneNorm.slice(-9)}%`));
+          if (tentativi.length === 0) return null;
+          const esiti = await Promise.all(tentativi);
+          return esiti.map((r: any) => r.data?.[0]).find(Boolean) ?? null;
         };
 
         const findAssignedLead = () => cerca(true);
