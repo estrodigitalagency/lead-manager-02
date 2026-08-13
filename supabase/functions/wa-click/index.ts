@@ -40,12 +40,20 @@ Deno.serve(async (req) => {
     // Lettura delle statistiche: la RLS non lascia leggere la tabella con la anon key, quindi
     // anche i conteggi devono passare da qui, altrimenti l'app mostra zero click comunque.
     if (corpo.azione === "stats") {
-      const { data } = await supabaseSR()
-        .from("whatsapp_click_logs")
-        .select("clicked_at, lead_nome, lead_email, venditore_nome, status, error_reason, referrer")
-        .eq("template_slug", corpo.slug ?? "")
-        .order("clicked_at", { ascending: false }).limit(5000);
-      const righe = data ?? [];
+      // A pagine invece che con un tetto: cinquemila click sembrano tanti finche un lancio non
+      // li supera, e a quel punto le statistiche sarebbero piu basse del vero senza dirlo.
+      const righe: any[] = [];
+      for (let off = 0; off < 100000; off += 1000) {
+        const { data } = await supabaseSR()
+          .from("whatsapp_click_logs")
+          .select("clicked_at, lead_nome, lead_email, venditore_nome, status, error_reason, referrer")
+          .eq("template_slug", corpo.slug ?? "")
+          .order("clicked_at", { ascending: false })
+          .range(off, off + 999);
+        if (!data || data.length === 0) break;
+        righe.push(...data);
+        if (data.length < 1000) break;
+      }
       const perSales: Record<string, any> = {};
       const perGiorno: Record<string, number> = {};
       const perOrigine: Record<string, number> = {};

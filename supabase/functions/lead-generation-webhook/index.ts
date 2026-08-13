@@ -79,7 +79,8 @@ serve(async (req) => {
         }
         if (blocco.length < PAGINA) break
       }
-      console.log(`[recupero] coda esaminata: ${letti} lead, ${candidati.length} di questa regola`)
+      const codaTroncata = letti >= SCANSIONE_MAX && candidati.length < limite
+      console.log(`[recupero] coda esaminata: ${letti} lead, ${candidati.length} di questa regola${codaTroncata ? ' (scansione interrotta al tetto)' : ''}`)
 
       // Anteprima: dice quanti sono e come verrebbero ripartiti, senza toccare niente.
       if (soloAnteprima) {
@@ -133,6 +134,7 @@ serve(async (req) => {
         return new Response(JSON.stringify({
           ok: true, anteprima: true, sorgente,
           trovati: candidati.length, assegnabili, ripartizione, coda_esaminata: letti,
+          scansione_troncata: codaTroncata,
         }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
       }
 
@@ -158,6 +160,7 @@ serve(async (req) => {
       return new Response(JSON.stringify({
         ok: true, in_coda: candidati.length, assegnati,
         ancora_in_coda: candidati.length - assegnati, coda_esaminata: letti,
+        scansione_troncata: codaTroncata,
       }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
     }
 
@@ -237,57 +240,6 @@ serve(async (req) => {
   }
 });
 
-// Function to calculate ultima_fonte based on existing leads
-async function calculateUltimaFonte(email: string, telefono: string, newFonte: string, market: string, supabase: any): Promise<string> {
-  try {
-    console.log('Calculating ultima_fonte for:', { email, telefono, newFonte, market });
-    
-    // Normalize email and phone for matching
-    const normalizedEmail = normalizeEmail(email);
-    const normalizedPhone = normalizePhone(telefono);
-    
-    // Find the most recent lead with same email or phone in the same market
-    const { data: existingLeads, error } = await supabase
-      .from('lead_generation')
-      .select('fonte, created_at, email, telefono')
-      .eq('market', market)
-      .order('created_at', { ascending: false })
-      .limit(100);
-    
-    // Filter manually with normalized values
-    const matchingLeads = existingLeads?.filter((lead: any) => 
-      normalizeEmail(lead.email) === normalizedEmail || 
-      normalizePhone(lead.telefono) === normalizedPhone
-    );
-
-    if (error) {
-      console.error('Error fetching existing leads:', error);
-      return newFonte; // fallback to new fonte
-    }
-
-    // If no matching lead found, return the new fonte as ultima_fonte
-    if (!matchingLeads || matchingLeads.length === 0) {
-      console.log('No existing lead found, setting ultima_fonte = fonte');
-      return newFonte;
-    }
-
-    const existingLead = matchingLeads[0];
-    const previousFonte = existingLead.fonte || '';
-    
-    console.log('Found existing lead with fonte:', previousFonte);
-    console.log('New fonte:', newFonte);
-    
-    // Calculate the difference between new fonte and previous fonte
-    const ultimaFonte = computeFonteDiff(previousFonte, newFonte);
-    
-    console.log('Calculated ultima_fonte:', ultimaFonte);
-    return ultimaFonte;
-    
-  } catch (error) {
-    console.error('Error in calculateUltimaFonte:', error);
-    return newFonte; // fallback to new fonte
-  }
-}
 
 // Function to compute the difference between fonte values
 function computeFonteDiff(previousFonte: string, newFonte: string): string {

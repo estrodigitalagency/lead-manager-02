@@ -52,6 +52,14 @@ const daFareTest = (esito: string) => esito.trim() === "" || RE_DA_FARE.test(esi
 // Voto qualità lead (col H del tab Lead). Il peso è il numero iniziale dell'etichetta.
 const VOTI = ["1 - Lontano", "2 - IB", "3 - CP", "4 - ISF", "5 - MM"];
 
+// Righe lette da ogni tab. Fermarsi a mille tagliava i lanci grossi senza dirlo: oggi il tab
+// piu pieno ne ha 527, ma su un lancio piu grande i numeri sarebbero risultati piu bassi del
+// vero senza nessun segnale. L'API restituisce solo le righe piene, quindi alzare il tetto non
+// costa banda su un foglio corto.
+const RIGHE_MAX = 5000;
+const RANGE_CALL = `B2:L${RIGHE_MAX}`;
+const RANGE_LEAD = `A2:J${RIGHE_MAX}`;
+
 interface LancioConfig {
   id: string;
   nome: string;
@@ -312,8 +320,8 @@ Deno.serve(async (req) => {
           const inCall = !cfg.call_sales?.length || cfg.call_sales.includes(nome);
           if (!inLead && !inCall) return;
           const wanted = [
-            ...(inCall ? cfg.call_tabs.map((t) => ({ tab: t, rng: "B2:L1000" })) : []),
-            ...(inLead && cfg.lead_tab ? [{ tab: cfg.lead_tab, rng: "A2:J1000" }] : []),
+            ...(inCall ? cfg.call_tabs.map((t) => ({ tab: t, rng: RANGE_CALL })) : []),
+            ...(inLead && cfg.lead_tab ? [{ tab: cfg.lead_tab, rng: RANGE_LEAD }] : []),
           ];
           if (wanted.length === 0) return;
           const nCallTabs = inCall ? cfg.call_tabs.length : 0;
@@ -343,6 +351,13 @@ Deno.serve(async (req) => {
             // mancano dai totali, e chi guarda deve saperlo.
             errors.push(`LETTURA FALLITA — ${nome}: sheets ${res.status}${res.status === 429 ? " (limite Google, riprova fra un minuto)" : ""}`);
             return;
+          }
+
+          // Un tab che restituisce esattamente il massimo delle righe e quasi certamente troncato.
+          for (let k = 0; k < wanted.length; k++) {
+            if (((vr[k]?.values ?? []) as any[][]).length >= RIGHE_MAX - 1) {
+              errors.push(`LETTURA TRONCATA — ${nome}: ${wanted[k].tab} supera ${RIGHE_MAX} righe`);
+            }
           }
 
           // ── CALL ──
