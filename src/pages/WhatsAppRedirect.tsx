@@ -204,19 +204,46 @@ const WhatsAppRedirect = () => {
           return null;
         };
 
-        // Race lead-in vs assegnazione: se il lead clicca subito, l'assegnazione può non essere
-        // ancora completata. Riprovo per qualche secondo prima di cadere sul numero di riserva.
+        // Il lead esiste già in database ma non ha ancora un venditore? Allora l'assegnazione
+        // è in corso e il numero di riserva sarebbe un errore: quel lead un venditore ce l'avrà.
+        const leadInLavorazione = async (): Promise<boolean> => {
+          const cols = "id, venditore";
+          if (email) {
+            const { data } = await supabase.from("lead_generation").select(cols)
+              .eq("market", effectiveMarket).ilike("email", email)
+              .order("created_at", { ascending: false }).limit(1);
+            if (data?.[0]) return true;
+          }
+          if (phoneNorm) {
+            const { data } = await supabase.from("lead_generation").select(cols)
+              .eq("market", effectiveMarket).ilike("telefono", `%${phoneNorm.slice(-9)}%`)
+              .order("created_at", { ascending: false }).limit(1);
+            if (data?.[0]) return true;
+          }
+          return false;
+        };
+
+        // Due attese diverse, perché i due casi non sono lo stesso problema.
         //
-        // Sotto carico l'assegnazione ha impiegato fino a 8 secondi (misurato con 12 optin in
-        // parallelo), quindi 9 secondi di attesa lasciavano scoperto proprio il caso peggiore:
-        // la finestra tiene ora il doppio del tempo osservato.
+        // Se il lead è già in tabella si aspetta a lungo: sotto carico l'assegnazione ha
+        // impiegato fino a otto secondi, e mandare al numero di riserva qualcuno che sta per
+        // avere il suo venditore è proprio l'errore da evitare.
+        //
+        // Se invece il lead non risulta da nessuna parte non c'è niente in arrivo: aspettare
+        // servirebbe solo a tenerlo fermo davanti a una pagina bianca.
         const POLL_MS = 600;
-        const MAX_WAIT_MS = 16000;
+        const ATTESA_LEAD_NOTO = 45000;
+        const ATTESA_LEAD_IGNOTO = 8000;
+
         let lead: any = await findAssignedLead();
-        const deadline = Date.now() + MAX_WAIT_MS;
-        while (!lead && Date.now() < deadline) {
-          await new Promise((r) => setTimeout(r, POLL_MS));
-          lead = await findAssignedLead();
+        if (!lead) {
+          const noto = await leadInLavorazione();
+          const scadenza = Date.now() + (noto ? ATTESA_LEAD_NOTO : ATTESA_LEAD_IGNOTO);
+          if (noto) console.log("[wa] lead presente ma non ancora assegnato: attendo l'assegnazione");
+          while (!lead && Date.now() < scadenza) {
+            await new Promise((r) => setTimeout(r, POLL_MS));
+            lead = await findAssignedLead();
+          }
         }
 
         if (!lead || !lead.venditore) {

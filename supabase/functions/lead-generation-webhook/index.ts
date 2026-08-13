@@ -609,91 +609,6 @@ async function scalaTettoPreassegnato(lead: any, supabase: any) {
   }
 }
 
-// Funzione per trovare il venditore precedente con controllo fonte
-async function findPreviousSellerWithSourceCheck(lead: any, automationSources: string[], supabase: any) {
-  try {
-    console.log(`Finding previous seller WITH source check for: ${lead.email} / ${lead.telefono}`);
-    
-    const normalizedEmail = normalizeEmail(lead.email);
-    const normalizedPhone = normalizePhone(lead.telefono);
-    
-    // Trova i lead precedenti con venditore assegnato (ordina per ingresso desc)
-    const { data: previousLeads, error: leadsError } = await supabase
-      .from('lead_generation')
-      .select('venditore, data_assegnazione, created_at, fonte, email, telefono')
-      .eq('market', lead.market)
-      .not('venditore', 'is', null)
-      .neq('venditore', 'Round Robin')   // coda d'attesa, non un venditore
-      .not('data_assegnazione', 'is', null)
-      .order('created_at', { ascending: false })
-      .limit(100);
-    
-    if (leadsError) {
-      console.error('Error finding previous leads:', leadsError);
-      return null;
-    }
-    
-    // Filtra manualmente con normalizzazione e controllo fonte
-    const matchingLead = previousLeads?.find((l: any) => {
-      const emailMatch = normalizeEmail(l.email) === normalizedEmail;
-      const phoneMatch = normalizePhone(l.telefono) === normalizedPhone;
-      
-      if (!emailMatch && !phoneMatch) return false;
-      
-      // Se ci sono automationSources, verifica che la fonte del lead precedente corrisponda
-      if (automationSources && automationSources.length > 0) {
-        const leadFonte = (l.fonte || '').toLowerCase().trim();
-        const sourceMatches = automationSources.some(source => {
-          const normalizedSource = source.toLowerCase().trim();
-          return leadFonte.includes(normalizedSource);
-        });
-        
-        if (!sourceMatches) {
-          console.log(`Lead ${l.venditore} skipped: fonte "${l.fonte}" doesn't match automation sources`);
-          return false;
-        }
-      }
-      
-      return true;
-    });
-    
-    if (!matchingLead) {
-      console.log('No previous assignment found with matching source');
-      return null;
-    }
-    
-    const previousSellerName = matchingLead.venditore;
-    const dataAssegnazione = matchingLead.data_assegnazione;
-    
-    console.log(`Found previous assignment: ${previousSellerName} on ${dataAssegnazione} with fonte: ${matchingLead.fonte}`);
-    // Cerca i dettagli del venditore nella tabella venditori
-    const { data: sellers } = await supabase
-      .from('venditori')
-      .select('id, nome, cognome, sheets_file_id, sheets_tab_name, market, stato')
-      .eq('market', lead.market)
-      .eq('stato', 'attivo');
-    
-    const targetSeller = sellers?.find((seller: any) => {
-      const fullName = `${seller.nome} ${seller.cognome}`.trim();
-      return fullName.toLowerCase() === previousSellerName.toLowerCase().trim();
-    });
-    
-    if (!targetSeller) {
-      console.log(`Seller ${previousSellerName} not found or inactive`);
-      return null;
-    }
-    
-    return {
-      seller: targetSeller,
-      data_assegnazione: dataAssegnazione
-    };
-    
-  } catch (error) {
-    console.error('Error in findPreviousSellerWithSourceCheck:', error);
-    return null;
-  }
-}
-
 // Funzione per trovare il venditore precedente - SENZA LIMITI
 // Restituisce { seller, dataAssegnazione } per evitare query duplicate
 async function findPreviousSeller(lead: any, supabase: any, excludedSellers: string[] = []) {
@@ -723,30 +638,22 @@ async function findPreviousSeller(lead: any, supabase: any, excludedSellers: str
       return q.order('created_at', { ascending: false }).limit(1);
     };
 
-    // STEP 1: per EMAIL
-    if (normalizedEmail) {
-      const { data: emailMatches, error: emailError } = await buildQuery('email', normalizedEmail);
-      if (emailError) {
-        console.error('Error searching by email:', emailError);
-      } else if (emailMatches && emailMatches.length > 0) {
-        const match = emailMatches[0];
-        console.log(`✅ Found previous seller by EMAIL: ${match.venditore} (entered: ${match.created_at}, assigned: ${match.data_assegnazione})`);
-        const seller = await fetchSellerDetails(match.venditore, lead.market, supabase);
-        return seller ? { seller, dataAssegnazione: match.data_assegnazione } : null;
-      }
-    }
+    // Le due ricerche partono insieme: sono indipendenti e quella per telefono, essendo per
+    // sottostringa, e la piu lenta. In fila si sommavano; in parallelo il costo e quello della
+    // piu lenta soltanto. L'email resta prioritaria nella scelta del risultato.
+    const [perEmail, perTelefono] = await Promise.all([
+      normalizedEmail ? buildQuery('email', normalizedEmail) : Promise.resolve({ data: null, error: null }),
+      normalizedPhone ? buildQuery('telefono', normalizedPhone) : Promise.resolve({ data: null, error: null }),
+    ]);
+    if (perEmail.error) console.error('Error searching by email:', perEmail.error);
+    if (perTelefono.error) console.error('Error searching by phone:', perTelefono.error);
 
-    // STEP 2: per TELEFONO
-    if (normalizedPhone) {
-      const { data: phoneMatches, error: phoneError } = await buildQuery('telefono', normalizedPhone);
-      if (phoneError) {
-        console.error('Error searching by phone:', phoneError);
-      } else if (phoneMatches && phoneMatches.length > 0) {
-        const match = phoneMatches[0];
-        console.log(`✅ Found previous seller by PHONE: ${match.venditore} (entered: ${match.created_at}, assigned: ${match.data_assegnazione})`);
-        const seller = await fetchSellerDetails(match.venditore, lead.market, supabase);
-        return seller ? { seller, dataAssegnazione: match.data_assegnazione } : null;
-      }
+    const match = perEmail.data?.[0] ?? perTelefono.data?.[0] ?? null;
+    if (match) {
+      const via = perEmail.data?.[0] ? 'EMAIL' : 'TELEFONO';
+      console.log(`✅ Found previous seller by ${via}: ${match.venditore} (entered: ${match.created_at}, assigned: ${match.data_assegnazione})`);
+      const seller = await fetchSellerDetails(match.venditore, lead.market, supabase);
+      return seller ? { seller, dataAssegnazione: match.data_assegnazione } : null;
     }
 
     console.log('❌ No previous assignment found (after excluding: ' + excludedSellers.join(', ') + ')');
