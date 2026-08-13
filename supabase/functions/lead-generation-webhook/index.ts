@@ -884,11 +884,7 @@ async function pickSellerFromDistribution(automation: any, supabase: any): Promi
     if (config.length === 0) return null;
 
     const mode: 'percentage' | 'count' = automation.distribution_mode || 'percentage';
-    const state: any = automation.distribution_state || {};
-    const counts: Record<string, number> = state.count_assigned || {};
-    const total: number = state.total_assigned || 0;
 
-    // Fetch tutti i venditori delle slot
     const sellerIds = config.map((s: any) => s.venditore_id);
     const { data: sellers } = await supabase
       .from('venditori')
@@ -901,38 +897,70 @@ async function pickSellerFromDistribution(automation: any, supabase: any): Promi
       return null;
     }
 
-    // Slot ancora capienti: venditore attivo, tetto e quota non raggiunti (logica condivisa
-    // con la prova a vuoto della configurazione, così le due non possono divergere).
-    const eligible = slotEleggibili(config, counts, activeSellers, mode);
+    // Scelta e conteggio devono essere un'operazione sola.
+    //
+    // Prima si guardavano i contatori, si sceglieva, e solo dopo si scriveva: con piu lead in
+    // arrivo insieme tutti leggevano gli stessi numeri, quindi tutti vedevano posto libero e i
+    // tetti venivano sforati — su cento lead con sessanta posti ne passavano settantadue.
+    //
+    // Ora a ogni tentativo si rileggono i contatori, si sceglie su quelli e si scrive con il
+    // vincolo che la revisione a database sia ancora quella letta. Se nel frattempo ha scritto
+    // qualcun altro la scrittura non passa, si ricomincia da capo con i numeri aggiornati: il
+    // tetto viene verificato sempre sugli stessi dati con cui viene incrementato.
+    for (let tentativo = 0; tentativo < 25; tentativo++) {
+      const { data: attuale } = await supabase
+        .from('lead_assignment_automations')
+        .select('distribution_state')
+        .eq('id', automation.id)
+        .maybeSingle();
 
-    if (mode === 'count') {
+      const stato: any = attuale?.distribution_state || {};
+      const revisione: number | null = Number.isFinite(Number(stato.rev)) ? Number(stato.rev) : null;
+      const counts: Record<string, number> = stato.count_assigned || {};
+
+      const eligible = slotEleggibili(config, counts, activeSellers, mode);
       if (eligible.length === 0) {
-        console.log('[distribution] All quotas/caps full');
+        console.log('[distribution] Nessuno puo ricevere: tetti o quote esauriti');
         return null;
       }
-      // Anche a quota assoluta i gruppi contano: le quote decidono i totali, la quota di
-      // gruppo il ritmo con cui ci si arriva. Dentro il gruppo si alterna in modo uniforme,
-      // perché il peso individuale in questa modalità è la quota, non una percentuale.
-      const pick = scegliSlot(eligible, Math.random(), true) ?? eligible[0]
-      await incrementDistributionState(automation.id, pick.slot.venditore_id, counts, total, supabase);
-      console.log(`[distribution] mode=count pick=${pick.seller.nome} ${pick.seller.cognome} gruppo=${gruppoDi(pick.slot) || '-'}`);
-      return pick.seller;
+
+      const scelto = mode === 'count'
+        ? (scegliSlot(eligible, Math.random(), true) ?? eligible[0])
+        : scegliSlot(eligible, Math.random());
+      if (!scelto) {
+        console.log('[distribution] Pesi a zero, impossibile scegliere');
+        return null;
+      }
+
+      const id = scelto.slot.venditore_id;
+      const nuoviCounts = { ...counts, [id]: (counts[id] || 0) + 1 };
+      const nuovoStato = {
+        count_assigned: nuoviCounts,
+        total_assigned: (stato.total_assigned || 0) + 1,
+        last_updated: new Date().toISOString(),
+        rev: (revisione ?? 0) + 1,
+      };
+
+      let q = supabase
+        .from('lead_assignment_automations')
+        .update({ distribution_state: nuovoStato })
+        .eq('id', automation.id);
+      q = revisione === null
+        ? q.is('distribution_state->>rev', null)
+        : q.eq('distribution_state->>rev', String(revisione));
+
+      const { data: righe } = await q.select('id');
+      if (righe && righe.length > 0) {
+        console.log(`[distribution] pick=${scelto.seller.nome} ${scelto.seller.cognome} gruppo=${gruppoDi(scelto.slot) || '-'} tentativi=${tentativo + 1}`);
+        return scelto.seller;
+      }
+
+      // Collisione: attesa breve e casuale, poi si rilegge tutto da capo.
+      await new Promise((r) => setTimeout(r, 10 + Math.random() * 60));
     }
 
-    // Percentuale: sorteggio a due livelli se ci sono gruppi (closer/setter), altrimenti
-    // sorteggio pesato normale. La logica sta nel modulo condiviso con l'anteprima e la prova.
-    if (eligible.length === 0) {
-      console.log('[distribution] No eligible sellers left (all caps reached)');
-      return null;
-    }
-    const scelto = scegliSlot(eligible, Math.random());
-    if (!scelto) {
-      console.log('[distribution] Total weight 0, cannot pick');
-      return null;
-    }
-    await incrementDistributionState(automation.id, scelto.slot.venditore_id, counts, total, supabase);
-    console.log(`[distribution] pick=${scelto.seller.nome} ${scelto.seller.cognome} gruppo=${gruppoDi(scelto.slot) || '-'} weight=${scelto.slot.weight}%`);
-    return scelto.seller;
+    console.error(`[distribution] impossibile assegnare dopo 25 tentativi su ${automation.id}: troppa contesa`);
+    return null;
   } catch (error) {
     console.error('[distribution] Error in pickSellerFromDistribution:', error);
     return null;
@@ -953,7 +981,7 @@ async function incrementDistributionState(
   // Ogni scrittura porta un numero di revisione e l'aggiornamento vale solo se la revisione a
   // database e ancora quella letta. Se nel frattempo ha scritto qualcun altro non passa nessuna
   // riga, si rilegge e si riprova: nessun incremento va perso.
-  for (let tentativo = 0; tentativo < 10; tentativo++) {
+  for (let tentativo = 0; tentativo < 25; tentativo++) {
     const { data: attuale } = await supabase
       .from('lead_assignment_automations')
       .select('distribution_state')
@@ -984,7 +1012,7 @@ async function incrementDistributionState(
     if (righe && righe.length > 0) return
 
     // Collisione: attesa breve e crescente, con un po' di casualita per non ripartire insieme.
-    await new Promise((r) => setTimeout(r, 15 * (tentativo + 1) + Math.random() * 40))
+    await new Promise((r) => setTimeout(r, 10 + Math.random() * 60))
   }
-  console.error(`[distribution] contatore non aggiornato dopo 10 tentativi: ${automationId} / ${venditoreId}`)
+  console.error(`[distribution] contatore non aggiornato dopo 25 tentativi: ${automationId} / ${venditoreId}`)
 }
