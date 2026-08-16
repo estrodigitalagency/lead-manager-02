@@ -1,6 +1,13 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Zap, AlertTriangle, Loader2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
+import { toast } from "sonner";
+import { Zap, AlertTriangle, Loader2, Save } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { fetchCodaIds, setCoda } from "@/lib/automazioni/coda";
+import { azzeraContatori } from "@/lib/automazioni/contatori";
 import { useSalespeopleData } from "@/hooks/useSalespeopleData";
 import { useAutomationsData } from "@/hooks/useAutomationsData";
 import { LancioConfig, LancioRow } from "@/lib/lanci/config";
@@ -11,14 +18,23 @@ const n = (v: number) => Math.round(v).toLocaleString("it-IT");
 interface Props { lancio: LancioConfig; rows: LancioRow[]; market: string; onChange: () => void }
 
 /**
- * Distribuzione del lancio. La regola vive in `lead_assignment_automations` e si crea/modifica
- * con lo stesso editor completo di Impostazioni → Automazioni (percentuale o quota assoluta,
- * cap, esclusioni, lock period, fonti), così non esistono due configuratori diversi.
+ * Distribuzione del lancio.
+ *
+ * Qui si governa il flusso a lancio partito — mettere in pausa un venditore, spostare una
+ * percentuale, alzare un tetto, azzerare un contatore, sospendere le assegnazioni — senza
+ * passare dalle impostazioni, dove si tocca anche quello che non va toccato a lancio in corso:
+ * tab dei fogli, campagne, condizioni, webhook, anagrafica.
+ *
+ * La regola resta la stessa di `lead_assignment_automations`: qui se ne modificano solo le leve
+ * operative, tutto il resto è in sola lettura e si cambia da Impostazioni → Lanci.
  */
 const TabDistribuzione = ({ lancio, rows, market, onChange }: Props) => {
   const { venditori } = useSalespeopleData();
   const { automations, isLoading } = useAutomationsData();
   const [log, setLog] = useState<any[]>([]);
+  const [bozza, setBozza] = useState<Record<string, { weight?: number; cap?: number | null; paused?: boolean }>>({});
+  const [inCoda, setInCoda] = useState(false);
+  const [salvo, setSalvo] = useState(false);
 
   const autom = useMemo(
     () => automations.find((a) => a.id === lancio.automazione_id) ?? null,
@@ -36,6 +52,51 @@ const TabDistribuzione = ({ lancio, rows, market, onChange }: Props) => {
       priority: autom.priority ?? 999, escludiId: autom.id,
     }).then(setConflitti);
   }, [autom, market]);
+
+  useEffect(() => {
+    if (!autom?.id) return;
+    fetchCodaIds().then((ids) => setInCoda(ids.includes(autom.id)));
+  }, [autom?.id]);
+
+  // Le modifiche restano in una bozza finché non si salva: così si sistemano più venditori
+  // insieme e si vede la somma delle percentuali prima di applicare.
+  const slotBozza = (slot: any) => ({ ...slot, ...(bozza[slot.venditore_id] ?? {}) });
+  const modificato = Object.keys(bozza).length > 0;
+  const configBozza = (autom?.distribution_config ?? []).map(slotBozza);
+  const sommaPesi = configBozza.reduce((t: number, x: any) => t + (x.weight || 0), 0);
+  const pesiValidi = autom?.distribution_mode === "count" || sommaPesi === 100;
+
+  const tocca = (id: string, patch: any) => setBozza((b) => ({ ...b, [id]: { ...(b[id] ?? {}), ...patch } }));
+
+  const salva = async () => {
+    if (!autom?.id) return;
+    if (!pesiValidi) { toast.error(`Le percentuali sommano a ${sommaPesi} invece di 100`); return; }
+    setSalvo(true);
+    const { error } = await supabase.from("lead_assignment_automations")
+      .update({ distribution_config: configBozza }).eq("id", autom.id);
+    setSalvo(false);
+    if (error) { toast.error(error.message); return; }
+    setBozza({});
+    toast.success("Distribuzione aggiornata");
+    onChange();
+  };
+
+  const cambiaCoda = async (attiva: boolean) => {
+    if (!autom?.id) return;
+    if (!(await setCoda(autom.id, attiva))) { toast.error("Errore salvataggio"); return; }
+    setInCoda(attiva);
+    toast.success(attiva ? "Lead nuovi in coda: passa solo chi è già stato assegnato" : "Assegnazione ripresa");
+  };
+
+  const azzera = async (venditoreId?: string) => {
+    if (!autom?.id) return;
+    const chi = venditoreId ? nomeOf(venditoreId) : "tutti i venditori";
+    if (!confirm(`Azzerare il contatore di ${chi}?`)) return;
+    const r = await azzeraContatori(autom.id, venditoreId ? [venditoreId] : []);
+    if (r?.error) { toast.error(r.error); return; }
+    toast.success("Contatori azzerati");
+    onChange();
+  };
 
   const loadLog = useCallback(async () => {
     setLog(lancio.automazione_id ? await fetchEsecuzioni(lancio.automazione_id, 100) : []);
@@ -68,7 +129,7 @@ const TabDistribuzione = ({ lancio, rows, market, onChange }: Props) => {
                   {autom.attivo ? "attiva" : "disattiva"}
                 </span>
               )}
-              <span className="text-[11px] text-muted-foreground">sola lettura · si configura in Impostazioni</span>
+              <span className="text-[11px] text-muted-foreground">condizioni e fogli si cambiano in Impostazioni</span>
             </span>
           </CardTitle>
         </CardHeader>
@@ -130,6 +191,112 @@ const TabDistribuzione = ({ lancio, rows, market, onChange }: Props) => {
           )}
         </CardContent>
       </Card>
+
+      {/* Leve operative: quello che serve governare a lancio partito */}
+      {autom && autom.action_type === "weighted_distribution" && (
+        <Card className="overflow-hidden">
+          <CardHeader className="py-2.5 px-3.5 border-b border-border">
+            <CardTitle className="label-eyebrow flex items-center justify-between gap-2 flex-wrap">
+              <span>Governo della distribuzione</span>
+              <span className="flex items-center gap-2 normal-case tracking-normal">
+                {modificato && (
+                  <span className={`text-[11px] ${pesiValidi ? "text-emerald-400" : "text-amber-400"}`}>
+                    {isCount ? `totale ${sommaPesi}` : `totale ${sommaPesi}%`}
+                  </span>
+                )}
+                <Button size="sm" className="h-7 text-[11.5px]" disabled={!modificato || salvo} onClick={salva}>
+                  {salvo ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <Save className="h-3.5 w-3.5 mr-1" />}
+                  Salva
+                </Button>
+              </span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            <div className={`flex items-start gap-2.5 px-3.5 py-2.5 border-b ${inCoda
+              ? "border-destructive/40 bg-destructive/10" : "border-border"}`}>
+              <Switch checked={inCoda} onCheckedChange={cambiaCoda} className="data-[state=checked]:bg-destructive mt-0.5" />
+              <div className="min-w-0">
+                <div className={`text-[12.5px] font-medium ${inCoda ? "text-destructive" : ""}`}>
+                  Metti i lead nuovi in coda (Round Robin)
+                </div>
+                <p className="text-[11px] text-muted-foreground">
+                  {inCoda
+                    ? "Attiva: i lead nuovi restano in attesa, passa solo chi era già stato assegnato di recente. Percentuali e tetti non si toccano."
+                    : "Da usare quando i venditori sono indietro con la lavorazione e non vuoi continuare a caricarli."}
+                </p>
+              </div>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-[12.5px]">
+                <thead><tr>
+                  <th className="table-header-cell text-left w-[34px]"></th>
+                  <th className="table-header-cell text-left">Venditore</th>
+                  <th className="table-header-cell text-right whitespace-nowrap">Ricevuti</th>
+                  <th className="table-header-cell text-right whitespace-nowrap">{isCount ? "Quota" : "Percentuale"}</th>
+                  {!isCount && <th className="table-header-cell text-right whitespace-nowrap">Tetto max</th>}
+                </tr></thead>
+                <tbody>
+                  {(autom.distribution_config ?? []).map((slotOrig: any) => {
+                    const slot = slotBozza(slotOrig);
+                    const id = slot.venditore_id;
+                    const ricevuti = assegnatiRegola[id] ?? 0;
+                    return (
+                      <tr key={id} className={slot.paused ? "opacity-60" : ""}>
+                        <td className="table-body-cell">
+                          <button type="button" onClick={() => tocca(id, { paused: !slot.paused })}
+                            title={slot.paused ? "In pausa: non riceve lead. Clicca per riattivare" : "Metti in pausa"}
+                            className={`h-5 w-5 rounded-full border grid place-items-center text-[10px] ${slot.paused
+                              ? "border-destructive bg-destructive/20 text-destructive"
+                              : "border-border text-muted-foreground/50 hover:text-foreground"}`}>
+                            {slot.paused ? "❚❚" : "▶"}
+                          </button>
+                        </td>
+                        <td className={`table-body-cell font-medium ${slot.paused ? "text-destructive line-through" : ""}`}>
+                          {nomeOf(id)}
+                        </td>
+                        <td className="table-body-cell text-right">
+                          <button type="button" onClick={() => azzera(id)} title="Clicca per azzerare"
+                            className={`num ${ricevuti > 0 ? "hover:text-destructive" : "text-muted-foreground/40"}`}>
+                            {n(ricevuti)}
+                          </button>
+                        </td>
+                        <td className="table-body-cell text-right">
+                          <Input type="number" className="h-7 w-[74px] text-[12px] text-right ml-auto"
+                            value={(isCount ? slot.count_target : slot.weight) ?? ""}
+                            onChange={(e) => tocca(id, isCount
+                              ? { count_target: parseInt(e.target.value, 10) || 0 }
+                              : { weight: parseInt(e.target.value, 10) || 0 })} />
+                        </td>
+                        {!isCount && (
+                          <td className="table-body-cell text-right">
+                            <Input type="number" placeholder="nessuno" className="h-7 w-[84px] text-[12px] text-right ml-auto"
+                              value={slot.cap ?? ""}
+                              onChange={(e) => {
+                                const v = parseInt(e.target.value, 10);
+                                tocca(id, { cap: isNaN(v) || v <= 0 ? null : v });
+                              }} />
+                          </td>
+                        )}
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="flex items-center justify-between gap-2 flex-wrap px-3.5 py-2.5 border-t border-border">
+              <p className="text-[11px] text-muted-foreground flex-1 min-w-[240px]">
+                La pausa ferma i lead nuovi ma non le riassegnazioni: chi ha già parlato con quel venditore
+                continua ad andare da lui. Il numero dei ricevuti si clicca per azzerarlo.
+              </p>
+              <Button size="sm" variant="outline" className="h-7 text-[11px] text-destructive" onClick={() => azzera()}>
+                Azzera tutti i contatori
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Reale vs quota della regola vs target del lancio */}
       <Card className="overflow-hidden">

@@ -188,6 +188,13 @@ const DocumentazioneDialog = () => {
                   quando lo riattivi ritrova la quota di prima. Un lead che aveva già parlato con lui continua però
                   ad arrivargli, ed è contato: la pausa ferma i lead nuovi, non le riassegnazioni.
                 </T>
+                <H>Governare senza entrare nelle impostazioni</H>
+                <T>
+                  Le leve che servono a lancio partito stanno anche in <K>Lanci → Distribuzione</K>: pausa di un
+                  venditore, percentuali, tetti, azzeramento dei contatori e sospensione delle assegnazioni. Da lì
+                  non si toccano condizioni, fogli, campagne o webhook, che restano in Impostazioni: è il posto
+                  giusto per chi governa il flusso ogni giorno senza dover aprire la configurazione del lancio.
+                </T>
                 <H>Contatori</H>
                 <T>
                   Ogni assegnazione a un venditore della distribuzione scala il suo tetto, da qualunque strada arrivi:
