@@ -493,7 +493,7 @@ const LancioConfigDialog = ({ open, onOpenChange, value, onSave, esistenti, mark
               <div className="flex gap-1.5 flex-wrap">
                 {([
                   { k: "attiva", t: "Attiva", c: "border-emerald-500 bg-emerald-500/15 text-emerald-400" },
-                  { k: "coda", t: "Solo ritorni · nuovi in coda", c: "border-amber-500 bg-amber-500/15 text-amber-400" },
+                  { k: "coda", t: "Lead nuovi in attesa", c: "border-amber-500 bg-amber-500/15 text-amber-400" },
                   { k: "spenta", t: "Spenta", c: "border-destructive bg-destructive/15 text-destructive" },
                 ] as const).map((o) => (
                   <button key={o.k} type="button" onClick={() => setStatoAuto(o.k)}
@@ -505,7 +505,7 @@ const LancioConfigDialog = ({ open, onOpenChange, value, onSave, esistenti, mark
               </div>
               <p className="text-[11px] text-muted-foreground mt-2">
                 {statoAuto === "attiva" && "I lead vengono distribuiti secondo le quote qui sotto, e chi era già stato assegnato di recente torna al suo venditore."}
-                {statoAuto === "coda" && "I lead nuovi entrano come assegnati a “Round Robin” e restano in attesa. Passa solo chi era già stato assegnato entro il periodo impostato. Quote, tetti e contatori non si toccano."}
+                {statoAuto === "coda" && "Chi non è mai entrato prima resta in attesa, assegnato a “Round Robin”. Chi era già stato assegnato a un venditore entro il lock period torna da lui. Quote, tetti e contatori non si toccano."}
                 {statoAuto === "spenta" && "Nessun lead viene assegnato, nemmeno i ritorni: restano liberi, senza venditore, fra quelli da smistare a mano."}
               </p>
               <p className="text-[11px] text-muted-foreground mt-1">

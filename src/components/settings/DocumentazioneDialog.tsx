@@ -215,8 +215,11 @@ const DocumentazioneDialog = () => {
                   In <K>Lanci → Distribuzione</K> la regola ha tre stati che si escludono a vicenda.
                   <br /><K>Attiva</K>: i lead vengono distribuiti secondo le percentuali, e chi era già stato
                   assegnato di recente torna al suo venditore.
-                  <br /><K>Solo ritorni</K>: i lead nuovi entrano come assegnati a «Round Robin» e restano in
-                  attesa; passa solo chi era già stato assegnato entro il periodo impostato.
+                  <br /><K>Lead nuovi in attesa</K>: chi non è mai entrato prima viene parcheggiato come
+                  assegnato a «Round Robin» e nessuno lo lavora; chi invece risulta già assegnato a un
+                  venditore entro il lock period torna da lui, e gli scala il tetto. Serve quando i venditori
+                  sono indietro: si smette di dargli lead nuovi, ma chi ci ha già parlato continua ad arrivare
+                  alla persona giusta invece che a uno sconosciuto.
                   <br /><K>Spenta</K>: non viene assegnato niente, nemmeno i ritorni. I lead restano
                   <K> liberi</K> — senza venditore, assegnabili — e compaiono fra quelli da smistare a mano.
                   Niente scritture sui fogli e niente webhook.

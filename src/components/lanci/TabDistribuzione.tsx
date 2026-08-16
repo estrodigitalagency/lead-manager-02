@@ -100,7 +100,7 @@ const TabDistribuzione = ({ lancio, rows, market, onChange }: Props) => {
       }
       toast.success({
         attiva: "Assegnazione attiva",
-        coda: "Lead nuovi in coda: passa solo chi era già stato assegnato",
+        coda: "Lead nuovi in attesa: passano solo quelli già noti",
         spenta: "Assegnazione spenta: i lead restano liberi",
       }[nuovo]);
       onChange();
@@ -237,7 +237,7 @@ const TabDistribuzione = ({ lancio, rows, market, onChange }: Props) => {
               <div className="flex gap-1.5 flex-wrap">
                 {([
                   { k: "attiva", t: "Assegnazione attiva", c: "border-emerald-500 bg-emerald-500/15 text-emerald-400" },
-                  { k: "coda", t: "Solo ritorni · nuovi in coda", c: "border-amber-500 bg-amber-500/15 text-amber-400" },
+                  { k: "coda", t: "Lead nuovi in attesa", c: "border-amber-500 bg-amber-500/15 text-amber-400" },
                   { k: "spenta", t: "Assegnazione spenta", c: "border-destructive bg-destructive/15 text-destructive" },
                 ] as const).map((o) => (
                   <button key={o.k} type="button" disabled={cambioStato} onClick={() => cambiaStato(o.k)}
@@ -251,7 +251,7 @@ const TabDistribuzione = ({ lancio, rows, market, onChange }: Props) => {
                 {stato === "attiva" &&
                   "I lead vengono distribuiti secondo le percentuali qui sotto, e chi era già stato assegnato di recente torna al suo venditore."}
                 {stato === "coda" &&
-                  "I lead nuovi entrano come assegnati a “Round Robin” e restano in attesa. Passa solo chi era già stato assegnato entro il periodo impostato, che torna al suo venditore. Percentuali, tetti e contatori restano dove sono."}
+                  "Chi non è mai entrato prima resta in attesa, assegnato a “Round Robin”: nessuno lo lavora finché non rimetti Attiva o premi Distribuiscili ora. Chi invece era già stato assegnato a un venditore negli ultimi giorni impostati nel lock period torna da lui, e gli scala il tetto. Percentuali, tetti e contatori restano dove sono."}
                 {stato === "spenta" &&
                   "Nessun lead viene assegnato, nemmeno chi era già stato lavorato: restano liberi, senza venditore, e compaiono fra i lead da assegnare a mano. Niente scritture sui fogli e niente webhook."}
               </p>
