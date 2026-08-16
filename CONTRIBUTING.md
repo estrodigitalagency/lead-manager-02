@@ -65,3 +65,66 @@ Nomi di variabili e funzioni in italiano dove descrivono il dominio (`slotEleggi
 | Governo quotidiano | `src/components/lanci/TabDistribuzione.tsx` |
 | Redirect WhatsApp | `src/pages/WhatsAppRedirect.tsx`, `supabase/functions/wa-click/` |
 | Verifica configurazione | `supabase/functions/lancio-test/` |
+
+## Operazioni ricorrenti
+
+Con le sole variabili del `.env` (chiave anon). Le tabelle dei lead, delle automazioni e delle
+impostazioni sono raggiungibili così; serve la service role solo per `whatsapp_click_logs`.
+
+```bash
+set -a && source .env && set +a
+API="$VITE_SUPABASE_URL/rest/v1"
+H=(-H "apikey: $VITE_SUPABASE_PUBLISHABLE_KEY" -H "Authorization: Bearer $VITE_SUPABASE_PUBLISHABLE_KEY")
+```
+
+**Cercare un lead** e capire dov'è finito:
+
+```bash
+curl -s "$API/lead_generation?select=created_at,email,ultima_fonte,campagna,venditore,stato,assignable\
+&email=ilike.mario@esempio.it" "${H[@]}"
+```
+
+**Chi l'ha assegnato** — la riga compare solo se è passato da un'automazione; `counted_preassigned`
+significa che è arrivato già assegnato da un flusso esterno:
+
+```bash
+curl -s "$API/automation_executions?select=executed_at,automation_name,seller_assigned,result,error_message\
+&lead_email=eq.mario@esempio.it&order=executed_at.desc" "${H[@]}"
+```
+
+**Stato delle regole** — quote, tetti, contatori:
+
+```bash
+curl -s "$API/lead_assignment_automations?select=nome,attivo,priority,condition_value,\
+distribution_mode,distribution_config,distribution_state&market=eq.IT&order=priority" "${H[@]}"
+```
+
+**Verificare un lancio senza scrivere niente** — venditori, tab dei fogli, provenienza, conflitti,
+link WhatsApp, più la simulazione di un lead con la fonte indicata:
+
+```bash
+curl -s -G "$VITE_SUPABASE_URL/functions/v1/lancio-test" \
+  --data-urlencode "lancio=workshop_set26" --data-urlencode "market=IT" \
+  --data-urlencode "fonte=workshop_set26_ads" \
+  -H "Authorization: Bearer $VITE_SUPABASE_PUBLISHABLE_KEY"
+```
+
+**Far entrare un lead di prova** dal vero webhook — usa una fonte inventata e cancellalo dopo:
+
+```bash
+curl -s -X POST "$VITE_SUPABASE_URL/functions/v1/lead-generation-webhook" \
+  -H "Authorization: Bearer $VITE_SUPABASE_PUBLISHABLE_KEY" -H "Content-Type: application/json" \
+  -d '{"nome":"Prova","email":"p1@prova.invalid","fonte":"__prova_zzz__",
+       "ultima_fonte":"__prova_zzz__","market":"IT"}'
+
+curl -s -X DELETE "$API/lead_generation?ultima_fonte=eq.__prova_zzz__" "${H[@]}"
+```
+
+**Log di una Edge Function** — il posto dove guardare quando un'assegnazione non torna:
+
+```bash
+npx supabase functions logs lead-generation-webhook --project-ref <ref>
+```
+
+**Ricalcolare la matrice** saltando la cache: aggiungi `&nocache=1` alla chiamata di
+`analytics-lancio`. A freddo impiega una decina di secondi perché rilegge tutti i fogli.
