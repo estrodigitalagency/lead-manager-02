@@ -134,7 +134,11 @@ const Lanci = () => {
     const fixApp = perQualifica("Fix App");
     return [
       { k: "Lead generati", v: lg ? fmt.n(lg.generati) : "—", s: lg ? `${fmt.n(nuovi)} nuovi · ${fmt.n(lg.generati - nuovi)} vecchi` : "", lead: true },
-      { k: "Assegnati", v: fmt.n(assegnati), s: lg ? `${((assegnati / lg.generati) * 100).toFixed(1).replace(".", ",")}% dei generati` : "", lead: true },
+      { k: "Assegnati", v: fmt.n(assegnati),
+        s: lg && lg.generati > 0
+          ? `${((assegnati / lg.generati) * 100).toFixed(1).replace(".", ",")}% dei generati`
+          : "dai fogli dei venditori",
+        lead: true },
       { k: "Non lavorato", v: fmt.n(nonLavorato), s: suAssegnati(nonLavorato), lead: true, allarme: nonLavorato > 0 },
       { k: "Confermato", v: fmt.n(confermato), s: suAssegnati(confermato), lead: true },
       { k: "Fix App", v: fmt.n(fixApp), s: suAssegnati(fixApp), lead: true },
