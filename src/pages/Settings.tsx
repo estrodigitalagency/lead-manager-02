@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import PinImpostazioni from "@/components/settings/PinImpostazioni";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel } from "@/components/ui/select";
 import {
   Webhook, ArrowRightLeft, Users, Database, Tag, Zap, RefreshCw, MessageCircle,
@@ -90,6 +91,7 @@ const Settings = () => {
         Configura team, regole di assegnazione e integrazioni.
       </p>
 
+      <PinImpostazioni>
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full" orientation={isMobile ? "horizontal" : "vertical"}>
         {isMobile ? (
           <div className="mb-4">
@@ -176,6 +178,7 @@ const Settings = () => {
           </>
         )}
       </Tabs>
+      </PinImpostazioni>
     </div>
   );
 };
