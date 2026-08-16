@@ -267,7 +267,7 @@ const TabDistribuzione = ({ lancio, rows, market, onChange }: Props) => {
                   <th className="table-header-cell text-left w-[34px]"></th>
                   <th className="table-header-cell text-left">Venditore</th>
                   <th className="table-header-cell text-right whitespace-nowrap">Ricevuti</th>
-                  {!isCount && <th className="table-header-cell text-right whitespace-nowrap">Mancanti</th>}
+
                   <th className="table-header-cell text-right whitespace-nowrap">{isCount ? "Quota" : "Percentuale"}</th>
                   {!isCount && <th className="table-header-cell text-right whitespace-nowrap">Tetto max</th>}
                 </tr></thead>
@@ -293,18 +293,9 @@ const TabDistribuzione = ({ lancio, rows, market, onChange }: Props) => {
                         <td className="table-body-cell text-right">
                           <button type="button" onClick={() => azzera(id)} title="Clicca per azzerare"
                             className={`num ${ricevuti > 0 ? "hover:text-destructive" : "text-muted-foreground/40"}`}>
-                            {n(ricevuti)}
+                            {n(ricevuti)}{slot.cap ? <span className="text-muted-foreground/60">/{n(slot.cap)}</span> : ""}
                           </button>
                         </td>
-                        {!isCount && (
-                          <td className="table-body-cell text-right num">
-                            {!slot.cap
-                              ? <span className="text-muted-foreground/40">—</span>
-                              : ricevuti >= slot.cap
-                                ? <span className="text-emerald-400 font-medium">pieno</span>
-                                : n(slot.cap - ricevuti)}
-                          </td>
-                        )}
                         <td className="table-body-cell text-right">
                           <Input type="number" className="h-7 w-[74px] text-[12px] text-right ml-auto"
                             value={(isCount ? slot.count_target : slot.weight) ?? ""}
@@ -359,7 +350,6 @@ const TabDistribuzione = ({ lancio, rows, market, onChange }: Props) => {
                 <th className="table-header-cell text-right sticky top-0 bg-card">{isCount ? "Quota regola" : "Peso regola"}</th>
                 <th className="table-header-cell text-right sticky top-0 bg-card">Dalla regola</th>
                 <th className="table-header-cell text-right sticky top-0 bg-card">Tetto max</th>
-                <th className="table-header-cell text-right sticky top-0 bg-card">Mancanti</th>
                 <th className="table-header-cell text-left sticky top-0 bg-card w-[130px]">Riempimento</th>
               </tr>
             </thead>
@@ -388,13 +378,6 @@ const TabDistribuzione = ({ lancio, rows, market, onChange }: Props) => {
                         <span className="text-muted-foreground/60 text-[10.5px]"> · tetto {n(slot.cap)}</span>
                       )}
                     </td>
-                    <td className="table-body-cell text-right num">
-                      {mancanti === null
-                        ? <span className="text-muted-foreground/40">—</span>
-                        : mancanti === 0
-                          ? <span className="text-emerald-400 font-medium">pieno</span>
-                          : n(mancanti)}
-                    </td>
                     <td className="table-body-cell">
                       {/* Con obiettivi da centinaia di lead i primi arrivi valgono frazioni di
                           pixel: senza il numero accanto la barra sembra ferma. */}
@@ -404,8 +387,10 @@ const TabDistribuzione = ({ lancio, rows, market, onChange }: Props) => {
                             style={{ width: `${rif ? Math.max(p > 0 ? 2 : 0, p) : 0}%`,
                                      background: p >= 100 ? "hsl(142 71% 60%)" : "hsl(232 100% 74%)" }} />
                         </div>
-                        <span className="text-[10.5px] num text-muted-foreground w-[42px] text-right shrink-0">
-                          {rif ? `${p < 10 && p > 0 ? p.toFixed(1) : Math.round(p)}%` : "—"}
+                        <span className="text-[10.5px] num text-muted-foreground w-[78px] text-right shrink-0">
+                          {mancanti === null ? "—" : mancanti === 0
+                            ? <span className="text-emerald-400 font-medium">pieno</span>
+                            : `mancano ${n(mancanti)}`}
                         </span>
                       </div>
                     </td>
