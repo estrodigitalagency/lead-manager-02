@@ -37,6 +37,19 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
     );
 
+    // Azzera le statistiche di un link: serve per ripartire da zero prima di una prova vera,
+    // senza portarsi dietro i click falliti delle configurazioni precedenti.
+    if (corpo.azione === "reset") {
+      const slug = String(corpo.slug ?? "").trim();
+      if (!slug) return json({ error: "Serve lo slug del link" }, 400);
+      const { count: prima } = await supabaseSR()
+        .from("whatsapp_click_logs").select("id", { count: "exact", head: true }).eq("template_slug", slug);
+      const { error } = await supabaseSR().from("whatsapp_click_logs").delete().eq("template_slug", slug);
+      if (error) return json({ error: error.message }, 500);
+      console.log(`[wa-click] azzerate ${prima ?? 0} righe per ${slug}`);
+      return json({ ok: true, cancellati: prima ?? 0 });
+    }
+
     // Lettura delle statistiche: la RLS non lascia leggere la tabella con la anon key, quindi
     // anche i conteggi devono passare da qui, altrimenti l'app mostra zero click comunque.
     if (corpo.azione === "stats") {

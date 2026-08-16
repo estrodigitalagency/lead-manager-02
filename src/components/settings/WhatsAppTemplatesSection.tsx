@@ -10,8 +10,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Copy, Edit, Trash2, Plus, MessageCircle, ExternalLink, TrendingUp, AlertTriangle, ShieldCheck } from "lucide-react";
+import { Copy, Edit, Trash2, Plus, MessageCircle, ExternalLink, TrendingUp, AlertTriangle, ShieldCheck, RotateCcw } from "lucide-react";
 import { useMarket } from "@/contexts/MarketContext";
+
+const SUPA_URL = "https://btcwmuyemmkiteqlopce.supabase.co";
+const ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ0Y3dtdXllbW1raXRlcWxvcGNlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY4NzIxMTIsImV4cCI6MjA2MjQ0ODExMn0.NYTXODd9HEglk4b1RKOt1XyrGMiOOs4ltfFyeZknfBE";
 
 type Template = WaTemplate;
 
@@ -162,6 +165,20 @@ const WhatsAppTemplatesSection = () => {
   const copiaSnippet = () => {
     navigator.clipboard.writeText(SNIPPET);
     toast.success("Snippet copiato — incollalo nel Custom Code della pagina (sezione Footer)");
+  };
+
+  /** Azzera i click di un link: utile per ripartire pulito prima di una prova vera. */
+  const azzeraClick = async (t: Template) => {
+    if (!confirm(`Azzerare le statistiche di "${t.nome}"? I click registrati finora vengono cancellati.`)) return;
+    const r = await fetch(`${SUPA_URL}/functions/v1/wa-click`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${ANON}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ azione: "reset", slug: t.slug }),
+    });
+    const j = await r.json();
+    if (j.error) { toast.error(j.error); return; }
+    toast.success(`${j.cancellati} click cancellati`);
+    load();
   };
 
   const copyLink = (slug: string) => {
@@ -370,6 +387,9 @@ const WhatsAppTemplatesSection = () => {
                     <p className="text-xs text-muted-foreground mt-1.5 italic line-clamp-2">"{t.messaggio_template}"</p>
                   </div>
                   <div className="flex flex-col sm:flex-row items-end sm:items-center gap-1 shrink-0">
+                    <Button size="sm" variant="outline" onClick={() => azzeraClick(t)} title="Azzera le statistiche dei click">
+                      <RotateCcw className="h-3.5 w-3.5" />
+                    </Button>
                     <Button size="sm" variant="outline" onClick={() => copyLink(t.slug)} title="Copia link">
                       <Copy className="h-3.5 w-3.5" />
                     </Button>
