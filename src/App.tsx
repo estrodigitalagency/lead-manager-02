@@ -2,7 +2,9 @@ import React from 'react';
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { Suspense } from "react";
 import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
+import { Loader2 } from "lucide-react";
 import { navItems, standaloneRoutes, publicRoutes } from "./nav-items";
 import { LeadSyncProvider } from "@/contexts/LeadSyncContext";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
@@ -47,6 +49,12 @@ const AppContent = () => {
   return (
     <ProtectedRoute>
       {!isStandalonePage && !isPublicPage && <PersistentNavigation />}
+      {/* Mentre il pezzo della pagina arriva si mostra un'attesa, invece del vuoto. */}
+      <Suspense fallback={
+        <div className="flex items-center justify-center min-h-[60vh] text-muted-foreground">
+          <Loader2 className="h-6 w-6 animate-spin" />
+        </div>
+      }>
       <Routes>
         {navItems.map(({ to, page }) => (
           <Route key={to} path={to} element={page} />
@@ -58,6 +66,7 @@ const AppContent = () => {
           <Route key={to} path={to} element={page} />
         ))}
       </Routes>
+      </Suspense>
     </ProtectedRoute>
   );
 };

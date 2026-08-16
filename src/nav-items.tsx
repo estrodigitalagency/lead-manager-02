@@ -1,14 +1,23 @@
+import { lazy } from "react";
 
-import Index from "./pages/Index";
-import Database from "./pages/Database";
-import History from "./pages/History";
-import Reports from "./pages/Reports";
-import Settings from "./pages/Settings";
-import LeadAssignment from "./pages/LeadAssignment";
-import Login from "./pages/Login";
-import WhatsAppRedirect from "./pages/WhatsAppRedirect";
-import Ranking from "./pages/Ranking";
-import Lanci from "./pages/Lanci";
+/**
+ * Le pagine si caricano quando servono, non tutte all'avvio.
+ *
+ * Importandole in cima il costruttore le impacchettava in un file solo da due megabyte: chi
+ * apriva i lanci scaricava anche database, report, impostazioni e le librerie per PDF ed Excel
+ * prima di vedere qualsiasi cosa. Con l'importazione differita ogni pagina diventa un pezzo a
+ * sé e all'apertura arriva soltanto quella che si sta guardando.
+ */
+const Index = lazy(() => import("./pages/Index"));
+const Database = lazy(() => import("./pages/Database"));
+const History = lazy(() => import("./pages/History"));
+const Reports = lazy(() => import("./pages/Reports"));
+const Settings = lazy(() => import("./pages/Settings"));
+const LeadAssignment = lazy(() => import("./pages/LeadAssignment"));
+const Login = lazy(() => import("./pages/Login"));
+const WhatsAppRedirect = lazy(() => import("./pages/WhatsAppRedirect"));
+const Ranking = lazy(() => import("./pages/Ranking"));
+const Lanci = lazy(() => import("./pages/Lanci"));
 
 export const navItems = [
   {
