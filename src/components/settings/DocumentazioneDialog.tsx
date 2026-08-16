@@ -210,6 +210,22 @@ const DocumentazioneDialog = () => {
 
             {sez === "coda" && (
               <div>
+                <H>I tre stati dell'assegnazione</H>
+                <T>
+                  In <K>Lanci → Distribuzione</K> la regola ha tre stati che si escludono a vicenda.
+                  <br /><K>Attiva</K>: i lead vengono distribuiti secondo le percentuali, e chi era già stato
+                  assegnato di recente torna al suo venditore.
+                  <br /><K>Solo ritorni</K>: i lead nuovi entrano come assegnati a «Round Robin» e restano in
+                  attesa; passa solo chi era già stato assegnato entro il periodo impostato.
+                  <br /><K>Spenta</K>: non viene assegnato niente, nemmeno i ritorni. I lead restano
+                  <K> liberi</K> — senza venditore, assegnabili — e compaiono fra quelli da smistare a mano.
+                  Niente scritture sui fogli e niente webhook.
+                </T>
+                <Nota>
+                  I lead che arrivano già con un venditore, cioè quelli dei link personali con UTM, non passano
+                  da nessuno dei tre stati: le automazioni vengono saltate a monte, quindi continuano ad
+                  arrivare ai venditori anche a regola spenta.
+                </Nota>
                 <H>Sospensione temporanea</H>
                 <T>
                   L'interruttore rosso in fondo alla scheda Assegnazione. Da usare a lancio partito, quando i

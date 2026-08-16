@@ -81,11 +81,30 @@ const TabDistribuzione = ({ lancio, rows, market, onChange }: Props) => {
     onChange();
   };
 
-  const cambiaCoda = async (attiva: boolean) => {
-    if (!autom?.id) return;
-    if (!(await setCoda(autom.id, attiva))) { toast.error("Errore salvataggio"); return; }
-    setInCoda(attiva);
-    toast.success(attiva ? "Lead nuovi in coda: passa solo chi è già stato assegnato" : "Assegnazione ripresa");
+  const [cambioStato, setCambioStato] = useState(false);
+  const stato: "attiva" | "coda" | "spenta" = !autom?.attivo ? "spenta" : inCoda ? "coda" : "attiva";
+
+  /** I tre stati sono esclusivi: si imposta insieme l'interruttore della regola e quello della coda. */
+  const cambiaStato = async (nuovo: "attiva" | "coda" | "spenta") => {
+    if (!autom?.id || nuovo === stato) return;
+    if (nuovo === "spenta" && !confirm("Fermare l'assegnazione? I lead resteranno liberi, senza venditore.")) return;
+    setCambioStato(true);
+    try {
+      const { error } = await supabase.from("lead_assignment_automations")
+        .update({ attivo: nuovo !== "spenta" }).eq("id", autom.id);
+      if (error) { toast.error(error.message); return; }
+      const coda = nuovo === "coda";
+      if (coda !== inCoda) {
+        if (!(await setCoda(autom.id, coda))) { toast.error("Errore salvataggio della coda"); return; }
+        setInCoda(coda);
+      }
+      toast.success({
+        attiva: "Assegnazione attiva",
+        coda: "Lead nuovi in coda: passa solo chi era già stato assegnato",
+        spenta: "Assegnazione spenta: i lead restano liberi",
+      }[nuovo]);
+      onChange();
+    } finally { setCambioStato(false); }
   };
 
   const azzera = async (venditoreId?: string) => {
@@ -212,19 +231,34 @@ const TabDistribuzione = ({ lancio, rows, market, onChange }: Props) => {
             </CardTitle>
           </CardHeader>
           <CardContent className="p-0">
-            <div className={`flex items-start gap-2.5 px-3.5 py-2.5 border-b ${inCoda
-              ? "border-destructive/40 bg-destructive/10" : "border-border"}`}>
-              <Switch checked={inCoda} onCheckedChange={cambiaCoda} className="data-[state=checked]:bg-destructive mt-0.5" />
-              <div className="min-w-0">
-                <div className={`text-[12.5px] font-medium ${inCoda ? "text-destructive" : ""}`}>
-                  Metti i lead nuovi in coda (Round Robin)
-                </div>
-                <p className="text-[11px] text-muted-foreground">
-                  {inCoda
-                    ? "Attiva: i lead nuovi restano in attesa, passa solo chi era già stato assegnato di recente. Percentuali e tetti non si toccano."
-                    : "Da usare quando i venditori sono indietro con la lavorazione e non vuoi continuare a caricarli."}
-                </p>
+            {/* Tre stati che si escludono, invece di due interruttori che possono contraddirsi:
+                "in coda con la regola spenta" non vorrebbe dire niente. */}
+            <div className="px-3.5 py-3 border-b border-border">
+              <div className="flex gap-1.5 flex-wrap">
+                {([
+                  { k: "attiva", t: "Assegnazione attiva", c: "border-emerald-500 bg-emerald-500/15 text-emerald-400" },
+                  { k: "coda", t: "Solo ritorni · nuovi in coda", c: "border-amber-500 bg-amber-500/15 text-amber-400" },
+                  { k: "spenta", t: "Assegnazione spenta", c: "border-destructive bg-destructive/15 text-destructive" },
+                ] as const).map((o) => (
+                  <button key={o.k} type="button" disabled={cambioStato} onClick={() => cambiaStato(o.k)}
+                    className={`px-3 py-1.5 rounded-md border text-[12px] font-medium transition-colors disabled:opacity-50 ${
+                      stato === o.k ? o.c : "border-border text-muted-foreground hover:text-foreground"}`}>
+                    {o.t}
+                  </button>
+                ))}
               </div>
+              <p className="text-[11.5px] text-muted-foreground mt-2">
+                {stato === "attiva" &&
+                  "I lead vengono distribuiti secondo le percentuali qui sotto, e chi era già stato assegnato di recente torna al suo venditore."}
+                {stato === "coda" &&
+                  "I lead nuovi entrano come assegnati a “Round Robin” e restano in attesa. Passa solo chi era già stato assegnato entro il periodo impostato, che torna al suo venditore. Percentuali, tetti e contatori restano dove sono."}
+                {stato === "spenta" &&
+                  "Nessun lead viene assegnato, nemmeno chi era già stato lavorato: restano liberi, senza venditore, e compaiono fra i lead da assegnare a mano. Niente scritture sui fogli e niente webhook."}
+              </p>
+              <p className="text-[11px] text-muted-foreground mt-1.5">
+                I lead che arrivano già con un venditore — i link personali con UTM — non passano da qui in
+                nessuno dei tre casi: continuano ad arrivare anche a regola spenta.
+              </p>
             </div>
 
             <div className="overflow-x-auto">
