@@ -267,6 +267,7 @@ const TabDistribuzione = ({ lancio, rows, market, onChange }: Props) => {
                   <th className="table-header-cell text-left w-[34px]"></th>
                   <th className="table-header-cell text-left">Venditore</th>
                   <th className="table-header-cell text-right whitespace-nowrap">Ricevuti</th>
+                  {!isCount && <th className="table-header-cell text-right whitespace-nowrap">Mancanti</th>}
                   <th className="table-header-cell text-right whitespace-nowrap">{isCount ? "Quota" : "Percentuale"}</th>
                   {!isCount && <th className="table-header-cell text-right whitespace-nowrap">Tetto max</th>}
                 </tr></thead>
@@ -295,6 +296,15 @@ const TabDistribuzione = ({ lancio, rows, market, onChange }: Props) => {
                             {n(ricevuti)}
                           </button>
                         </td>
+                        {!isCount && (
+                          <td className="table-body-cell text-right num">
+                            {!slot.cap
+                              ? <span className="text-muted-foreground/40">—</span>
+                              : ricevuti >= slot.cap
+                                ? <span className="text-emerald-400 font-medium">pieno</span>
+                                : n(slot.cap - ricevuti)}
+                          </td>
+                        )}
                         <td className="table-body-cell text-right">
                           <Input type="number" className="h-7 w-[74px] text-[12px] text-right ml-auto"
                             value={(isCount ? slot.count_target : slot.weight) ?? ""}
@@ -349,6 +359,7 @@ const TabDistribuzione = ({ lancio, rows, market, onChange }: Props) => {
                 <th className="table-header-cell text-right sticky top-0 bg-card">{isCount ? "Quota regola" : "Peso regola"}</th>
                 <th className="table-header-cell text-right sticky top-0 bg-card">Dalla regola</th>
                 <th className="table-header-cell text-right sticky top-0 bg-card">Tetto max</th>
+                <th className="table-header-cell text-right sticky top-0 bg-card">Mancanti</th>
                 <th className="table-header-cell text-left sticky top-0 bg-card w-[130px]">Riempimento</th>
               </tr>
             </thead>
@@ -358,7 +369,11 @@ const TabDistribuzione = ({ lancio, rows, market, onChange }: Props) => {
                 const daRegola = slot ? (assegnatiRegola[slot.venditore_id] ?? 0) : null;
                 const quota = isCount ? slot?.count_target : slot?.weight;
                 const rif = r.target || (isCount ? slot?.count_target : 0) || 0;
-                const p = rif ? Math.min(100, (r.tot_lead / rif) * 100) : 0;
+                // Il tetto conta le assegnazioni della regola, non le righe scritte sui fogli:
+                // e' quel numero che a un certo punto lo fa smettere di ricevere lead.
+                const consumato = daRegola ?? r.tot_lead;
+                const p = rif ? Math.min(100, (consumato / rif) * 100) : 0;
+                const mancanti = rif ? Math.max(0, rif - consumato) : null;
                 return (
                   <tr key={r.venditore}>
                     <td className="table-body-cell font-medium">{r.venditore}</td>
@@ -372,6 +387,13 @@ const TabDistribuzione = ({ lancio, rows, market, onChange }: Props) => {
                       {slot?.cap && r.target && slot.cap !== r.target && (
                         <span className="text-muted-foreground/60 text-[10.5px]"> · tetto {n(slot.cap)}</span>
                       )}
+                    </td>
+                    <td className="table-body-cell text-right num">
+                      {mancanti === null
+                        ? <span className="text-muted-foreground/40">—</span>
+                        : mancanti === 0
+                          ? <span className="text-emerald-400 font-medium">pieno</span>
+                          : n(mancanti)}
                     </td>
                     <td className="table-body-cell">
                       {/* Con obiettivi da centinaia di lead i primi arrivi valgono frazioni di
