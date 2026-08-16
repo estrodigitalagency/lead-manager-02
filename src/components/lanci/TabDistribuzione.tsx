@@ -370,8 +370,17 @@ const TabDistribuzione = ({ lancio, rows, market, onChange }: Props) => {
                     <td className="table-body-cell text-right num">{slot?.cap ? n(slot.cap) : <span className="text-muted-foreground/40">—</span>}</td>
                     <td className="table-body-cell text-right num">{r.target ? n(r.target) : <span className="text-muted-foreground/40">—</span>}</td>
                     <td className="table-body-cell">
-                      <div className="h-1.5 rounded-full bg-border overflow-hidden">
-                        <i className="block h-full rounded-full" style={{ width: `${p}%`, background: p >= 100 ? "hsl(142 71% 60%)" : "hsl(232 100% 74%)" }} />
+                      {/* Con obiettivi da centinaia di lead i primi arrivi valgono frazioni di
+                          pixel: senza il numero accanto la barra sembra ferma. */}
+                      <div className="flex items-center gap-1.5">
+                        <div className="h-1.5 flex-1 rounded-full bg-border overflow-hidden">
+                          <i className="block h-full rounded-full"
+                            style={{ width: `${rif ? Math.max(p > 0 ? 2 : 0, p) : 0}%`,
+                                     background: p >= 100 ? "hsl(142 71% 60%)" : "hsl(232 100% 74%)" }} />
+                        </div>
+                        <span className="text-[10.5px] num text-muted-foreground w-[42px] text-right shrink-0">
+                          {rif ? `${p < 10 && p > 0 ? p.toFixed(1) : Math.round(p)}%` : "—"}
+                        </span>
                       </div>
                     </td>
                   </tr>
