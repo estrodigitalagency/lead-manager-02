@@ -337,7 +337,7 @@ const TabDistribuzione = ({ lancio, rows, market, onChange }: Props) => {
       <Card className="overflow-hidden">
         <CardHeader className="py-2.5 px-3.5 border-b border-border">
           <CardTitle className="label-eyebrow flex items-center justify-between">
-            <span>Lead per sales — assegnati, quota regola e target</span><span className="text-primary">{rows.length} sales</span>
+            <span>Lead per sales — quanti ne hanno e quanto manca al tetto</span><span className="text-primary">{rows.length} sales</span>
           </CardTitle>
         </CardHeader>
         <CardContent className="p-0 overflow-auto max-h-[52vh]">
@@ -345,19 +345,15 @@ const TabDistribuzione = ({ lancio, rows, market, onChange }: Props) => {
             <thead>
               <tr>
                 <th className="table-header-cell text-left sticky top-0 bg-card">Sales</th>
-                <th className="table-header-cell text-right sticky top-0 bg-card">Assegnati (lancio)</th>
+                <th className="table-header-cell text-right sticky top-0 bg-card">Assegnati</th>
                 <th className="table-header-cell text-right sticky top-0 bg-card">Quota %</th>
-                <th className="table-header-cell text-right sticky top-0 bg-card">{isCount ? "Quota regola" : "Peso regola"}</th>
-                <th className="table-header-cell text-right sticky top-0 bg-card">Dalla regola</th>
-                <th className="table-header-cell text-right sticky top-0 bg-card">Tetto max</th>
-                <th className="table-header-cell text-left sticky top-0 bg-card w-[130px]">Riempimento</th>
+                <th className="table-header-cell text-left sticky top-0 bg-card w-[170px]">Riempimento</th>
               </tr>
             </thead>
             <tbody>
               {[...rows].sort((a, b) => b.tot_lead - a.tot_lead).map((r) => {
                 const slot = slotOf(r.venditore);
                 const daRegola = slot ? (assegnatiRegola[slot.venditore_id] ?? 0) : null;
-                const quota = isCount ? slot?.count_target : slot?.weight;
                 const rif = r.target || (isCount ? slot?.count_target : 0) || 0;
                 // Il tetto conta le assegnazioni della regola, non le righe scritte sui fogli:
                 // e' quel numero che a un certo punto lo fa smettere di ricevere lead.
@@ -369,29 +365,21 @@ const TabDistribuzione = ({ lancio, rows, market, onChange }: Props) => {
                     <td className="table-body-cell font-medium">{r.venditore}</td>
                     <td className="table-body-cell text-right num">{n(r.tot_lead)}</td>
                     <td className="table-body-cell text-right num text-muted-foreground">{r.distribuzione}%</td>
-                    <td className="table-body-cell text-right num">{quota != null ? (isCount ? n(quota) : `${quota}%`) : <span className="text-muted-foreground/40">—</span>}</td>
-                    <td className="table-body-cell text-right num">{daRegola != null ? n(daRegola) : <span className="text-muted-foreground/40">—</span>}</td>
-                    <td className="table-body-cell text-right num">
-                      {r.target ? n(r.target) : <span className="text-muted-foreground/40">—</span>}
-                      {/* Solo se qualcuno ha scritto un obiettivo diverso dal tetto della regola */}
-                      {slot?.cap && r.target && slot.cap !== r.target && (
-                        <span className="text-muted-foreground/60 text-[10.5px]"> · tetto {n(slot.cap)}</span>
-                      )}
-                    </td>
                     <td className="table-body-cell">
-                      {/* Con obiettivi da centinaia di lead i primi arrivi valgono frazioni di
-                          pixel: senza il numero accanto la barra sembra ferma. */}
-                      <div className="flex items-center gap-1.5">
+                      {/* Quanti su quanti e la barra: il resto erano colonne che dicevano
+                          pezzi dello stesso numero. */}
+                      <div className="flex items-center gap-2">
+                        <span className="num text-[12px] w-[62px] shrink-0 tabular-nums">
+                          {rif ? <>{n(consumato)}<span className="text-muted-foreground">/{n(rif)}</span></>
+                               : <span className="text-muted-foreground/40">—</span>}
+                        </span>
                         <div className="h-1.5 flex-1 rounded-full bg-border overflow-hidden">
-                          <i className="block h-full rounded-full"
-                            style={{ width: `${rif ? Math.max(p > 0 ? 2 : 0, p) : 0}%`,
+                          <i className="block h-full rounded-full transition-all"
+                            style={{ width: `${rif ? Math.max(p > 0 ? 3 : 0, p) : 0}%`,
                                      background: p >= 100 ? "hsl(142 71% 60%)" : "hsl(232 100% 74%)" }} />
                         </div>
-                        <span className="text-[10.5px] num text-muted-foreground w-[78px] text-right shrink-0">
-                          {mancanti === null ? "—" : mancanti === 0
-                            ? <span className="text-emerald-400 font-medium">pieno</span>
-                            : `mancano ${n(mancanti)}`}
-                        </span>
+                        {slot?.paused && <span className="text-[10px] text-destructive shrink-0">pausa</span>}
+                        {mancanti === 0 && rif > 0 && <span className="text-[10px] text-emerald-400 shrink-0">pieno</span>}
                       </div>
                     </td>
                   </tr>
