@@ -53,7 +53,11 @@ const LancioConfigDialog = ({ open, onOpenChange, value, onSave, esistenti, mark
   const [step, setStep] = useState(0);
 
   // ── automazione ──
-  const [autoOn, setAutoOn] = useState(true);
+  // Stato dell'assegnazione: gli stessi tre del pannello di governo in Lanci → Distribuzione,
+  // per non avere due interruttori che possono contraddirsi ("in coda con la regola spenta").
+  const [statoAuto, setStatoAuto] = useState<"attiva" | "coda" | "spenta">("attiva");
+  const autoOn = statoAuto !== "spenta";
+  const aCoda = statoAuto === "coda";
   const [aTrigger, setATrigger] = useState<"new_lead" | "duplicate_different_source">("new_lead");
   const [aFonti, setAFonti] = useState("");
   const [aCondTipo, setACondTipo] = useState<"contains" | "not_contains">("contains");
@@ -72,7 +76,6 @@ const LancioConfigDialog = ({ open, onOpenChange, value, onSave, esistenti, mark
   const [recupero, setRecupero] = useState(false);
   const [liberi, setLiberi] = useState<AnteprimaLiberi | null>(null);   // proposta dopo il salvataggio
   const [aWebhook, setAWebhook] = useState(true);
-  const [aCoda, setACoda] = useState(false);   // assegnazione in coda: i lead nuovi aspettano
   const [aSoloInterni, setASoloInterni] = useState(false); // il venditore precedente deve essere del lancio
   const [aLockOn, setALockOn] = useState(false);
   const [aLockDays, setALockDays] = useState(30);   // -1 = sempre lo stesso venditore
@@ -123,11 +126,10 @@ const LancioConfigDialog = ({ open, onOpenChange, value, onSave, esistenti, mark
     fetchTemplates().then((t) => setWa(t as any));
     // precompila l'automazione da quella collegata, altrimenti dai dati del lancio
     if (autom) {
-      setAutoOn(autom.attivo);
       setATrigger((autom.trigger_when as any) ?? "new_lead");
       setAFonti((autom.condition_value ?? []).join(", "));
       setACondTipo(((autom as any).condition_type === "not_contains" ? "not_contains" : "contains"));
-      fetchCodaIds().then((ids) => setACoda(ids.includes(autom.id)));
+      fetchCodaIds().then((ids) => setStatoAuto(!autom.attivo ? "spenta" : ids.includes(autom.id) ? "coda" : "attiva"));
       contaInCoda(market, autom.id).then(setInCoda);
       fetchSoloInterniIds().then((ids) => setASoloInterni(ids.includes(autom.id)));
       setConta(((autom as any).distribution_state?.count_assigned) ?? {});
@@ -169,12 +171,12 @@ const LancioConfigDialog = ({ open, onOpenChange, value, onSave, esistenti, mark
       setALockDays(lp ?? 30);
       setAEsclusi((autom as any).excluded_sellers ?? []);
     } else {
-      setAutoOn(true); setATrigger("new_lead"); setAAzione("weighted_distribution");
+      setStatoAuto("attiva"); setATrigger("new_lead"); setAAzione("weighted_distribution");
       setAFonti(value.campagna ? slugify(value.campagna).replace(/-/g, "_") : "");
       setAPrevFirst(false); setATargetSeller(""); setAModo("percentage"); setAQuote({}); setACap({});
       setAWebhook(true);
       setALockOn(false); setALockDays(30); setAEsclusi([]);
-      setACondTipo("contains"); setAEscl(""); setACoda(false); setASoloInterni(false); setConta({}); setAPausa({}); setAGruppo({}); setAQuotaGruppo({}); setInCoda(0);
+      setACondTipo("contains"); setAEscl(""); setStatoAuto("attiva"); setASoloInterni(false); setConta({}); setAPausa({}); setAGruppo({}); setAQuotaGruppo({}); setInCoda(0);
     }
   }, [open, value, autom?.id]);   // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -476,25 +478,43 @@ const LancioConfigDialog = ({ open, onOpenChange, value, onSave, esistenti, mark
           <Sez>
             {/* Testata della regola: nome e interruttore insieme, invece di una riga di testo
                 sopra e uno switch sciolto sotto. */}
-            <div className={`rounded-lg border p-3 mb-3 ${autoOn ? "border-primary/40 bg-primary/5" : "border-border bg-secondary/30"}`}>
-              <div className="flex items-center gap-2.5 flex-wrap">
-                <Switch checked={autoOn} onCheckedChange={setAutoOn} />
-                <div className="min-w-0 flex-1">
-                  <div className="text-[13px] font-semibold truncate">
-                    {autom ? autom.nome : `Assegnazione ${form.nome || "del lancio"}`}
-                  </div>
-                  <div className="text-[11px] text-muted-foreground">
-                    {!autoOn
-                      ? "Regola spenta: i lead di questo lancio li assegni a mano"
-                      : autom
-                        ? "Regola esistente · la stessa che vedi in Impostazioni → Automazioni"
-                        : "Verrà creata al salvataggio · comparirà anche in Impostazioni → Automazioni"}
-                  </div>
-                </div>
+            <div className={`rounded-lg border p-3 mb-3 ${
+              statoAuto === "attiva" ? "border-primary/40 bg-primary/5"
+              : statoAuto === "coda" ? "border-amber-500/40 bg-amber-500/5"
+              : "border-destructive/40 bg-destructive/5"}`}>
+              <div className="text-[13px] font-semibold truncate">
+                {autom ? autom.nome : `Assegnazione ${form.nome || "del lancio"}`}
               </div>
+              <div className="text-[11px] text-muted-foreground mb-2">
+                {autom
+                  ? "Regola esistente · la stessa che vedi in Impostazioni → Automazioni"
+                  : "Verrà creata al salvataggio · comparirà anche in Impostazioni → Automazioni"}
+              </div>
+              <div className="flex gap-1.5 flex-wrap">
+                {([
+                  { k: "attiva", t: "Attiva", c: "border-emerald-500 bg-emerald-500/15 text-emerald-400" },
+                  { k: "coda", t: "Solo ritorni · nuovi in coda", c: "border-amber-500 bg-amber-500/15 text-amber-400" },
+                  { k: "spenta", t: "Spenta", c: "border-destructive bg-destructive/15 text-destructive" },
+                ] as const).map((o) => (
+                  <button key={o.k} type="button" onClick={() => setStatoAuto(o.k)}
+                    className={`px-2.5 py-1 rounded-md border text-[11.5px] font-medium transition-colors ${
+                      statoAuto === o.k ? o.c : "border-border text-muted-foreground hover:text-foreground"}`}>
+                    {o.t}
+                  </button>
+                ))}
+              </div>
+              <p className="text-[11px] text-muted-foreground mt-2">
+                {statoAuto === "attiva" && "I lead vengono distribuiti secondo le quote qui sotto, e chi era già stato assegnato di recente torna al suo venditore."}
+                {statoAuto === "coda" && "I lead nuovi entrano come assegnati a “Round Robin” e restano in attesa. Passa solo chi era già stato assegnato entro il periodo impostato. Quote, tetti e contatori non si toccano."}
+                {statoAuto === "spenta" && "Nessun lead viene assegnato, nemmeno i ritorni: restano liberi, senza venditore, fra quelli da smistare a mano."}
+              </p>
+              <p className="text-[11px] text-muted-foreground mt-1">
+                I lead che arrivano già con un venditore, dai link personali con UTM, non passano da qui in
+                nessuno dei tre casi.
+              </p>
             </div>
 
-            <div className={`space-y-4 ${autoOn ? "" : "opacity-50 pointer-events-none"}`}>
+            <div className="space-y-4">
               {/* ── Quando scatta ── */}
               <div>
                 <div className="label-eyebrow pb-1.5">Quando scatta</div>
@@ -766,6 +786,31 @@ const LancioConfigDialog = ({ open, onOpenChange, value, onSave, esistenti, mark
                 </div>
               )}
 
+              {/* I lead parcheggiati non si sbloccano da soli: e un'azione, non un interruttore. */}
+              {autom?.id && inCoda > 0 && (
+                <div className="rounded-md border border-amber-500/40 bg-amber-500/5 p-2.5 flex items-center gap-2.5 flex-wrap">
+                  <span className="text-[12.5px] flex-1 min-w-[200px]">
+                    <b>{inCoda}</b> lead di questo lancio fermi in coda
+                    <span className="text-muted-foreground"> — ci restano finché non li rimetti nel giro.</span>
+                  </span>
+                  <Button size="sm" variant="outline" className="h-7 text-[11.5px] shrink-0"
+                    disabled={aCoda || recupero}
+                    title={aCoda ? "Con lo stato «Solo ritorni» tornerebbero subito in coda" : "Ripassano dalle automazioni come lead in ingresso"}
+                    onClick={async () => {
+                      setRecupero(true);
+                      try {
+                        const r = await recuperaCoda(market, autom?.id);
+                        toast.success(`${r.assegnati ?? 0} lead distribuiti`);
+                        setInCoda(await contaInCoda(market, autom?.id));
+                      } finally { setRecupero(false); }
+                    }}>
+                    {recupero && <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />}
+                    Distribuiscili ora
+                  </Button>
+                  {aCoda && <span className="text-[10.5px] text-muted-foreground">passa prima a «Attiva»</span>}
+                </div>
+              )}
+
               {/* Tab e campagna sono già stati indicati nel passo Dati: qui si mostrano soltanto,
                   così non possono divergere da quelli che la matrice legge davvero. */}
               <div className="label-eyebrow pt-1 pb-1.5">Dove finisce</div>
@@ -788,58 +833,6 @@ const LancioConfigDialog = ({ open, onOpenChange, value, onSave, esistenti, mark
                 <span className="text-[12.5px]">Invia i lead assegnati al webhook configurato</span>
               </div>
 
-              {/* Sezione a sé: non è configurazione del lancio ma una leva da usare a lancio
-                  partito, quindi sta in fondo e si distingue dal resto. */}
-              <div className="pt-2 mt-1 border-t border-border">
-                <div className="label-eyebrow pb-1.5 text-destructive/80">Sospensione temporanea</div>
-                {/* Rosso tenue da spenta, rosso pieno da accesa: ferma il flusso dei lead,
-                    deve saltare all'occhio se e rimasta attiva. */}
-                <div className={`rounded-md border p-3 transition-colors ${
-                  aCoda ? "border-destructive bg-destructive/15" : "border-destructive/25 bg-destructive/5"}`}>
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <Switch checked={aCoda} onCheckedChange={setACoda}
-                      className="data-[state=checked]:bg-destructive" />
-                    <span className={`text-[12.5px] font-medium ${aCoda ? "text-destructive" : ""}`}>
-                      Metti i lead nuovi in coda (Round Robin)
-                    </span>
-                    {aCoda && (
-                      <span className="text-[10.5px] px-1.5 py-0.5 rounded-full bg-destructive text-destructive-foreground font-semibold">
-                        ATTIVA — nessun lead nuovo viene distribuito
-                      </span>
-                    )}
-                  </div>
-                  {inCoda > 0 && (
-                    <div className="flex items-center gap-2 flex-wrap mt-2.5 pl-9">
-                      <span className="text-[11.5px]">
-                        <b>{inCoda}</b> lead di questo lancio fermi in coda
-                      </span>
-                      <Button size="sm" variant="outline" className="h-6 text-[11px]" disabled={aCoda || recupero}
-                        title={aCoda ? "Spegni prima la sospensione, altrimenti tornerebbero subito in coda" : "Rimettili nel giro delle automazioni"}
-                        onClick={async () => {
-                          if (!confirm(`Distribuire ora i ${inCoda} lead in coda?`)) return;
-                          setRecupero(true);
-                          try {
-                            const r = await recuperaCoda(market, autom?.id);
-                            if (r?.error) toast.error(r.error);
-                            else {
-                              toast.success(`${r.assegnati} lead distribuiti${r.ancora_in_coda ? `, ${r.ancora_in_coda} ancora in coda` : ""}`);
-                              setInCoda(await contaInCoda(market, autom?.id));
-                            }
-                          } finally { setRecupero(false); }
-                        }}>
-                        {recupero ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : null}
-                        Distribuiscili ora
-                      </Button>
-                      {aCoda && <span className="text-[10.5px] text-muted-foreground">spegni prima la sospensione</span>}
-                    </div>
-                  )}
-                  <p className="text-[11px] text-muted-foreground mt-1.5 pl-9">
-                    {aCoda
-                      ? "I lead nuovi non vengono distribuiti: entrano come assegnati al venditore \u201cRound Robin\u201d e restano in attesa. Passa solo chi era già stato assegnato entro il periodo impostato sopra, che torna al suo venditore e gli scala il tetto come una normale assegnazione."
-                      : "Da usare a lancio partito, quando i venditori sono indietro con la lavorazione e non vuoi continuare a caricarli anche se il tetto non è ancora pieno. Percentuali, tetti e contatori restano dove sono: spegnendola l\u2019assegnazione riprende da dov\u2019era."}
-                  </p>
-                </div>
-              </div>
             </div>
           </Sez>
           )}
