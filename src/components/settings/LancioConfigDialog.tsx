@@ -435,6 +435,53 @@ const LancioConfigDialog = ({ open, onOpenChange, value, onSave, esistenti, mark
                 </button>
               ))}
             </div>
+
+            {/* Obiettivo di lead per venditore: è il riferimento della colonna Target e della
+                barra di riempimento nella matrice. Senza, quelle colonne restano a zero. */}
+            {sales.length > 0 && (
+              <div className="pt-1">
+                <div className="flex items-center justify-between gap-2 flex-wrap pb-1.5">
+                  <span className="label-eyebrow">Obiettivo di lead per venditore <span className="normal-case tracking-normal text-muted-foreground font-normal">(facoltativo)</span></span>
+                  <div className="flex gap-1.5">
+                    <Button size="sm" variant="outline" className="h-6 text-[11px]"
+                      onClick={() => setForm((f) => ({ ...f, target: {} }))}>Azzera</Button>
+                    <Button size="sm" variant="outline" className="h-6 text-[11px]"
+                      title="Copia i numeri dalle quote della regola di assegnazione"
+                      onClick={() => {
+                        const t: Record<string, number> = {};
+                        for (const nome of sales) {
+                          const v = attivi.find((x) => x.nome === nome);
+                          const slot = ((autom as any)?.distribution_config ?? []).find((s: any) => s.venditore_id === v?.id);
+                          const n = slot?.count_target ?? slot?.cap;
+                          if (n) t[nome] = n;
+                        }
+                        if (Object.keys(t).length === 0) { toast.error("La regola non ha quote o tetti da cui copiare"); return; }
+                        setForm((f) => ({ ...f, target: t }));
+                      }}>Riprendi dalla regola</Button>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5 max-h-[170px] overflow-y-auto">
+                  {sales.map((nome) => (
+                    <div key={nome} className="flex items-center gap-1.5">
+                      <span className="flex-1 min-w-0 text-[11.5px] truncate" title={nome}>{nome}</span>
+                      <Input type="number" className="h-7 w-[68px] text-[12px] text-right shrink-0"
+                        placeholder="—" value={form.target?.[nome] ?? ""}
+                        onChange={(e) => setForm((f) => {
+                          const t = { ...(f.target ?? {}) };
+                          const n = parseInt(e.target.value, 10);
+                          if (isNaN(n) || n <= 0) delete t[nome]; else t[nome] = n;
+                          return { ...f, target: t };
+                        })} />
+                    </div>
+                  ))}
+                </div>
+                <p className="text-[11px] text-muted-foreground mt-1.5">
+                  Quanti lead ci si aspetta di dare a ciascuno durante il lancio. Alimenta la colonna
+                  <b> Target</b>, la <b>distanza dal target</b> e la barra di riempimento nella matrice.
+                  Lasciandolo vuoto quelle colonne restano a zero.
+                </p>
+              </div>
+            )}
           </Sez>
           )}
 
