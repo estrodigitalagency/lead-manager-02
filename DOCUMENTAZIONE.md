@@ -14,6 +14,8 @@
 7. [Librerie, hook, servizi](#7-librerie-hook-servizi)
 8. [Configurazione, segreti, deploy](#8-configurazione-segreti-deploy)
 9. [Fragilità note & debiti tecnici](#9-fragilità-note--debiti-tecnici)
+10. [Lanci — il sottosistema completo](#10-lanci--il-sottosistema-completo)
+11. [Come provare senza rompere la produzione](#11-come-provare-senza-rompere-la-produzione)
 
 ---
 
@@ -156,6 +158,16 @@ Enum: `app_role`, `automation_action_type`, `automation_condition_type`.
 | **process-existing-automations** | Backfill automazioni su lead già esistenti non assegnati | update lead, `automation_executions` |
 | **test-automation** | Dry-run valutazione automazioni su un lead | read-only |
 | **rebuild-assignment-history** | Ricostruisce `assignment_history` dagli assegnati correnti | insert `assignment_history` |
+| **analytics-lancio** | Matrice del lancio: legge i fogli dei venditori e il DB, con cache | upsert cache in `ranking_settings` |
+| **lancio-test** | Prova a vuoto della configurazione di un lancio + simulazione di un lead | nessuna scrittura |
+| **contatori-distribuzione** | Azzera i contatori o li sposta fra venditori dopo una riassegnazione | update `distribution_state` |
+| **wa-click** | Registra e legge i click sui link WhatsApp (la tabella è chiusa all'anon key) | insert/delete `whatsapp_click_logs` |
+| **sheet-tabs**, **sheet-peek** | Utilità di ispezione dei fogli (elenco tab, lettura di un intervallo) | nessuna scrittura |
+
+> `_shared/regole.ts` non è una funzione ma un modulo condiviso: contiene le regole di
+> assegnazione senza accesso al database (condizioni, esclusioni, lock period, slot ancora
+> capienti, sorteggio a gruppi). Lo importano sia il webhook che assegna davvero sia la prova a
+> vuoto: se il test riscrivesse le stesse condizioni per conto suo, divergerebbero.
 
 ### valore-call (dettaglio — usato dalla classifica e dal report)
 - Input: `?market=IT` (default), `?nocache=1`.
@@ -260,12 +272,21 @@ Deep-link `wa.me` (nessuna API, nessun invio server):
 
 ## 8. Configurazione, segreti, deploy
 
-**Frontend (`.env`, anche hardcoded in `src/integrations/supabase/client.ts`)**
-- `VITE_SUPABASE_PROJECT_ID=btcwmuyemmkiteqlopce`
-- `VITE_SUPABASE_URL=https://btcwmuyemmkiteqlopce.supabase.co`
-- `VITE_SUPABASE_PUBLISHABLE_KEY` = anon JWT (unica chiave usata dal browser; anche hardcoded in `Ranking.tsx`).
+L'elenco completo delle variabili, con l'origine di ciascuna e la spiegazione di quali sono
+pubbliche e quali no, sta in **`.env.example`**: si copia in `.env` e si riempie. Qui il riassunto.
 
-**Edge (Supabase secrets)**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` (tutte); `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET`/`GOOGLE_REFRESH_TOKEN` (solo `valore-call`). URL webhook stanno nel DB (`system_settings.lead_assign_webhook_url`, `venditori.webhook_url`), non in env.
+**Frontend (`.env`)** — solo chiavi pubbliche, finiscono nel JavaScript servito al browser:
+`VITE_SUPABASE_URL`, `VITE_SUPABASE_PROJECT_ID`, `VITE_SUPABASE_PUBLISHABLE_KEY` (anon).
+Alcuni file le hanno anche scritte dentro (`src/integrations/supabase/client.ts`, `Ranking.tsx`,
+`src/lib/lanci/config.ts`): è la stessa chiave pubblica, non un segreto sfuggito.
+
+**Edge (Supabase secrets, mai nel repository)**: `SUPABASE_URL` e `SUPABASE_SERVICE_ROLE_KEY`
+sono iniettati da Supabase; `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REFRESH_TOKEN`
+servono a `valore-call`, `analytics-lancio`, `lancio-test`, `sheet-tabs`, `sheet-peek`.
+
+**Nel database, non in env** — perché devono cambiare senza un rilascio: gli URL dei webhook
+(`system_settings.lead_assign_webhook_url`, `venditori.webhook_url`), la configurazione dei
+lanci, i template WhatsApp, l'impronta del PIN delle Impostazioni. Vedi `.env.example` per l'elenco.
 
 **Deploy**: Vercel (`vercel.json`: build `npm run build`, output `dist`, rewrite SPA). Edge functions deployate su Supabase separatamente. `package.json`: `dev/build/build:dev/lint/preview` (nessun test).
 
@@ -289,3 +310,178 @@ Deep-link `wa.me` (nessuna API, nessun invio server):
 ---
 
 *Documentazione generata da analisi statica del codebase (frontend `src/`, edge `supabase/functions/`, migrazioni, `types.ts`). Riferimenti a righe/percorsi verificabili nel repo.*
+
+---
+
+## 10. Lanci — il sottosistema completo
+
+Un **lancio** è una campagna con un suo insieme di venditori, i suoi fogli, la sua regola di
+assegnazione e il suo link WhatsApp. La configurazione vive in `system_settings.lanci_config`
+(array JSON), la regola in `lead_assignment_automations`.
+
+### 10.1 Configurazione di un lancio
+
+```jsonc
+{
+  "id": "workshop_set26",
+  "nome": "Workshop Set26",
+  "provenienza": "3sfere",                       // valore in col. B dei tab call
+  "call_tabs": ["Settembre26 Elenco call/esito"],
+  "lead_tab": "Lead Workshop Set26",
+  "campagna": "Workshop Set26",                  // lead_generation.campagna
+  "sales": ["Alessandra Savoldi", "…"],          // venditori del lancio
+  "lead_sales": [...], "call_sales": [...],      // tenuti allineati a `sales`
+  "automazione_id": "45cb68e8-…",                // regola collegata
+  "whatsapp_slug": "instagram-sold-out-set26",   // primo link (retrocompatibilità)
+  "whatsapp_slugs": ["…-a", "…-b"]               // più link = confronto A/B
+}
+```
+
+La **provenienza deve essere scritta come compare nei fogli**: `3Sfere` contro `3sfere` non dà
+errore, dà una matrice a zero. Il pulsante con la beuta in Impostazioni → Lanci lo verifica.
+
+### 10.2 Come viene assegnato un lead
+
+Le regole attive si provano **in ordine di priorità** e ci si ferma alla prima che prende il lead.
+Dentro una regola l'ordine è questo:
+
+1. **Il lead arriva già con un venditore?** (link personali con UTM) → le automazioni vengono
+   saltate del tutto. Il tetto viene comunque scalato, attribuendolo alla regola che distribuisce
+   a quel venditore e la cui condizione corrisponde alla fonte. Nello storico:
+   `result = 'counted_preassigned'`. Se la fonte non corrisponde a nessuna regola, non si scala niente.
+2. **Il lead è già noto?** Se `use_previous_seller_first`, si cerca per email o telefono l'ultimo
+   lead assegnato a una persona vera (`Round Robin` escluso) e, se rientra nel `lock_period_days`,
+   il lead torna da lui. **Questo passaggio ignora tetti, pause e gruppi**, e il contatore sale lo stesso.
+3. **Distribuzione.** Sorteggio fra gli slot ancora capienti.
+4. **Nessuno può riceverlo** → il lead **resta libero** (`venditore = null`, `assignable = true`),
+   visibile fra quelli da assegnare. Non viene parcheggiato.
+
+### 10.3 I tre stati dell'assegnazione
+
+Impostabili sia da Lanci → Distribuzione sia dal wizard; sono esclusivi.
+
+| Stato | Lead nuovo | Lead già noto entro il lock |
+|---|---|---|
+| **Attiva** | distribuito secondo le quote | torna al suo venditore |
+| **Lead nuovi in attesa** | `venditore = 'Round Robin'`, `stato = 'assegnato'`, `assignable = false` | torna al suo venditore, e scala il tetto |
+| **Spenta** (`attivo = false`) | resta **libero** | resta libero |
+
+I lead pre-assegnati da UTM **non passano da nessuno dei tre**.
+
+### 10.4 Quote, tetti, pause, gruppi
+
+Ogni slot di `distribution_config`:
+
+```jsonc
+{ "venditore_id": "…", "weight": 8, "count_target": null, "cap": 250,
+  "paused": false, "gruppo": "Closer", "gruppo_weight": 60 }
+```
+
+- **weight** — percentuale. Attenzione: è **relativa alla somma degli slot eleggibili**, non
+  assoluta. Con 30 e 60 e nessun altro, diventano 33% e 67%. Il wizard blocca il salvataggio
+  finché non fanno 100, ma la rinormalizzazione si vede quando qualcuno è in pausa o pieno.
+- **cap** — tetto massimo, ed è anche l'**obiettivo** mostrato nella matrice: sono lo stesso numero.
+- **count_target** — in modalità quota assoluta sostituisce il cap. Le quote si riempiono **in
+  parti uguali**, non in proporzione alla loro dimensione: chi ha 20 satura prima di chi ha 200.
+- **paused** — ferma i lead nuovi ma **non** le riassegnazioni al venditore precedente.
+- **gruppo / gruppo_weight** — sorteggio a due livelli: prima il gruppo con la sua quota, poi la
+  persona dentro il gruppo. Su 10 lead con Closer 60 / Setter 40 ne vanno 6 e 4 comunque siano
+  composti i gruppi. Se un gruppo non ha nessuno disponibile, la sua quota va agli altri.
+
+### 10.5 Contatori
+
+`distribution_state = { count_assigned: {id: n}, total_assigned, last_updated, rev }`
+
+Ogni assegnazione a un venditore presente nella distribuzione scala il suo tetto, **da qualunque
+strada arrivi**: distribuzione, venditore precedente, recupero dalla coda, riassegnazione manuale,
+lead pre-assegnato da UTM.
+
+**`rev` è il meccanismo che tiene i conti giusti sotto carico.** La scrittura vale solo se a
+database c'è ancora la revisione letta; altrimenti si rilegge e si riprova. Senza, con più lead in
+arrivo insieme, si perdevano gli incrementi — misurato: 32 su 40 — e i tetti non scattavano mai.
+Per lo stesso motivo scelta e conteggio sono **una sola operazione**: verificare il tetto su numeri
+diversi da quelli con cui lo si incrementa faceva sforare i tetti (72 assegnati su 60 posti).
+
+### 10.6 Coda e lead liberi: non sono la stessa cosa
+
+- **In coda** (`venditore = 'Round Robin'`) finisce solo chi viene parcheggiato di proposito con lo
+  stato «Lead nuovi in attesa». Si rimettono in circolo con *Distribuiscili ora*: ripassano dalle
+  automazioni come lead in ingresso.
+- **Liberi** (`venditore = null`) restano quelli che non hanno trovato posto perché i tetti erano
+  pieni. Alzando i tetti e salvando, il wizard propone di distribuirli mostrando quanti sono e come
+  verrebbero ripartiti.
+
+### 10.7 Da dove vengono i numeri della matrice
+
+| Metrica | Sorgente |
+|---|---|
+| Lead generati, mix per fonte, andamento, speed to lead | **database**, filtrando per `campagna` |
+| Assegnati, qualifiche, voti, call, chiusure, fatturato | **fogli dei venditori** |
+| Ricevuti, tetto, mancanti, riempimento | **contatori** della regola |
+
+Sono tre sorgenti diverse e possono divergere legittimamente: un lead assegnato dal tool ma non
+ancora scritto sul foglio conta nei contatori e non fra gli assegnati.
+
+**Definizioni non ovvie**
+- *Call da fare*: esito vuoto **oppure** contenente `closing` — su Pipedrive «Prenotato Closing» e
+  «Closing Confermato» sono call fissate ma non svolte.
+- *Call nette*: totali − da fare − rischedulate/no show/cancellate.
+- *Tasso di chiusura*: chiusure su call nette. Chiusure = `Pagamento unico`, `Pagamento a rate`, `Acconto`.
+
+**Cache**: fresca 15 minuti, servita fino a 12 ore mentre si ricalcola dietro. La pagina si
+aggiorna da sola ogni 5 minuti. L'età mostrata è quella del **calcolo**, non della risposta.
+
+### 10.8 Link WhatsApp
+
+`/wa/<slug>?email=…&nome=…&telefono=…` cerca il lead, legge chi ce l'ha in carico, apre la chat.
+
+- Serve **email o telefono**: senza, non si sa di quale lead si tratti.
+- I segnaposto non risolti (`{{contact.email}}`) vengono riconosciuti e ignorati.
+- Se il lead non risulta ancora si aspetta fino a **50 secondi**, perché il flusso esterno che lo
+  registra può metterci mezzo minuto; dopo 8 secondi compare una via d'uscita verso il numero di riserva.
+- Il **numero di riserva** del template è la rete di sicurezza: senza, chi arriva senza parametri
+  vede una pagina di errore.
+- Il ruolo attaccato al nome in anagrafica viene tolto dal messaggio: «Nicola Feliciolli Setter»
+  diventa «Nicola Feliciolli». In database resta intero.
+- Il confronto fra il nome scritto sul lead e l'anagrafica **ignora accenti, maiuscole e spazi
+  doppi**, ma non le parole: `Nicola Feliciolli` e `Nicola Feliciolli Setter` restano due persone.
+
+### 10.9 Cose che si rompono in silenzio
+
+- **Nome del venditore diverso dall'anagrafica** in un flusso esterno: il lead viene assegnato ma
+  il tetto non si muove. Si controlla cercando `counted_preassigned` nello storico.
+- **Venditore inattivo**: la risoluzione filtra su `stato = 'attivo'`, quindi non viene trovato.
+- **`campagna` mancante** nel payload esterno: i lead non compaiono fra i «lead generati».
+- **`assignable: true` insieme a `venditore`**: le automazioni partono lo stesso e possono
+  sovrascrivere l'assegnazione.
+- **Venditore senza telefono**: il link WhatsApp non può aprire la chat. Segnalato in Impostazioni
+  → Venditori, ma solo per chi è dentro una distribuzione attiva.
+
+---
+
+## 11. Come provare senza rompere la produzione
+
+Non esiste un ambiente separato: le prove si fanno in produzione, quindi si isolano per **fonte**.
+
+**Regola d'oro**: fonte inventata (`__prova_zzz__`), regola dedicata con `priority: 0` e
+`webhook_enabled: false` — così non parte nessuna chiamata esterna e niente viene scritto sui
+fogli — e cancellazione di lead, log ed esecuzioni alla fine.
+
+```
+1. crea la regola di prova sulla fonte inventata
+2. manda i lead dal vero webhook (lead-generation-webhook)
+3. verifica: lead in database, contatori, storico esecuzioni
+4. cancella lead + automation_executions + regola
+```
+
+**Prima di toccare i dati veri**: `lancio-test` fa una prova a vuoto della configurazione — venditori,
+tab presenti nei fogli, provenienza che compare davvero, conflitti fra regole, link WhatsApp — e
+simula un lead dicendo a chi finirebbe, senza scrivere niente.
+
+**Cosa verificare in una prova di carico** (tutto misurato, non dedotto):
+nessun lead perso, nessuno senza venditore, contatori identici alle assegnazioni reali, tetti
+rispettati al singolo lead, rientri simultanei allo stesso venditore, distribuzione entro tre
+deviazioni standard dalle quote.
+
+Su volumi bassi le percentuali non dicono niente: tre lead su dodici venditori danno spesso due
+volte lo stesso nome. Servono un centinaio di lead perché il confronto con le quote abbia senso.
