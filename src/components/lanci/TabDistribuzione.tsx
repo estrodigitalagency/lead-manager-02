@@ -348,8 +348,7 @@ const TabDistribuzione = ({ lancio, rows, market, onChange }: Props) => {
                 <th className="table-header-cell text-right sticky top-0 bg-card">Quota %</th>
                 <th className="table-header-cell text-right sticky top-0 bg-card">{isCount ? "Quota regola" : "Peso regola"}</th>
                 <th className="table-header-cell text-right sticky top-0 bg-card">Dalla regola</th>
-                <th className="table-header-cell text-right sticky top-0 bg-card">Cap</th>
-                <th className="table-header-cell text-right sticky top-0 bg-card">Target</th>
+                <th className="table-header-cell text-right sticky top-0 bg-card">Tetto max</th>
                 <th className="table-header-cell text-left sticky top-0 bg-card w-[130px]">Riempimento</th>
               </tr>
             </thead>
@@ -367,8 +366,13 @@ const TabDistribuzione = ({ lancio, rows, market, onChange }: Props) => {
                     <td className="table-body-cell text-right num text-muted-foreground">{r.distribuzione}%</td>
                     <td className="table-body-cell text-right num">{quota != null ? (isCount ? n(quota) : `${quota}%`) : <span className="text-muted-foreground/40">—</span>}</td>
                     <td className="table-body-cell text-right num">{daRegola != null ? n(daRegola) : <span className="text-muted-foreground/40">—</span>}</td>
-                    <td className="table-body-cell text-right num">{slot?.cap ? n(slot.cap) : <span className="text-muted-foreground/40">—</span>}</td>
-                    <td className="table-body-cell text-right num">{r.target ? n(r.target) : <span className="text-muted-foreground/40">—</span>}</td>
+                    <td className="table-body-cell text-right num">
+                      {r.target ? n(r.target) : <span className="text-muted-foreground/40">—</span>}
+                      {/* Solo se qualcuno ha scritto un obiettivo diverso dal tetto della regola */}
+                      {slot?.cap && r.target && slot.cap !== r.target && (
+                        <span className="text-muted-foreground/60 text-[10.5px]"> · tetto {n(slot.cap)}</span>
+                      )}
+                    </td>
                     <td className="table-body-cell">
                       {/* Con obiettivi da centinaia di lead i primi arrivi valgono frazioni di
                           pixel: senza il numero accanto la barra sembra ferma. */}
