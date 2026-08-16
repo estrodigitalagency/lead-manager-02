@@ -61,6 +61,7 @@ const RANGE_CALL = `B2:L${RIGHE_MAX}`;
 const RANGE_LEAD = `A2:J${RIGHE_MAX}`;
 
 interface LancioConfig {
+  automazione_id?: string;
   id: string;
   nome: string;
   provenienza: string;      // es. "3sfere"
@@ -282,9 +283,25 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Il tetto massimo della regola di assegnazione e' anche l'obiettivo di lead del venditore:
+    // sono lo stesso numero, quindi si legge da li invece di farlo riscrivere una seconda volta.
+    let tettoDi: (id: string) => number = () => 0;
+    if (cfg.automazione_id) {
+      const { data: reg } = await supabase
+        .from("lead_assignment_automations")
+        .select("distribution_mode, distribution_config")
+        .eq("id", cfg.automazione_id).maybeSingle();
+      const perId: Record<string, number> = {};
+      for (const slot of (reg?.distribution_config ?? []) as any[]) {
+        const n = reg?.distribution_mode === "count" ? slot.count_target : slot.cap;
+        if (n && n > 0) perId[slot.venditore_id] = n;
+      }
+      tettoDi = (id: string) => perId[id] ?? 0;
+    }
+
     const { data: vend } = await supabase
       .from("venditori")
-      .select("nome, cognome, sheets_file_id")
+      .select("id, nome, cognome, sheets_file_id")
       .eq("market", market).eq("stato", "attivo").eq("is_sales", true)
       .not("sheets_file_id", "is", null);
 
@@ -426,7 +443,8 @@ Deno.serve(async (req) => {
           const sommaQual = QUALIFICHE.reduce((s, q) => s + qual[q], 0);
           const nonLavorato = Math.max(0, conNome - sommaQual);
           const totLead = sommaQual + nonLavorato;
-          const target = cfg.target?.[nome] ?? 0;
+          // Obiettivo esplicito se presente (configurazioni vecchie), altrimenti il tetto della regola.
+          const target = cfg.target?.[nome] ?? tettoDi(v.id);
 
           // % qualifica sul totale lead (formula master: qualifica / Tot. Lead Assegnati)
           const qualPerc: Record<string, number> = {};
