@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -8,6 +8,32 @@ import { fetchClickStats, TemplateWa } from "@/lib/lanci/integrazioni";
 import { fetchTemplates } from "@/lib/whatsapp/templates";
 
 const n = (v: number) => Math.round(v).toLocaleString("it-IT");
+/** Somma le statistiche di piu link: i totali del lancio contano tutti i pulsanti insieme. */
+const sommaStat = (parti: any[]) => {
+  const perSales: Record<string, any> = {};
+  const perGiorno: Record<string, number> = {};
+  const perOrigine: Record<string, number> = {};
+  let totale = 0, ok = 0, errori = 0, senza = 0;
+  const ultimi: any[] = [];
+  for (const p of parti) {
+    totale += p.totale; ok += p.ok; errori += p.errori; senza += p.senza_origine ?? 0;
+    for (const s of p.perSales) {
+      const r = (perSales[s.venditore] ??= { venditore: s.venditore, click: 0, ok: 0, fallback: 0, errore: 0 });
+      r.click += s.click; r.ok += s.ok; r.fallback += s.fallback; r.errore += s.errore;
+    }
+    for (const g of p.perGiorno) perGiorno[g.day] = (perGiorno[g.day] || 0) + g.n;
+    for (const o of p.perOrigine ?? []) perOrigine[o.origine] = (perOrigine[o.origine] || 0) + o.n;
+    ultimi.push(...p.ultimi);
+  }
+  return {
+    totale, ok, errori, senza_origine: senza,
+    perSales: Object.values(perSales).sort((a: any, b: any) => b.click - a.click),
+    perGiorno: Object.keys(perGiorno).sort().map((day) => ({ day, n: perGiorno[day] })),
+    perOrigine: Object.entries(perOrigine).map(([origine, n]) => ({ origine, n })).sort((a, b) => b.n - a.n),
+    ultimi: ultimi.sort((a, b) => String(b.clicked_at).localeCompare(String(a.clicked_at))).slice(0, 30),
+  } as any;
+};
+
 const pct = (a: number, b: number) => (b > 0 ? `${((a / b) * 100).toFixed(1).replace(".", ",")}%` : "—");
 
 interface Props { lancio: LancioConfig; rows: LancioRow[]; market: string; onChange?: () => void }
@@ -17,19 +43,28 @@ const TabWhatsapp = ({ lancio, rows }: Props) => {
   const [tpl, setTpl] = useState<TemplateWa | null>(null);
   const [all, setAll] = useState<TemplateWa[]>([]);
   const [stats, setStats] = useState<Awaited<ReturnType<typeof fetchClickStats>> | null>(null);
+  const [perLink, setPerLink] = useState<{ tpl: TemplateWa; stats: Awaited<ReturnType<typeof fetchClickStats>> }[]>([]);
   const [loading, setLoading] = useState(true);
 
   const baseUrl = typeof window !== "undefined" ? window.location.origin : "";
+
+  const slugs = useMemo(
+    () => (lancio.whatsapp_slugs?.length ? lancio.whatsapp_slugs : (lancio.whatsapp_slug ? [lancio.whatsapp_slug] : [])),
+    [lancio.whatsapp_slugs, lancio.whatsapp_slug],
+  );
 
   const load = useCallback(async () => {
     setLoading(true);
     const list = (await fetchTemplates()) as TemplateWa[];
     setAll(list);
-    const t = lancio.whatsapp_slug ? list.find((x) => x.slug === lancio.whatsapp_slug) ?? null : null;
-    setTpl(t);
-    setStats(t ? await fetchClickStats(t.slug) : null);
+    const collegati = slugs.map((sl) => list.find((x) => x.slug === sl)).filter(Boolean) as TemplateWa[];
+    setTpl(collegati[0] ?? null);
+    // Un blocco di statistiche per link, cosi due pulsanti su pagine diverse si confrontano.
+    const perLink = await Promise.all(collegati.map(async (t) => ({ tpl: t, stats: await fetchClickStats(t.slug) })));
+    setPerLink(perLink);
+    setStats(perLink.length ? sommaStat(perLink.map((x) => x.stats)) : null);
     setLoading(false);
-  }, [lancio.whatsapp_slug]);
+  }, [slugs]);
   useEffect(() => { load(); }, [load]);
 
 
@@ -104,6 +139,49 @@ const TabWhatsapp = ({ lancio, rows }: Props) => {
             </div>
           ))}
         </div>
+      )}
+
+      {/* Confronto fra i link del lancio: serve quando ce n'e piu di uno (A/B) */}
+      {perLink.length > 1 && (
+        <Card className="overflow-hidden">
+          <CardHeader className="py-2.5 px-3.5 border-b border-border">
+            <CardTitle className="label-eyebrow">Confronto fra i link · {perLink.length} pulsanti</CardTitle>
+          </CardHeader>
+          <CardContent className="p-0 overflow-x-auto">
+            <table className="w-full text-[12.5px]">
+              <thead><tr>
+                <th className="table-header-cell text-left">Link</th>
+                <th className="table-header-cell text-right whitespace-nowrap">Click</th>
+                <th className="table-header-cell text-right whitespace-nowrap">Quota</th>
+                <th className="table-header-cell text-right whitespace-nowrap">Arrivati in chat</th>
+                <th className="table-header-cell text-right whitespace-nowrap">Errori</th>
+              </tr></thead>
+              <tbody>
+                {[...perLink].sort((a, b) => b.stats.totale - a.stats.totale).map(({ tpl: t, stats: st }, i) => (
+                  <tr key={t.slug}>
+                    <td className="table-body-cell">
+                      <div className="font-medium truncate">{t.nome}</div>
+                      <code className="text-[10.5px] text-muted-foreground">/wa/{t.slug}</code>
+                    </td>
+                    <td className="table-body-cell text-right num font-semibold"
+                      style={{ color: i === 0 && st.totale > 0 ? "hsl(142 71% 55%)" : undefined }}>
+                      {n(st.totale)}
+                    </td>
+                    <td className="table-body-cell text-right num text-muted-foreground">
+                      {pct(st.totale, stats?.totale ?? 0)}
+                    </td>
+                    <td className="table-body-cell text-right num">{n(st.ok)} <span className="text-muted-foreground">{pct(st.ok, st.totale)}</span></td>
+                    <td className={`table-body-cell text-right num ${st.errori > 0 ? "text-destructive" : "text-muted-foreground"}`}>{n(st.errori)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <p className="text-[11px] text-muted-foreground px-3.5 py-2.5 border-t border-border">
+              I click sono contati per link, quindi due pulsanti su pagine diverse si confrontano senza ambiguità.
+              Le schede qui sopra e le tabelle qui sotto sommano tutti i link del lancio.
+            </p>
+          </CardContent>
+        </Card>
       )}
 
       {/* Da dove arrivano i click */}

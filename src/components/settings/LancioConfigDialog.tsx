@@ -102,7 +102,16 @@ const LancioConfigDialog = ({ open, onOpenChange, value, onSave, esistenti, mark
     [attivi, form.sales],
   );
   const autom = automations.find((a) => a.id === form.automazione_id) ?? null;
-  const waSel = wa.find((t) => t.slug === form.whatsapp_slug) ?? null;
+  // Un lancio puo avere piu link: due pulsanti su pagine diverse si confrontano fra loro.
+  const waScelti = form.whatsapp_slugs?.length
+    ? form.whatsapp_slugs
+    : (form.whatsapp_slug ? [form.whatsapp_slug] : []);
+  const waSel = wa.find((t) => t.slug === waScelti[0]) ?? null;
+  const togliMetti = (slug: string) => setForm((f) => {
+    const attuali = f.whatsapp_slugs?.length ? f.whatsapp_slugs : (f.whatsapp_slug ? [f.whatsapp_slug] : []);
+    const next = attuali.includes(slug) ? attuali.filter((x) => x !== slug) : [...attuali, slug];
+    return { ...f, whatsapp_slugs: next, whatsapp_slug: next[0] };
+  });
 
   useEffect(() => {
     if (!open) return;
@@ -110,7 +119,7 @@ const LancioConfigDialog = ({ open, onOpenChange, value, onSave, esistenti, mark
     setStep(0);
 
     setWaNuovo(false);
-    setWaOn(!!value.whatsapp_slug || !value.id);
+    setWaOn(!!(value.whatsapp_slugs?.length || value.whatsapp_slug) || !value.id);
     fetchTemplates().then((t) => setWa(t as any));
     // precompila l'automazione da quella collegata, altrimenti dai dati del lancio
     if (autom) {
@@ -316,16 +325,16 @@ const LancioConfigDialog = ({ open, onOpenChange, value, onSave, esistenti, mark
         if (!res && !automazione_id) { setSaving(false); return; }
         if (res) automazione_id = res;
       }
-      let whatsapp_slug = waOn ? form.whatsapp_slug : undefined;
+      let slugs = waOn ? [...waScelti] : [];
       if (waOn && waNuovo) {
         const s = await creaWa();
         if (!s) { setSaving(false); return; }
-        whatsapp_slug = s;
+        slugs = [...slugs, s];
       }
       const ok = await onSave({
         ...form, id, nome: form.nome.trim(),
         lead_sales: form.sales, call_sales: form.sales,   // i venditori del lancio valgono per entrambi
-        automazione_id, whatsapp_slug,
+        automazione_id, whatsapp_slug: slugs[0], whatsapp_slugs: slugs,
       });
       if (!ok) return;
 
@@ -857,15 +866,27 @@ const LancioConfigDialog = ({ open, onOpenChange, value, onSave, esistenti, mark
 
                 {!waNuovo ? (
                   <div>
-                    <Label className="text-[12px]">Link collegato</Label>
-                    <Select value={form.whatsapp_slug ?? "__none__"}
-                      onValueChange={(v) => setForm({ ...form, whatsapp_slug: v === "__none__" ? undefined : v })}>
-                      <SelectTrigger className="h-8 text-[12.5px]"><SelectValue placeholder="Nessuno" /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="__none__">Nessuno</SelectItem>
-                        {wa.map((t) => <SelectItem key={t.slug} value={t.slug}>{t.nome} · {t.click_count} click</SelectItem>)}
-                      </SelectContent>
-                    </Select>
+                    <Label className="text-[12px]">
+                      Link collegati{waScelti.length > 1 ? ` (${waScelti.length} — si confrontano fra loro)` : ""}
+                    </Label>
+                    <div className="flex flex-wrap gap-1.5 mt-1">
+                      {wa.length === 0 && <span className="text-[12px] text-muted-foreground">Nessun link disponibile: creane uno.</span>}
+                      {wa.map((t) => {
+                        const on = waScelti.includes(t.slug);
+                        return (
+                          <button key={t.slug} type="button" onClick={() => togliMetti(t.slug)}
+                            className={`px-2.5 py-1 rounded-full border text-[11.5px] transition-colors ${
+                              on ? "border-emerald-500 bg-emerald-500/15 text-emerald-400 font-medium"
+                                 : "border-border bg-card text-muted-foreground hover:text-foreground"}`}>
+                            {t.nome} · {t.click_count} click
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <p className="text-[11px] text-muted-foreground mt-1.5">
+                      Sceglierne piu di uno serve a confrontare due pulsanti su pagine diverse: nel tab WhatsApp
+                      del lancio i click vengono contati separatamente e messi a paragone.
+                    </p>
                     {waSel && (
                       <div className="mt-2 rounded-md border border-border bg-secondary/30 p-2.5 space-y-1 text-[11.5px]">
                         <p className="text-muted-foreground">Indirizzo da mettere nel bottone della thank-you page:</p>

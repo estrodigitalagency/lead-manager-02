@@ -16,7 +16,8 @@ export interface LancioConfig {
   lead_sales?: string[];        // venditori da cui leggere il tab lead
   call_sales?: string[];        // venditori da cui leggere i tab call
   automazione_id?: string;      // automazione di assegnazione collegata (lead_assignment_automations)
-  whatsapp_slug?: string;       // template link WhatsApp collegato
+  whatsapp_slug?: string;       // primo link (resta per le configurazioni gia salvate)
+  whatsapp_slugs?: string[];    // tutti i link del lancio: piu di uno serve a confrontarli (A/B)
 }
 
 /** Regola di formattazione condizionale su una metrica. */

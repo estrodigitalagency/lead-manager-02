@@ -126,6 +126,44 @@ const WhatsAppTemplatesSection = () => {
     }
   };
 
+  /**
+   * Snippet da incollare nel Custom Code della pagina (Footer, non in un blocco dentro la
+   * pagina: li GHL lo mette in un iframe e non vede i pulsanti).
+   *
+   * Intercetta il click invece di riscrivere l'href al caricamento, perche le pagine GHL sono
+   * applicazioni che ridisegnano i nodi dopo: un href riscritto all'avvio verrebbe sovrascritto.
+   */
+  const SNIPPET = `<script>
+(function () {
+  function parametriLead() {
+    var q = new URLSearchParams(window.location.search);
+    var p = new URLSearchParams();
+    var email = (q.get('email') || '').trim();
+    var nome  = (q.get('nome') || q.get('name') || q.get('first_name') || '').trim();
+    var tel   = (q.get('telefono') || q.get('phone') || '').trim();
+    if (email) p.set('email', email);
+    if (nome)  p.set('nome', nome);
+    if (tel)   p.set('telefono', tel);
+    return (email || tel) ? p : null;
+  }
+
+  console.log('[wa-link] attivo · parametri della pagina:', window.location.search || 'NESSUNO');
+
+  document.addEventListener('click', function (ev) {
+    var a = ev.target.closest && ev.target.closest('a[href*="/wa/"]');
+    if (!a) return;
+    var p = parametriLead();
+    if (!p) { console.warn('[wa-link] pagina senza email/telefono: link lasciato com\u2019era'); return; }
+    a.href = a.href.split('?')[0] + '?' + p.toString();
+  }, true);
+})();
+</script>`;
+
+  const copiaSnippet = () => {
+    navigator.clipboard.writeText(SNIPPET);
+    toast.success("Snippet copiato — incollalo nel Custom Code della pagina (sezione Footer)");
+  };
+
   const copyLink = (slug: string) => {
     const url = `${baseUrl}/wa/${slug}?email={{email}}&nome={{nome}}&telefono={{telefono}}`;
     navigator.clipboard.writeText(url);
@@ -139,6 +177,49 @@ const WhatsAppTemplatesSection = () => {
   const totalClicks = templates.reduce((s, t) => s + (t.click_count || 0), 0);
 
   return (
+    <>
+    {/* Perche i parametri arrivino, la pagina che ospita il pulsante deve passarli: senza,
+        il tool non sa quale lead sia e il click finisce sul numero di riserva. */}
+    <Card className="mb-4 border-amber-500/40">
+      <CardHeader className="py-3 px-4">
+        <CardTitle className="text-[13.5px] flex items-center gap-2">
+          <AlertTriangle className="h-4 w-4 text-amber-500" />
+          Il pulsante deve passare email o telefono
+        </CardTitle>
+        <CardDescription className="text-[12.5px]">
+          Su GHL i segnaposto come <code className="px-1 rounded bg-secondary text-[11.5px]">{"{{contact.email}}"}</code> nel
+          link spesso non vengono risolti: il tool riceve il segnaposto invece dell'indirizzo e non riesce
+          a capire di quale lead si tratta. Questo snippet prende i parametri dall'indirizzo della pagina
+          e li attacca al pulsante al momento del click.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="px-4 pb-4 space-y-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          <Button size="sm" variant="outline" className="h-7 text-[11.5px]" onClick={copiaSnippet}>
+            <Copy className="h-3.5 w-3.5 mr-1" /> Copia lo snippet
+          </Button>
+          <span className="text-[11.5px] text-muted-foreground">
+            va incollato nel <b>Custom Code della pagina, sezione Footer</b> — non in un blocco dentro la
+            pagina, che GHL renderizza dentro un iframe dove non vede i pulsanti.
+          </span>
+        </div>
+        <details className="text-[11.5px]">
+          <summary className="cursor-pointer text-muted-foreground">Alternativa senza JavaScript</summary>
+          <p className="mt-1.5 text-muted-foreground">
+            Se puoi modificare l'HTML del link, aggiungi{" "}
+            <code className="px-1 rounded bg-secondary text-[11px]">referrerpolicy="unsafe-url"</code> e togli i
+            segnaposto: il browser manda al tool l'indirizzo completo della pagina, parametri inclusi, e non
+            serve nessuno script. Mettilo sul singolo link e non sull'intera pagina, così l'indirizzo con
+            email e telefono va solo al tuo strumento.
+          </p>
+        </details>
+        <p className="text-[11.5px] text-muted-foreground">
+          Per provarlo: apri la pagina con l'indirizzo completo, premi F12 e cerca <code className="px-1 rounded bg-secondary text-[11px]">[wa-link] attivo</code> nella
+          console. Se non compare, lo snippet non sta girando nella pagina.
+        </p>
+      </CardContent>
+    </Card>
+
     <Card>
       <CardHeader className="flex flex-row items-start justify-between gap-2">
         <div>
@@ -329,6 +410,7 @@ const WhatsAppTemplatesSection = () => {
         </div>
       </CardContent>
     </Card>
+    </>
   );
 };
 

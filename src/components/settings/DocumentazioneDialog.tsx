@@ -278,6 +278,12 @@ const DocumentazioneDialog = () => {
                   Il link ha bisogno di <K>email oppure telefono</K> per capire di quale lead si tratta. Senza, non
                   può sapere quale venditore aprire. Il nome è facoltativo e serve solo al messaggio.
                 </T>
+                <H>Due link sullo stesso lancio (prova A/B)</H>
+                <T>
+                  Un lancio può avere più link collegati: due pulsanti su pagine diverse si contano
+                  separatamente e nel tab WhatsApp compare il confronto — click, quota sul totale, quanti sono
+                  davvero arrivati in chat e quanti hanno dato errore. Le schede in cima sommano tutti i link.
+                </T>
                 <H>Il numero di riserva</H>
                 <T>
                   Se il lead non ha ancora un venditore, il template può avere un numero di riserva: senza, il lead
