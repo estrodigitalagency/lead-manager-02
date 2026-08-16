@@ -247,8 +247,10 @@ const WhatsAppRedirect = () => {
         // modulo, e il flusso che lo registra puo metterci mezzo minuto. Misurato su un caso
         // reale: click alle 15:29:38, lead scritto alle 15:29:55 — la pagina si era gia arresa.
         const POLL_MS = 600;
-        const ATTESA_LEAD_NOTO = 45000;
-        const ATTESA_LEAD_IGNOTO = 40000;
+        // Stessa attesa nei due casi: un lead che risulta gia in database non puo aspettare
+        // meno di uno che deve ancora essere scritto, sarebbe al contrario.
+        const ATTESA_LEAD_NOTO = 50000;
+        const ATTESA_LEAD_IGNOTO = 50000;
         // Dopo qualche secondo si offre comunque una via d'uscita, cosi nessuno resta fermo a
         // guardare una rotella: chi ha fretta scrive al numero di riserva quando vuole.
         const SCORCIATOIA_DOPO = 8000;
