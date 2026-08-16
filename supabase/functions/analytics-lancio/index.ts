@@ -469,6 +469,25 @@ Deno.serve(async (req) => {
       }));
     }
 
+    // Dodici righe identiche "tab mancante" per il mese che deve ancora iniziare sono rumore:
+    // si accorpano in una sola, che dice la cosa utile invece di ripeterla per ogni venditore.
+    {
+      const perTab: Record<string, number> = {};
+      const restanti: string[] = [];
+      for (const e of errors) {
+        const m = e.match(/^(.+): tab mancanti \((.+)\)$/);
+        if (m && !m[2].includes(",")) perTab[m[2]] = (perTab[m[2]] || 0) + 1;
+        else restanti.push(e);
+      }
+      const letti = rows.length || 1;
+      const accorpati = Object.entries(perTab).map(([tab, n]) =>
+        n >= letti
+          ? `${tab}: non esiste ancora in nessun foglio, quindi non ci sono call da leggere`
+          : `${tab}: manca in ${n} fogli su ${letti}`);
+      errors.length = 0;
+      errors.push(...accorpati, ...restanti);
+    }
+
     rows.sort((a, b) => b.fatturato - a.fatturato);
     const totLeadTeam = rows.reduce((s, r) => s + r.tot_lead, 0);
     for (const r of rows) r.distribuzione = totLeadTeam > 0 ? Math.round((r.tot_lead / totLeadTeam) * 1000) / 10 : 0;

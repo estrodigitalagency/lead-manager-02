@@ -34,10 +34,18 @@ const QualitaLeadWidget = ({ qualita, rows }: Props) => {
     .sort((a, b) => ratio(b.basso.c, b.basso.n) - ratio(a.basso.c, a.basso.n)), [rows]);
 
   if (!qualita || qualita.call_abbinate === 0) {
+    // Senza call non c'e niente da incrociare: dare la colpa al voto manderebbe a cercare
+    // nel posto sbagliato.
+    const senzaCall = !qualita || qualita.call_totali === 0;
     return (
       <div className="p-5 text-sm text-muted-foreground">
-        Nessuna call agganciata a un voto: serve la colonna <b>Voto 1-5</b> compilata nel tab Lead e lo
-        stesso nome del lead nel tab delle call.
+        {senzaCall ? (
+          <>Nessuna call in questo lancio: questa vista incrocia il voto del lead con l'esito della sua
+          call, quindi si popola quando le call cominciano ad arrivare nei tab del mese.</>
+        ) : (
+          <>Nessuna delle {qualita.call_totali} call e agganciata a un voto: serve la colonna <b>Voto 1-5</b>{" "}
+          compilata nel tab Lead, e il nome del lead scritto allo stesso modo nei due tab.</>
+        )}
       </div>
     );
   }
