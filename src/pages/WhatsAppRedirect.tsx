@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSearchParams, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -66,6 +66,9 @@ const WhatsAppRedirect = () => {
   const [status, setStatus] = useState<"loading" | "error" | "redirecting">("loading");
   const [errorMsg, setErrorMsg] = useState<string>("");
   const [venditore, setVenditore] = useState<{ nome: string; cognome: string } | null>(null);
+  // Attesa che si allunga: si mostra una spiegazione e la possibilità di non aspettare oltre.
+  const [attesaLunga, setAttesaLunga] = useState(false);
+  const saltaAttesa = useRef(false);
 
   useEffect(() => {
     /**
@@ -239,17 +242,28 @@ const WhatsAppRedirect = () => {
         //
         // Se invece il lead non risulta da nessuna parte non c'è niente in arrivo: aspettare
         // servirebbe solo a tenerlo fermo davanti a una pagina bianca.
+        // Quanto si aspetta prima di arrendersi. Il lead che non risulta ancora non significa
+        // che non arrivera: chi clicca da una pagina di ringraziamento ha appena compilato il
+        // modulo, e il flusso che lo registra puo metterci mezzo minuto. Misurato su un caso
+        // reale: click alle 15:29:38, lead scritto alle 15:29:55 — la pagina si era gia arresa.
         const POLL_MS = 600;
         const ATTESA_LEAD_NOTO = 45000;
-        const ATTESA_LEAD_IGNOTO = 8000;
+        const ATTESA_LEAD_IGNOTO = 40000;
+        // Dopo qualche secondo si offre comunque una via d'uscita, cosi nessuno resta fermo a
+        // guardare una rotella: chi ha fretta scrive al numero di riserva quando vuole.
+        const SCORCIATOIA_DOPO = 8000;
 
         let lead: any = await findAssignedLead();
         if (!lead) {
           const noto = await leadInLavorazione();
-          const scadenza = Date.now() + (noto ? ATTESA_LEAD_NOTO : ATTESA_LEAD_IGNOTO);
-          if (noto) console.log("[wa] lead presente ma non ancora assegnato: attendo l'assegnazione");
-          while (!lead && Date.now() < scadenza) {
+          const inizio = Date.now();
+          const scadenza = inizio + (noto ? ATTESA_LEAD_NOTO : ATTESA_LEAD_IGNOTO);
+          console.log(noto
+            ? "[wa] lead presente ma non ancora assegnato: attendo l'assegnazione"
+            : "[wa] lead non ancora registrato: attendo che il flusso lo scriva");
+          while (!lead && Date.now() < scadenza && !saltaAttesa.current) {
             await new Promise((r) => setTimeout(r, POLL_MS));
+            if (Date.now() - inizio > SCORCIATOIA_DOPO) setAttesaLunga(true);
             lead = await findAssignedLead();
           }
         }
@@ -348,7 +362,17 @@ const WhatsAppRedirect = () => {
           <>
             <Loader2 className="h-10 w-10 mx-auto text-primary animate-spin" />
             <h1 className="text-lg font-semibold">Ti stiamo indirizzando...</h1>
-            <p className="text-sm text-muted-foreground">Un momento, stiamo trovando il tuo referente.</p>
+            <p className="text-sm text-muted-foreground">
+              {attesaLunga
+                ? "Stiamo ancora registrando la tua richiesta: ancora qualche secondo e ti mettiamo in contatto con la persona giusta."
+                : "Un momento, stiamo trovando il tuo referente."}
+            </p>
+            {attesaLunga && (
+              <button type="button" onClick={() => { saltaAttesa.current = true; }}
+                className="text-[12.5px] text-muted-foreground underline underline-offset-2 hover:text-foreground">
+                Non voglio aspettare, scrivi subito
+              </button>
+            )}
           </>
         )}
         {status === "redirecting" && (
