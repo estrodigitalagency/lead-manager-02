@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { MessageCircle, Copy, ExternalLink, Loader2, AlertTriangle, Smartphone } from "lucide-react";
+import { MessageCircle, Copy, ExternalLink, Loader2, AlertTriangle, Smartphone, Monitor, Tablet, Bot, HelpCircle } from "lucide-react";
 import { LancioConfig, LancioRow } from "@/lib/lanci/config";
 import { fetchClickStats, fetchPercorso, Percorso, TemplateWa } from "@/lib/lanci/integrazioni";
 import { fetchTemplates } from "@/lib/whatsapp/templates";
@@ -64,6 +64,9 @@ const DISPOSITIVO: Record<string, { t: string; c: string }> = {
   ignoto: { t: "Non rilevato", c: "hsl(220 9% 55%)" },
 };
 const BREVE: Record<string, string> = { mobile: "telefono", desktop: "computer", tablet: "tablet", automatico: "automatico", ignoto: "?" };
+const ICONA: Record<string, typeof Smartphone> = {
+  mobile: Smartphone, desktop: Monitor, tablet: Tablet, automatico: Bot, ignoto: HelpCircle,
+};
 
 /**
  * Esito del click, detto per quello che è.
@@ -397,6 +400,7 @@ const TabWhatsapp = ({ lancio, rows, market }: Props) => {
               <th className="table-header-cell text-left sticky top-0 bg-card">Lead</th>
               <th className="table-header-cell text-left sticky top-0 bg-card whitespace-nowrap">Entrato</th>
               <th className="table-header-cell text-left sticky top-0 bg-card whitespace-nowrap">Click</th>
+              <th className="table-header-cell text-center sticky top-0 bg-card whitespace-nowrap">Da</th>
               <th className="table-header-cell text-left sticky top-0 bg-card">Esito del click</th>
               <th className="table-header-cell text-right sticky top-0 bg-card whitespace-nowrap">Assegnato in</th>
               <th className="table-header-cell text-left sticky top-0 bg-card">Sales</th>
@@ -421,6 +425,19 @@ const TabWhatsapp = ({ lancio, rows, market }: Props) => {
                       </>
                     ) : <span className="text-muted-foreground/40">nessun click</span>}
                   </td>
+                  {/* Il dispositivo ha colonna sua: sta accanto al click perché descrive quello,
+                      e da solo si legge a colpo d'occhio invece di perdersi fra le etichette. */}
+                  <td className="table-body-cell text-center">
+                    {r.click_dispositivo ? (() => {
+                      const Icona = ICONA[r.click_dispositivo] ?? HelpCircle;
+                      return (
+                        <span className="inline-flex" title={DISPOSITIVO[r.click_dispositivo]?.t ?? r.click_dispositivo}>
+                          <Icona className="h-3.5 w-3.5" style={{ color: DISPOSITIVO[r.click_dispositivo]?.c }} />
+                          <span className="sr-only">{BREVE[r.click_dispositivo]}</span>
+                        </span>
+                      );
+                    })() : <span className="text-muted-foreground/30">—</span>}
+                  </td>
                   <td className="table-body-cell">
                     {r.click_esito ? (
                       <span className="flex items-center gap-1.5">
@@ -428,12 +445,6 @@ const TabWhatsapp = ({ lancio, rows, market }: Props) => {
                           {ESITO[r.click_esito]?.t ?? r.click_esito}
                         </span>
                         {r.click_motivo && <span className="text-[10px] text-muted-foreground">{r.click_motivo}</span>}
-                        {r.click_dispositivo && (
-                          <span className="text-[10px] px-1 rounded bg-secondary"
-                            style={{ color: DISPOSITIVO[r.click_dispositivo]?.c }}>
-                            {BREVE[r.click_dispositivo] ?? r.click_dispositivo}
-                          </span>
-                        )}
                         {r.click_slug && slugs.length > 1 && (
                           <span className="text-[10px] px-1 rounded bg-secondary text-muted-foreground">{r.click_slug}</span>
                         )}
