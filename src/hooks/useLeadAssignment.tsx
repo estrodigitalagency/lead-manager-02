@@ -34,6 +34,9 @@ export function useLeadAssignment() {
     return d.toISOString().slice(0, 10);
   });
   const [newLeadsDirection, setNewLeadsDirection] = useState<'newer' | 'older'>('newer');
+  // Da che capo della coda si comincia. Il filtro sulle date dice quali lead entrano nel mazzo,
+  // questo dice chi viene servito per primo: 'vecchi' e' il comportamento di sempre.
+  const [ordineIngresso, setOrdineIngresso] = useState<'recenti' | 'vecchi'>('vecchi');
   
   // State for already assigned leads conflict
   const [showAlreadyAssignedDialog, setShowAlreadyAssignedDialog] = useState(false);
@@ -324,6 +327,7 @@ const fetchUniqueSources = async () => {
         onlyHotLeads,
         newLeadsCutoffISO,
         newLeadsDirection,
+        ordineIngresso,
         market: selectedMarket
       };
 
@@ -536,6 +540,8 @@ const fetchUniqueSources = async () => {
     newLeadsDays,
     newLeadsFromDate,
     newLeadsDirection,
+    ordineIngresso,
+    setOrdineIngresso,
     newLeadsCutoffISO,
     toggleNewLeads: () => setNewLeadsEnabled(v => !v),
     setNewLeadsMode,

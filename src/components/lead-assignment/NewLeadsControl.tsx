@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button";
 
 export type NewLeadsMode = 'days' | 'date';
 export type NewLeadsDirection = 'newer' | 'older';
+/** Da che capo della coda si comincia a servire. */
+export type OrdineIngresso = 'recenti' | 'vecchi';
 
 interface NewLeadsControlProps {
   enabled: boolean;
@@ -14,11 +16,13 @@ interface NewLeadsControlProps {
   days: number;
   fromDate: string; // ISO YYYY-MM-DD
   direction: NewLeadsDirection;
+  ordine: OrdineIngresso;
   onToggleEnabled: () => void;
   onChangeMode: (mode: NewLeadsMode) => void;
   onChangeDays: (n: number) => void;
   onChangeFromDate: (d: string) => void;
   onChangeDirection: (dir: NewLeadsDirection) => void;
+  onChangeOrdine: (o: OrdineIngresso) => void;
   disabled?: boolean;
 }
 
@@ -28,11 +32,13 @@ export const NewLeadsControl = ({
   days,
   fromDate,
   direction,
+  ordine,
   onToggleEnabled,
   onChangeMode,
   onChangeDays,
   onChangeFromDate,
   onChangeDirection,
+  onChangeOrdine,
   disabled = false,
 }: NewLeadsControlProps) => {
   const title = direction === 'newer' ? 'Solo lead nuovi' : 'Solo lead vecchi';
@@ -168,6 +174,54 @@ export const NewLeadsControl = ({
             )}
           </>
         )}
+
+        {/*
+          Ordine di servizio, separato dal filtro perché è un'altra domanda: il filtro dice
+          quali lead entrano nel mazzo, questo dice chi viene servito per primo. Prima l'ordine
+          era fisso dal più vecchio e "Nuovi (≥)" sembrava promettere il contrario, quindi vale
+          anche a filtro spento.
+        */}
+        <div className="pt-3 border-t border-border/60 space-y-1.5">
+          <div className="flex items-center gap-1.5">
+            <Label className="text-sm font-medium">Chi assegnare per primo</Label>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Info className="h-3.5 w-3.5 text-muted-foreground cursor-help shrink-0" />
+                </TooltipTrigger>
+                <TooltipContent className="max-w-[280px] text-xs">
+                  Vale sempre, anche senza filtro per data. Chiedendo 20 lead, decide se prendere
+                  i 20 entrati più di recente o i 20 che aspettano da più tempo.
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </div>
+          <div className="flex gap-1.5">
+            <Button
+              type="button" size="sm" disabled={disabled}
+              variant={ordine === 'recenti' ? 'default' : 'outline'}
+              className="flex-1 h-8 text-xs gap-1"
+              onClick={() => onChangeOrdine('recenti')}
+            >
+              <ArrowDownToLine className="h-3 w-3" />
+              Dal più recente
+            </Button>
+            <Button
+              type="button" size="sm" disabled={disabled}
+              variant={ordine === 'vecchi' ? 'default' : 'outline'}
+              className="flex-1 h-8 text-xs gap-1"
+              onClick={() => onChangeOrdine('vecchi')}
+            >
+              <ArrowUpFromLine className="h-3 w-3" />
+              Dal più vecchio
+            </Button>
+          </div>
+          <p className="text-[11px] text-muted-foreground">
+            {ordine === 'recenti'
+              ? "Parte da chi è entrato per ultimo e va indietro: i più caldi per primi."
+              : "Parte da chi aspetta da più tempo e va avanti: nessuno resta in fondo alla coda."}
+          </p>
+        </div>
       </div>
     </div>
   );

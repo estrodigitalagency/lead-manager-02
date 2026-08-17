@@ -14,6 +14,17 @@ export interface LeadAssignmentData {
   onlyHotLeads?: boolean;
   newLeadsCutoffISO?: string; // Cutoff (ISO)
   newLeadsDirection?: 'newer' | 'older'; // 'newer' → created_at >= cutoff; 'older' → created_at <= cutoff
+  /**
+   * Da che capo della coda si comincia, indipendentemente dal filtro sulle date.
+   *
+   * Il filtro dice quali lead entrano nel mazzo, questo dice chi viene servito per primo: sono
+   * due cose diverse e prima erano una sola, perché l'ordine era fisso dal più vecchio e
+   * "Nuovi (>=)" sembrava promettere il contrario.
+   *
+   * 'vecchi' resta il predefinito: e' il comportamento di sempre, e serve a non lasciare
+   * indietro chi aspetta da piu tempo.
+   */
+  ordineIngresso?: 'recenti' | 'vecchi';
   market?: 'IT' | 'ES';
   specificLeadIds?: string[]; // For replay functionality
   skipAlreadyAssignedCheck?: boolean; // Skip pre-assignment check
@@ -194,6 +205,7 @@ export async function assignLeadsWithExclusions(data: LeadAssignmentData) {
     onlyHotLeads = false,
     newLeadsCutoffISO,
     newLeadsDirection = 'newer',
+    ordineIngresso = 'vecchi',
     market = 'IT',
     specificLeadIds // For replay functionality
   } = data;
@@ -342,7 +354,7 @@ export async function assignLeadsWithExclusions(data: LeadAssignmentData) {
         .eq('booked_call', 'NO')
         .eq('manually_not_assignable', false)
         .eq('market', market)
-        .order('created_at', { ascending: true })
+        .order('created_at', { ascending: ordineIngresso !== 'recenti' })
         .range(page * pageSize, (page + 1) * pageSize - 1);
 
       if (onlyHotLeads) {
@@ -746,6 +758,7 @@ export async function checkLeadsForPreviousAssignment(
     onlyHotLeads = false,
     newLeadsCutoffISO,
     newLeadsDirection = 'newer',
+    ordineIngresso = 'vecchi',
     market = 'IT',
   } = data;
 
@@ -775,7 +788,7 @@ export async function checkLeadsForPreviousAssignment(
         .eq('booked_call', 'NO')
         .eq('manually_not_assignable', false)
         .eq('market', market)
-        .order('created_at', { ascending: true })
+        .order('created_at', { ascending: ordineIngresso !== 'recenti' })
         .range(page * pageSize, (page + 1) * pageSize - 1);
 
       if (onlyHotLeads) {
