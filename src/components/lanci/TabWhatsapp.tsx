@@ -398,11 +398,11 @@ const TabWhatsapp = ({ lancio, rows, market }: Props) => {
           <table className="w-full text-[12px]">
             <thead><tr>
               <th className="table-header-cell text-left sticky top-0 bg-card">Lead</th>
-              <th className="table-header-cell text-left sticky top-0 bg-card whitespace-nowrap">Entrato</th>
-              <th className="table-header-cell text-left sticky top-0 bg-card whitespace-nowrap">Click</th>
-              <th className="table-header-cell text-center sticky top-0 bg-card whitespace-nowrap">Da</th>
-              <th className="table-header-cell text-left sticky top-0 bg-card">Esito del click</th>
-              <th className="table-header-cell text-right sticky top-0 bg-card whitespace-nowrap">Assegnato in</th>
+              <th className="table-header-cell text-left sticky top-0 bg-card whitespace-nowrap">Data ingresso</th>
+              <th className="table-header-cell text-left sticky top-0 bg-card whitespace-nowrap">Data clic</th>
+              <th className="table-header-cell text-left sticky top-0 bg-card">Esito</th>
+              <th className="table-header-cell text-center sticky top-0 bg-card whitespace-nowrap">Dispositivo</th>
+              <th className="table-header-cell text-right sticky top-0 bg-card whitespace-nowrap">Tempo d'assegnazione</th>
               <th className="table-header-cell text-left sticky top-0 bg-card">Sales</th>
             </tr></thead>
             <tbody>
@@ -425,19 +425,6 @@ const TabWhatsapp = ({ lancio, rows, market }: Props) => {
                       </>
                     ) : <span className="text-muted-foreground/40">nessun click</span>}
                   </td>
-                  {/* Il dispositivo ha colonna sua: sta accanto al click perché descrive quello,
-                      e da solo si legge a colpo d'occhio invece di perdersi fra le etichette. */}
-                  <td className="table-body-cell text-center">
-                    {r.click_dispositivo ? (() => {
-                      const Icona = ICONA[r.click_dispositivo] ?? HelpCircle;
-                      return (
-                        <span className="inline-flex" title={DISPOSITIVO[r.click_dispositivo]?.t ?? r.click_dispositivo}>
-                          <Icona className="h-3.5 w-3.5" style={{ color: DISPOSITIVO[r.click_dispositivo]?.c }} />
-                          <span className="sr-only">{BREVE[r.click_dispositivo]}</span>
-                        </span>
-                      );
-                    })() : <span className="text-muted-foreground/30">—</span>}
-                  </td>
                   <td className="table-body-cell">
                     {r.click_esito ? (
                       <span className="flex items-center gap-1.5">
@@ -450,6 +437,19 @@ const TabWhatsapp = ({ lancio, rows, market }: Props) => {
                         )}
                       </span>
                     ) : <span className="text-muted-foreground/40">—</span>}
+                  </td>
+                  {/* Il dispositivo ha colonna sua: da solo si legge a colpo d'occhio, invece di
+                      perdersi in coda all'esito fra il motivo dell'errore e il nome del pulsante. */}
+                  <td className="table-body-cell text-center">
+                    {r.click_dispositivo ? (() => {
+                      const Icona = ICONA[r.click_dispositivo] ?? HelpCircle;
+                      return (
+                        <span className="inline-flex" title={DISPOSITIVO[r.click_dispositivo]?.t ?? r.click_dispositivo}>
+                          <Icona className="h-3.5 w-3.5" style={{ color: DISPOSITIVO[r.click_dispositivo]?.c }} />
+                          <span className="sr-only">{BREVE[r.click_dispositivo]}</span>
+                        </span>
+                      );
+                    })() : <span className="text-muted-foreground/30">—</span>}
                   </td>
                   <td className="table-body-cell text-right num whitespace-nowrap">
                     {r.assegnato_dopo_sec === null
