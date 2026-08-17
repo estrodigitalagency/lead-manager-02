@@ -37,6 +37,116 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
     );
 
+    /**
+     * Percorso del singolo lead: entrato → ha cliccato → quanto ci ha messo il sistema ad
+     * assegnarlo → a chi.
+     *
+     * Le statistiche aggregate dicono quanti click ci sono stati, non a chi sono successi: un
+     * lead che non ha mai cliccato non compare da nessuna parte, e proprio quelli sono la
+     * maggioranza. Qui si parte dai lead, non dai click, così i due insiemi si vedono insieme.
+     *
+     * L'incrocio è per email esatta e, in mancanza, per le ultime nove cifre del telefono: sono
+     * gli stessi identificativi con cui la pagina /wa/ trova il lead, quindi la tabella mostra
+     * gli stessi abbinamenti che avvengono dal vivo.
+     */
+    if (corpo.azione === "percorso") {
+      const mercato = String(corpo.market ?? "IT").toUpperCase();
+      const campagna = String(corpo.campagna ?? "").trim();
+      const slugs: string[] = Array.isArray(corpo.slugs) ? corpo.slugs.filter(Boolean) : [];
+      if (!campagna) return json({ error: "Serve la campagna del lancio" }, 400);
+      const sr = supabaseSR();
+
+      // A pagine: un lancio può avere migliaia di lead e un tetto di lettura direbbe che i lead
+      // sono meno di quanti sono, cioè esattamente l'errore che questa vista deve escludere.
+      const leggiTutto = async (tabella: string, colonne: string, filtra: (q: any) => any) => {
+        const righe: any[] = [];
+        for (let off = 0; off < 100000; off += 1000) {
+          const { data } = await filtra(sr.from(tabella).select(colonne)).range(off, off + 999);
+          if (!data || data.length === 0) break;
+          righe.push(...data);
+          if (data.length < 1000) break;
+        }
+        return righe;
+      };
+
+      const lead = await leggiTutto(
+        "lead_generation",
+        "id, nome, cognome, email, telefono, venditore, stato, booked_call, created_at, data_assegnazione",
+        (q: any) => q.eq("market", mercato).eq("campagna", campagna).order("created_at", { ascending: false }),
+      );
+
+      const click = slugs.length === 0 ? [] : await leggiTutto(
+        "whatsapp_click_logs",
+        "clicked_at, template_slug, lead_id, lead_email, lead_phone, venditore_nome, status, error_reason",
+        (q: any) => q.in("template_slug", slugs).order("clicked_at", { ascending: true }),
+      );
+
+      // Indici di ricerca: id, email, coda del telefono. Si tiene il primo click in ordine di
+      // tempo, perché è quello che ha deciso il contatto; i successivi sono ritorni.
+      const perId = new Map<string, any>(), perEmail = new Map<string, any>(), perTel = new Map<string, any>();
+      const coda = (t: string | null) => { const d = String(t ?? "").replace(/\D/g, ""); return d.length >= 9 ? d.slice(-9) : ""; };
+      for (const c of click) {
+        if (c.lead_id && !perId.has(c.lead_id)) perId.set(c.lead_id, c);
+        const em = String(c.lead_email ?? "").toLowerCase().trim();
+        if (em && !perEmail.has(em)) perEmail.set(em, c);
+        const tl = coda(c.lead_phone);
+        if (tl && !perTel.has(tl)) perTel.set(tl, c);
+      }
+
+      const secondiFra = (a: string | null, b: string | null) =>
+        a && b ? Math.round((new Date(b).getTime() - new Date(a).getTime()) / 1000) : null;
+
+      const righe = lead.map((l: any) => {
+        const c = perId.get(l.id)
+          ?? perEmail.get(String(l.email ?? "").toLowerCase().trim())
+          ?? (coda(l.telefono) ? perTel.get(coda(l.telefono)) : null)
+          ?? null;
+        return {
+          id: l.id,
+          nome: `${l.nome ?? ""} ${l.cognome ?? ""}`.trim(),
+          email: l.email,
+          creato: l.created_at,
+          venditore: l.venditore,
+          stato: l.stato,
+          // Assegnazione: quanto ci ha messo il sistema, non la persona.
+          assegnato_dopo_sec: secondiFra(l.created_at, l.data_assegnazione),
+          data_assegnazione: l.data_assegnazione,
+          // Click: se c'è stato, dopo quanto, com'è finito e da quale pulsante.
+          click_at: c?.clicked_at ?? null,
+          click_dopo_sec: c ? secondiFra(l.created_at, c.clicked_at) : null,
+          click_esito: c?.status ?? null,
+          click_motivo: c?.error_reason ?? null,
+          click_slug: c?.template_slug ?? null,
+          click_venditore: c?.venditore_nome ?? null,
+        };
+      });
+
+      const conClick = righe.filter((r) => r.click_at);
+      const mediana = (v: number[]) => { if (!v.length) return null; const s = [...v].sort((a, b) => a - b); return s[Math.floor(s.length / 2)]; };
+      const attese = righe.map((r) => r.assegnato_dopo_sec).filter((x): x is number => x !== null && x >= 0);
+      const ritardi = conClick.map((r) => r.click_dopo_sec).filter((x): x is number => x !== null && x >= 0);
+
+      // I click registrati che non si agganciano a nessun lead di questa campagna: o il lead è
+      // di un'altra campagna, o è arrivato senza email utilizzabile. Vanno detti, non nascosti.
+      const agganciati = new Set(conClick.map((r) => r.click_at));
+      const orfani = click.filter((c) => !agganciati.has(c.clicked_at)).length;
+
+      return json({
+        totale_lead: righe.length,
+        con_click: conClick.length,
+        click_ok: conClick.filter((r) => r.click_esito === "ok").length,
+        click_riserva: conClick.filter((r) => r.click_esito === "fallback").length,
+        click_errore: conClick.filter((r) => r.click_esito === "error").length,
+        assegnati: righe.filter((r) => r.venditore).length,
+        senza_venditore: righe.filter((r) => !r.venditore).length,
+        assegnazione_mediana_sec: mediana(attese),
+        ritardo_click_mediano_sec: mediana(ritardi),
+        click_non_agganciati: orfani,
+        // La tabella mostra i più recenti: il resto vive negli aggregati qui sopra.
+        righe: righe.slice(0, Number(corpo.limite) || 400),
+      });
+    }
+
     // Azzera le statistiche di un link: serve per ripartire da zero prima di una prova vera,
     // senza portarsi dietro i click falliti delle configurazioni precedenti.
     if (corpo.azione === "reset") {

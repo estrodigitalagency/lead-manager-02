@@ -213,6 +213,50 @@ export async function fetchClickStats(slug: string): Promise<{
   }
 }
 
+/** Una riga del percorso: un lead, con il suo click se c'è stato. */
+export interface RigaPercorso {
+  id: string; nome: string; email: string | null; creato: string;
+  venditore: string | null; stato: string | null;
+  assegnato_dopo_sec: number | null; data_assegnazione: string | null;
+  click_at: string | null; click_dopo_sec: number | null;
+  click_esito: string | null; click_motivo: string | null;
+  click_slug: string | null; click_venditore: string | null;
+}
+
+export interface Percorso {
+  totale_lead: number; con_click: number;
+  click_ok: number; click_riserva: number; click_errore: number;
+  assegnati: number; senza_venditore: number;
+  assegnazione_mediana_sec: number | null; ritardo_click_mediano_sec: number | null;
+  click_non_agganciati: number;
+  righe: RigaPercorso[];
+}
+
+const PERCORSO_VUOTO: Percorso = {
+  totale_lead: 0, con_click: 0, click_ok: 0, click_riserva: 0, click_errore: 0,
+  assegnati: 0, senza_venditore: 0, assegnazione_mediana_sec: null,
+  ritardo_click_mediano_sec: null, click_non_agganciati: 0, righe: [],
+};
+
+/**
+ * Percorso dei lead di un lancio: entrato → ha cliccato → in quanto è stato assegnato → a chi.
+ * Parte dai lead e non dai click, perché chi non ha cliccato è la maggioranza e non comparirebbe.
+ */
+export async function fetchPercorso(campagna: string, market: string, slugs: string[]): Promise<Percorso> {
+  if (!campagna) return PERCORSO_VUOTO;
+  try {
+    const r = await fetch(`${SUPA_URL}/functions/v1/wa-click`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${ANON}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ azione: "percorso", campagna, market, slugs }),
+    });
+    const j = await r.json();
+    return j?.totale_lead === undefined ? PERCORSO_VUOTO : (j as Percorso);
+  } catch {
+    return PERCORSO_VUOTO;
+  }
+}
+
 export async function fetchTemplate(slug: string): Promise<TemplateWa | null> {
   const { fetchTemplates } = await import("@/lib/whatsapp/templates");
   const all = await fetchTemplates();

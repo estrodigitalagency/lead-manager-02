@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { MessageCircle, Copy, ExternalLink, Loader2, AlertTriangle } from "lucide-react";
 import { LancioConfig, LancioRow } from "@/lib/lanci/config";
-import { fetchClickStats, TemplateWa } from "@/lib/lanci/integrazioni";
+import { fetchClickStats, fetchPercorso, Percorso, TemplateWa } from "@/lib/lanci/integrazioni";
 import { fetchTemplates } from "@/lib/whatsapp/templates";
 
 const n = (v: number) => Math.round(v).toLocaleString("it-IT");
@@ -36,10 +36,34 @@ const sommaStat = (parti: any[]) => {
 
 const pct = (a: number, b: number) => (b > 0 ? `${((a / b) * 100).toFixed(1).replace(".", ",")}%` : "—");
 
+/** Durata leggibile: sotto il minuto i secondi contano, sopra l'ora no. */
+const durata = (sec: number | null): string => {
+  if (sec === null || sec < 0) return "—";
+  if (sec < 60) return `${sec}s`;
+  if (sec < 3600) return `${Math.round(sec / 60)} min`;
+  if (sec < 86400) return `${Math.floor(sec / 3600)}h ${Math.round((sec % 3600) / 60)}m`;
+  return `${Math.round(sec / 86400)} g`;
+};
+
+const quando = (iso: string | null): string =>
+  iso ? new Date(iso).toLocaleString("it-IT", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : "—";
+
+const ESITO: Record<string, { t: string; c: string }> = {
+  ok: { t: "in chat col sales", c: "text-emerald-400" },
+  fallback: { t: "numero di riserva", c: "text-amber-400" },
+  error: { t: "errore", c: "text-red-400" },
+};
+
+/** Confronto fra nomi che tollera accenti e spazi doppi: serve solo a segnalare le differenze. */
+const nomeSemplice = (s: string) =>
+  s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/\s+/g, " ").trim();
+
 interface Props { lancio: LancioConfig; rows: LancioRow[]; market: string; onChange?: () => void }
 
 /** Contatto WhatsApp del lancio: link, click tracciati e passaggio lead → contatto → call. */
-const TabWhatsapp = ({ lancio, rows }: Props) => {
+const TabWhatsapp = ({ lancio, rows, market }: Props) => {
+  const [percorso, setPercorso] = useState<Percorso | null>(null);
+  const [filtro, setFiltro] = useState<"tutti" | "click" | "senza">("tutti");
   const [tpl, setTpl] = useState<TemplateWa | null>(null);
   const [all, setAll] = useState<TemplateWa[]>([]);
   const [stats, setStats] = useState<Awaited<ReturnType<typeof fetchClickStats>> | null>(null);
@@ -63,9 +87,19 @@ const TabWhatsapp = ({ lancio, rows }: Props) => {
     const perLink = await Promise.all(collegati.map(async (t) => ({ tpl: t, stats: await fetchClickStats(t.slug) })));
     setPerLink(perLink);
     setStats(perLink.length ? sommaStat(perLink.map((x) => x.stats)) : null);
+    // Il percorso parte dai lead della campagna, quindi si popola anche senza nessun link
+    // collegato: dice comunque in quanto vengono assegnati e a chi.
+    setPercorso(await fetchPercorso(lancio.campagna ?? "", market, slugs));
     setLoading(false);
-  }, [slugs]);
+  }, [slugs, lancio.campagna, market]);
   useEffect(() => { load(); }, [load]);
+
+  const righeFiltrate = useMemo(() => {
+    const r = percorso?.righe ?? [];
+    if (filtro === "click") return r.filter((x) => x.click_at);
+    if (filtro === "senza") return r.filter((x) => !x.click_at);
+    return r;
+  }, [percorso, filtro]);
 
 
 
@@ -262,36 +296,118 @@ const TabWhatsapp = ({ lancio, rows }: Props) => {
         </CardContent>
       </Card>
 
-      {/* Ultimi click */}
-      {stats && stats.ultimi.length > 0 && (
-        <Card className="overflow-hidden">
-          <CardHeader className="py-2.5 px-3.5 border-b border-border">
-            <CardTitle className="label-eyebrow">Ultimi click</CardTitle>
-          </CardHeader>
-          <CardContent className="p-0 overflow-auto max-h-[38vh]">
-            <table className="w-full text-[12px]">
-              <thead><tr>
-                <th className="table-header-cell text-left sticky top-0 bg-card">Quando</th>
-                <th className="table-header-cell text-left sticky top-0 bg-card">Lead</th>
-                <th className="table-header-cell text-left sticky top-0 bg-card">Venditore</th>
-                <th className="table-header-cell text-left sticky top-0 bg-card">Esito</th>
-              </tr></thead>
-              <tbody>
-                {stats.ultimi.map((c, i) => (
-                  <tr key={i}>
-                    <td className="table-body-cell whitespace-nowrap text-muted-foreground">{new Date(c.clicked_at).toLocaleString("it-IT")}</td>
-                    <td className="table-body-cell">{c.lead_nome || c.lead_email || "—"}</td>
-                    <td className="table-body-cell">{c.venditore_nome || "—"}</td>
-                    <td className={`table-body-cell ${c.status === "ok" ? "text-emerald-400" : c.status === "fallback" ? "text-amber-400" : "text-red-400"}`}>
-                      {c.status}{c.error_reason ? ` · ${c.error_reason}` : ""}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </CardContent>
-        </Card>
-      )}
+      {/* Percorso del singolo lead: entrato → ha cliccato → assegnato in → a chi */}
+      <Card className="overflow-hidden">
+        <CardHeader className="py-2.5 px-3.5 border-b border-border">
+          <CardTitle className="label-eyebrow flex items-center justify-between gap-2 flex-wrap">
+            <span>Percorso del lead — entrato, click, assegnazione, sales</span>
+            <span className="flex items-center gap-1 normal-case tracking-normal">
+              {(["tutti", "click", "senza"] as const).map((f) => (
+                <button key={f} type="button" onClick={() => setFiltro(f)}
+                  className={`h-6 px-2 rounded text-[11px] transition-colors ${
+                    filtro === f ? "bg-primary/15 text-primary" : "text-muted-foreground hover:text-foreground"}`}>
+                  {f === "tutti" ? "Tutti" : f === "click" ? "Ha cliccato" : "Non ha cliccato"}
+                </button>
+              ))}
+            </span>
+          </CardTitle>
+        </CardHeader>
+
+        {percorso && percorso.totale_lead > 0 && (
+          <div className="grid grid-cols-2 md:grid-cols-4 border-b border-border">
+            {[
+              { k: "Lead del lancio", v: n(percorso.totale_lead), s: `${n(percorso.assegnati)} con sales` },
+              { k: "Hanno cliccato", v: n(percorso.con_click), s: pct(percorso.con_click, percorso.totale_lead) },
+              { k: "Click mediano", v: durata(percorso.ritardo_click_mediano_sec), s: "dopo l'optin" },
+              { k: "Assegnazione mediana", v: durata(percorso.assegnazione_mediana_sec), s: "dall'ingresso" },
+            ].map((c) => (
+              <div key={c.k} className="px-3.5 py-2.5 border-r border-border last:border-r-0">
+                <div className="label-eyebrow">{c.k}</div>
+                <div className="text-lg font-bold num tracking-tight">{c.v}</div>
+                <div className="text-[10.5px] text-muted-foreground">{c.s}</div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <CardContent className="p-0 overflow-auto max-h-[52vh]">
+          <table className="w-full text-[12px]">
+            <thead><tr>
+              <th className="table-header-cell text-left sticky top-0 bg-card">Lead</th>
+              <th className="table-header-cell text-left sticky top-0 bg-card whitespace-nowrap">Entrato</th>
+              <th className="table-header-cell text-left sticky top-0 bg-card whitespace-nowrap">Click</th>
+              <th className="table-header-cell text-left sticky top-0 bg-card">Esito del click</th>
+              <th className="table-header-cell text-right sticky top-0 bg-card whitespace-nowrap">Assegnato in</th>
+              <th className="table-header-cell text-left sticky top-0 bg-card">Sales</th>
+            </tr></thead>
+            <tbody>
+              {righeFiltrate.map((r) => (
+                <tr key={r.id}>
+                  <td className="table-body-cell">
+                    <div className="truncate max-w-[190px]">{r.nome || "—"}</div>
+                    <div className="text-[10.5px] text-muted-foreground truncate max-w-[190px]">{r.email || "—"}</div>
+                  </td>
+                  <td className="table-body-cell whitespace-nowrap text-muted-foreground num">{quando(r.creato)}</td>
+                  <td className="table-body-cell whitespace-nowrap num">
+                    {r.click_at ? (
+                      <>
+                        <span className="text-emerald-400">{quando(r.click_at)}</span>
+                        {/* Ritardo negativo: ha premuto il pulsante prima che il flusso scrivesse
+                            il lead. È il caso in cui la pagina deve aspettare, non un errore. */}
+                        {r.click_dopo_sec !== null && (r.click_dopo_sec < 0
+                          ? <span className="text-amber-400" title="Ha cliccato prima che il lead fosse registrato: la pagina ha dovuto aspettare"> · {durata(-r.click_dopo_sec)} prima</span>
+                          : <span className="text-muted-foreground"> · +{durata(r.click_dopo_sec)}</span>)}
+                      </>
+                    ) : <span className="text-muted-foreground/40">nessun click</span>}
+                  </td>
+                  <td className="table-body-cell">
+                    {r.click_esito ? (
+                      <span className="flex items-center gap-1.5">
+                        <span className={ESITO[r.click_esito]?.c ?? "text-muted-foreground"}>
+                          {ESITO[r.click_esito]?.t ?? r.click_esito}
+                        </span>
+                        {r.click_motivo && <span className="text-[10px] text-muted-foreground">{r.click_motivo}</span>}
+                        {r.click_slug && slugs.length > 1 && (
+                          <span className="text-[10px] px-1 rounded bg-secondary text-muted-foreground">{r.click_slug}</span>
+                        )}
+                      </span>
+                    ) : <span className="text-muted-foreground/40">—</span>}
+                  </td>
+                  <td className="table-body-cell text-right num whitespace-nowrap">
+                    {r.assegnato_dopo_sec === null
+                      ? <span className="text-muted-foreground/40">—</span>
+                      : durata(r.assegnato_dopo_sec)}
+                  </td>
+                  <td className="table-body-cell">
+                    {r.venditore
+                      ? <span className={r.click_venditore && nomeSemplice(r.click_venditore) !== nomeSemplice(r.venditore) ? "text-amber-400" : ""}>{r.venditore}</span>
+                      : <span className="text-muted-foreground/40">libero</span>}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+
+          {righeFiltrate.length === 0 && (
+            <p className="py-4 px-4 text-center text-[12px] text-muted-foreground border-t border-border">
+              {!lancio.campagna
+                ? <>Il lancio non ha una campagna configurata: senza quella non si sa quali lead gli appartengono. Si imposta in <b>Impostazioni → Lanci</b>.</>
+                : percorso && percorso.totale_lead > 0
+                  ? "Nessun lead in questo filtro."
+                  : "Nessun lead per questa campagna."}
+            </p>
+          )}
+
+          {percorso && (percorso.click_non_agganciati > 0 || percorso.righe.length < percorso.totale_lead) && (
+            <p className="py-2 px-3.5 text-[11px] text-muted-foreground border-t border-border">
+              {percorso.righe.length < percorso.totale_lead &&
+                <>In tabella i {n(percorso.righe.length)} lead più recenti su {n(percorso.totale_lead)}; i numeri qui sopra li contano tutti. </>}
+              {percorso.click_non_agganciati > 0 &&
+                <>{n(percorso.click_non_agganciati)} click non si agganciano a nessun lead di questa campagna: o il lead è di un altro lancio, o è arrivato senza email utilizzabile.</>}
+            </p>
+          )}
+        </CardContent>
+      </Card>
 
     </div>
   );
