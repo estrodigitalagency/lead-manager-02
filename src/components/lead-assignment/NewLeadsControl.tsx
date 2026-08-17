@@ -41,15 +41,22 @@ export const NewLeadsControl = ({
   onChangeOrdine,
   disabled = false,
 }: NewLeadsControlProps) => {
-  const title = direction === 'newer' ? 'Solo lead nuovi' : 'Solo lead vecchi';
-  const daysSuffix = direction === 'newer' ? 'più recenti' : 'più vecchi di';
-  const dateLabel = direction === 'newer' ? 'Da' : 'Fino a';
+  /*
+   * Due comandi diversi che prima si somigliavano troppo.
+   *
+   * Questo riquadro sceglie QUALI lead entrano nel mazzo: quelli entrati di recente oppure
+   * quelli fermi da tempo. Il selettore in fondo sceglie CHI viene servito per primo dentro
+   * quel mazzo. "Nuovi (>=)" e "Vecchi (<=)" suonavano come un ordinamento e si sovrapponevano
+   * al secondo comando, quindi qui si dice a parole cosa fa il taglio.
+   */
+  const daysPrefix = direction === 'newer' ? 'entrati negli ultimi' : 'entrati da più di';
+  const dateLabel = direction === 'newer' ? 'Entrati dal' : 'Entrati fino al';
 
   return (
     <div className="space-y-2">
       <div className="flex items-center gap-2">
         <Sparkles className="h-4 w-4 text-primary" />
-        <h3 className="text-sm sm:text-base font-semibold">{title}</h3>
+        <h3 className="text-sm sm:text-base font-semibold">Quali lead considerare</h3>
       </div>
 
       <div className="p-3 sm:p-4 rounded-xl bg-muted/30 space-y-3">
@@ -78,7 +85,9 @@ export const NewLeadsControl = ({
               </TooltipTrigger>
               <TooltipContent>
                 <p className="max-w-xs text-sm">
-                  Filtra i lead in base alla data di ingresso. Scegli la direzione (nuovi/vecchi), la modalità (giorni o data) e il valore.
+                  Restringe il mazzo in base a quando il lead è entrato: solo quelli recenti,
+                  oppure solo quelli fermi da tempo. Non decide l'ordine — per quello c'è
+                  "Chi assegnare per primo", qui sotto.
                 </p>
               </TooltipContent>
             </Tooltip>
@@ -96,7 +105,7 @@ export const NewLeadsControl = ({
                 onClick={() => onChangeDirection('newer')}
               >
                 <ArrowDownToLine className="h-3 w-3" />
-                Nuovi (≥)
+                Entrati di recente
               </Button>
               <Button
                 type="button"
@@ -106,7 +115,7 @@ export const NewLeadsControl = ({
                 onClick={() => onChangeDirection('older')}
               >
                 <ArrowUpFromLine className="h-3 w-3" />
-                Vecchi (≤)
+                Entrati da tempo
               </Button>
             </div>
 
@@ -118,7 +127,7 @@ export const NewLeadsControl = ({
                 className="flex-1 h-8 text-xs"
                 onClick={() => onChangeMode('days')}
               >
-                Ultimi N giorni
+                Per numero di giorni
               </Button>
               <Button
                 type="button"
@@ -127,13 +136,14 @@ export const NewLeadsControl = ({
                 className="flex-1 h-8 text-xs"
                 onClick={() => onChangeMode('date')}
               >
-                {direction === 'newer' ? 'Da data' : 'Fino a data'}
+                Per data
               </Button>
             </div>
 
             {mode === 'days' ? (
               <div className="space-y-1.5">
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-sm text-muted-foreground">{daysPrefix}</span>
                   <Input
                     id="new-leads-days"
                     type="number"
@@ -143,7 +153,7 @@ export const NewLeadsControl = ({
                     onChange={(e) => onChangeDays(Math.max(1, parseInt(e.target.value) || 1))}
                     className="h-8 text-sm w-24"
                   />
-                  <span className="text-sm text-muted-foreground">giorni {daysSuffix}</span>
+                  <span className="text-sm text-muted-foreground">giorni</span>
                 </div>
                 <div className="flex gap-1">
                   {[1, 7, 14, 30].map((d) => (
@@ -178,7 +188,7 @@ export const NewLeadsControl = ({
         {/*
           Ordine di servizio, separato dal filtro perché è un'altra domanda: il filtro dice
           quali lead entrano nel mazzo, questo dice chi viene servito per primo. Prima l'ordine
-          era fisso dal più vecchio e "Nuovi (≥)" sembrava promettere il contrario, quindi vale
+          era fisso dal più vecchio e il taglio qui sopra sembrava promettere il contrario, quindi vale
           anche a filtro spento.
         */}
         <div className="pt-3 border-t border-border/60 space-y-1.5">

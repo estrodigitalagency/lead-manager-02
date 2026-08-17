@@ -16,9 +16,11 @@ interface CampaignNewLeadsConfigProps {
 
 const CampaignNewLeadsConfig = ({ enabled, giorni, daData, direzione, onChange }: CampaignNewLeadsConfigProps) => {
   const mode: 'days' | 'date' = giorni != null ? 'days' : daData != null ? 'date' : 'days';
-  const title = direzione === 'newer' ? 'Solo Lead Nuovi (Opzionale)' : 'Solo Lead Vecchi (Opzionale)';
-  const daysSuffix = direzione === 'newer' ? 'più recenti' : 'più vecchi di';
-  const dateLabel = direzione === 'newer' ? 'Da' : 'Fino a';
+  // Stesso vocabolario del riquadro in Assegnazione: e' lo stesso taglio, e chiamarlo in due
+  // modi diversi nelle due schermate faceva sembrare due funzioni distinte.
+  const title = 'Quali lead considerare (opzionale)';
+  const daysPrefix = direzione === 'newer' ? 'entrati negli ultimi' : 'entrati da più di';
+  const dateLabel = direzione === 'newer' ? 'Entrati dal' : 'Entrati fino al';
 
   return (
     <div className="space-y-3">
@@ -67,7 +69,7 @@ const CampaignNewLeadsConfig = ({ enabled, giorni, daData, direzione, onChange }
                 onClick={() => onChange({ enabled, giorni, daData, direzione: 'newer' })}
               >
                 <ArrowDownToLine className="h-3 w-3" />
-                Nuovi (≥)
+                Entrati di recente
               </Button>
               <Button
                 type="button"
@@ -77,7 +79,7 @@ const CampaignNewLeadsConfig = ({ enabled, giorni, daData, direzione, onChange }
                 onClick={() => onChange({ enabled, giorni, daData, direzione: 'older' })}
               >
                 <ArrowUpFromLine className="h-3 w-3" />
-                Vecchi (≤)
+                Entrati da tempo
               </Button>
             </div>
 
@@ -89,7 +91,7 @@ const CampaignNewLeadsConfig = ({ enabled, giorni, daData, direzione, onChange }
                 className="flex-1 h-8 text-xs"
                 onClick={() => onChange({ enabled: true, giorni: giorni ?? 7, daData: null, direzione })}
               >
-                Ultimi N giorni
+                Per numero di giorni
               </Button>
               <Button
                 type="button"
@@ -98,12 +100,13 @@ const CampaignNewLeadsConfig = ({ enabled, giorni, daData, direzione, onChange }
                 className="flex-1 h-8 text-xs"
                 onClick={() => onChange({ enabled: true, giorni: null, daData: daData ?? new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10), direzione })}
               >
-                {direzione === 'newer' ? 'Da data' : 'Fino a data'}
+                Per data
               </Button>
             </div>
 
             {mode === 'days' ? (
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-sm text-muted-foreground">{daysPrefix}</span>
                 <Input
                   type="number"
                   min={1}
@@ -112,7 +115,7 @@ const CampaignNewLeadsConfig = ({ enabled, giorni, daData, direzione, onChange }
                   onChange={(e) => onChange({ enabled: true, giorni: Math.max(1, parseInt(e.target.value) || 1), daData: null, direzione })}
                   className="h-8 text-sm w-24"
                 />
-                <span className="text-sm text-muted-foreground">giorni {daysSuffix}</span>
+                <span className="text-sm text-muted-foreground">giorni</span>
                 <div className="flex gap-1 ml-2">
                   {[1, 7, 14, 30].map((d) => (
                     <Button

@@ -25,7 +25,7 @@ export function useLeadAssignment() {
   const [bypassTimeInterval, setBypassTimeInterval] = useState(false);
   const [onlyHotLeads, setOnlyHotLeads] = useState(false);
 
-  // "Solo lead nuovi/vecchi" filter
+  // Filtro "Quali lead considerare": restringe il mazzo per data di ingresso
   const [newLeadsEnabled, setNewLeadsEnabled] = useState(false);
   const [newLeadsMode, setNewLeadsMode] = useState<'days' | 'date'>('days');
   const [newLeadsDays, setNewLeadsDays] = useState<number>(7);
