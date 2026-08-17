@@ -197,9 +197,10 @@ export async function fetchClickStats(slug: string): Promise<{
   totale: number; ok: number; errori: number;
   perSales: ClickStat[]; perGiorno: { day: string; n: number }[];
   perOrigine: { origine: string; n: number }[]; senza_origine: number;
+  perDispositivo: Dispositivo[];
   ultimi: { clicked_at: string; lead_nome: string | null; lead_email: string | null; venditore_nome: string | null; status: string | null; error_reason: string | null }[];
 }> {
-  const vuoto = { totale: 0, ok: 0, errori: 0, perSales: [], perGiorno: [], perOrigine: [], senza_origine: 0, ultimi: [] };
+  const vuoto = { totale: 0, ok: 0, errori: 0, perSales: [], perGiorno: [], perOrigine: [], senza_origine: 0, perDispositivo: [], ultimi: [] };
   try {
     const r = await fetch(`${SUPA_URL}/functions/v1/wa-click`, {
       method: "POST",
@@ -213,6 +214,10 @@ export async function fetchClickStats(slug: string): Promise<{
   }
 }
 
+/** Da cosa è stato aperto il link. "automatico" = anteprime dei link, scanner, non persone. */
+export type NomeDispositivo = "mobile" | "tablet" | "desktop" | "automatico" | "ignoto";
+export interface Dispositivo { nome: NomeDispositivo; n: number }
+
 /** Una riga del percorso: un lead, con il suo click se c'è stato. */
 export interface RigaPercorso {
   id: string; nome: string; email: string | null; creato: string;
@@ -221,6 +226,7 @@ export interface RigaPercorso {
   click_at: string | null; click_dopo_sec: number | null;
   click_esito: string | null; click_motivo: string | null;
   click_slug: string | null; click_venditore: string | null;
+  click_dispositivo: NomeDispositivo | null;
 }
 
 export interface Percorso {
@@ -229,13 +235,14 @@ export interface Percorso {
   assegnati: number; senza_venditore: number;
   assegnazione_mediana_sec: number | null; ritardo_click_mediano_sec: number | null;
   click_non_agganciati: number;
+  per_dispositivo: Dispositivo[];
   righe: RigaPercorso[];
 }
 
 const PERCORSO_VUOTO: Percorso = {
   totale_lead: 0, con_click: 0, click_ok: 0, click_riserva: 0, click_errore: 0,
   assegnati: 0, senza_venditore: 0, assegnazione_mediana_sec: null,
-  ritardo_click_mediano_sec: null, click_non_agganciati: 0, righe: [],
+  ritardo_click_mediano_sec: null, click_non_agganciati: 0, per_dispositivo: [], righe: [],
 };
 
 /**

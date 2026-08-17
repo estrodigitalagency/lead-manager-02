@@ -20,6 +20,39 @@ const cors = {
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { ...cors, "Content-Type": "application/json" } });
 
+/**
+ * Da che cosa è stato aperto il link, leggendo lo user agent che la pagina manda già a ogni
+ * click. Serve a due cose: capire se il pubblico è da telefono o da computer, e togliere dal
+ * conteggio le aperture che non sono di una persona.
+ *
+ * Le aperture automatiche non si cancellano, si separano: anteprime dei link (WhatsApp, Meta),
+ * antivirus e scanner aziendali aprono gli URL da soli, e contarle come contatti gonfierebbe il
+ * tasso di click proprio nella metrica su cui poi si decide.
+ *
+ * Il riconoscimento è prudente in una direzione sola: si marca "automatico" solo con indizi
+ * espliciti o quando la stringa non ha la forma di un browser. Un bot scambiato per persona
+ * sposta poco; una persona scambiata per bot sparirebbe dai numeri, ed è l'errore peggiore.
+ */
+const AUTOMA = /bot\b|crawler|spider|slurp|facebookexternalhit|externalhit|preview|curl\/|wget|python-requests|httpx|axios|okhttp|java\/|go-http|headless|phantomjs|lighthouse|pingdom|uptime|monitor|scan/i;
+
+function dispositivoDa(ua: string | null): "mobile" | "tablet" | "desktop" | "automatico" | "ignoto" {
+  const s = String(ua ?? "").trim();
+  if (!s) return "ignoto";
+  // Un browser vero si presenta come "Mozilla/5.0 ...". Chi non lo fa non è una persona.
+  if (AUTOMA.test(s) || !/^mozilla\//i.test(s)) return "automatico";
+  if (/ipad|tablet|playbook|silk|kindle/i.test(s)) return "tablet";
+  // Android senza "Mobile" è un tablet: è il modo con cui Android stesso distingue i due.
+  if (/android/i.test(s) && !/mobile/i.test(s)) return "tablet";
+  if (/mobile|iphone|ipod|android|blackberry|iemobile|opera mini/i.test(s)) return "mobile";
+  return "desktop";
+}
+
+const contaPer = <T extends string>(valori: T[]): { nome: T; n: number }[] => {
+  const m: Record<string, number> = {};
+  for (const v of valori) m[v] = (m[v] || 0) + 1;
+  return Object.entries(m).map(([nome, n]) => ({ nome: nome as T, n })).sort((a, b) => b.n - a.n);
+};
+
 // Campi accettati: tutto il resto viene scartato invece di far fallire l'inserimento.
 const CAMPI = [
   "template_slug", "lead_id", "lead_email", "lead_phone", "lead_nome",
@@ -77,7 +110,7 @@ Deno.serve(async (req) => {
 
       const click = slugs.length === 0 ? [] : await leggiTutto(
         "whatsapp_click_logs",
-        "clicked_at, template_slug, lead_id, lead_email, lead_phone, venditore_nome, status, error_reason",
+        "clicked_at, template_slug, lead_id, lead_email, lead_phone, venditore_nome, status, error_reason, user_agent",
         (q: any) => q.in("template_slug", slugs).order("clicked_at", { ascending: true }),
       );
 
@@ -118,6 +151,7 @@ Deno.serve(async (req) => {
           click_motivo: c?.error_reason ?? null,
           click_slug: c?.template_slug ?? null,
           click_venditore: c?.venditore_nome ?? null,
+          click_dispositivo: c ? dispositivoDa(c.user_agent) : null,
         };
       });
 
@@ -142,6 +176,7 @@ Deno.serve(async (req) => {
         assegnazione_mediana_sec: mediana(attese),
         ritardo_click_mediano_sec: mediana(ritardi),
         click_non_agganciati: orfani,
+        per_dispositivo: contaPer(conClick.map((r) => r.click_dispositivo!).filter(Boolean)),
         // La tabella mostra i più recenti: il resto vive negli aggregati qui sopra.
         righe: righe.slice(0, Number(corpo.limite) || 400),
       });
@@ -169,7 +204,7 @@ Deno.serve(async (req) => {
       for (let off = 0; off < 100000; off += 1000) {
         const { data } = await supabaseSR()
           .from("whatsapp_click_logs")
-          .select("clicked_at, lead_nome, lead_email, venditore_nome, status, error_reason, referrer")
+          .select("clicked_at, lead_nome, lead_email, venditore_nome, venditore_phone_used, status, error_reason, referrer, user_agent")
           .eq("template_slug", corpo.slug ?? "")
           .order("clicked_at", { ascending: false })
           .range(off, off + 999);
@@ -213,6 +248,7 @@ Deno.serve(async (req) => {
         perSales: Object.values(perSales).sort((a: any, b: any) => b.click - a.click),
         perGiorno: Object.keys(perGiorno).sort().map((day) => ({ day, n: perGiorno[day] })),
         perOrigine: Object.entries(perOrigine).map(([origine, n]) => ({ origine, n })).sort((a, b) => b.n - a.n),
+        perDispositivo: contaPer(righe.map((r: any) => dispositivoDa(r.user_agent))),
         senza_origine: senzaOrigine,
         ultimi: righe.slice(0, 30),
       });

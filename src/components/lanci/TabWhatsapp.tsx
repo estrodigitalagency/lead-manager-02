@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { MessageCircle, Copy, ExternalLink, Loader2, AlertTriangle } from "lucide-react";
+import { MessageCircle, Copy, ExternalLink, Loader2, AlertTriangle, Smartphone } from "lucide-react";
 import { LancioConfig, LancioRow } from "@/lib/lanci/config";
 import { fetchClickStats, fetchPercorso, Percorso, TemplateWa } from "@/lib/lanci/integrazioni";
 import { fetchTemplates } from "@/lib/whatsapp/templates";
@@ -13,10 +13,12 @@ const sommaStat = (parti: any[]) => {
   const perSales: Record<string, any> = {};
   const perGiorno: Record<string, number> = {};
   const perOrigine: Record<string, number> = {};
+  const perDisp: Record<string, number> = {};
   let totale = 0, ok = 0, errori = 0, senza = 0;
   const ultimi: any[] = [];
   for (const p of parti) {
     totale += p.totale; ok += p.ok; errori += p.errori; senza += p.senza_origine ?? 0;
+    for (const d of p.perDispositivo ?? []) perDisp[d.nome] = (perDisp[d.nome] || 0) + d.n;
     for (const s of p.perSales) {
       const r = (perSales[s.venditore] ??= { venditore: s.venditore, click: 0, ok: 0, fallback: 0, errore: 0 });
       r.click += s.click; r.ok += s.ok; r.fallback += s.fallback; r.errore += s.errore;
@@ -30,6 +32,7 @@ const sommaStat = (parti: any[]) => {
     perSales: Object.values(perSales).sort((a: any, b: any) => b.click - a.click),
     perGiorno: Object.keys(perGiorno).sort().map((day) => ({ day, n: perGiorno[day] })),
     perOrigine: Object.entries(perOrigine).map(([origine, n]) => ({ origine, n })).sort((a, b) => b.n - a.n),
+    perDispositivo: Object.entries(perDisp).map(([nome, n]) => ({ nome, n })).sort((a, b) => b.n - a.n),
     ultimi: ultimi.sort((a, b) => String(b.clicked_at).localeCompare(String(a.clicked_at))).slice(0, 30),
   } as any;
 };
@@ -48,8 +51,30 @@ const durata = (sec: number | null): string => {
 const quando = (iso: string | null): string =>
   iso ? new Date(iso).toLocaleString("it-IT", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : "—";
 
+/**
+ * Da cosa hanno aperto il link. "Automatiche" non sono persone: anteprime dei link, antivirus,
+ * scanner. Restano visibili invece di sparire, perché sapere che ci sono cambia come si legge
+ * il tasso di click — e sapere che non ci sono vale altrettanto.
+ */
+const DISPOSITIVO: Record<string, { t: string; c: string }> = {
+  mobile: { t: "Da telefono", c: "hsl(142 71% 55%)" },
+  desktop: { t: "Da computer", c: "hsl(232 100% 74%)" },
+  tablet: { t: "Da tablet", c: "hsl(174 62% 55%)" },
+  automatico: { t: "Aperture automatiche", c: "hsl(38 92% 60%)" },
+  ignoto: { t: "Non rilevato", c: "hsl(220 9% 55%)" },
+};
+const BREVE: Record<string, string> = { mobile: "telefono", desktop: "computer", tablet: "tablet", automatico: "automatico", ignoto: "?" };
+
+/**
+ * Esito del click, detto per quello che è.
+ *
+ * Il redirect apre `wa.me/numero?text=...`: WhatsApp si apre con il messaggio già scritto, ma
+ * l'invio lo fa la persona, dentro WhatsApp, dove non arriviamo. Quindi qui si sa verso chi è
+ * stata aperta la chat, non che il venditore abbia ricevuto qualcosa: chiamarlo "arrivato in
+ * chat" farebbe cercare un problema tecnico dove invece qualcuno non ha premuto invia.
+ */
 const ESITO: Record<string, { t: string; c: string }> = {
-  ok: { t: "in chat col sales", c: "text-emerald-400" },
+  ok: { t: "chat aperta col sales", c: "text-emerald-400" },
   fallback: { t: "numero di riserva", c: "text-amber-400" },
   error: { t: "errore", c: "text-red-400" },
 };
@@ -173,6 +198,42 @@ const TabWhatsapp = ({ lancio, rows, market }: Props) => {
             </div>
           ))}
         </div>
+      )}
+
+      {/* Da cosa hanno cliccato */}
+      {stats && stats.totale > 0 && (
+        <Card className="overflow-hidden">
+          <CardHeader className="py-2.5 px-3.5 border-b border-border">
+            <CardTitle className="label-eyebrow flex items-center justify-between gap-2 flex-wrap">
+              <span className="flex items-center gap-2"><Smartphone className="h-3.5 w-3.5 text-muted-foreground" /> Da cosa hanno aperto il link</span>
+              <span className="normal-case tracking-normal text-[11px] text-muted-foreground">{n(stats.totale)} click</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-3.5 space-y-2">
+            {/* Una barra sola: le quote si leggono meglio confrontate che elencate */}
+            <div className="flex h-2 rounded-full overflow-hidden bg-border">
+              {stats.perDispositivo.map((d) => (
+                <i key={d.nome} className="block h-full first:rounded-l-full last:rounded-r-full"
+                  style={{ width: `${(d.n / stats.totale) * 100}%`, background: DISPOSITIVO[d.nome]?.c ?? "hsl(220 9% 55%)" }} />
+              ))}
+            </div>
+            <div className="flex flex-wrap gap-x-4 gap-y-1">
+              {stats.perDispositivo.map((d) => (
+                <span key={d.nome} className="flex items-center gap-1.5 text-[12px]">
+                  <i className="w-2 h-2 rounded-sm shrink-0" style={{ background: DISPOSITIVO[d.nome]?.c ?? "hsl(220 9% 55%)" }} />
+                  <span>{DISPOSITIVO[d.nome]?.t ?? d.nome}</span>
+                  <span className="num font-semibold">{pct(d.n, stats.totale)}</span>
+                  <span className="num text-muted-foreground">({n(d.n)})</span>
+                </span>
+              ))}
+            </div>
+            <p className="text-[11px] text-muted-foreground pt-0.5">
+              {stats.perDispositivo.some((d) => d.nome === "automatico")
+                ? <>Le aperture automatiche non sono persone — anteprime dei link, antivirus, scanner. Sono contate a parte: togliendole, i click veri sono {n(stats.totale - (stats.perDispositivo.find((d) => d.nome === "automatico")?.n ?? 0))}.</>
+                : <>Nessuna apertura automatica: tutti i click risultano fatti da una persona, quindi il tasso di contatto non è gonfiato da anteprime o scanner.</>}
+            </p>
+          </CardContent>
+        </Card>
       )}
 
       {/* Confronto fra i link del lancio: serve quando ce n'e piu di uno (A/B) */}
@@ -367,6 +428,12 @@ const TabWhatsapp = ({ lancio, rows, market }: Props) => {
                           {ESITO[r.click_esito]?.t ?? r.click_esito}
                         </span>
                         {r.click_motivo && <span className="text-[10px] text-muted-foreground">{r.click_motivo}</span>}
+                        {r.click_dispositivo && (
+                          <span className="text-[10px] px-1 rounded bg-secondary"
+                            style={{ color: DISPOSITIVO[r.click_dispositivo]?.c }}>
+                            {BREVE[r.click_dispositivo] ?? r.click_dispositivo}
+                          </span>
+                        )}
                         {r.click_slug && slugs.length > 1 && (
                           <span className="text-[10px] px-1 rounded bg-secondary text-muted-foreground">{r.click_slug}</span>
                         )}
@@ -398,14 +465,16 @@ const TabWhatsapp = ({ lancio, rows, market }: Props) => {
             </p>
           )}
 
-          {percorso && (percorso.click_non_agganciati > 0 || percorso.righe.length < percorso.totale_lead) && (
-            <p className="py-2 px-3.5 text-[11px] text-muted-foreground border-t border-border">
-              {percorso.righe.length < percorso.totale_lead &&
-                <>In tabella i {n(percorso.righe.length)} lead più recenti su {n(percorso.totale_lead)}; i numeri qui sopra li contano tutti. </>}
-              {percorso.click_non_agganciati > 0 &&
-                <>{n(percorso.click_non_agganciati)} click non si agganciano a nessun lead di questa campagna: o il lead è di un altro lancio, o è arrivato senza email utilizzabile.</>}
-            </p>
-          )}
+          <p className="py-2 px-3.5 text-[11px] text-muted-foreground border-t border-border">
+            {percorso && percorso.righe.length < percorso.totale_lead &&
+              <>In tabella i {n(percorso.righe.length)} lead più recenti su {n(percorso.totale_lead)}; i numeri qui sopra li contano tutti. </>}
+            {percorso && percorso.click_non_agganciati > 0 &&
+              <>{n(percorso.click_non_agganciati)} click non si agganciano a nessun lead di questa campagna: o il lead è di un altro lancio, o è arrivato senza email utilizzabile. </>}
+            <b className="text-foreground/80">Chat aperta non vuol dire messaggio inviato:</b> il link apre WhatsApp col
+            testo già scritto, ma premere invia tocca alla persona, dentro WhatsApp, dove non possiamo vedere.
+            Se un sales dice di non aver ricevuto nulla da lead che qui risultano "chat aperta", quasi sempre è questo —
+            non un numero sbagliato.
+          </p>
         </CardContent>
       </Card>
 
