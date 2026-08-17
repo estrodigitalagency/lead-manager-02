@@ -203,42 +203,6 @@ const TabWhatsapp = ({ lancio, rows, market }: Props) => {
         </div>
       )}
 
-      {/* Da cosa hanno cliccato */}
-      {stats && stats.totale > 0 && (
-        <Card className="overflow-hidden">
-          <CardHeader className="py-2.5 px-3.5 border-b border-border">
-            <CardTitle className="label-eyebrow flex items-center justify-between gap-2 flex-wrap">
-              <span className="flex items-center gap-2"><Smartphone className="h-3.5 w-3.5 text-muted-foreground" /> Da cosa hanno aperto il link</span>
-              <span className="normal-case tracking-normal text-[11px] text-muted-foreground">{n(stats.totale)} click</span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-3.5 space-y-2">
-            {/* Una barra sola: le quote si leggono meglio confrontate che elencate */}
-            <div className="flex h-2 rounded-full overflow-hidden bg-border">
-              {stats.perDispositivo.map((d) => (
-                <i key={d.nome} className="block h-full first:rounded-l-full last:rounded-r-full"
-                  style={{ width: `${(d.n / stats.totale) * 100}%`, background: DISPOSITIVO[d.nome]?.c ?? "hsl(220 9% 55%)" }} />
-              ))}
-            </div>
-            <div className="flex flex-wrap gap-x-4 gap-y-1">
-              {stats.perDispositivo.map((d) => (
-                <span key={d.nome} className="flex items-center gap-1.5 text-[12px]">
-                  <i className="w-2 h-2 rounded-sm shrink-0" style={{ background: DISPOSITIVO[d.nome]?.c ?? "hsl(220 9% 55%)" }} />
-                  <span>{DISPOSITIVO[d.nome]?.t ?? d.nome}</span>
-                  <span className="num font-semibold">{pct(d.n, stats.totale)}</span>
-                  <span className="num text-muted-foreground">({n(d.n)})</span>
-                </span>
-              ))}
-            </div>
-            <p className="text-[11px] text-muted-foreground pt-0.5">
-              {stats.perDispositivo.some((d) => d.nome === "automatico")
-                ? <>Le aperture automatiche non sono persone — anteprime dei link, antivirus, scanner. Sono contate a parte: togliendole, i click veri sono {n(stats.totale - (stats.perDispositivo.find((d) => d.nome === "automatico")?.n ?? 0))}.</>
-                : <>Nessuna apertura automatica: tutti i click risultano fatti da una persona, quindi il tasso di contatto non è gonfiato da anteprime o scanner.</>}
-            </p>
-          </CardContent>
-        </Card>
-      )}
-
       {/* Confronto fra i link del lancio: serve quando ce n'e piu di uno (A/B) */}
       {perLink.length > 1 && (
         <Card className="overflow-hidden">
@@ -378,19 +342,49 @@ const TabWhatsapp = ({ lancio, rows, market }: Props) => {
         </CardHeader>
 
         {percorso && percorso.totale_lead > 0 && (
-          <div className="grid grid-cols-2 md:grid-cols-4 border-b border-border">
+          <div className="grid grid-cols-2 md:grid-cols-5 border-b border-border">
             {[
               { k: "Lead del lancio", v: n(percorso.totale_lead), s: `${n(percorso.assegnati)} con sales` },
               { k: "Hanno cliccato", v: n(percorso.con_click), s: pct(percorso.con_click, percorso.totale_lead) },
               { k: "Click mediano", v: durata(percorso.ritardo_click_mediano_sec), s: "dopo l'optin" },
               { k: "Assegnazione mediana", v: durata(percorso.assegnazione_mediana_sec), s: "dall'ingresso" },
             ].map((c) => (
-              <div key={c.k} className="px-3.5 py-2.5 border-r border-border last:border-r-0">
+              <div key={c.k} className="px-3.5 py-2.5 border-r border-border">
                 <div className="label-eyebrow">{c.k}</div>
                 <div className="text-lg font-bold num tracking-tight">{c.v}</div>
                 <div className="text-[10.5px] text-muted-foreground">{c.s}</div>
               </div>
             ))}
+
+            {/* Da cosa hanno cliccato: qui e non in una scheda a parte, perché è una
+                ripartizione degli stessi click contati qui accanto. */}
+            <div className="px-3.5 py-2.5 col-span-2 md:col-span-1">
+              <div className="label-eyebrow">Da cosa hanno cliccato</div>
+              {percorso.con_click === 0 ? (
+                <div className="text-lg font-bold num tracking-tight text-muted-foreground/40">—</div>
+              ) : (
+                <>
+                  <div className="flex h-1.5 rounded-full overflow-hidden bg-border mt-1.5 mb-1">
+                    {percorso.per_dispositivo.map((d) => (
+                      <i key={d.nome} className="block h-full"
+                        style={{ width: `${(d.n / percorso.con_click) * 100}%`, background: DISPOSITIVO[d.nome]?.c ?? "hsl(220 9% 55%)" }} />
+                    ))}
+                  </div>
+                  <div className="flex flex-wrap gap-x-2.5 gap-y-0.5">
+                    {percorso.per_dispositivo.map((d) => {
+                      const Icona = ICONA[d.nome] ?? HelpCircle;
+                      return (
+                        <span key={d.nome} className="flex items-center gap-1 text-[11px]" title={DISPOSITIVO[d.nome]?.t ?? d.nome}>
+                          <Icona className="h-3 w-3 shrink-0" style={{ color: DISPOSITIVO[d.nome]?.c }} />
+                          <span className="num font-semibold">{pct(d.n, percorso.con_click)}</span>
+                          <span className="num text-muted-foreground">({n(d.n)})</span>
+                        </span>
+                      );
+                    })}
+                  </div>
+                </>
+              )}
+            </div>
           </div>
         )}
 
@@ -481,6 +475,10 @@ const TabWhatsapp = ({ lancio, rows, market }: Props) => {
               <>In tabella i {n(percorso.righe.length)} lead più recenti su {n(percorso.totale_lead)}; i numeri qui sopra li contano tutti. </>}
             {percorso && percorso.click_non_agganciati > 0 &&
               <>{n(percorso.click_non_agganciati)} click non si agganciano a nessun lead di questa campagna: o il lead è di un altro lancio, o è arrivato senza email utilizzabile. </>}
+            {/* Le aperture automatiche si nominano solo quando ci sono: dirlo sempre sarebbe
+                rumore, tacerlo quando ci sono falserebbe la lettura del tasso di click. */}
+            {percorso?.per_dispositivo.some((d) => d.nome === "automatico") &&
+              <>Fra i click ci sono aperture automatiche — anteprime dei link, antivirus, scanner: non sono persone, tienile fuori dal tasso di contatto. </>}
             <b className="text-foreground/80">Chat aperta non vuol dire messaggio inviato:</b> il link apre WhatsApp col
             testo già scritto, ma premere invia tocca alla persona, dentro WhatsApp, dove non possiamo vedere.
             Se un sales dice di non aver ricevuto nulla da lead che qui risultano "chat aperta", quasi sempre è questo —
