@@ -236,26 +236,6 @@ const WhatsAppRedirect = () => {
           return esiti.map((r: any) => r.data?.[0]).find(Boolean) ?? null;
         };
 
-        /**
-         * Ripiego, usato solo se la riga nuova resta senza venditore anche dopo l'attesa.
-         *
-         * Capita quando l'assegnazione non arriva in pochi secondi ma ore dopo, a mano: su 171
-         * click ne ho contati 3. Per quei casi il comportamento resta quello di prima — meglio
-         * un venditore vecchio che il numero di riserva — invece di peggiorare qualcosa che
-         * oggi funziona. Non è la scelta buona, è la scelta che non toglie niente.
-         */
-        const cercaAssegnato = async (): Promise<any | null> => {
-          const base = () => supabase.from("lead_generation").select(COLS)
-            .eq("market", effectiveMarket).not("venditore", "is", null)
-            .order("created_at", { ascending: false }).limit(1);
-          const tentativi: any[] = [];
-          if (email) tentativi.push(base().ilike("email", email));
-          if (phoneNorm) tentativi.push(base().ilike("telefono", `%${phoneNorm.slice(-9)}%`));
-          if (tentativi.length === 0) return null;
-          const esiti = await Promise.all(tentativi);
-          return esiti.map((r: any) => r.data?.[0]).find(Boolean) ?? null;
-        };
-
         /** Riga appena nata: sotto questa età c'è un optin in corso e l'assegnazione sta arrivando. */
         const RECENTE_MS = 10 * 60 * 1000;
         const appenaNata = (riga: any) =>
@@ -311,17 +291,6 @@ const WhatsAppRedirect = () => {
             await new Promise((r) => setTimeout(r, POLL_MS));
             if (Date.now() - inizio > SCORCIATOIA_DOPO) setAttesaLunga(true);
             lead = await findAssignedLead();
-          }
-        }
-
-        // Ultima spiaggia prima del numero di riserva: la riga più recente che un venditore ce
-        // l'ha, cioè esattamente come si comportava prima. Ci si arriva solo dopo aver aspettato
-        // invano quella giusta, quindi non riporta indietro il difetto: lo tiene come rete.
-        if (!lead || !lead.venditore) {
-          const ripiego = await cercaAssegnato();
-          if (ripiego?.venditore) {
-            console.log(`[wa] assegnazione non arrivata: ripiego sull'ultima riga assegnata (${ripiego.venditore})`);
-            lead = ripiego;
           }
         }
 
