@@ -203,23 +203,31 @@ const WhatsAppRedirect = () => {
 
         const effectiveMarket = (templateMarket || market) as "IT" | "ES";
 
-        // Cerca il lead più recente CON venditore assegnato (per email o telefono).
         const COLS = "id, venditore, market, created_at, telefono, email, nome, cognome, ultima_fonte, campagna";
 
         /**
-         * Cerca il lead per email o telefono, nel market del link. Le due interrogazioni sono
-         * indipendenti e partono insieme: in fila i tempi si sommavano. L'email resta
-         * prioritaria nella scelta del risultato.
+         * Cerca la riga PIÙ RECENTE di questa persona, assegnata o no.
          *
-         * Nessuna variante dell'indirizzo e nessuna ricerca fuori dal market: due email simili
-         * possono essere due persone diverse, e i link sono vincolati a un market solo.
+         * Prima si chiedeva l'ultima riga *che avesse già un venditore*, e lì stava il difetto:
+         * chi clicca dalla thank-you page arriva anche qualche secondo prima che il flusso
+         * scriva il lead, quindi la riga giusta veniva scartata perché ancora senza venditore e
+         * al suo posto ne saliva una di mesi prima — spesso intestata a un parcheggio come
+         * "Round Robin" o "CRM4", che non hanno numero: la persona finiva sul numero di riserva
+         * mentre due secondi dopo il suo venditore vero veniva assegnato.
+         *
+         * Le righe più vecchie non servono. Se il lead ha già lavorato con qualcuno ci pensa
+         * l'automazione, che applica l'intervallo di riassegnazione della regola (90 giorni sul
+         * lancio in corso) e scrive il venditore giusto sulla riga nuova. Rifare quella scelta
+         * qui significava rifarla senza conoscere l'intervallo, cioè peggio.
+         *
+         * Le due interrogazioni sono indipendenti e partono insieme: in fila i tempi si
+         * sommavano. L'email resta prioritaria. Nessuna variante dell'indirizzo e nessuna
+         * ricerca fuori dal market: due email simili possono essere due persone diverse.
          */
-        const cerca = async (soloAssegnati: boolean): Promise<any | null> => {
-          const base = () => {
-            let q = supabase.from("lead_generation").select(COLS).eq("market", effectiveMarket);
-            if (soloAssegnati) q = q.not("venditore", "is", null);
-            return q.order("created_at", { ascending: false }).limit(1);
-          };
+        const cerca = async (): Promise<any | null> => {
+          const base = () => supabase.from("lead_generation").select(COLS)
+            .eq("market", effectiveMarket)
+            .order("created_at", { ascending: false }).limit(1);
           const tentativi: any[] = [];
           if (email) tentativi.push(base().ilike("email", email));
           if (phoneNorm) tentativi.push(base().ilike("telefono", `%${phoneNorm.slice(-9)}%`));
@@ -228,11 +236,47 @@ const WhatsAppRedirect = () => {
           return esiti.map((r: any) => r.data?.[0]).find(Boolean) ?? null;
         };
 
-        const findAssignedLead = () => cerca(true);
+        /**
+         * Ripiego, usato solo se la riga nuova resta senza venditore anche dopo l'attesa.
+         *
+         * Capita quando l'assegnazione non arriva in pochi secondi ma ore dopo, a mano: su 171
+         * click ne ho contati 3. Per quei casi il comportamento resta quello di prima — meglio
+         * un venditore vecchio che il numero di riserva — invece di peggiorare qualcosa che
+         * oggi funziona. Non è la scelta buona, è la scelta che non toglie niente.
+         */
+        const cercaAssegnato = async (): Promise<any | null> => {
+          const base = () => supabase.from("lead_generation").select(COLS)
+            .eq("market", effectiveMarket).not("venditore", "is", null)
+            .order("created_at", { ascending: false }).limit(1);
+          const tentativi: any[] = [];
+          if (email) tentativi.push(base().ilike("email", email));
+          if (phoneNorm) tentativi.push(base().ilike("telefono", `%${phoneNorm.slice(-9)}%`));
+          if (tentativi.length === 0) return null;
+          const esiti = await Promise.all(tentativi);
+          return esiti.map((r: any) => r.data?.[0]).find(Boolean) ?? null;
+        };
 
-        // Il lead esiste già in database ma non ha ancora un venditore? Allora l'assegnazione
-        // è in corso e il numero di riserva sarebbe un errore: quel lead un venditore ce l'avrà.
-        const leadInLavorazione = async (): Promise<boolean> => !!(await cerca(false));
+        /** Riga appena nata: sotto questa età c'è un optin in corso e l'assegnazione sta arrivando. */
+        const RECENTE_MS = 10 * 60 * 1000;
+        const appenaNata = (riga: any) =>
+          !!riga && Date.now() - new Date(riga.created_at).getTime() < RECENTE_MS;
+
+        /**
+         * La riga da usare, se è già utilizzabile. Restituisce null quando c'è da aspettare:
+         * riga appena nata e ancora senza venditore, cioè assegnazione in corso.
+         *
+         * Se invece la riga è vecchia e senza venditore non c'è niente in arrivo, e tenere
+         * qualcuno fermo davanti a una rotella per cinquanta secondi non lo aiuta.
+         */
+        const findAssignedLead = async (): Promise<any | null> => {
+          const riga = await cerca();
+          if (!riga) return null;
+          if (riga.venditore) return riga;
+          return appenaNata(riga) ? null : riga;
+        };
+
+        // Il lead esiste già in database? Serve solo a scegliere il messaggio d'attesa.
+        const leadInLavorazione = async (): Promise<boolean> => !!(await cerca());
 
         // Due attese diverse, perché i due casi non sono lo stesso problema.
         //
@@ -267,6 +311,17 @@ const WhatsAppRedirect = () => {
             await new Promise((r) => setTimeout(r, POLL_MS));
             if (Date.now() - inizio > SCORCIATOIA_DOPO) setAttesaLunga(true);
             lead = await findAssignedLead();
+          }
+        }
+
+        // Ultima spiaggia prima del numero di riserva: la riga più recente che un venditore ce
+        // l'ha, cioè esattamente come si comportava prima. Ci si arriva solo dopo aver aspettato
+        // invano quella giusta, quindi non riporta indietro il difetto: lo tiene come rete.
+        if (!lead || !lead.venditore) {
+          const ripiego = await cercaAssegnato();
+          if (ripiego?.venditore) {
+            console.log(`[wa] assegnazione non arrivata: ripiego sull'ultima riga assegnata (${ripiego.venditore})`);
+            lead = ripiego;
           }
         }
 
