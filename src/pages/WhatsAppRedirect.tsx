@@ -236,23 +236,24 @@ const WhatsAppRedirect = () => {
           return esiti.map((r: any) => r.data?.[0]).find(Boolean) ?? null;
         };
 
-        /** Riga appena nata: sotto questa età c'è un optin in corso e l'assegnazione sta arrivando. */
-        const RECENTE_MS = 10 * 60 * 1000;
-        const appenaNata = (riga: any) =>
-          !!riga && Date.now() - new Date(riga.created_at).getTime() < RECENTE_MS;
-
         /**
-         * La riga da usare, se è già utilizzabile. Restituisce null quando c'è da aspettare:
-         * riga appena nata e ancora senza venditore, cioè assegnazione in corso.
+         * La riga da usare, se è già utilizzabile. Restituisce null quando c'è da aspettare
+         * un venditore (assegnazione in corso) → il loop di attesa continua a fare polling.
          *
-         * Se invece la riga è vecchia e senza venditore non c'è niente in arrivo, e tenere
-         * qualcuno fermo davanti a una rotella per cinquanta secondi non lo aiuta.
+         * Si aspetta ANCHE se la riga trovata è "vecchia" e senza venditore. Ci si basa sulla
+         * freschezza del CLICK (siamo appena arrivati qui dal redirect), non sull'età del record.
+         * Caso reale (lead di ritorno): chi ha già un vecchio record senza venditore clicca dalla
+         * thank-you PRIMA che il nuovo opt-in sia scritto → al click la riga più recente è quella
+         * vecchia, ma un'assegnazione nuova sta arrivando pochi secondi dopo. Fidarsi dell'età del
+         * record mandava questi lead al numero di riserva (es. click 10:16:48, lead nuovo assegnato
+         * 10:16:53). Il cap di attesa (50s) + la scorciatoia dopo SCORCIATOIA_DOPO evitano comunque
+         * di bloccare chi non ha davvero nulla in arrivo.
          */
         const findAssignedLead = async (): Promise<any | null> => {
           const riga = await cerca();
           if (!riga) return null;
           if (riga.venditore) return riga;
-          return appenaNata(riga) ? null : riga;
+          return null;
         };
 
         // Il lead esiste già in database? Serve solo a scegliere il messaggio d'attesa.
