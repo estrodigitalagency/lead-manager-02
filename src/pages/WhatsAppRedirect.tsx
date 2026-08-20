@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 const SUPA_URL = "https://btcwmuyemmkiteqlopce.supabase.co";
 const ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ0Y3dtdXllbW1raXRlcWxvcGNlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY4NzIxMTIsImV4cCI6MjA2MjQ0ODExMn0.NYTXODd9HEglk4b1RKOt1XyrGMiOOs4ltfFyeZknfBE";
 import { fetchTemplateBySlug, incrementTemplateClick } from "@/lib/whatsapp/templates";
-import { Loader2, AlertCircle, MessageCircle } from "lucide-react";
+import { Loader2, AlertCircle, MessageCircle, Check } from "lucide-react";
 
 /**
  * Redirect pubblico WhatsApp: cerca lead → apre WhatsApp del venditore.
@@ -60,6 +60,17 @@ const defaultMessage = (nome: string) => {
     : "Ciao, grazie per esserti registrato/a! Ti scrivo qui su WhatsApp.";
 };
 
+// Messaggi d'attesa che ruotano: l'assegnazione può metterci 15-40s (le automazioni a monte
+// hanno delle pause), e una rotella muta spinge la gente ad andarsene. Qui si tiene la persona
+// occupata e tranquilla finché il suo venditore è pronto. NB: la conferma dell'iscrizione la
+// fa il messaggio WhatsApp che l'utente invia dopo, quindi qui non si parla di "confermare".
+const MESSAGGI_ATTESA = [
+  "Ti stiamo mettendo in contatto su WhatsApp…",
+  "Assegniamo il referente giusto per te…",
+  "Prepariamo la tua chat dedicata…",
+  "Ci siamo quasi, apriamo WhatsApp tra pochi secondi…",
+];
+
 const WhatsAppRedirect = () => {
   const [params] = useSearchParams();
   const { slug } = useParams<{ slug?: string }>();
@@ -69,6 +80,13 @@ const WhatsAppRedirect = () => {
   // Attesa che si allunga: si mostra una spiegazione e la possibilità di non aspettare oltre.
   const [attesaLunga, setAttesaLunga] = useState(false);
   const saltaAttesa = useRef(false);
+  // Indice del messaggio d'attesa mostrato: ruota mentre siamo in "loading".
+  const [msgIdx, setMsgIdx] = useState(0);
+  useEffect(() => {
+    if (status !== "loading") return;
+    const id = setInterval(() => setMsgIdx((i) => (i + 1) % MESSAGGI_ATTESA.length), 3500);
+    return () => clearInterval(id);
+  }, [status]);
 
   useEffect(() => {
     /**
@@ -274,11 +292,14 @@ const WhatsAppRedirect = () => {
         const POLL_MS = 600;
         // Stessa attesa nei due casi: un lead che risulta gia in database non puo aspettare
         // meno di uno che deve ancora essere scritto, sarebbe al contrario.
-        const ATTESA_LEAD_NOTO = 50000;
-        const ATTESA_LEAD_IGNOTO = 50000;
-        // Dopo qualche secondo si offre comunque una via d'uscita, cosi nessuno resta fermo a
-        // guardare una rotella: chi ha fretta scrive al numero di riserva quando vuole.
-        const SCORCIATOIA_DOPO = 8000;
+        // Misurato: l'automazione a monte scrive il lead con mediana ~14s, p95 ~37s, max ~43s.
+        // Con l'attesa "guidata" (messaggi che ruotano) la persona regge senza scappare, quindi
+        // si copre il caso peggiore con margine invece di arrendersi a 50s appena prima.
+        const ATTESA_LEAD_NOTO = 75000;
+        const ATTESA_LEAD_IGNOTO = 75000;
+        // La via d'uscita al numero di riserva si offre TARDI (30s), non a 8s: mostrarla presto
+        // spingeva la gente ad andarsene proprio mentre l'assegnazione stava per arrivare.
+        const SCORCIATOIA_DOPO = 30000;
 
         let lead: any = await findAssignedLead();
         if (!lead) {
@@ -388,16 +409,25 @@ const WhatsAppRedirect = () => {
         {status === "loading" && (
           <>
             <Loader2 className="h-10 w-10 mx-auto text-primary animate-spin" />
-            <h1 className="text-lg font-semibold">Ti stiamo indirizzando...</h1>
-            <p className="text-sm text-muted-foreground">
-              {attesaLunga
-                ? "Stiamo ancora registrando la tua richiesta: ancora qualche secondo e ti mettiamo in contatto con la persona giusta."
-                : "Un momento, stiamo trovando il tuo referente."}
+            <h1 className="text-lg font-semibold">Ti stiamo mettendo in contatto su WhatsApp</h1>
+            <p className="text-sm text-muted-foreground min-h-[2.5rem] transition-opacity duration-300">
+              {MESSAGGI_ATTESA[msgIdx]}
             </p>
+            <ul className="text-sm text-left inline-block mx-auto space-y-1.5">
+              <li className="flex items-center gap-2 text-foreground">
+                <Check className="h-4 w-4 text-emerald-500 shrink-0" /> Dati ricevuti
+              </li>
+              <li className="flex items-center gap-2 text-foreground">
+                <Loader2 className="h-4 w-4 text-primary animate-spin shrink-0" /> Assegnazione del tuo referente
+              </li>
+              <li className="flex items-center gap-2 text-muted-foreground">
+                <span className="h-4 w-4 flex items-center justify-center shrink-0 leading-none">•</span> Apertura di WhatsApp
+              </li>
+            </ul>
             {attesaLunga && (
               <button type="button" onClick={() => { saltaAttesa.current = true; }}
-                className="text-[12.5px] text-muted-foreground underline underline-offset-2 hover:text-foreground">
-                Non voglio aspettare, scrivi subito
+                className="block mx-auto text-[12.5px] text-muted-foreground underline underline-offset-2 hover:text-foreground">
+                Ci sta mettendo più del previsto? Scrivici qui
               </button>
             )}
           </>
