@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useSearchParams, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -77,9 +77,6 @@ const WhatsAppRedirect = () => {
   const [status, setStatus] = useState<"loading" | "error" | "redirecting">("loading");
   const [errorMsg, setErrorMsg] = useState<string>("");
   const [venditore, setVenditore] = useState<{ nome: string; cognome: string } | null>(null);
-  // Attesa che si allunga: si mostra una spiegazione e la possibilità di non aspettare oltre.
-  const [attesaLunga, setAttesaLunga] = useState(false);
-  const saltaAttesa = useRef(false);
   // Indice del messaggio d'attesa mostrato: ruota mentre siamo in "loading".
   const [msgIdx, setMsgIdx] = useState(0);
   useEffect(() => {
@@ -264,8 +261,8 @@ const WhatsAppRedirect = () => {
          * thank-you PRIMA che il nuovo opt-in sia scritto → al click la riga più recente è quella
          * vecchia, ma un'assegnazione nuova sta arrivando pochi secondi dopo. Fidarsi dell'età del
          * record mandava questi lead al numero di riserva (es. click 10:16:48, lead nuovo assegnato
-         * 10:16:53). Il cap di attesa (50s) + la scorciatoia dopo SCORCIATOIA_DOPO evitano comunque
-         * di bloccare chi non ha davvero nulla in arrivo.
+         * 10:16:53). Il cap di attesa (75s) copre il caso peggiore misurato della pipeline; solo a
+         * quel punto, scaduto il tempo, si va al numero di riserva.
          */
         const findAssignedLead = async (): Promise<any | null> => {
           const riga = await cerca();
@@ -297,9 +294,6 @@ const WhatsAppRedirect = () => {
         // si copre il caso peggiore con margine invece di arrendersi a 50s appena prima.
         const ATTESA_LEAD_NOTO = 75000;
         const ATTESA_LEAD_IGNOTO = 75000;
-        // La via d'uscita al numero di riserva si offre TARDI (30s), non a 8s: mostrarla presto
-        // spingeva la gente ad andarsene proprio mentre l'assegnazione stava per arrivare.
-        const SCORCIATOIA_DOPO = 30000;
 
         let lead: any = await findAssignedLead();
         if (!lead) {
@@ -309,9 +303,8 @@ const WhatsAppRedirect = () => {
           console.log(noto
             ? "[wa] lead presente ma non ancora assegnato: attendo l'assegnazione"
             : "[wa] lead non ancora registrato: attendo che il flusso lo scriva");
-          while (!lead && Date.now() < scadenza && !saltaAttesa.current) {
+          while (!lead && Date.now() < scadenza) {
             await new Promise((r) => setTimeout(r, POLL_MS));
-            if (Date.now() - inizio > SCORCIATOIA_DOPO) setAttesaLunga(true);
             lead = await findAssignedLead();
           }
         }
@@ -424,12 +417,6 @@ const WhatsAppRedirect = () => {
                 <span className="h-4 w-4 flex items-center justify-center shrink-0 leading-none">•</span> Apertura di WhatsApp
               </li>
             </ul>
-            {attesaLunga && (
-              <button type="button" onClick={() => { saltaAttesa.current = true; }}
-                className="block mx-auto text-[12.5px] text-muted-foreground underline underline-offset-2 hover:text-foreground">
-                Ci sta mettendo più del previsto? Scrivici qui
-              </button>
-            )}
           </>
         )}
         {status === "redirecting" && (
