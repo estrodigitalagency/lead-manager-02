@@ -220,59 +220,67 @@ const WhatsAppRedirect = () => {
 
         const COLS = "id, venditore, market, created_at, telefono, email, nome, cognome, ultima_fonte, campagna";
 
+        // Venditori consegnabili del market: attivi e con un telefono. Serve per capire quando
+        // una riga è "pronta": un parcheggio senza numero (Round Robin, CRM4) NON è consegnabile
+        // e non deve far aprire il numero di riserva al posto del venditore vero.
+        const { data: vendList } = await supabase
+          .from("venditori")
+          .select("nome, cognome, telefono, stato")
+          .eq("market", effectiveMarket)
+          .eq("stato", "attivo");
+        const vendByNome = new Map<string, any>();
+        for (const v of vendList || []) vendByNome.set(nomeConfrontabile(`${v.nome} ${v.cognome}`), v);
+        const consegnabile = (nomeVend: string | null | undefined): boolean => {
+          if (!nomeVend) return false;
+          const v = vendByNome.get(nomeConfrontabile(nomeVend));
+          return !!(v && (v.telefono || "").trim());
+        };
+
         /**
-         * Cerca la riga PIÙ RECENTE di questa persona, assegnata o no.
+         * I record di questa persona, dal più recente. Si incrociano email E telefono: se ha
+         * usato un'email diversa o un numero diverso, ma esiste un record più recente con lo
+         * stesso numero e/o la stessa email, quello vince. Prima l'email aveva la precedenza a
+         * prescindere, e un lead di ritorno con una vecchia riga-parcheggio (CRM4/Round Robin)
+         * sotto l'email dell'optin finiva lì, ignorando record più recenti col suo venditore
+         * vero sotto l'altra email (caso reale: optin con aurorecarmalvintage@ → vecchia riga
+         * CRM4 del 2025, mentre il suo Matteo Petrucci stava su aurorecarmal@).
          *
-         * Prima si chiedeva l'ultima riga *che avesse già un venditore*, e lì stava il difetto:
-         * chi clicca dalla thank-you page arriva anche qualche secondo prima che il flusso
-         * scriva il lead, quindi la riga giusta veniva scartata perché ancora senza venditore e
-         * al suo posto ne saliva una di mesi prima — spesso intestata a un parcheggio come
-         * "Round Robin" o "CRM4", che non hanno numero: la persona finiva sul numero di riserva
-         * mentre due secondi dopo il suo venditore vero veniva assegnato.
-         *
-         * Le righe più vecchie non servono. Se il lead ha già lavorato con qualcuno ci pensa
-         * l'automazione, che applica l'intervallo di riassegnazione della regola (90 giorni sul
-         * lancio in corso) e scrive il venditore giusto sulla riga nuova. Rifare quella scelta
-         * qui significava rifarla senza conoscere l'intervallo, cioè peggio.
-         *
-         * Le due interrogazioni sono indipendenti e partono insieme: in fila i tempi si
-         * sommavano. L'email resta prioritaria. Nessuna variante dell'indirizzo e nessuna
-         * ricerca fuori dal market: due email simili possono essere due persone diverse.
+         * Nessuna variante dell'indirizzo e nessuna ricerca fuori dal market: due indirizzi
+         * simili possono essere due persone diverse.
          */
-        const cerca = async (): Promise<any | null> => {
+        const candidati = async (): Promise<any[]> => {
           const base = () => supabase.from("lead_generation").select(COLS)
             .eq("market", effectiveMarket)
-            .order("created_at", { ascending: false }).limit(1);
+            .order("created_at", { ascending: false }).limit(8);
           const tentativi: any[] = [];
           if (email) tentativi.push(base().ilike("email", email));
           if (phoneNorm) tentativi.push(base().ilike("telefono", `%${phoneNorm.slice(-9)}%`));
-          if (tentativi.length === 0) return null;
+          if (tentativi.length === 0) return [];
           const esiti = await Promise.all(tentativi);
-          return esiti.map((r: any) => r.data?.[0]).find(Boolean) ?? null;
+          const rows = esiti.flatMap((r: any) => r.data || [])
+            .sort((a: any, b: any) => String(b.created_at || "").localeCompare(String(a.created_at || "")));
+          const seen = new Set<string>();
+          const uniq: any[] = [];
+          for (const r of rows) if (!seen.has(r.id)) { seen.add(r.id); uniq.push(r); }
+          return uniq; // dal più recente
         };
 
         /**
-         * La riga da usare, se è già utilizzabile. Restituisce null quando c'è da aspettare
-         * un venditore (assegnazione in corso) → il loop di attesa continua a fare polling.
-         *
-         * Si aspetta ANCHE se la riga trovata è "vecchia" e senza venditore. Ci si basa sulla
-         * freschezza del CLICK (siamo appena arrivati qui dal redirect), non sull'età del record.
-         * Caso reale (lead di ritorno): chi ha già un vecchio record senza venditore clicca dalla
-         * thank-you PRIMA che il nuovo opt-in sia scritto → al click la riga più recente è quella
-         * vecchia, ma un'assegnazione nuova sta arrivando pochi secondi dopo. Fidarsi dell'età del
-         * record mandava questi lead al numero di riserva (es. click 10:16:48, lead nuovo assegnato
-         * 10:16:53). Il cap di attesa (75s) copre il caso peggiore misurato della pipeline; solo a
-         * quel punto, scaduto il tempo, si va al numero di riserva.
+         * La riga da usare, se è già utilizzabile: il record più recente con un venditore
+         * CONSEGNABILE (attivo + telefono). Se il più recente è un parcheggio senza numero
+         * (Round Robin, CRM4) o è senza venditore, si guarda il successivo; se nessuno è
+         * consegnabile si restituisce null e il loop continua ad aspettare l'assegnazione vera.
+         * Ci si basa sulla freschezza del CLICK, non sull'età del record: il nuovo opt-in può
+         * arrivare pochi secondi dopo (misurato: pipeline mediana ~14s, fino a ~43s). Il cap di
+         * attesa (75s) copre il caso peggiore; solo allora si va al numero di riserva.
          */
         const findAssignedLead = async (): Promise<any | null> => {
-          const riga = await cerca();
-          if (!riga) return null;
-          if (riga.venditore) return riga;
-          return null;
+          const cands = await candidati();
+          return cands.find((c) => consegnabile(c.venditore)) ?? null;
         };
 
         // Il lead esiste già in database? Serve solo a scegliere il messaggio d'attesa.
-        const leadInLavorazione = async (): Promise<boolean> => !!(await cerca());
+        const leadInLavorazione = async (): Promise<boolean> => (await candidati()).length > 0;
 
         // Due attese diverse, perché i due casi non sono lo stesso problema.
         //
@@ -317,15 +325,9 @@ const WhatsAppRedirect = () => {
           return;
         }
 
-        // Fetch venditore.telefono
-        const { data: vendList } = await supabase
-          .from("venditori")
-          .select("nome, cognome, telefono, stato")
-          .eq("market", lead.market)
-          .eq("stato", "attivo");
-        const match = (vendList || []).find(
-          (v: any) => nomeConfrontabile(`${v.nome} ${v.cognome}`) === nomeConfrontabile(lead.venditore)
-        );
+        // Il venditore è già garantito consegnabile da findAssignedLead: risolvo il telefono
+        // dalla mappa dei venditori attivi del market (niente seconda query).
+        const match = vendByNome.get(nomeConfrontabile(lead.venditore));
 
         if (!match || !match.telefono) {
           if (await goFallback("no_venditore_phone", nome || lead.nome || "")) return;
