@@ -266,17 +266,25 @@ const WhatsAppRedirect = () => {
         };
 
         /**
-         * La riga da usare, se è già utilizzabile: il record più recente con un venditore
-         * CONSEGNABILE (attivo + telefono). Se il più recente è un parcheggio senza numero
-         * (Round Robin, CRM4) o è senza venditore, si guarda il successivo; se nessuno è
-         * consegnabile si restituisce null e il loop continua ad aspettare l'assegnazione vera.
-         * Ci si basa sulla freschezza del CLICK, non sull'età del record: il nuovo opt-in può
-         * arrivare pochi secondi dopo (misurato: pipeline mediana ~14s, fino a ~43s). Il cap di
-         * attesa (75s) copre il caso peggiore; solo allora si va al numero di riserva.
+         * Soglia: la data del record consegnabile PIÙ RECENTE già presente all'arrivo. L'optin
+         * di adesso scriverà un record più nuovo di questa, e sarà quello a stabilire il
+         * venditore secondo il lock (90gg). Fino ad allora si aspetta, SENZA ripiegare su un
+         * venditore vecchio che il lock potrebbe aver già scartato (caso Ornella: vecchia riga
+         * Matteo di aprile, lock scaduto → il DB assegna Giusy, ma il redirect apriva Matteo).
+         * Confronto tra date ISO come stringhe: stesso offset, ordine lessicografico = cronologico.
+         */
+        const sogliaConsegnabile = (await candidati()).find((c) => consegnabile(c.venditore))?.created_at ?? "";
+
+        /**
+         * La riga da usare: il record dell'optin di ADESSO, cioè uno con venditore CONSEGNABILE
+         * (attivo + telefono) e più recente della soglia. Così il redirect eredita la decisione
+         * del DB (che applica il lock) invece di ripescare un venditore da una riga vecchia. Se
+         * non c'è ancora, restituisce null e il loop aspetta. Il nuovo opt-in può metterci da
+         * pochi secondi a ~43s (pipeline); il cap d'attesa è 75s.
          */
         const findAssignedLead = async (): Promise<any | null> => {
           const cands = await candidati();
-          return cands.find((c) => consegnabile(c.venditore)) ?? null;
+          return cands.find((c) => consegnabile(c.venditore) && String(c.created_at) > sogliaConsegnabile) ?? null;
         };
 
         // Il lead esiste già in database? Serve solo a scegliere il messaggio d'attesa.
@@ -315,6 +323,13 @@ const WhatsAppRedirect = () => {
             await new Promise((r) => setTimeout(r, POLL_MS));
             lead = await findAssignedLead();
           }
+        }
+
+        if (!lead) {
+          // Attesa scaduta senza un'assegnazione nuova (es. click non da un optin fresco, o
+          // pipeline mai arrivata): si usa il venditore consegnabile più recente che esiste,
+          // così non si finisce al numero di riserva quando un venditore valido comunque c'è.
+          lead = (await candidati()).find((c) => consegnabile(c.venditore)) ?? null;
         }
 
         if (!lead || !lead.venditore) {
