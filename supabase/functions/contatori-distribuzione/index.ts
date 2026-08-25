@@ -103,6 +103,84 @@ Deno.serve(async (req) => {
       return json({ ok: true, azzerati: soloQuesti.length, counts });
     }
 
+    /*
+     * ── Riallineamento al foglio ──────────────────────────────────────────────────────────
+     *
+     * Il tetto si consuma sulle assegnazioni fatte dalla regola, ma quel numero e le righe che
+     * il venditore ha davvero sul foglio divergono: il foglio non toglie la riga quando un lead
+     * passa a un altro, le assegnazioni fatte a mano non consumano il tetto, e le righe che non
+     * arrivano restano contate lo stesso. Cosi qualcuno smette di ricevere pur avendo spazio.
+     *
+     * Qui il contatore viene riportato a quello che il foglio dice davvero. Non si legge il
+     * foglio a ogni lead che entra - costa venticinque secondi e ha limiti di chiamate - ma su
+     * richiesta: il controllo del tetto resta immediato e lavora su numeri appena riallineati.
+     *
+     * Nota: il foglio viene scritto da Make qualche istante dopo l'assegnazione, quindi un
+     * riallineamento fatto subito dopo un'ondata di lead conta qualche riga in meno del vero.
+     */
+    if (azione === "riallinea") {
+      const { data: a } = await supabase
+        .from("lead_assignment_automations").select("*").eq("id", body.automazione_id).maybeSingle();
+      if (!a) return json({ error: "Automazione non trovata" }, 404);
+
+      const lancio = String(body.lancio || "").trim();
+      const mercato = String(body.market || a.market || "IT").toUpperCase();
+      if (!lancio) return json({ error: "Serve l'identificativo del lancio da cui leggere i fogli" }, 400);
+
+      const url = `${Deno.env.get("SUPABASE_URL")}/functions/v1/analytics-lancio?lancio=${encodeURIComponent(lancio)}&market=${mercato}`;
+      const risposta = await fetch(url, {
+        headers: { Authorization: `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}` },
+      });
+      const dati = await risposta.json();
+      if (!risposta.ok || dati?.error) {
+        return json({ error: `Lettura dei fogli fallita: ${dati?.error ?? risposta.status}` }, 502);
+      }
+      // Una lettura fallita darebbe zero righe per quel venditore, e riallineare su quello
+      // gli azzererebbe il tetto: meglio fermarsi e dirlo.
+      const fallite: string[] = (dati.errors ?? []).filter((e: string) => e.startsWith("LETTURA FALLITA"));
+      if (fallite.length > 0 && body.forza !== true) {
+        return json({ error: "Alcuni fogli non sono stati letti: riallineare adesso falserebbe i tetti", dettaglio: fallite }, 409);
+      }
+
+      const { data: vend } = await supabase
+        .from("venditori").select("id, nome, cognome").eq("market", mercato);
+      const perNome = new Map<string, string>();
+      for (const v of vend ?? []) perNome.set(nomeConfrontabile(`${v.nome} ${v.cognome || ""}`), v.id);
+
+      const dalFoglio: Conteggi = {};
+      const senzaCorrispondenza: string[] = [];
+      for (const r of dati.rows ?? []) {
+        const id = perNome.get(nomeConfrontabile(r.venditore));
+        if (id) dalFoglio[id] = Number(r.tot_lead) || 0;
+        else senzaCorrispondenza.push(r.venditore);
+      }
+
+      const prima: Conteggi = { ...(a.distribution_state?.count_assigned || {}) };
+      // Solo i venditori della regola: chi sta sul foglio ma fuori dalla distribuzione non ha
+      // un tetto da consumare, e chi e nella regola ma senza righe torna a zero, com'e giusto.
+      const delta: Record<string, number> = {};
+      for (const slot of a.distribution_config ?? []) {
+        const id = slot.venditore_id;
+        delta[id] = (dalFoglio[id] ?? 0) - (prima[id] ?? 0);
+      }
+      const dopo = await applicaDelta(supabase, a, delta);
+
+      const nomeDi = (id: string) => {
+        const v = (vend ?? []).find((x: any) => x.id === id);
+        return v ? `${v.nome} ${v.cognome || ""}`.trim() : id;
+      };
+      return json({
+        ok: true,
+        automazione: a.nome,
+        aggiornati: Object.entries(delta)
+          .filter(([, d]) => d !== 0)
+          .map(([id, d]) => ({ venditore: nomeDi(id), prima: prima[id] ?? 0, dopo: dopo[id] ?? 0, delta: d })),
+        invariati: Object.values(delta).filter((d) => d === 0).length,
+        fogli_non_letti: fallite,
+        venditori_del_foglio_fuori_dalla_regola: senzaCorrispondenza,
+      });
+    }
+
     // ── Spostamento dopo una riassegnazione manuale ──
     if (azione === "sposta") {
       const leadIds: string[] = body.lead_ids ?? [];

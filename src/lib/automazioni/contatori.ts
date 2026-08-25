@@ -21,6 +21,21 @@ export async function azzeraContatori(automazioneId: string, venditori: string[]
 }
 
 /**
+ * Riporta i contatori a quanti lead il venditore ha davvero sul foglio del lancio.
+ *
+ * Il tetto si consuma sulle assegnazioni fatte dalla regola, e quel numero deriva dal foglio:
+ * il foglio non toglie la riga quando un lead passa a un altro, le assegnazioni fatte a mano
+ * non lo consumano affatto, e le righe che non arrivano restano contate lo stesso. Riallineando,
+ * "400" torna a voler dire 400 lead davvero in carico — comprese le assegnazioni manuali, che
+ * finiscono nel foglio del lancio quando portano la sua campagna.
+ *
+ * La lettura dei fogli e lenta: puo metterci oltre un minuto se la cache e fredda.
+ */
+export async function riallineaContatoriAlFoglio(automazioneId: string, lancioId: string, market: string) {
+  return chiama({ azione: "riallinea", automazione_id: automazioneId, lancio: lancioId, market });
+}
+
+/**
  * Sposta i contatori dopo una riassegnazione manuale: chi cede il lead scende di uno, chi lo
  * prende sale di uno, sulla regola che avrebbe gestito quel lead.
  */

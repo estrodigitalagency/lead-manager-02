@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import { Zap, AlertTriangle, Loader2, Save } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchCodaIds, setCoda } from "@/lib/automazioni/coda";
-import { azzeraContatori } from "@/lib/automazioni/contatori";
+import { azzeraContatori, riallineaContatoriAlFoglio } from "@/lib/automazioni/contatori";
 import { useSalespeopleData } from "@/hooks/useSalespeopleData";
 import { useAutomationsData } from "@/hooks/useAutomationsData";
 import { LancioConfig, LancioRow } from "@/lib/lanci/config";
@@ -115,6 +115,33 @@ const TabDistribuzione = ({ lancio, rows, market, onChange }: Props) => {
     if (r?.error) { toast.error(r.error); return; }
     toast.success("Contatori azzerati");
     onChange();
+  };
+
+  /**
+   * Riallinea i tetti a quanto risulta sui fogli. Va confermato perche riscrive tutti i
+   * contatori della regola, e non e istantaneo: la lettura dei fogli puo superare il minuto.
+   */
+  const [riallineo, setRiallineo] = useState(false);
+  const riallinea = async () => {
+    if (!autom?.id) return;
+    if (!confirm(
+      "Riportare i contatori a quanti lead ogni sales ha davvero sul foglio del lancio?\n\n" +
+      "I tetti torneranno a contare i lead in carico invece delle assegnazioni fatte, quindi " +
+      "chi ha ceduto lead potra ricevere di nuovo.\n\nLa lettura dei fogli puo richiedere un minuto."
+    )) return;
+    setRiallineo(true);
+    try {
+      const r = await riallineaContatoriAlFoglio(autom.id, lancio.id, market);
+      if (r?.error) { toast.error(r.error, { description: (r.dettaglio || []).join(" · ") || undefined }); return; }
+      const mossi = (r.aggiornati || []).length;
+      toast.success(
+        mossi === 0 ? "Contatori gia allineati ai fogli" : `${mossi} contatori riallineati ai fogli`,
+        { description: (r.aggiornati || []).slice(0, 6).map((x: any) => `${x.venditore}: ${x.prima} → ${x.dopo}`).join(" · ") },
+      );
+      onChange();
+    } finally {
+      setRiallineo(false);
+    }
   };
 
   const loadLog = useCallback(async () => {
@@ -323,11 +350,21 @@ const TabDistribuzione = ({ lancio, rows, market, onChange }: Props) => {
             <div className="flex items-center justify-between gap-2 flex-wrap px-3.5 py-2.5 border-t border-border">
               <p className="text-[11px] text-muted-foreground flex-1 min-w-[240px]">
                 La pausa ferma i lead nuovi ma non le riassegnazioni: chi ha già parlato con quel venditore
-                continua ad andare da lui. Il numero dei ricevuti si clicca per azzerarlo.
+                continua ad andare da lui. Il numero dei ricevuti si clicca per azzerarlo.{" "}
+                <b className="text-foreground/80">Riallinea ai fogli</b> riporta i tetti a quanti lead ogni
+                sales ha davvero in carico — comprese le assegnazioni fatte a mano con la campagna del lancio —
+                invece di contare le assegnazioni fatte.
               </p>
-              <Button size="sm" variant="outline" className="h-7 text-[11px] text-destructive" onClick={() => azzera()}>
-                Azzera tutti i contatori
-              </Button>
+              <span className="flex items-center gap-2">
+                <Button size="sm" variant="outline" className="h-7 text-[11px]" onClick={riallinea} disabled={riallineo}>
+                  {riallineo
+                    ? <><Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> Leggo i fogli…</>
+                    : "Riallinea ai fogli"}
+                </Button>
+                <Button size="sm" variant="outline" className="h-7 text-[11px] text-destructive" onClick={() => azzera()}>
+                  Azzera tutti i contatori
+                </Button>
+              </span>
             </div>
           </CardContent>
         </Card>
