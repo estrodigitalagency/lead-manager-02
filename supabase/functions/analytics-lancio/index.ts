@@ -472,7 +472,7 @@ Deno.serve(async (req) => {
             tasso_prenotazione: totLead > 0 ? Math.round((tot / totLead) * 1000) / 10 : 0,
             tasso_chiusura_call: tot > 0 ? Math.round((chiusure / tot) * 1000) / 10 : 0,
             tasso_chiusura_nette: nette > 0 ? Math.round((chiusure / nette) * 1000) / 10 : 0,
-            target, distanza_target: target - totLead,
+            target, distanza_target: totLead - target,
             tot_lead: totLead,
             qualifiche: { "Non lavorato": nonLavorato, ...qual },
             qualifiche_perc: qualPerc,
@@ -523,7 +523,7 @@ Deno.serve(async (req) => {
       tasso_prenotazione: totLeadTeam > 0 ? Math.round((totCall / totLeadTeam) * 1000) / 10 : 0,
       tasso_chiusura_call: totCall > 0 ? Math.round((totChius / totCall) * 1000) / 10 : 0,
       tasso_chiusura_nette: totNette > 0 ? Math.round((totChius / totNette) * 1000) / 10 : 0,
-      target: sum((r) => r.target), distanza_target: sum((r) => r.target) - totLeadTeam,
+      target: sum((r) => r.target), distanza_target: totLeadTeam - sum((r) => r.target),
       tot_lead: totLeadTeam, distribuzione: 100,
       qualifiche: ["Non lavorato", ...QUALIFICHE].reduce((acc, q) => {
         acc[q] = rows.reduce((s, r) => s + (r.qualifiche[q] || 0), 0); return acc;

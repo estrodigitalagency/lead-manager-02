@@ -4,8 +4,10 @@ import { ArrowLeftRight } from "lucide-react";
 import { LancioData, LancioRow, ColorRule } from "@/lib/lanci/config";
 import { CALL_METRICS, LEAD_METRICS, fmt, ruleStyle, Metric } from "./LancioMatrix";
 
-// per queste metriche "meglio" significa più basso
-const LOWER_BETTER = new Set(["call_da_fare", "distanza_target"]);
+// per queste metriche "meglio" significa più basso.
+// La distanza dal target non c'è più: adesso è negativa quando si è sotto e positiva quando si
+// è sopra, quindi più alta è meglio, come per tutte le altre.
+const LOWER_BETTER = new Set(["call_da_fare"]);
 
 /** Intestazione di sezione. Fuori dal componente per non ricreare il tipo a ogni render. */
 const Section = ({ title }: { title: string }) => (

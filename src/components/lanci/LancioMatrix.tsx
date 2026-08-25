@@ -22,7 +22,7 @@ export const LEAD_METRICS: Metric[] = [
   { label: "Tot. Lead Assegnati", key: "tot_lead", fmt: "n" },
   { label: "Distribuzione", key: "distribuzione", fmt: "pct" },
   { label: "Target", key: "target", fmt: "n" },
-  { label: "Distanza dal Target", key: "distanza_target", fmt: "delta" },
+  { label: "Distanza dal Target", key: "distanza_target", fmt: "delta" },   // negativa = quanti ne mancano
   { label: "App + conferma sui lavorati", key: "app_conferma_lavorati", fmt: "pct" },
   { label: "App + Conferma", key: "app_conferma", fmt: "pct" },
   { label: "Media voto (P)", key: "media_voto", fmt: "dec" },
@@ -74,6 +74,18 @@ const LancioMatrix = ({ data, rows, rules, heatmap }: Props) => {
     ? rows.reduce((s, r) => s + ((r as any)[key] || 0), 0)
     : ((data.totale as any)?.[key] || 0);
 
+  /*
+   * I livelli di sovrapposizione vanno tenuti in ordine, altrimenti la prima colonna diventa
+   * illeggibile: le celle dei numeri hanno uno span in z-10 per stare sopra lo sfondo della
+   * heatmap, e a parita di z-index vince chi viene dopo nel documento - cioe i numeri, che
+   * finivano stampati sopra le etichette della colonna ferma.
+   *
+   *   z-40  angolo dell'intestazione (fermo in alto e a sinistra)
+   *   z-30  intestazione (ferma in alto)
+   *   z-20  prima colonna (ferma a sinistra)
+   *   z-10  numeri dentro le celle
+   *   z-0   sfondo della heatmap
+   */
   const Cell = ({ k, v, f, pc, range, heat }: { k: string; v: number; f: Fmt; pc?: number; range?: [number, number]; heat?: boolean }) => {
     const style = ruleStyle(rules, k, v);
     const heatOk = heatmap && (heat || HEAT_KEYS.has(k)) && range && range[1] > range[0] && v != null;
@@ -101,7 +113,7 @@ const LancioMatrix = ({ data, rows, rules, heatmap }: Props) => {
         const range = rangeOf((r) => (r as any)[m.key]);
         return (
           <tr key={String(m.key)} className="group">
-            <th className="table-body-cell sticky left-0 bg-card z-10 text-left font-normal border-r border-border min-w-[230px] group-hover:text-primary">
+            <th className="table-body-cell sticky left-0 bg-card z-20 text-left font-normal border-r border-border min-w-[230px] group-hover:text-primary">
               {m.label}
             </th>
             <td className="table-body-cell text-right num font-bold bg-secondary/40 border-r border-border">{fmt[m.fmt](agg(String(m.key)))}</td>
@@ -120,7 +132,7 @@ const LancioMatrix = ({ data, rows, rules, heatmap }: Props) => {
   }) => (
     <>
       <tr className="bg-secondary/40 cursor-pointer" onClick={() => toggle(title)}>
-        <th className="table-body-cell sticky left-0 bg-secondary/40 z-10 text-left label-eyebrow py-2.5">
+        <th className="table-body-cell sticky left-0 bg-secondary/40 z-20 text-left label-eyebrow py-2.5">
           {closed.has(title) ? "▸" : "▾"} {title}
         </th>
         <td colSpan={rows.length + 1} className="table-body-cell bg-secondary/40" />
@@ -129,7 +141,7 @@ const LancioMatrix = ({ data, rows, rules, heatmap }: Props) => {
         const range = rangeOf((r) => get(r, it));
         return (
           <tr key={it} className="group">
-            <th className="table-body-cell sticky left-0 bg-card z-10 text-left font-normal border-r border-border group-hover:text-primary">{it}</th>
+            <th className="table-body-cell sticky left-0 bg-card z-20 text-left font-normal border-r border-border group-hover:text-primary">{it}</th>
             <td className="table-body-cell text-right num font-bold bg-secondary/40 border-r border-border">
               <span className="flex flex-col items-end leading-tight">
                 <span>{fmt.n(totFn(it))}</span>
@@ -148,10 +160,10 @@ const LancioMatrix = ({ data, rows, rules, heatmap }: Props) => {
       <table className="w-full text-[12.5px] table-colonna-ferma">
         <thead>
           <tr>
-            <th className="table-header-cell text-left sticky left-0 top-0 bg-card z-30 min-w-[230px]">Metrica</th>
-            <th className="table-header-cell text-right sticky top-0 bg-card z-20">Totale</th>
+            <th className="table-header-cell text-left sticky left-0 top-0 bg-card z-40 min-w-[230px]">Metrica</th>
+            <th className="table-header-cell text-right sticky top-0 bg-card z-30">Totale</th>
             {rows.map((r) => (
-              <th key={r.venditore} className="table-header-cell text-right sticky top-0 bg-card z-20 min-w-[100px]">{r.venditore}</th>
+              <th key={r.venditore} className="table-header-cell text-right sticky top-0 bg-card z-30 min-w-[100px]">{r.venditore}</th>
             ))}
           </tr>
         </thead>
