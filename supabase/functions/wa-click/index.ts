@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { calculateDaysSince, eParcheggio, inviaAnomalia, nomeConfrontabile, regolaSiApplica, type Anomalia, type MotivoAnomalia } from "../_shared/regole.ts";
 
 /**
  * Registra il click sul link WhatsApp.
@@ -45,6 +46,76 @@ function dispositivoDa(ua: string | null): "mobile" | "tablet" | "desktop" | "au
   if (/android/i.test(s) && !/mobile/i.test(s)) return "tablet";
   if (/mobile|iphone|ipod|android|blackberry|iemobile|opera mini/i.test(s)) return "mobile";
   return "desktop";
+}
+
+/**
+ * Cerca chi aveva in carico questa persona e se e' ancora dentro l'intervallo della regola che
+ * la riguarda. Si guarda solo l'email e la coda del telefono, gli stessi appigli con cui la
+ * pagina trova il lead: nessuna variante, per non attribuire a qualcuno un lead che non e' suo.
+ */
+async function segnalaClickDeviato(riga: Record<string, unknown>, supabase: any) {
+  const mercato = String(riga.market ?? "IT").toUpperCase();
+  const email = String(riga.lead_email ?? "").toLowerCase().trim();
+  const tel = String(riga.lead_phone ?? "").replace(/\D/g, "").slice(-9);
+  if (!email && !tel) return;
+
+  const COLS = "id, nome, cognome, email, telefono, market, campagna, ultima_fonte, venditore, data_assegnazione, created_at";
+  const q = () => supabase.from("lead_generation").select(COLS)
+    .eq("market", mercato).not("venditore", "is", null)
+    .order("data_assegnazione", { ascending: false }).limit(5);
+  const tentativi: any[] = [];
+  if (email) tentativi.push(q().eq("email", email));
+  if (tel) tentativi.push(q().ilike("telefono", `%${tel}%`));
+  const esiti = await Promise.all(tentativi);
+
+  const righe = esiti.flatMap((r: any) => r.data ?? [])
+    .filter((l: any) => l.venditore && !eParcheggio(l.venditore))
+    .sort((a: any, b: any) => String(b.data_assegnazione ?? "").localeCompare(String(a.data_assegnazione ?? "")));
+  const prec = righe[0];
+  if (!prec?.data_assegnazione) return;
+
+  /*
+   * L'intervallo e quello della regola che riconosce questo lead, e va deciso con la stessa
+   * funzione che usa l'assegnazione: confrontare le fonti a mano ignorava il tipo di condizione
+   * e faceva scattare "Evergreen", che su un lead workshop non si applica affatto perche' la
+   * sua condizione e "non contiene workshop". Ne usciva l'intervallo sbagliato.
+   */
+  const { data: regole } = await supabase.from("lead_assignment_automations")
+    .select("nome, lock_period_days, trigger_when, trigger_field, condition_type, condition_value, trigger_sources")
+    .eq("market", mercato).eq("attivo", true).order("priority", { ascending: true });
+  const regola = (regole ?? []).find((r: any) => regolaSiApplica(prec, r)) ?? null;
+  const intervallo = regola?.lock_period_days ?? null;
+
+  const giorni = calculateDaysSince(prec.data_assegnazione);
+  const dentro = intervallo === null || intervallo === -1 || intervallo === 0 || giorni < intervallo;
+  if (!dentro) return;
+
+  const finito = String(riga.venditore_nome ?? "").trim() || null;
+  // Se la chat si e aperta proprio col suo venditore non c'e niente di storto.
+  if (finito && nomeConfrontabile(finito) === nomeConfrontabile(prec.venditore)) return;
+
+  const motivo: MotivoAnomalia = !finito ? "numero_di_riserva"
+    : eParcheggio(finito) ? "parcheggio" : "venditore_diverso";
+
+  const anomalia: Anomalia = {
+    motivo,
+    lead_id: (riga.lead_id as string) ?? prec.id ?? null,
+    lead_nome: String(riga.lead_nome ?? `${prec.nome ?? ""} ${prec.cognome ?? ""}`).trim() || null,
+    lead_email: (riga.lead_email as string) ?? prec.email ?? null,
+    lead_telefono: (riga.lead_phone as string) ?? prec.telefono ?? null,
+    market: mercato,
+    campagna: prec.campagna ?? null,
+    ultima_fonte: prec.ultima_fonte ?? null,
+    venditore_precedente: prec.venditore,
+    precedente_assegnato_il: prec.data_assegnazione,
+    giorni_dall_ultima_assegnazione: giorni,
+    intervallo_giorni: intervallo,
+    venditore_attuale: finito,
+    regola: regola?.nome ?? null,
+    rilevato_da: "click_whatsapp",
+    rilevato_il: new Date().toISOString(),
+  };
+  await inviaAnomalia(anomalia, supabase);
 }
 
 const contaPer = <T extends string>(valori: T[]): { nome: T; n: number }[] => {
@@ -271,6 +342,21 @@ Deno.serve(async (req) => {
       q = riga.lead_email ? q.eq("lead_email", riga.lead_email) : q.eq("lead_phone", riga.lead_phone);
       const { data: gia } = await q;
       if (gia && gia.length > 0) return json({ ok: true, duplicato: true });
+    }
+
+    /*
+     * Click che non ha portato la persona dal suo venditore, pur avendone uno.
+     *
+     * Vale la pena segnalarlo solo se il lead un venditore ce l'aveva davvero ed era ancora
+     * dentro l'intervallo: se ne aveva uno vecchio e scaduto, il numero di riserva e' la
+     * risposta giusta e non c'e' niente da avvisare.
+     */
+    if (riga.status !== "ok") {
+      // fuori dalla risposta: un avviso lento non deve trattenere chi sta aprendo WhatsApp
+      const avviso = segnalaClickDeviato(riga, supabase).catch((e) =>
+        console.error("[anomalia] controllo sul click fallito:", (e as Error).message));
+      // @ts-ignore EdgeRuntime e disponibile su Supabase Edge Functions
+      if (typeof EdgeRuntime !== "undefined" && EdgeRuntime.waitUntil) EdgeRuntime.waitUntil(avviso);
     }
 
     const { error } = await supabase.from("whatsapp_click_logs").insert(riga);

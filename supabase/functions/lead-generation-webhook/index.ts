@@ -4,6 +4,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import {
   calculateDaysSince, checkCondition, regolaSiApplica, entroLockPeriod, slotEleggibili,
   scegliSlot, gruppoDi, pesoGruppo, nomeConfrontabile,
+  eParcheggio, inviaAnomalia, type Anomalia, type MotivoAnomalia,
 } from '../_shared/regole.ts'
 
 const corsHeaders = {
@@ -324,6 +325,16 @@ async function checkAndApplyAutomations(lead: any, supabase: any) {
     let quotePiene: string | null = null;
     let codaAttiva: string | null = null;
 
+    /*
+     * Chi aveva questo lead in carico ed e' ancora dentro l'intervallo di riassegnazione.
+     *
+     * Serve a riconoscere il caso che va segnalato: il lead sarebbe dovuto tornare a lui e
+     * invece e' finito altrove, a un altro venditore o su un parcheggio. Si riempie solo dove
+     * il venditore precedente viene gia' cercato, perche' quella ricerca costa e rifarla per
+     * un avviso rallenterebbe ogni ingresso.
+     */
+    let precedente: { seller: any; data: string | null; giorni: number | null; regola: any } | null = null;
+
     // Controlla ogni automazione nell'ordine di priorità
     for (const automation of automations) {
       console.log(`Checking automation: ${automation.nome}`);
@@ -367,6 +378,14 @@ async function checkAndApplyAutomations(lead: any, supabase: any) {
           if (automation.use_previous_seller_first) {
             const excludedList = automation.excluded_sellers || [];
             const prev = await findPreviousSeller(lead, supabase, excludedList);
+            if (prev?.seller && entroLockPeriod(automation, prev.dataAssegnazione)) {
+              precedente = {
+                seller: prev.seller,
+                data: prev.dataAssegnazione,
+                giorni: prev.dataAssegnazione ? calculateDaysSince(prev.dataAssegnazione) : null,
+                regola: automation,
+              };
+            }
             if (prev && ammesso(automation, prev.seller?.id)) {
               const prevSeller = prev.seller;
               const dataAssegnazione = prev.dataAssegnazione;
@@ -469,6 +488,13 @@ async function checkAndApplyAutomations(lead: any, supabase: any) {
         if (targetSeller) {
           if (!tettoGiaScalato) await scalaTettoVenditore(automation, targetSeller.id, supabase);
           await assignLeadAutomatically(lead, targetSeller, sheetsTabName, automation, supabase);
+
+          // Il precedente era ancora valido ma il lead e' andato a un altro: va detto.
+          const finitoA = `${targetSeller.nome} ${targetSeller.cognome || ''}`.trim();
+          if (precedente && nomeConfrontabile(finitoA) !== nomeConfrontabile(`${precedente.seller.nome} ${precedente.seller.cognome || ''}`)) {
+            await segnalaDeviazione(lead, precedente, finitoA,
+              eParcheggio(finitoA) ? 'parcheggio' : 'venditore_diverso', supabase);
+          }
           return; // Ferma alla prima automazione che matcha
         } else {
           console.log(`No target seller found for automation: ${automation.nome}`);
@@ -490,6 +516,7 @@ async function checkAndApplyAutomations(lead: any, supabase: any) {
           data_assegnazione: new Date().toISOString(),
         })
         .eq('id', lead.id);
+      if (precedente) await segnalaDeviazione(lead, precedente, 'Round Robin', 'parcheggio', supabase);
     } else if (quotePiene) {
       // Tetti esauriti: il lead resta LIBERO, non parcheggiato. Marcarlo come assegnato a
       // "Round Robin" lo farebbe sembrare sistemato e lo toglierebbe dai lead da lavorare,
@@ -697,6 +724,41 @@ async function logAutomationExecution(
   } catch (error) {
     console.error('Error in logAutomationExecution:', error);
   }
+}
+
+/**
+ * Il lead sarebbe dovuto tornare al suo venditore precedente e invece e' finito altrove:
+ * si segnala, con tutto il contesto per capire perche' senza doverlo ricostruire a mano.
+ *
+ * Non blocca niente e non fa fallire l'assegnazione: se l'avviso non parte, il lead resta
+ * assegnato lo stesso.
+ */
+async function segnalaDeviazione(
+  lead: any,
+  precedente: { seller: any; data: string | null; giorni: number | null; regola: any },
+  finitoA: string | null,
+  motivo: MotivoAnomalia,
+  supabase: any,
+) {
+  const anomalia: Anomalia = {
+    motivo,
+    lead_id: lead.id ?? null,
+    lead_nome: `${lead.nome ?? ''} ${lead.cognome ?? ''}`.trim() || null,
+    lead_email: lead.email ?? null,
+    lead_telefono: lead.telefono ?? null,
+    market: lead.market ?? null,
+    campagna: lead.campagna ?? null,
+    ultima_fonte: lead.ultima_fonte ?? null,
+    venditore_precedente: `${precedente.seller.nome} ${precedente.seller.cognome || ''}`.trim(),
+    precedente_assegnato_il: precedente.data,
+    giorni_dall_ultima_assegnazione: precedente.giorni,
+    intervallo_giorni: precedente.regola?.lock_period_days ?? null,
+    venditore_attuale: finitoA,
+    regola: precedente.regola?.nome ?? null,
+    rilevato_da: 'assegnazione',
+    rilevato_il: new Date().toISOString(),
+  }
+  await inviaAnomalia(anomalia, supabase)
 }
 
 // Funzione per assegnare automaticamente il lead

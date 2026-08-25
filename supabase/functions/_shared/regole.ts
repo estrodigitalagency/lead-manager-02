@@ -171,3 +171,65 @@ export function slotEleggibili(
   }
   return eligible;
 }
+
+/**
+ * Venditori che non sono persone: parcheggi usati per tenere un lead in attesa. Un lead che
+ * finisce qui non e' assegnato davvero, e' fermo — e se aveva gia' un venditore suo, e' un caso
+ * da segnalare invece che da lasciar passare in silenzio.
+ */
+const PARCHEGGI = new Set(["round robin", "crm4", "crm", "da assegnare"]);
+export const eParcheggio = (nome: string | null | undefined): boolean =>
+  PARCHEGGI.has(nomeConfrontabile(nome));
+
+/** Perche' un lead con un venditore precedente ancora valido non e' finito a lui. */
+export type MotivoAnomalia = "venditore_diverso" | "parcheggio" | "numero_di_riserva";
+
+export interface Anomalia {
+  motivo: MotivoAnomalia;
+  lead_id: string | null;
+  lead_nome: string | null;
+  lead_email: string | null;
+  lead_telefono: string | null;
+  market: string | null;
+  campagna: string | null;
+  ultima_fonte: string | null;
+  /** Chi lo aveva in carico e da quando. */
+  venditore_precedente: string;
+  precedente_assegnato_il: string | null;
+  giorni_dall_ultima_assegnazione: number | null;
+  /** L'intervallo entro cui sarebbe dovuto tornare a lui. */
+  intervallo_giorni: number | null;
+  /** Dove e' finito invece. */
+  venditore_attuale: string | null;
+  regola: string | null;
+  rilevato_da: "assegnazione" | "click_whatsapp";
+  rilevato_il: string;
+}
+
+/**
+ * Manda l'anomalia al webhook configurato. Non deve mai far fallire cio' che la ha generata:
+ * un avviso che non parte e' un avviso perso, un'assegnazione che fallisce e' un lead perso.
+ */
+export async function inviaAnomalia(anomalia: Anomalia, supabase: any): Promise<boolean> {
+  try {
+    const { data } = await supabase
+      .from("system_settings").select("value").eq("key", "anomalie_webhook_url").maybeSingle();
+    const url = String(data?.value ?? "").trim();
+    if (!url) return false;
+
+    const risposta = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(anomalia),
+    });
+    if (!risposta.ok) {
+      console.error(`[anomalia] il webhook ha risposto ${risposta.status}`);
+      return false;
+    }
+    console.log(`[anomalia] ${anomalia.motivo}: ${anomalia.lead_email} · era di ${anomalia.venditore_precedente} · ora ${anomalia.venditore_attuale ?? "nessuno"}`);
+    return true;
+  } catch (e) {
+    console.error("[anomalia] invio fallito:", (e as Error).message);
+    return false;
+  }
+}
