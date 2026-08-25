@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -7,6 +7,7 @@ import { Loader2, RefreshCw, Rocket, AlertTriangle } from "lucide-react";
 import { useMarket } from "@/contexts/MarketContext";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { fetchLanci, fetchLancioData, fetchColorRules, LancioConfig, LancioData, ColorRule } from "@/lib/lanci/config";
+import { riallineaContatoriAlFoglio } from "@/lib/automazioni/contatori";
 import AcquisizioneWidget from "@/components/lanci/AcquisizioneWidget";
 import SpeedToLeadWidget from "@/components/lanci/SpeedToLeadWidget";
 import QualitaLeadWidget from "@/components/lanci/QualitaLeadWidget";
@@ -63,6 +64,39 @@ const Lanci = () => {
     const id = setInterval(() => setAdesso(Date.now()), 30_000);
     return () => clearInterval(id);
   }, []);
+
+  /*
+   * I tetti seguono i fogli, non le assegnazioni fatte.
+   *
+   * A ogni lettura dei fogli i contatori della regola vengono riportati a quante righe ogni
+   * sales ha davvero in carico: cosi "400" vuol dire 400 lead in mano, e chi ha ceduto lead o
+   * ne ha ricevuti a mano torna a contare per quello che e.
+   *
+   * Solo su dati non scaduti. La risposta puo arrivare da una cache vecchia fino a dodici ore,
+   * e riallineare su quella riporterebbe i contatori a stamattina: chi nel frattempo ha riempito
+   * il tetto ricomincerebbe a ricevere, in silenzio. Meglio non toccare niente e lasciare il
+   * pulsante manuale in Distribuzione.
+   *
+   * Una volta sola per ogni lettura, senza ricaricare la pagina: il riallineamento non cambia
+   * quello che si vede, e farlo ripartire da solo sarebbe un giro senza fine.
+   */
+  const riallineato = useRef<string>("");
+  useEffect(() => {
+    const d = data;
+    const idAutom = lanci.find((l) => l.id === d?.lancio?.id)?.automazione_id;
+    if (!d || d.stale || !idAutom || !d.generated_at) return;
+    const impronta = `${d.lancio.id}|${d.generated_at}`;
+    if (riallineato.current === impronta) return;
+    riallineato.current = impronta;
+
+    riallineaContatoriAlFoglio(idAutom, d.lancio.id, selectedMarket)
+      .then((r) => {
+        if (r?.error) { console.warn("[tetti] riallineamento saltato:", r.error); return; }
+        const mossi = (r?.aggiornati || []).length;
+        if (mossi > 0) console.log(`[tetti] ${mossi} contatori riportati ai fogli`);
+      })
+      .catch((e) => console.warn("[tetti] riallineamento fallito:", e));
+  }, [data, lanci, selectedMarket]);
 
   const cfg = useMemo(() => lanci.find((l) => l.id === lancioId) ?? null, [lanci, lancioId]);
   // I dati arrivano dopo il cambio di lancio: finché sono di un altro lancio non vanno mostrati.
