@@ -379,7 +379,7 @@ const CallWeekly = ({ refreshTrigger }: Props) => {
                 )}
               </div>
               <div className="max-h-[50vh] overflow-auto rounded-md border border-border">
-                <table className="w-full text-[12px] border-collapse">
+                <table className="w-full text-[12px] table-colonna-ferma">
                   <thead>
                     <tr className="[&>th]:align-bottom">
                       <th className="table-header-cell text-left sticky left-0 top-0 bg-card z-30">Sales</th>

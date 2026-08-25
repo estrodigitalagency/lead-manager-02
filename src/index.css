@@ -211,6 +211,19 @@
     background: transparent;
   }
 
+  /*
+   * Tabelle con una colonna che resta ferma mentre il resto scorre.
+   *
+   * Con border-collapse: collapse il browser non disegna lo sfondo delle celle in position:
+   * sticky: la colonna restava trasparente e i numeri che le passavano sotto si sovrapponevano
+   * alle etichette, rendendo la matrice illeggibile. Con border-collapse: separate lo sfondo
+   * viene disegnato, e border-spacing: 0 tiene le celle attaccate come prima.
+   */
+  .table-colonna-ferma {
+    border-collapse: separate;
+    border-spacing: 0;
+  }
+
   .table-body-cell {
     @apply border-b border-border/50 px-2 py-2.5 text-[12.5px] text-foreground;
     font-variant-numeric: tabular-nums;

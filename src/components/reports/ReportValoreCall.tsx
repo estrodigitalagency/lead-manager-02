@@ -261,7 +261,7 @@ const ReportValoreCall = ({ refreshTrigger }: Props) => {
           <>
             {/* TABELLA COMPARATIVA sales × fonte */}
             <div className="max-h-[65vh] overflow-auto rounded-md border border-border">
-              <table className="w-full text-[12px] border-collapse">
+              <table className="w-full text-[12px] table-colonna-ferma">
                 <thead>
                   <tr>
                     <th className="table-header-cell text-left sticky left-0 top-0 bg-card z-30">Venditore</th>

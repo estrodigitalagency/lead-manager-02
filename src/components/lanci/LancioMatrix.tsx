@@ -145,7 +145,7 @@ const LancioMatrix = ({ data, rows, rules, heatmap }: Props) => {
 
   return (
     <div className="overflow-auto max-h-[74vh] pb-4" style={{ scrollbarGutter: "stable" }}>
-      <table className="w-full text-[12.5px] border-collapse">
+      <table className="w-full text-[12.5px] table-colonna-ferma">
         <thead>
           <tr>
             <th className="table-header-cell text-left sticky left-0 top-0 bg-card z-30 min-w-[230px]">Metrica</th>
