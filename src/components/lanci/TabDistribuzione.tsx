@@ -337,7 +337,7 @@ const TabDistribuzione = ({ lancio, rows, market, onChange }: Props) => {
       <Card className="overflow-hidden">
         <CardHeader className="py-2.5 px-3.5 border-b border-border">
           <CardTitle className="label-eyebrow flex items-center justify-between">
-            <span>Lead per sales — quanti ne hanno e quanto manca al tetto</span><span className="text-primary">{rows.length} sales</span>
+            <span>Lead per sales — quanti ne gestiscono e quanto manca al tetto</span><span className="text-primary">{rows.length} sales</span>
           </CardTitle>
         </CardHeader>
         <CardContent className="p-0 overflow-auto max-h-[52vh]">
@@ -345,9 +345,9 @@ const TabDistribuzione = ({ lancio, rows, market, onChange }: Props) => {
             <thead>
               <tr>
                 <th className="table-header-cell text-left sticky top-0 bg-card">Sales</th>
-                <th className="table-header-cell text-right sticky top-0 bg-card">Assegnati</th>
+                <th className="table-header-cell text-right sticky top-0 bg-card whitespace-nowrap">In gestione</th>
                 <th className="table-header-cell text-right sticky top-0 bg-card">Quota %</th>
-                <th className="table-header-cell text-left sticky top-0 bg-card w-[170px]">Riempimento</th>
+                <th className="table-header-cell text-left sticky top-0 bg-card w-[190px] whitespace-nowrap">Verso il tetto</th>
               </tr>
             </thead>
             <tbody>
@@ -363,12 +363,18 @@ const TabDistribuzione = ({ lancio, rows, market, onChange }: Props) => {
                 return (
                   <tr key={r.venditore}>
                     <td className="table-body-cell font-medium">{r.venditore}</td>
-                    <td className="table-body-cell text-right num">{n(r.tot_lead)}</td>
+                    {/* Quanti ne ha davvero in mano: le righe del suo foglio. E' il numero che
+                        il venditore vede e su cui lavora, diverso da quello che riempie il tetto. */}
+                    <td className="table-body-cell text-right num"
+                      title={`${n(r.tot_lead)} righe nel foglio del lancio`}>{n(r.tot_lead)}</td>
                     <td className="table-body-cell text-right num text-muted-foreground">{r.distribuzione}%</td>
                     <td className="table-body-cell">
-                      {/* Quanti su quanti e la barra: il resto erano colonne che dicevano
-                          pezzi dello stesso numero. */}
-                      <div className="flex items-center gap-2">
+                      {/* Il tetto si consuma sulle assegnazioni fatte dalla regola, non sulle
+                          righe del foglio: e' quel numero che a un certo punto lo fa smettere di
+                          ricevere. Tenerli separati evita di leggere due numeri diversi nella
+                          stessa riga come se uno dei due fosse sbagliato. */}
+                      <div className="flex items-center gap-2"
+                        title={`${n(consumato)} assegnazioni fatte dalla regola su un tetto di ${n(rif)}`}>
                         <span className="num text-[12px] w-[62px] shrink-0 tabular-nums">
                           {rif ? <>{n(consumato)}<span className="text-muted-foreground">/{n(rif)}</span></>
                                : <span className="text-muted-foreground/40">—</span>}
@@ -380,6 +386,14 @@ const TabDistribuzione = ({ lancio, rows, market, onChange }: Props) => {
                         </div>
                         {slot?.paused && <span className="text-[10px] text-destructive shrink-0">pausa</span>}
                         {mancanti === 0 && rif > 0 && <span className="text-[10px] text-emerald-400 shrink-0">pieno</span>}
+                        {/* Uno scarto grosso fra assegnati e righe sul foglio significa che le
+                            righe non stanno arrivando: e' il sintomo, non un errore di conto. */}
+                        {daRegola !== null && daRegola - r.tot_lead >= 20 && (
+                          <span className="text-[10px] text-amber-400 shrink-0"
+                            title={`${n(daRegola - r.tot_lead)} assegnazioni non si ritrovano nel foglio`}>
+                            −{n(daRegola - r.tot_lead)}
+                          </span>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -387,6 +401,13 @@ const TabDistribuzione = ({ lancio, rows, market, onChange }: Props) => {
               })}
             </tbody>
           </table>
+          <p className="text-[11px] text-muted-foreground px-3.5 py-2.5 border-t border-border">
+            <b className="text-foreground/80">In gestione</b> sono le righe del foglio del venditore: quello che ha
+            davvero in mano. <b className="text-foreground/80">Verso il tetto</b> conta invece le assegnazioni fatte
+            dalla regola, ed è quel numero che a un certo punto lo fa smettere di ricevere. I due non coincidono e non
+            devono: il foglio non toglie la riga quando un lead viene spostato a un altro sales, e le assegnazioni fatte
+            a mano non consumano il tetto. Uno scarto in ambra segnala assegnazioni che sul foglio non si ritrovano.
+          </p>
         </CardContent>
       </Card>
 
