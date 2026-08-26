@@ -219,6 +219,12 @@ async function fetchRetry(url: string, headers: Record<string, string>, tries = 
   return fetch(url, { headers });
 }
 
+/** Impronta corta e stabile di un testo: serve solo a distinguere configurazioni diverse. */
+async function sha1Breve(testo: string): Promise<string> {
+  const buf = await crypto.subtle.digest("SHA-1", new TextEncoder().encode(testo));
+  return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, "0")).join("").slice(0, 10);
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   try {
@@ -246,9 +252,21 @@ Deno.serve(async (req) => {
     const cfg = lanci.find((l) => l.id === lancioId);
     if (!cfg) throw new Error(`Lancio "${lancioId}" non configurato`);
 
-    // Cache stale-while-revalidate: la lettura dei fogli costa ~25s, quindi si serve
-    // sempre l'ultimo payload disponibile e si ricalcola in background quando è vecchio.
-    const CACHE_KEY = `lancio_cache_${market}_${lancioId}`;
+    /*
+     * Cache stale-while-revalidate: la lettura dei fogli costa ~25s, quindi si serve sempre
+     * l'ultimo payload disponibile e si ricalcola in background quando e vecchio.
+     *
+     * Nella chiave entra anche un'impronta di cosa il lancio dice di leggere. Prima c'erano solo
+     * mercato e lancio, quindi aggiungere un venditore dalle impostazioni non invalidava niente:
+     * la pagina continuava a mostrare la fotografia di prima, senza di lui, anche per dodici ore,
+     * e sembrava che la modifica non fosse stata salvata. Cambiando l'elenco cambia la chiave, e
+     * il ricalcolo parte da solo.
+     */
+    const improntaCfg = await sha1Breve(JSON.stringify([
+      cfg.lead_sales ?? [], cfg.call_sales ?? [], cfg.sales ?? [],
+      cfg.lead_tab ?? "", cfg.call_tabs ?? [], cfg.campagna ?? "", cfg.provenienza ?? "",
+    ]));
+    const CACHE_KEY = `lancio_cache_${market}_${lancioId}_${improntaCfg}`;
     let staleAge = -1;
     if (!noCache) {
       const { data: c } = await supabase

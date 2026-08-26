@@ -323,9 +323,17 @@ const LancioConfigDialog = ({ open, onOpenChange, value, onSave, esistenti, mark
     try {
       let automazione_id = form.automazione_id;
       if (aFonti.trim()) {
+        /*
+         * Se la regola non si salva non si salva nemmeno il lancio.
+         *
+         * Prima si proseguiva quando la regola esisteva gia: aggiungendo un venditore le
+         * percentuali smettevano di fare 100, la regola veniva scartata con un avviso, e il
+         * lancio si salvava lo stesso. Restavano venditori nel lancio ma non nella regola:
+         * comparivano nelle tabelle e non ricevevano niente, senza che nulla lo dicesse.
+         */
         const res = await salvaAutomazione();
-        if (!res && !automazione_id) { setSaving(false); return; }
-        if (res) automazione_id = res;
+        if (!res) { setSaving(false); return; }
+        automazione_id = res;
       }
       let slugs = waOn ? [...waScelti] : [];
       if (waOn && waNuovo) {
