@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSearchParams, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -79,6 +79,11 @@ const WhatsAppRedirect = () => {
   const [venditore, setVenditore] = useState<{ nome: string; cognome: string } | null>(null);
   // Indice del messaggio d'attesa mostrato: ruota mentre siamo in "loading".
   const [msgIdx, setMsgIdx] = useState(0);
+  // Chi comunque deve aspettare non deve restare bloccato: dopo pochi secondi compare una via
+  // d'uscita verso il numero di riserva. Senza, l'unica alternativa e chiudere la pagina - e
+  // chi chiude non lascia traccia, quindi non sapremmo nemmeno di averlo perso.
+  const [attesaLunga, setAttesaLunga] = useState(false);
+  const saltaAttesa = useRef(false);
   useEffect(() => {
     if (status !== "loading") return;
     const id = setInterval(() => setMsgIdx((i) => (i + 1) % MESSAGGI_ATTESA.length), 3500);
@@ -265,26 +270,33 @@ const WhatsAppRedirect = () => {
           return uniq; // dal più recente
         };
 
-        /**
-         * Soglia: la data del record consegnabile PIÙ RECENTE già presente all'arrivo. L'optin
-         * di adesso scriverà un record più nuovo di questa, e sarà quello a stabilire il
-         * venditore secondo il lock (90gg). Fino ad allora si aspetta, SENZA ripiegare su un
-         * venditore vecchio che il lock potrebbe aver già scartato (caso Ornella: vecchia riga
-         * Matteo di aprile, lock scaduto → il DB assegna Giusy, ma il redirect apriva Matteo).
-         * Confronto tra date ISO come stringhe: stesso offset, ordine lessicografico = cronologico.
+        /*
+         * Quale record rappresenta l'optin di ADESSO.
+         *
+         * Prima si usava una soglia: la data del record consegnabile piu recente presente
+         * all'arrivo, e si pretendeva poi un record piu NUOVO di quella. Ma il record giusto era
+         * proprio quello che aveva fissato la soglia, quindi veniva escluso da se stesso: la
+         * pagina non trovava nulla, aspettava i 75 secondi interi e solo alla fine ripiegava sul
+         * record che aveva gia in mano dall'inizio. Su 1184 click, 1176 hanno aspettato per
+         * niente, e in sei casi il ripiego ha aperto un venditore vecchio o estraneo.
+         *
+         * Il dato che serviva non e "quale record e piu recente" ma "quanto e recente": chi ha
+         * appena compilato il modulo ha un record di pochi minuti. Sopra i dieci minuti si torna
+         * ad aspettare, perche' li potrebbe esserci un optin nuovo in arrivo che assegnera' un
+         * altro venditore (lead di ritorno oltre il lock).
+         *
+         * Dieci minuti e non trenta perche' il flusso a monte puo' metterci minuti a scrivere:
+         * misurato, mediana 116s con casi oltre i dieci minuti. Con una finestra larga si
+         * rischierebbe di prendere il record di un optin precedente mentre quello nuovo arriva.
          */
-        const sogliaConsegnabile = (await candidati()).find((c) => consegnabile(c.venditore))?.created_at ?? "";
+        const FRESCO_MS = 10 * 60 * 1000;
 
-        /**
-         * La riga da usare: il record dell'optin di ADESSO, cioè uno con venditore CONSEGNABILE
-         * (attivo + telefono) e più recente della soglia. Così il redirect eredita la decisione
-         * del DB (che applica il lock) invece di ripescare un venditore da una riga vecchia. Se
-         * non c'è ancora, restituisce null e il loop aspetta. Il nuovo opt-in può metterci da
-         * pochi secondi a ~43s (pipeline); il cap d'attesa è 75s.
-         */
         const findAssignedLead = async (): Promise<any | null> => {
           const cands = await candidati();
-          return cands.find((c) => consegnabile(c.venditore) && String(c.created_at) > sogliaConsegnabile) ?? null;
+          const valido = cands.find((c) => consegnabile(c.venditore));
+          if (!valido) return null;
+          const eta = Date.now() - new Date(valido.created_at).getTime();
+          return eta < FRESCO_MS ? valido : null;
         };
 
         // Il lead esiste già in database? Serve solo a scegliere il messaggio d'attesa.
@@ -319,8 +331,10 @@ const WhatsAppRedirect = () => {
           console.log(noto
             ? "[wa] lead presente ma non ancora assegnato: attendo l'assegnazione"
             : "[wa] lead non ancora registrato: attendo che il flusso lo scriva");
-          while (!lead && Date.now() < scadenza) {
+          const SCORCIATOIA_DOPO = 8000;
+          while (!lead && Date.now() < scadenza && !saltaAttesa.current) {
             await new Promise((r) => setTimeout(r, POLL_MS));
+            if (Date.now() - inizio > SCORCIATOIA_DOPO) setAttesaLunga(true);
             lead = await findAssignedLead();
           }
         }
@@ -434,6 +448,14 @@ const WhatsAppRedirect = () => {
                 <span className="h-4 w-4 flex items-center justify-center shrink-0 leading-none">•</span> Apertura di WhatsApp
               </li>
             </ul>
+            {/* Compare solo quando l'attesa si allunga: prima sarebbe un invito a saltare
+                un'attesa che dura un istante. */}
+            {attesaLunga && (
+              <button type="button" onClick={() => { saltaAttesa.current = true; }}
+                className="block mx-auto text-[12.5px] text-muted-foreground underline underline-offset-2 hover:text-foreground">
+                Non voglio aspettare, scrivimi subito
+              </button>
+            )}
           </>
         )}
         {status === "redirecting" && (
