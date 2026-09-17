@@ -210,7 +210,7 @@ const DatabasePage = () => {
 
   const handleManualLeadCheck = async () => {
     try {
-      await performVerification();
+      await performVerification(true);
     } catch (error) {
       console.error("Errore durante il controllo dei lead:", error);
     }

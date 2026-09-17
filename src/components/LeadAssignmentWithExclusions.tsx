@@ -45,7 +45,7 @@ const LeadAssignmentWithExclusions = () => {
 
   const handleManualVerification = async () => {
     try {
-      await performVerification();
+      await performVerification(true);
       await updateAvailableLeads();
     } catch (error) {
       console.error("Error in manual verification:", error);

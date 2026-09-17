@@ -640,6 +640,9 @@ export async function getAvailableLeadsCount(
         .eq('booked_call', 'NO')
         .eq('manually_not_assignable', false)
         .eq('market', market)
+        // Senza un ordinamento le pagine si sovrappongono: alcune righe arrivano due volte,
+        // altre mai, e il conteggio cambia a ogni lettura.
+        .order('id', { ascending: true })
         .range(page * pageSize, (page + 1) * pageSize - 1);
 
       if (onlyHotLeads) {

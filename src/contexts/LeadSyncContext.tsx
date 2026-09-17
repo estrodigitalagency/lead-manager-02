@@ -17,7 +17,7 @@ interface LeadSyncContextType {
   refreshAllData: () => Promise<void>;
   isVerifying: boolean;
   setIsVerifying: (value: boolean) => void;
-  performVerification: () => Promise<void>;
+  performVerification: (forza?: boolean) => Promise<void>;
 }
 
 const LeadSyncContext = createContext<LeadSyncContextType | undefined>(undefined);
@@ -49,14 +49,15 @@ export const LeadSyncProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const VERIFICATION_COOLDOWN_MS = 5 * 60 * 1000; // 5 minutes
 
   // Funzione centralizzata per la verifica dell'assegnabilità
-  const performVerification = useCallback(async () => {
+  // `forza`: chi preme il bottone vuole una verifica vera, la pausa vale solo per quelle automatiche
+  const performVerification = useCallback(async (forza = false) => {
     if (verificationLockRef.current) {
       console.log('🔒 Verification already in progress, skipping...');
       return;
     }
 
     const now = Date.now();
-    if (now - lastVerificationRef.current < VERIFICATION_COOLDOWN_MS) {
+    if (!forza && now - lastVerificationRef.current < VERIFICATION_COOLDOWN_MS) {
       console.log('⏭️ Verification skipped - completed recently');
       return;
     }
