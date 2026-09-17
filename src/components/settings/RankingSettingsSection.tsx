@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { fetchSettings, saveSetting, getRankingBaseUrl } from "@/lib/ranking/adminConfig";
 import { generateMemberCode } from "@/lib/ranking/hashUtils";
 import { fetchSheetData, TeamMember } from "@/lib/ranking/googleSheets";
+import { fetchValoreCall, resolveSales } from "@/lib/ranking/valoreCall";
 
 const RankingSettingsSection = () => {
   const [sheetUrl, setSheetUrl] = useState("");
@@ -20,6 +21,7 @@ const RankingSettingsSection = () => {
   const [newImageUrl, setNewImageUrl] = useState("");
   const [dragIdx, setDragIdx] = useState<number | null>(null);
   const [dragOverIdx, setDragOverIdx] = useState<number | null>(null);
+  const [nomiReport, setNomiReport] = useState<string[]>([]);
 
   useEffect(() => {
     fetchSettings().then((s) => {
@@ -41,6 +43,16 @@ const RankingSettingsSection = () => {
   }, [sheetUrl]);
 
   useEffect(() => { if (sheetUrl) loadMembers(); }, [sheetUrl, loadMembers]);
+
+  // La classifica si calcola sui venditori del report, non sul foglio: chi non è sul foglio
+  // riceve comunque un link, col nome completo (la pagina lo riconosce anche così).
+  useEffect(() => {
+    fetchValoreCall("IT").then((r) => { if (r) setNomiReport(r.per_seller.map((s) => s.venditore)); }).catch(() => {});
+  }, []);
+  const soloReport = useMemo(
+    () => nomiReport.filter((n) => !members.some((m) => resolveSales(m.name, [n]) === n)),
+    [nomiReport, members],
+  );
 
   const saveSheet = async () => {
     const ok = await saveSetting("sheet_url", sheetUrl);
@@ -174,11 +186,11 @@ const RankingSettingsSection = () => {
       </Card>
 
       {/* Link personali */}
-      {members.length > 0 && (
+      {members.length + soloReport.length > 0 && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Copy className="w-4 h-4 text-primary" /> Link personali ({members.length} membri)
+              <Copy className="w-4 h-4 text-primary" /> Link personali ({members.length + soloReport.length} membri)
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-1.5">
@@ -190,6 +202,19 @@ const RankingSettingsSection = () => {
                 </Button>
               </div>
             ))}
+            {soloReport.map((nome, j) => {
+              const i = members.length + j;
+              return (
+                <div key={nome} className="flex items-center justify-between rounded-md border border-border px-3 py-1.5">
+                  <span className="text-[13px] font-medium text-foreground truncate">
+                    {nome} <span className="text-[11px] font-normal text-muted-foreground">· non sul foglio</span>
+                  </span>
+                  <Button variant="ghost" size="sm" onClick={() => copyLink(nome, i)} className="shrink-0 h-7">
+                    {copiedIdx === i ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
+                  </Button>
+                </div>
+              );
+            })}
           </CardContent>
         </Card>
       )}
