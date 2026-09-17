@@ -3,7 +3,7 @@ import { useState, useEffect, useRef } from "react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useMarket } from "@/contexts/MarketContext";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Users, Phone } from "lucide-react";
+import { Users, Phone, Trophy } from "lucide-react";
 import { ReportFilters, ReportMetrics, getReportMetrics } from "@/services/reportsService";
 import ReportFiltersComponent from "@/components/reports/ReportFilters";
 import ReportMetricsComponent from "@/components/reports/ReportMetrics";
@@ -13,6 +13,7 @@ import ReportValoreCall from "@/components/reports/ReportValoreCall";
 import CallWeekly from "@/components/reports/CallWeekly";
 import ReportLeadsList from "@/components/reports/ReportLeadsList";
 import ExportReportButton from "@/components/reports/ExportReportButton";
+import ReportRanking from "@/components/reports/ReportRanking";
 
 const ReportsPage = () => {
   const isMobile = useIsMobile();
@@ -61,6 +62,7 @@ const ReportsPage = () => {
         <TabsList className="mb-5">
           <TabsTrigger value="lead" className="gap-1.5"><Users className="h-3.5 w-3.5" /> Lead</TabsTrigger>
           <TabsTrigger value="call" className="gap-1.5"><Phone className="h-3.5 w-3.5" /> Call</TabsTrigger>
+          <TabsTrigger value="ranking" className="gap-1.5"><Trophy className="h-3.5 w-3.5" /> Ranking</TabsTrigger>
         </TabsList>
 
         {/* ─── TAB LEAD ─── */}
@@ -82,6 +84,11 @@ const ReportsPage = () => {
         <TabsContent value="call" className="mt-0 space-y-5">
           <CallWeekly refreshTrigger={refreshTrigger} />
           <ReportValoreCall refreshTrigger={refreshTrigger} />
+        </TabsContent>
+
+        {/* ─── TAB RANKING (generale + per fonte, solo interno) ─── */}
+        <TabsContent value="ranking" className="mt-0">
+          <ReportRanking />
         </TabsContent>
       </Tabs>
     </div>

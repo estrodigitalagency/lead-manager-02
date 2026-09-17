@@ -7,7 +7,8 @@ import { findMemberByCode } from "@/lib/ranking/hashUtils";
 import { HallOfFame } from "@/components/ranking/HallOfFame";
 import { InfoBox } from "@/components/ranking/InfoBox";
 import { FloatingMoney } from "@/components/ranking/FloatingMoney";
-import FontePodium from "@/components/ranking/FontePodium";
+import ClassificaGenerale from "@/components/ranking/ClassificaGenerale";
+import { ValoreCallResp, fetchValoreCall } from "@/lib/ranking/valoreCall";
 import logo from "@/assets/ranking-logo.png";
 import { toast } from "sonner";
 
@@ -23,13 +24,11 @@ const Ranking = () => {
   const [sheetUrl, setSheetUrl] = useState(getDefaultSheetUrl());
   const [isLoading, setIsLoading] = useState(false);
   const [activeMetric, setActiveMetric] = useState<string>("fatturato");
-  const [vcData, setVcData] = useState<any | null>(null); // dati valore-call condivisi (1 solo fetch)
+  const [vcData, setVcData] = useState<ValoreCallResp | null>(null); // dati valore-call condivisi (1 solo fetch)
 
   // Fetch valore-call UNA volta (evita 4 chiamate pesanti, una per tab metrica)
   useEffect(() => {
-    const ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ0Y3dtdXllbW1raXRlcWxvcGNlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY4NzIxMTIsImV4cCI6MjA2MjQ0ODExMn0.NYTXODd9HEglk4b1RKOt1XyrGMiOOs4ltfFyeZknfBE";
-    fetch("https://btcwmuyemmkiteqlopce.supabase.co/functions/v1/valore-call?market=IT", { headers: { Authorization: `Bearer ${ANON}` } })
-      .then((r) => r.json()).then((j) => { if (!j.error) setVcData(j); }).catch(() => {});
+    fetchValoreCall("IT").then((j) => { if (j) setVcData(j); }).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -99,11 +98,11 @@ const Ranking = () => {
               const myName = memberCode ? findMemberByCode(memberCode, members) : (memberLegacy || null);
               return (
                 <TabsContent key={key} value={key} className="space-y-8">
-                  {/* Classifica per fonte della metrica (niente più generico) */}
+                  {/* Classifica generale: tutte le fonti insieme. Il dettaglio per fonte è in Report → Ranking, dietro login. */}
                   <div>
-                    <h3 className="text-sm font-bold text-foreground mb-1 text-center">{METRIC_LABELS[key].label} per fonte</h3>
-                    <p className="text-muted-foreground text-xs text-center mb-4">Classifica per provenienza · valore del mese corrente (sotto la media degli ultimi 3 mesi)</p>
-                    <FontePodium metric={key} memberCode={memberCode} myName={myName} data={vcData} />
+                    <h3 className="text-sm font-bold text-foreground mb-1 text-center">{METRIC_LABELS[key].label}</h3>
+                    <p className="text-muted-foreground text-xs text-center mb-4">Classifica generale · valore del mese corrente (sotto la media degli ultimi 3 mesi)</p>
+                    <ClassificaGenerale metric={key} memberCode={memberCode} myName={myName} data={vcData} />
                   </div>
                 </TabsContent>
               );

@@ -1,27 +1,15 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useMemo } from "react";
 import { Loader2, Ban } from "lucide-react";
-import { generateMemberCode } from "@/lib/ranking/hashUtils";
 import { RankedMember, MetricKey } from "@/lib/ranking/googleSheets";
+import { BucketData, MonthData, ValoreCallResp, meseRiferimento, nomeSalesInEdge } from "@/lib/ranking/valoreCall";
 import { Podium } from "@/components/ranking/Podium";
 import { LeaderboardTable } from "@/components/ranking/LeaderboardTable";
-
-const SUPA_URL = "https://btcwmuyemmkiteqlopce.supabase.co";
-const ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ0Y3dtdXllbW1raXRlcWxvcGNlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY4NzIxMTIsImV4cCI6MjA2MjQ0ODExMn0.NYTXODd9HEglk4b1RKOt1XyrGMiOOs4ltfFyeZknfBE";
 
 const BUCKET_COLORS: Record<string, string> = {
   "3sfere": "hsl(232 100% 74%)", setter_ig: "hsl(280 70% 62%)",
   setter_new: "hsl(180 65% 48%)", vsl: "hsl(38 92% 55%)",
 };
 const FONTI = ["3sfere", "setter_ig", "setter_new", "vsl"];
-
-interface MonthData { mese: string; fatturato: number; incassato: number; cr: number; valore_call: number; n_call: number }
-interface BucketData {
-  bucket: string; label?: string; has_call: boolean;
-  valore_call: number; fatturato: number; incassato: number; cr: number;
-  mesi?: MonthData[];
-}
-interface SellerData { venditore: string; data: BucketData[]; }
-interface Resp { data: BucketData[]; per_seller: SellerData[]; }
 
 // campo dell'edge per la metrica del ranking (totale cumulato)
 const FIELD: Record<MetricKey, keyof BucketData> = {
@@ -38,74 +26,16 @@ const MONTH_FIELD: Record<MetricKey, keyof MonthData> = {
   valoreCall: "valore_call",
 };
 
-interface Props { metric: MetricKey; memberCode?: string; myName?: string | null; market?: "IT" | "ES"; data?: Resp | null; }
+// I dati arrivano sempre dal parent (un solo fetch per tutte le metriche).
+interface Props { metric: MetricKey; memberCode?: string; myName?: string | null; data: ValoreCallResp | null; }
 
-// Match nome sales robusto. I nomi del foglio ranking sono brevi/soprannomi con
-// accenti (es. "Desiree", "Rocco", "Vincenzo"), quelli dell'edge valore-call sono
-// completi (es. "Desirée Masiero", "Rocco Alicchio"). Serve: togliere accenti +
-// confronto esatto → token-set (ordine invertito) → sottoinsieme (nome ⊂ completo).
-const fold = (s: string) => s.normalize("NFD").replace(/\p{Diacritic}/gu, "").toLowerCase().trim().replace(/\s+/g, " ");
-const toks = (s: string) => fold(s).split(" ").filter(Boolean);
-const isInitial = (t: string) => /^[a-z]\.?$/.test(t); // "a" o "a."
-// Due token combaciano se uguali o se uno è l'iniziale dell'altro (es. "a." ~ "alicchio").
-const tokMatch = (a: string, b: string) => a === b || (isInitial(a) && b[0] === a[0]) || (isInitial(b) && a[0] === b[0]);
-// Bijezione greedy: quanti token del target trovano un token distinto nel candidato.
-const matchCount = (tt: string[], ct: string[]) => {
-  const used = new Array(ct.length).fill(false);
-  let m = 0;
-  for (const t of tt) for (let i = 0; i < ct.length; i++) if (!used[i] && tokMatch(t, ct[i])) { used[i] = true; m++; break; }
-  return m;
-};
-// Nomi ranking abbreviati ("Rocco A.") vs edge completi ("Rocco Alicchio"): match via iniziali + accenti.
-const resolveSales = (target: string, candidates: string[]): string | null => {
-  const tt = toks(target);
-  const scored = candidates.map((c) => { const ct = toks(c); const m = matchCount(tt, ct); return { c, m, full: m === tt.length && m === ct.length }; });
-  const full = scored.filter((s) => s.full);
-  if (full.length) return full[0].c;                       // bijezione completa (caso normale)
-  const cover = scored.filter((s) => s.m === tt.length && tt.length > 0);
-  return cover.sort((a, b) => b.m - a.m)[0]?.c ?? null;    // tutti i token del target coperti
-};
-
-const FontePodium = ({ metric, memberCode, myName: myNameProp, market = "IT", data }: Props) => {
-  const [respInner, setRespInner] = useState<Resp | null>(null);
-  const [loading, setLoading] = useState(false);
-  // Se i dati arrivano dal parent (fetch condiviso), niente fetch qui
-  const resp = data !== undefined ? data : respInner;
-
-  const load = useCallback(async () => {
-    if (data !== undefined) return; // dati dal parent
-    setLoading(true);
-    try {
-      const r = await fetch(`${SUPA_URL}/functions/v1/valore-call?market=${market}`, { headers: { Authorization: `Bearer ${ANON}` } });
-      const j = await r.json();
-      if (!j.error) setRespInner(j);
-    } finally { setLoading(false); }
-  }, [market, data]);
-  useEffect(() => { load(); }, [load]);
-
-  const labelOf = useCallback((f: string) => resp?.data.find((b) => b.bucket === f)?.label || f, [resp]);
+const FontePodium = ({ metric, memberCode, myName: myNameProp, data: resp }: Props) => {
+  const labelOf = (f: string) => resp?.data.find((b) => b.bucket === f)?.label || f;
 
   // Nome del sales corrente, risolto al nome esatto usato nell'edge (per highlight/rank).
-  const myName = useMemo(() => {
-    if (!resp) return null;
-    const names = resp.per_seller.map((s) => s.venditore);
-    if (myNameProp) return resolveSales(myNameProp, names);
-    if (memberCode) return names.find((n) => generateMemberCode(n) === memberCode) || null;
-    return null;
-  }, [myNameProp, memberCode, resp]);
+  const myName = useMemo(() => (resp ? nomeSalesInEdge(resp, myNameProp, memberCode) : null), [myNameProp, memberCode, resp]);
 
-  // Mese di riferimento UNICO per tutta la classifica: il più recente presente nei dati.
-  // (senza questo ogni fonte mostrerebbe un mese diverso — non confrontabile)
-  const meseRif = useMemo(() => {
-    if (!resp) return null;
-    const ord = (mk: string) => { const [m, y] = mk.split("/"); return `${y}${m}`; };
-    let best: string | null = null;
-    for (const s of resp.per_seller)
-      for (const b of s.data)
-        for (const m of b.mesi || [])
-          if (!best || ord(m.mese) > ord(best)) best = m.mese;
-    return best;
-  }, [resp]);
+  const meseRif = useMemo(() => (resp ? meseRiferimento(resp) : null), [resp]);
 
   // Classifica venditori per OGNI fonte → { fonte, ranked, myRank }
   const blocks = useMemo(() => {
